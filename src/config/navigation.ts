@@ -60,15 +60,8 @@ export const navigationItems: NavItem[] = [
     href: '/training-plans',
     icon: ClipboardList,
     roles: ['Admin', 'HR'],
-    disabled: true, 
+    disabled: true,
   },
-  // {
-  //   label: 'Hồ sơ của tôi',
-  //   href: '/trainee/profile',
-  //   icon: UserCircle,
-  //   roles: ['Trainee'],
-  //   disabled: false, 
-  // }, // Removed as per user request
   {
     label: 'Cài đặt Hệ thống',
     href: '/admin/settings',

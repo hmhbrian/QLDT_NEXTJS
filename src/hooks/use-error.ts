@@ -158,6 +158,26 @@ export const ERROR_MESSAGES: Record<string, ErrorMessage> = {
         code: 'SUCCESS003',
         message: 'Đăng nhập thành công',
         details: 'Chào mừng bạn quay trở lại'
+    },
+
+    // Lỗi người dùng
+    'USER001': {
+        type: 'error',
+        code: 'USER001',
+        message: 'Email đã tồn tại',
+        details: 'Vui lòng sử dụng một địa chỉ email khác'
+    },
+    'USER002': {
+        type: 'error',
+        code: 'USER002',
+        message: 'Không thể xóa tài khoản',
+        details: 'Bạn không thể xóa tài khoản đang đăng nhập'
+    },
+    'USER003': {
+        type: 'error',
+        code: 'USER003',
+        message: 'Không đủ quyền',
+        details: 'Bạn không có quyền thực hiện thao tác này'
     }
 };
 
@@ -170,16 +190,14 @@ export function useError() {
         const errorMessage = ERROR_MESSAGES[errorCode];
         if (errorMessage) {
             setError(errorMessage);
-
-            // Dismiss previous toast if exists
             toastInstance?.dismiss();
 
             const instance = toast({
-                variant: errorMessage.type === 'error' ? 'destructive' :
-                    errorMessage.type === 'warning' ? 'warning' : 'default',
+                variant: errorCode.startsWith('SUCCESS') ? 'success' : 'destructive',
                 title: errorMessage.message,
                 description: errorMessage.details,
-                duration: 3000,
+                duration: 1500,
+                className: errorCode.startsWith('SUCCESS') ? 'bg-green-500 text-white border-none' : undefined,
             });
             setToastInstance(instance);
         }
