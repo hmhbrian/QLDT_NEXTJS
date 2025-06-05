@@ -10,7 +10,7 @@ import { UserCircle, Edit3, Save, XSquare, Image as ImageIcon, KeyRound } from "
 import { useAuth } from "@/hooks/useAuth";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/components/ui/use-toast';
 
 export default function TraineeProfilePage() {
   const { user, updateAvatar, changePassword } = useAuth();

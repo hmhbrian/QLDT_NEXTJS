@@ -1,6 +1,12 @@
+import { Metadata } from 'next';
 import { LoginForm } from '@/components/auth/LoginForm';
 import { Logo } from '@/components/Logo';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+
+export const metadata: Metadata = {
+  title: 'Đăng nhập | BECAMEX IDC',
+  description: 'Đăng nhập vào hệ thống quản lý đào tạo BECAMEX IDC',
+};
 
 export default function LoginPage() {
   return (
