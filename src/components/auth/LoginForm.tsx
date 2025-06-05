@@ -1,48 +1,51 @@
-
 'use client';
 
-import { useForm, SubmitHandler } from 'react-hook-form';
+import { useState } from 'react';
+import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
+import { Eye, EyeOff, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
+import { useError } from '@/hooks/use-error';
 import { useAuth } from '@/hooks/useAuth';
-import { useState } from 'react';
-import { Loader2, Eye, EyeOff } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
 
-const loginSchema = z.object({
-  email: z.string().email({ message: 'Địa chỉ email không hợp lệ' }),
-  password: z.string().min(1, { message: 'Mật khẩu là bắt buộc' }),
+const formSchema = z.object({
+  email: z.string().email('Email không hợp lệ'),
+  password: z.string().min(8, 'Mật khẩu phải có ít nhất 8 ký tự'),
 });
 
-type LoginFormValues = z.infer<typeof loginSchema>;
-
 export function LoginForm() {
-  const { login } = useAuth();
-  const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const { showError } = useError();
+  const { login } = useAuth();
 
-  const form = useForm<LoginFormValues>({
-    resolver: zodResolver(loginSchema),
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
     defaultValues: {
       email: '',
       password: '',
     },
   });
 
-  const onSubmit: SubmitHandler<LoginFormValues> = async (data) => {
-    setIsLoading(true);
+  const onSubmit = async (values: z.infer<typeof formSchema>) => {
+    if (isLoading) return;
+    
     try {
-      await login(data.email, data.password);
+      setIsLoading(true);
+      await login(values.email, values.password);
     } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Đăng nhập thất bại",
-        description: (error as Error).message || "Đã xảy ra lỗi không mong muốn. Vui lòng thử lại.",
-      });
+      showError('AUTH001');
+    } finally {
       setIsLoading(false);
     }
   };
@@ -99,4 +102,4 @@ export function LoginForm() {
       </form>
     </Form>
   );
-}
+} 

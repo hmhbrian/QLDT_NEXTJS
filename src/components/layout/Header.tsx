@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useAuth } from '@/hooks/useAuth';
@@ -75,7 +74,21 @@ export function Header() {
             <UserCircle className="mr-2 h-4 w-4" />
             <span>Hồ sơ</span>
           </DropdownMenuItem>
-          <DropdownMenuItem disabled>
+          <DropdownMenuItem 
+            onClick={() => {
+              switch (user.role) {
+                case 'Admin':
+                  router.push('/admin/settings');
+                  break;
+                case 'HR':
+                  router.push('/hr/settings');
+                  break;
+                case 'Trainee':
+                  router.push('/trainee/settings');
+                  break;
+              }
+            }}
+          >
             <Settings className="mr-2 h-4 w-4" />
             <span>Cài đặt</span>
           </DropdownMenuItem>

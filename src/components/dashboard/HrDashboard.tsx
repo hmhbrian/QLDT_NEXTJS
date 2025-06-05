@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { Button } from '../ui/button';
 
 const stats = [
-  { title: 'Học viên đang hoạt động', value: '120', icon: UserCheck, color: 'text-indigo-500', link: '/hr/trainees', linkText: 'Quản lý Học viên' },
+  { title: 'Học viên đang hoạt động', value: '120', icon: UserCheck, color: 'text-green-500', link: '/hr/trainees', linkText: 'Quản lý Học viên' },
   { title: 'Chương trình đang diễn ra', value: '8', icon: ClipboardList, color: 'text-purple-500', link: '/training-plans', linkText: 'Xem Chương trình' },
   { title: 'Tỷ lệ Hoàn thành', value: '75%', icon: LineChart, color: 'text-pink-500', link: '/hr/progress', linkText: 'Theo dõi Tiến độ' },
 ];
