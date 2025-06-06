@@ -56,9 +56,9 @@ export default function SettingsPage() {
       <div className="flex flex-col md:flex-row justify-between items-center gap-4">
         <h1 className="text-2xl md:text-3xl font-headline font-semibold">Cài đặt hệ thống</h1>
         <Button onClick={handleSaveSettings}>
-          <Settings className="mr-2 h-5 w-5" />
+                <Settings className="mr-2 h-5 w-5" />
           Lưu thay đổi
-        </Button>
+          </Button>
       </div>
       {renderSettings()}
     </div>

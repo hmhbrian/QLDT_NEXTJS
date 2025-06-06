@@ -198,8 +198,8 @@ export default function CoursesPage() {
           </div>
           {canManageCourses && (
             <Button onClick={() => setIsAddingCourse(true)} className="w-full sm:w-auto">
-              <PlusCircle className="mr-2 h-5 w-5" /> Thêm khóa học
-            </Button>
+            <PlusCircle className="mr-2 h-5 w-5" /> Thêm khóa học
+          </Button>
           )}
         </div>
       </div>
@@ -215,13 +215,13 @@ export default function CoursesPage() {
                     <span className="ml-2 text-gray-600">PDF Document</span>
                   </div>
                 ) : (
-                  <Image 
-                    src={course.image} 
-                    alt={course.title} 
-                    layout="fill" 
-                    objectFit="cover" 
-                    data-ai-hint={course.dataAiHint}
-                  />
+                <Image 
+                  src={course.image} 
+                  alt={course.title} 
+                  layout="fill" 
+                  objectFit="cover" 
+                  data-ai-hint={course.dataAiHint}
+                />
                 )}
                 {canManageCourses && (
                   <div className="absolute top-2 right-2">
@@ -258,12 +258,12 @@ export default function CoursesPage() {
                 <p className="text-xs text-muted-foreground">Thời lượng: {course.duration}</p>
               </CardContent>
               <CardFooter className="border-t mt-auto">
-                <Button className="w-full mt-4">Xem chi tiết</Button>
+                 <Button className="w-full mt-4">Xem chi tiết</Button>
               </CardFooter>
             </Card>
           ))}
         </div>
-      ) : (
+        ) : (
         <div className="text-center py-12">
           <BookOpen className="mx-auto h-12 w-12 text-muted-foreground" />
           <h3 className="mt-2 text-xl font-semibold">Không có khóa học nào</h3>
