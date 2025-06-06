@@ -1,4 +1,3 @@
-
 import type { NavItem } from '@/lib/types';
 import {
   LayoutDashboard,
@@ -10,6 +9,7 @@ import {
   GraduationCap,
   CalendarDays,
   LineChart,
+  Building2,
 } from 'lucide-react';
 
 export const navigationItems: NavItem[] = [
@@ -41,6 +41,12 @@ export const navigationItems: NavItem[] = [
     label: 'Quản lý Người dùng',
     href: '/admin/users',
     icon: Users,
+    roles: ['Admin'],
+  },
+  {
+    label: 'Quản lý Phòng ban',
+    href: '/admin/departments',
+    icon: Building2,
     roles: ['Admin'],
   },
   {
