@@ -2,6 +2,9 @@
 
 import * as React from "react"
 import * as RechartsPrimitive from "recharts"
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useTheme } from 'next-themes';
+import { Bar, BarChart, CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 
 import { cn } from "@/lib/utils"
 

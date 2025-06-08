@@ -1,43 +1,113 @@
 'use client';
 
+import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useCookie } from "@/hooks/use-cookie";
 import { useToast } from "@/components/ui/use-toast";
-import { useState } from "react";
+import { useAuth } from "@/hooks/useAuth";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { UserCircle, Mail, Phone, Lock, Bell } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 
 export function TraineeSettings() {
+  const { user } = useAuth();
   const { toast } = useToast();
-  const [emailNotifications, setEmailNotifications] = useCookie('trainee_email_notifications', true);
-  const [progressTracking, setProgressTracking] = useCookie('trainee_progress_tracking', true);
-  const [showProgress, setShowProgress] = useCookie('trainee_show_progress', false);
+  const [isLoading, setIsLoading] = useState(false);
 
-  // Thông tin cá nhân
-  const [phone, setPhone] = useState('');
-  const [position, setPosition] = useState('');
-  const [department, setDepartment] = useState('');
-  const [manager, setManager] = useState('');
-  const [status, setStatus] = useState('active');
+  // Profile form state
+  const [profile, setProfile] = useState({
+    fullName: user?.fullName || '',
+    email: user?.email || '',
+    phone: user?.phoneNumber || '',
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  });
 
-  const handleSaveProfile = () => {
-    // TODO: Implement API call to save profile
+  // Notification settings state
+  const [notifications, setNotifications] = useState({
+    emailNotifications: true,
+    courseUpdates: true,
+    deadlineReminders: true,
+    evaluationResults: true
+  });
+
+  const handleProfileUpdate = async () => {
+    setIsLoading(true);
+    try {
+      // TODO: Implement profile update logic
+      toast({
+        title: "Thành công",
+        description: "Thông tin cá nhân đã được cập nhật",
+      });
+    } catch (error) {
+      toast({
+        title: "Lỗi",
+        description: "Không thể cập nhật thông tin. Vui lòng thử lại.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handlePasswordChange = async () => {
+    if (profile.newPassword !== profile.confirmPassword) {
+      toast({
+        title: "Lỗi",
+        description: "Mật khẩu mới không khớp",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      // TODO: Implement password change logic
     toast({
       title: "Thành công",
-      description: "Thông tin cá nhân đã được cập nhật",
-    });
+        description: "Mật khẩu đã được cập nhật",
+      });
+      setProfile(prev => ({
+        ...prev,
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: ''
+      }));
+    } catch (error) {
+      toast({
+        title: "Lỗi",
+        description: "Không thể cập nhật mật khẩu. Vui lòng thử lại.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
-    <Tabs defaultValue="profile" className="space-y-4">
+    <div className="space-y-6">
+      <div className="flex items-center gap-4">
+        <Avatar className="h-16 w-16">
+          <AvatarImage src={user?.urlAvatar} alt={user?.fullName} />
+          <AvatarFallback>
+            <UserCircle className="h-8 w-8" />
+          </AvatarFallback>
+        </Avatar>
+        <div>
+          <h1 className="text-2xl font-semibold">{user?.fullName}</h1>
+          <p className="text-sm text-muted-foreground">{user?.email}</p>
+        </div>
+      </div>
+
+      <Tabs defaultValue="profile">
       <TabsList>
-        <TabsTrigger value="profile">Hồ sơ</TabsTrigger>
+          <TabsTrigger value="profile">Thông tin cá nhân</TabsTrigger>
+          <TabsTrigger value="security">Bảo mật</TabsTrigger>
         <TabsTrigger value="notifications">Thông báo</TabsTrigger>
-        <TabsTrigger value="privacy">Quyền riêng tư</TabsTrigger>
       </TabsList>
 
       <TabsContent value="profile" className="space-y-4">
@@ -49,62 +119,78 @@ export function TraineeSettings() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
+              <div className="grid gap-2">
+                <Label htmlFor="fullName">Họ và tên</Label>
+                <Input
+                  id="fullName"
+                  value={profile.fullName}
+                  onChange={(e) => setProfile({ ...profile, fullName: e.target.value })}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={profile.email}
+                  onChange={(e) => setProfile({ ...profile, email: e.target.value })}
+                />
+              </div>
+              <div className="grid gap-2">
                 <Label htmlFor="phone">Số điện thoại</Label>
                 <Input 
                   id="phone" 
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="0901234567" 
+                  type="tel"
+                  value={profile.phone}
+                  onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="position">Chức vụ</Label>
-                <Input 
-                  id="position" 
-                  value={position}
-                  onChange={(e) => setPosition(e.target.value)}
-                  placeholder="Nhân viên" 
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="department">Phòng ban</Label>
-                <Input 
-                  id="department" 
-                  value={department}
-                  onChange={(e) => setDepartment(e.target.value)}
-                  placeholder="CNTT" 
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="manager">Quản lý trực tiếp</Label>
-                <Input 
-                  id="manager" 
-                  value={manager}
-                  onChange={(e) => setManager(e.target.value)}
-                  placeholder="Nguyễn Văn A" 
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="status">Trạng thái</Label>
-                <Select value={status} onValueChange={setStatus}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Chọn trạng thái" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="active">Đang làm việc</SelectItem>
-                    <SelectItem value="leave">Tạm nghỉ</SelectItem>
-                    <SelectItem value="inactive">Nghỉ việc</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="flex justify-end">
-              <Button onClick={handleSaveProfile}>
-                Lưu thay đổi
+              <Button onClick={handleProfileUpdate} disabled={isLoading}>
+                Cập nhật thông tin
               </Button>
-            </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="security" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Đổi mật khẩu</CardTitle>
+              <CardDescription>
+                Cập nhật mật khẩu của bạn
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid gap-2">
+                <Label htmlFor="currentPassword">Mật khẩu hiện tại</Label>
+                <Input 
+                  id="currentPassword"
+                  type="password"
+                  value={profile.currentPassword}
+                  onChange={(e) => setProfile({ ...profile, currentPassword: e.target.value })}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="newPassword">Mật khẩu mới</Label>
+                <Input 
+                  id="newPassword"
+                  type="password"
+                  value={profile.newPassword}
+                  onChange={(e) => setProfile({ ...profile, newPassword: e.target.value })}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="confirmPassword">Xác nhận mật khẩu mới</Label>
+                <Input 
+                  id="confirmPassword"
+                  type="password"
+                  value={profile.confirmPassword}
+                  onChange={(e) => setProfile({ ...profile, confirmPassword: e.target.value })}
+                />
+              </div>
+              <Button onClick={handlePasswordChange} disabled={isLoading}>
+                Đổi mật khẩu
+              </Button>
           </CardContent>
         </Card>
       </TabsContent>
@@ -114,7 +200,7 @@ export function TraineeSettings() {
           <CardHeader>
             <CardTitle>Cài đặt thông báo</CardTitle>
             <CardDescription>
-              Quản lý thông báo từ hệ thống
+                Tùy chỉnh cách bạn nhận thông báo
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -122,42 +208,62 @@ export function TraineeSettings() {
               <div className="space-y-0.5">
                 <Label>Thông báo qua email</Label>
                 <p className="text-sm text-muted-foreground">
-                  Nhận thông báo về khóa học qua email
+                    Nhận thông báo qua email
                 </p>
               </div>
               <Switch
-                checked={emailNotifications}
-                onCheckedChange={setEmailNotifications}
+                  checked={notifications.emailNotifications}
+                  onCheckedChange={(checked) =>
+                    setNotifications({ ...notifications, emailNotifications: checked })
+                  }
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label>Cập nhật khóa học</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Thông báo khi có cập nhật từ khóa học
+                  </p>
+                </div>
+                <Switch
+                  checked={notifications.courseUpdates}
+                  onCheckedChange={(checked) =>
+                    setNotifications({ ...notifications, courseUpdates: checked })
+                  }
               />
             </div>
-          </CardContent>
-        </Card>
-      </TabsContent>
-
-      <TabsContent value="privacy" className="space-y-4">
-        <Card>
-          <CardHeader>
-            <CardTitle>Quyền riêng tư</CardTitle>
-            <CardDescription>
-              Quản lý cài đặt quyền riêng tư của bạn
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
-                <Label>Hiển thị tiến độ học tập</Label>
+                  <Label>Nhắc nhở deadline</Label>
                 <p className="text-sm text-muted-foreground">
-                  Cho phép người khác xem tiến độ học tập của bạn
+                    Thông báo khi gần đến hạn nộp bài
                 </p>
               </div>
               <Switch
-                checked={showProgress}
-                onCheckedChange={setShowProgress}
+                  checked={notifications.deadlineReminders}
+                  onCheckedChange={(checked) =>
+                    setNotifications({ ...notifications, deadlineReminders: checked })
+                  }
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label>Kết quả đánh giá</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Thông báo khi có kết quả đánh giá mới
+                  </p>
+                </div>
+                <Switch
+                  checked={notifications.evaluationResults}
+                  onCheckedChange={(checked) =>
+                    setNotifications({ ...notifications, evaluationResults: checked })
+                  }
               />
             </div>
           </CardContent>
         </Card>
       </TabsContent>
     </Tabs>
+    </div>
   );
 } 
