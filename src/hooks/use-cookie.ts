@@ -5,7 +5,7 @@ import Cookies from 'js-cookie';
 
 export function useCookie<T>(key: string, initialValue: T) {
     // State để lưu trữ giá trị cookie
-    const [value, setValue] = useState<T>(() => {
+    const [value, setValueInternal] = useState<T>(() => {
         // Kiểm tra xem có cookie không khi component mount
         const cookie = Cookies.get(key);
         if (cookie) {
@@ -18,16 +18,45 @@ export function useCookie<T>(key: string, initialValue: T) {
         return initialValue;
     });
 
+    // Hàm setValue mới với khả năng refresh
+    const setValue = (newValue: T | ((prev: T) => T)) => {
+        const valueToStore = newValue instanceof Function ? newValue(value) : newValue;
+
+        // Cập nhật state
+        setValueInternal(valueToStore);
+
+        // Cập nhật cookie ngay lập tức
+        Cookies.set(key, JSON.stringify(valueToStore), {
+            expires: 7,
+            sameSite: 'strict',
+            secure: process.env.NODE_ENV === 'production'
+        });
+    };
+
+    // Hàm refresh để tải lại cookie
+    const refresh = () => {
+        const cookie = Cookies.get(key);
+        if (cookie) {
+            try {
+                setValueInternal(JSON.parse(cookie));
+            } catch {
+                setValueInternal(initialValue);
+            }
+        } else {
+            setValueInternal(initialValue);
+        }
+    };
+
     // Cập nhật cookie khi state thay đổi
     useEffect(() => {
         Cookies.set(key, JSON.stringify(value), {
-            expires: 7, // Cookie sẽ hết hạn sau 7 ngày
+            expires: 7,
             sameSite: 'strict',
             secure: process.env.NODE_ENV === 'production'
         });
     }, [key, value]);
 
-    return [value, setValue] as const;
+    return [value, setValue, refresh] as const;
 }
 
 // Hàm tiện ích để xóa cookie

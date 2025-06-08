@@ -1,5 +1,7 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 import type { User } from '@/lib/types';
+import { mockUsers } from '@/lib/mock';
 
 interface UserStore {
     users: User[];
@@ -9,57 +11,58 @@ interface UserStore {
     deleteUser: (userId: string) => void;
 }
 
-const initialUsers: User[] = [
-    {
-        id: '1',
-        fullName: 'Quản trị viên',
-        email: 'admin@becamex.com',
-        idCard: 'CMND001',
-        phoneNumber: '0901234567',
-        role: 'Admin',
-        urlAvatar: 'https://placehold.co/40x40.png',
-        startWork: new Date('2024-01-01'),
-        createdAt: new Date(),
-        modifiedAt: new Date()
-    },
-    {
-        id: '2',
-        fullName: 'Quản lý nhân sự',
-        email: 'hr@becamex.com',
-        idCard: 'CMND002',
-        phoneNumber: '0902345678',
-        role: 'HR',
-        urlAvatar: 'https://placehold.co/40x40.png',
-        startWork: new Date('2024-01-01'),
-        createdAt: new Date(),
-        modifiedAt: new Date()
-    },
-    {
-        id: '3',
-        fullName: 'Nguyễn Văn A',
-        email: 'trainee@becamex.com',
-        idCard: 'CMND003',
-        phoneNumber: '0903456789',
-        role: 'Trainee',
-        urlAvatar: 'https://placehold.co/40x40.png',
-        startWork: new Date('2024-01-01'),
-        createdAt: new Date(),
-        modifiedAt: new Date()
+// Thử tải danh sách người dùng từ localStorage
+const loadInitialUsers = (): User[] => {
+    if (typeof window === 'undefined') return mockUsers;
+    try {
+        const storedUsers = localStorage.getItem('becamex-users');
+        if (storedUsers) {
+            const parsedUsers = JSON.parse(storedUsers);
+            // Chuyển đổi chuỗi ngày tháng thành đối tượng Date
+            return parsedUsers.map((user: User) => ({
+                ...user,
+                startWork: user.startWork ? new Date(user.startWork) : undefined,
+                createdAt: user.createdAt ? new Date(user.createdAt) : new Date(),
+                modifiedAt: user.modifiedAt ? new Date(user.modifiedAt) : new Date()
+            }));
+        }
+    } catch (error) {
+        console.error('Lỗi khi tải dữ liệu người dùng từ localStorage:', error);
     }
-];
+    return mockUsers;
+};
+
+// Hàm hỗ trợ lưu danh sách người dùng vào localStorage
+const saveUsersToStorage = (users: User[]) => {
+    if (typeof window === 'undefined') return;
+    try {
+        localStorage.setItem('becamex-users', JSON.stringify(users));
+    } catch (error) {
+        console.error('Lỗi khi lưu dữ liệu người dùng vào localStorage:', error);
+    }
+};
 
 export const useUserStore = create<UserStore>((set) => ({
-    users: initialUsers,
-    setUsers: (users) => set({ users }),
-    addUser: (user) => set((state) => ({
-        users: [...state.users, user]
-    })),
-    updateUser: (userId, userData) => set((state) => ({
-        users: state.users.map((user) =>
-            user.id === userId ? { ...user, ...userData } : user
-        ),
-    })),
-    deleteUser: (userId) => set((state) => ({
-        users: state.users.filter((user) => user.id !== userId),
-    })),
+    users: loadInitialUsers(),
+    setUsers: (users) => {
+        set({ users });
+        saveUsersToStorage(users);
+    },
+    addUser: (user) => set((state) => {
+        const newUsers = [...state.users, user];
+        saveUsersToStorage(newUsers);
+        return { users: newUsers };
+    }),
+    updateUser: (userId, userData) => set((state) => {
+        const newUsers = state.users.map((user) =>
+            user.id === userId ? { ...user, ...userData, modifiedAt: new Date() } : user
+        );
+        saveUsersToStorage(newUsers);
+        return { users: newUsers };
+    }),
+    deleteUser: (userId) => set((state) => {
+        const newUsers = state.users.filter((user) => user.id !== userId);
+        saveUsersToStorage(newUsers);
+        return { users: newUsers };
+    }),
 })); 

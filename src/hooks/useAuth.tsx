@@ -5,6 +5,7 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/components/ui/use-toast';
 import { useError } from './use-error';
+import { useUserStore } from '@/stores/user-store';
 
 interface AuthContextType {
   user: User | null;
@@ -17,18 +18,13 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const mockUsers: Record<string, Omit<User, 'email'>> = {
-  'admin@becamex.com': { id: '1', name: 'Quản trị viên', role: 'Admin', avatar: 'https://avatars.githubusercontent.com/u/92621536?s=96&v=4' },
-  'hr@becamex.com': { id: '2', name: 'Quản lý nhân sự', role: 'HR', avatar: 'https://placehold.co/100x100.png' },
-  'trainee@becamex.com': { id: '3', name: 'Học viên Một', role: 'Trainee', avatar: 'https://placehold.co/100x100.png' },
-};
-
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loadingAuth, setLoadingAuth] = useState(true);
   const router = useRouter();
   const { toast } = useToast();
   const { showError } = useError();
+  const users = useUserStore(state => state.users);
 
   useEffect(() => {
     try {
@@ -47,18 +43,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setLoadingAuth(true);
     await new Promise(resolve => setTimeout(resolve, 200));
     
-    const baseUser = mockUsers[email.toLowerCase()]; 
+    const foundUser = users.find(u => u.email.toLowerCase() === email.toLowerCase());
     
-    if (baseUser) {
-      const loggedInUser: User = { ...baseUser, email: email.toLowerCase() };
-      setUser(loggedInUser);
-      localStorage.setItem('becamex-user', JSON.stringify(loggedInUser));
+    if (foundUser) {
+      setUser(foundUser);
+      localStorage.setItem('becamex-user', JSON.stringify(foundUser));
+      
       // Đợi toast hiển thị xong rồi mới chuyển trang
       setTimeout(() => {
-        router.push('/dashboard');
+        // Route based on user role
+        if (foundUser.role === 'Admin') {
+          router.push('/admin/users');
+        } else if (foundUser.role === 'HR') {
+          router.push('/hr/trainees');
+        } else {
+          router.push('/dashboard');
+        }
       }, 1000);
+      
       showError('SUCCESS003');
-
     } else {
       setLoadingAuth(false); 
       throw new Error('Không tìm thấy người dùng hoặc thông tin đăng nhập không hợp lệ.');
@@ -84,7 +87,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
         throw new Error("URL ảnh đại diện không hợp lệ.");
     }
-    const updatedUser = { ...user, avatar: newAvatarUrl };
+    const updatedUser = { ...user, urlAvatar: newAvatarUrl };
     setUser(updatedUser);
     localStorage.setItem('becamex-user', JSON.stringify(updatedUser));
     toast({

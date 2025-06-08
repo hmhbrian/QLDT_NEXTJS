@@ -23,7 +23,13 @@ export const navigationItems: NavItem[] = [
     label: 'Khóa học',
     href: '/courses',
     icon: BookOpen,
-    roles: ['Admin', 'HR', 'Trainee'],
+    roles: ['HR', 'Trainee'],
+  },
+  {
+    label: 'Quản lý khóa học',
+    href: '/admin/courses',
+    icon: BookOpen,
+    roles: ['Admin'],
   },
   {
     label: 'Khóa học của tôi',

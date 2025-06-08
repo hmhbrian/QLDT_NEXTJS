@@ -11,12 +11,15 @@ export type WorkStatus =
   | 'sabbatical'        // Nghỉ phép dài hạn
   | 'terminated';       // Đã sa thải
 
-export type TraineeLevel =
-  | 'intern'           // Thực tập
-  | 'probation'        // Thử việc
-  | 'employee'         // Nhân viên
-  | 'middle_manager'   // Quản lý cấp trung
-  | 'senior_manager';  // Quản lý cấp cao
+export type TraineeLevel = 'beginner' | 'intermediate' | 'advanced' | 'expert';
+
+export type MaterialType = 'pdf' | 'video' | 'image' | 'other';
+
+export type CourseCategory = 'programming' | 'business' | 'design' | 'marketing' | 'soft_skills';
+
+export type CourseStatus = 'draft' | 'published' | 'archived';
+
+export type Department = 'it' | 'hr' | 'marketing' | 'sales' | 'finance' | 'operations';
 
 // Thông tin khóa học đã hoàn thành
 export interface CompletedCourse {
@@ -60,7 +63,7 @@ export interface Evaluation {
 }
 
 // Cấu trúc phòng ban
-export interface Department {
+export interface DepartmentInfo {
   id: string;
   name: string;               // Tên phòng ban
   code: string;               // Mã phòng ban
@@ -86,7 +89,7 @@ export interface Trainee {
   urlAvatar?: string;         // Ảnh đại diện
 
   // Thông tin công việc
-  department: Department;     // Phòng ban (có cấu trúc cha-con)
+  department: Department;     // Phòng ban
   position: string;          // Chức vụ
   level: TraineeLevel;       // Cấp bậc
   workStatus: WorkStatus;    // Trạng thái làm việc
@@ -137,25 +140,42 @@ export interface NavItem {
   disabled?: boolean;
 }
 
-// Interface cho khóa học
+export interface CourseMaterial {
+  title: string;
+  description: string;
+  url: string;
+  type: MaterialType;
+}
+
 export interface Course {
   id: string;
   title: string;
+  courseCode: string;
   description: string;
-  category: string;
+  objectives: string;
+  category: CourseCategory;
   instructor: string;
-  duration: string;
+  duration: {
+    sessions: number;
+    hoursPerSession: number;
+  };
+  learningType: 'online';
+  startDate: string | null;
+  endDate: string | null;
+  location: string; // URL for online course
   image: string;
-  status: 'active' | 'inactive' | 'draft';
-  startDate?: string;
-  endDate?: string;
-  maxParticipants?: number;
-  prerequisites?: string[];
-  syllabus?: {
+  status: CourseStatus;
+  department: Department[];
+  level: TraineeLevel[];
+  materials: {
+    type: 'pdf' | 'slide' | 'video' | 'link';
     title: string;
-    content: string;
-    duration: string;
+    url: string;
   }[];
+  createdAt: string;
+  modifiedAt: string;
+  createdBy: string;
+  modifiedBy: string;
 }
 
 // Base User interface
