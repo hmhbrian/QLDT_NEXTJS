@@ -27,30 +27,31 @@ export default function TraineesPage() {
 
   // New trainee form state
   const [newTrainee, setNewTrainee] = useState({
-    name: '',
+    fullName: '',
     employeeId: '',
     email: '',
-    phone: '',
+    phoneNumber: '',
     department: '',
     position: '',
-    level: 'intern' as TraineeLevel,
+    level: 'beginner' as TraineeLevel,
     joinDate: '',
     manager: '',
     status: 'working' as WorkStatus,
+    idCard: '',
   });
 
   const trainees = users.filter((user: User) => user.role === 'Trainee');
   
   const filteredTrainees = trainees.filter((trainee: User) => 
-    trainee.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    trainee.employeeId?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    trainee.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    trainee.department?.toLowerCase().includes(searchQuery.toLowerCase())
+    (trainee.fullName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (trainee.employeeId || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (trainee.email || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (trainee.department || '').toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const handleAddTrainee = () => {
     // Validate required fields
-    if (!newTrainee.name || !newTrainee.employeeId || !newTrainee.email) {
+    if (!newTrainee.fullName || !newTrainee.employeeId || !newTrainee.email || !newTrainee.idCard) {
       toast({
         title: "Lỗi",
         description: "Vui lòng điền đầy đủ thông tin bắt buộc",
@@ -63,7 +64,7 @@ export default function TraineesPage() {
       id: crypto.randomUUID(),
       ...newTrainee,
       role: 'Trainee',
-      avatar: 'https://placehold.co/40x40.png',
+      urlAvatar: 'https://placehold.co/40x40.png',
       completedCourses: [],
       certificates: [],
       evaluations: [],
@@ -80,11 +81,11 @@ export default function TraineesPage() {
 
   const getLevelBadgeColor = (level: TraineeLevel) => {
     switch (level) {
-      case 'intern': return 'bg-blue-100 text-blue-800';
-      case 'probation': return 'bg-yellow-100 text-yellow-800';
-      case 'employee': return 'bg-green-100 text-green-800';
-      case 'middle_manager': return 'bg-purple-100 text-purple-800';
-      case 'senior_manager': return 'bg-red-100 text-red-800';
+      case 'beginner': return 'bg-blue-100 text-blue-800';
+      case 'intermediate': return 'bg-yellow-100 text-yellow-800';
+      case 'advanced': return 'bg-green-100 text-green-800';
+      case 'expert': return 'bg-purple-100 text-purple-800';
+      default: return 'bg-gray-100 text-gray-800';
     }
   };
 
@@ -156,11 +157,11 @@ export default function TraineesPage() {
                     <TableCell>
                       <div className="flex items-center gap-3">
                         <Avatar>
-                          <AvatarImage src={trainee.avatar} alt={trainee.name} />
-                          <AvatarFallback>{trainee.name.split(' ').map((n: string) => n[0]).join('').toUpperCase()}</AvatarFallback>
+                          <AvatarImage src={trainee.urlAvatar} alt={trainee.fullName} />
+                          <AvatarFallback>{trainee.fullName.split(' ').map((n: string) => n[0]).join('').toUpperCase()}</AvatarFallback>
                         </Avatar>
                         <div>
-                          <div className="font-medium">{trainee.name}</div>
+                          <div className="font-medium">{trainee.fullName}</div>
                           <div className="text-xs text-muted-foreground">{trainee.employeeId}</div>
                         </div>
                       </div>
@@ -170,18 +171,18 @@ export default function TraineesPage() {
                         <Mail className="h-3 w-3" /> {trainee.email}
                       </div>
                       <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                        <Phone className="h-3 w-3" /> {trainee.phone}
+                        <Phone className="h-3 w-3" /> {trainee.phoneNumber}
                       </div>
                     </TableCell>
                     <TableCell className="hidden lg:table-cell">{trainee.department}</TableCell>
                     <TableCell className="hidden lg:table-cell">
-                      <Badge variant="outline" className={getLevelBadgeColor(trainee.level ?? ('intern' as TraineeLevel))}>
-                        {trainee.level?.replace('_', ' ').toUpperCase() ?? 'INTERN'}
+                      <Badge variant="outline" className={getLevelBadgeColor(trainee.level ?? 'beginner')}>
+                        {trainee.level?.toUpperCase() ?? 'BEGINNER'}
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <Badge variant="outline" className={getStatusColor(trainee.status ?? ('working' as WorkStatus))}>
-                        {getStatusText(trainee.status ?? ('working' as WorkStatus))}
+                      <Badge variant="outline" className={getStatusColor(trainee.status ?? 'working')}>
+                        {getStatusText(trainee.status ?? 'working')}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
@@ -227,11 +228,11 @@ export default function TraineesPage() {
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="name">Họ và tên *</Label>
+                <Label htmlFor="fullName">Họ và tên *</Label>
                 <Input
-                  id="name"
-                  value={newTrainee.name}
-                  onChange={(e) => setNewTrainee({...newTrainee, name: e.target.value})}
+                  id="fullName"
+                  value={newTrainee.fullName}
+                  onChange={(e) => setNewTrainee({...newTrainee, fullName: e.target.value})}
                   placeholder="Nguyễn Văn A"
                 />
               </div>
@@ -247,6 +248,15 @@ export default function TraineesPage() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
+                <Label htmlFor="idCard">CMND/CCCD *</Label>
+                <Input
+                  id="idCard"
+                  value={newTrainee.idCard}
+                  onChange={(e) => setNewTrainee({...newTrainee, idCard: e.target.value})}
+                  placeholder="012345678910"
+                />
+              </div>
+              <div className="space-y-2">
                 <Label htmlFor="email">Email công ty *</Label>
                 <Input
                   id="email"
@@ -256,17 +266,17 @@ export default function TraineesPage() {
                   placeholder="example@company.com"
                 />
               </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="phone">Số điện thoại</Label>
+                <Label htmlFor="phoneNumber">Số điện thoại</Label>
                 <Input
-                  id="phone"
-                  value={newTrainee.phone}
-                  onChange={(e) => setNewTrainee({...newTrainee, phone: e.target.value})}
+                  id="phoneNumber"
+                  value={newTrainee.phoneNumber}
+                  onChange={(e) => setNewTrainee({...newTrainee, phoneNumber: e.target.value})}
                   placeholder="0901234567"
                 />
               </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="department">Phòng ban</Label>
                 <Input
@@ -276,6 +286,8 @@ export default function TraineesPage() {
                   placeholder="CNTT"
                 />
               </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="position">Chức vụ</Label>
                 <Input
@@ -285,8 +297,6 @@ export default function TraineesPage() {
                   placeholder="Developer"
                 />
               </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="level">Cấp bậc</Label>
                 <Select
@@ -297,14 +307,15 @@ export default function TraineesPage() {
                     <SelectValue placeholder="Chọn cấp bậc" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="intern">Thực tập</SelectItem>
-                    <SelectItem value="probation">Thử việc</SelectItem>
-                    <SelectItem value="employee">Nhân viên</SelectItem>
-                    <SelectItem value="middle_manager">Quản lý cấp trung</SelectItem>
-                    <SelectItem value="senior_manager">Quản lý cấp cao</SelectItem>
+                    <SelectItem value="beginner">Sơ cấp</SelectItem>
+                    <SelectItem value="intermediate">Trung cấp</SelectItem>
+                    <SelectItem value="advanced">Nâng cao</SelectItem>
+                    <SelectItem value="expert">Chuyên gia</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="status">Trạng thái</Label>
                 <Select
@@ -325,8 +336,6 @@ export default function TraineesPage() {
                   </SelectContent>
                 </Select>
               </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="joinDate">Ngày vào công ty</Label>
                 <Input
@@ -336,15 +345,15 @@ export default function TraineesPage() {
                   onChange={(e) => setNewTrainee({...newTrainee, joinDate: e.target.value})}
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="manager">Quản lý trực tiếp</Label>
-                <Input
-                  id="manager"
-                  value={newTrainee.manager}
-                  onChange={(e) => setNewTrainee({...newTrainee, manager: e.target.value})}
-                  placeholder="Nguyễn Văn B"
-                />
-              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="manager">Quản lý trực tiếp</Label>
+              <Input
+                id="manager"
+                value={newTrainee.manager}
+                onChange={(e) => setNewTrainee({...newTrainee, manager: e.target.value})}
+                placeholder="Nguyễn Văn B"
+              />
             </div>
           </div>
           <DialogFooter>
@@ -390,10 +399,11 @@ export default function TraineesPage() {
                   <div>
                     <h4 className="font-medium mb-2">Thông tin cá nhân</h4>
                     <div className="space-y-1">
-                      <p className="text-sm"><strong>Họ và tên:</strong> {selectedTrainee.name}</p>
+                      <p className="text-sm"><strong>Họ và tên:</strong> {selectedTrainee.fullName}</p>
                       <p className="text-sm"><strong>Mã nhân viên:</strong> {selectedTrainee.employeeId}</p>
+                      <p className="text-sm"><strong>CMND/CCCD:</strong> {selectedTrainee.idCard}</p>
                       <p className="text-sm"><strong>Email:</strong> {selectedTrainee.email}</p>
-                      <p className="text-sm"><strong>Số điện thoại:</strong> {selectedTrainee.phone}</p>
+                      <p className="text-sm"><strong>Số điện thoại:</strong> {selectedTrainee.phoneNumber}</p>
                     </div>
                   </div>
                   <div>
@@ -401,7 +411,7 @@ export default function TraineesPage() {
                     <div className="space-y-1">
                       <p className="text-sm"><strong>Phòng ban:</strong> {selectedTrainee.department}</p>
                       <p className="text-sm"><strong>Chức vụ:</strong> {selectedTrainee.position}</p>
-                      <p className="text-sm"><strong>Cấp bậc:</strong> {selectedTrainee.level?.replace('_', ' ')}</p>
+                      <p className="text-sm"><strong>Cấp bậc:</strong> {selectedTrainee.level}</p>
                       <p className="text-sm"><strong>Quản lý:</strong> {selectedTrainee.manager}</p>
                     </div>
                   </div>
