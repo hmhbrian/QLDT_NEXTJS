@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { ActualSidebar } from '@/components/layout/ActualSidebar';
 import { Header } from '@/components/layout/Header';
@@ -11,12 +11,35 @@ import { Loader2 } from 'lucide-react';
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, loadingAuth } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
 
   useEffect(() => {
     if (!loadingAuth && !user) {
       router.replace('/login');
+      return;
     }
-  }, [user, loadingAuth, router]);
+
+    // Redirect users based on role and current path
+    if (!loadingAuth && user) {
+      // Admin users shouldn't access HR paths
+      if (user.role === 'Admin' && pathname.startsWith('/hr')) {
+        router.replace('/admin/users');
+        return;
+      }
+      
+      // HR users shouldn't access Admin paths
+      if (user.role === 'HR' && pathname.startsWith('/admin')) {
+        router.replace('/hr/trainees');
+        return;
+      }
+      
+      // Trainee users shouldn't access Admin or HR paths
+      if (user.role === 'Trainee' && (pathname.startsWith('/admin') || pathname.startsWith('/hr'))) {
+        router.replace('/dashboard');
+        return;
+      }
+    }
+  }, [user, loadingAuth, router, pathname]);
 
   if (loadingAuth || !user) {
     return (
