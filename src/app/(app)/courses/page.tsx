@@ -4,7 +4,7 @@ import { useState, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { BookOpen, PlusCircle, Search, MoreVertical, Pencil, Trash2, MoreHorizontal, Upload, X } from "lucide-react";
+import { BookOpen, PlusCircle, Search, MoreVertical, Pencil, Trash2, MoreHorizontal, Upload, X, Copy } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -13,31 +13,8 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { useAuth } from '@/hooks/useAuth';
 import { useError } from '@/hooks/use-error';
 import Image from "next/image";
-
-// Mock data for courses
-const mockCourses: Course[] = [
-  { id: '1', title: 'JavaScript Nâng cao', description: 'Tìm hiểu sâu về các tính năng JavaScript hiện đại và các phương pháp hay nhất.', category: 'Lập trình' as CourseCategory, instructor: 'TS. Code', duration: '6 Tuần', image: 'https://placehold.co/600x400.png', dataAiHint: 'technology code' },
-  { id: '2', title: 'Nguyên tắc Quản lý Dự án', description: 'Học các yếu tố cần thiết để quản lý dự án hiệu quả.', category: 'Kinh doanh' as CourseCategory, instructor: 'CN. Planner', duration: '4 Tuần', image: 'https://placehold.co/600x400.png', dataAiHint: 'office meeting' },
-  { id: '3', title: 'Nguyên tắc Thiết kế UI/UX', description: 'Nắm vững các nguyên tắc cốt lõi của thiết kế giao diện và trải nghiệm người dùng.', category: 'Thiết kế' as CourseCategory, instructor: 'KS. Pixel', duration: '8 Tuần', image: 'https://placehold.co/600x400.png', dataAiHint: 'design art' },
-  { id: '4', title: 'Chiến lược Tiếp thị Kỹ thuật số', description: 'Phát triển và triển khai các chiến lược tiếp thị kỹ thuật số hiệu quả.', category: 'Tiếp thị' as CourseCategory, instructor: 'CN. Click', duration: '5 Tuần', image: 'https://placehold.co/600x400.png', dataAiHint: 'marketing social media' },
-  { id: '5', title: 'Machine Learning Cơ bản', description: 'Khám phá các khái niệm cơ bản về học máy và ứng dụng thực tế.', category: 'Lập trình' as CourseCategory, instructor: 'TS. AI', duration: '10 Tuần', image: 'https://placehold.co/600x400.png', dataAiHint: 'artificial intelligence' },
-  { id: '6', title: 'Kỹ năng Thuyết trình', description: 'Phát triển kỹ năng thuyết trình chuyên nghiệp và tự tin trước đám đông.', category: 'Kỹ năng mềm' as CourseCategory, instructor: 'ThS. Speaker', duration: '3 Tuần', image: 'https://placehold.co/600x400.png', dataAiHint: 'presentation skills' },
-  { id: '7', title: 'Phân tích Dữ liệu với Python', description: 'Học cách xử lý và phân tích dữ liệu sử dụng Python và các thư viện phổ biến.', category: 'Lập trình' as CourseCategory, instructor: 'TS. Data', duration: '8 Tuần', image: 'https://placehold.co/600x400.png', dataAiHint: 'data analysis python' },
-  { id: '8', title: 'Quản lý Thời gian Hiệu quả', description: 'Các phương pháp và công cụ để quản lý thời gian và tăng năng suất làm việc.', category: 'Kỹ năng mềm' as CourseCategory, instructor: 'ThS. Time', duration: '4 Tuần', image: 'https://placehold.co/600x400.png', dataAiHint: 'time management' }
-] as const;
-
-type CourseCategory = 'Lập trình' | 'Kinh doanh' | 'Thiết kế' | 'Tiếp thị' | 'Kỹ năng mềm';
-
-interface Course {
-  id: string;
-  title: string;
-  description: string;
-  category: CourseCategory;
-  instructor: string;
-  duration: string;
-  image: string;
-  dataAiHint?: string;
-}
+import { useRouter } from 'next/navigation';
+import { PublicCourse, mockPublicCourses } from '@/lib/mock';
 
 interface FileUpload {
   file: File;
@@ -47,12 +24,12 @@ interface FileUpload {
 export default function CoursesPage() {
   const { user: currentUser } = useAuth();
   const { showError } = useError();
-  const [courses, setCourses] = useState<Course[]>(mockCourses);
+  const [courses, setCourses] = useState<PublicCourse[]>(mockPublicCourses);
   const [searchTerm, setSearchTerm] = useState('');
   const [isAddingCourse, setIsAddingCourse] = useState(false);
-  const [editingCourse, setEditingCourse] = useState<Course | null>(null);
-  const [deletingCourse, setDeletingCourse] = useState<Course | null>(null);
-  const [newCourse, setNewCourse] = useState<Omit<Course, 'id'>>({
+  const [editingCourse, setEditingCourse] = useState<PublicCourse | null>(null);
+  const [deletingCourse, setDeletingCourse] = useState<PublicCourse | null>(null);
+  const [newCourse, setNewCourse] = useState<Omit<PublicCourse, 'id'>>({
     title: '',
     description: '',
     category: 'Lập trình',
@@ -64,6 +41,7 @@ export default function CoursesPage() {
   const [editingFile, setEditingFile] = useState<FileUpload | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const editFileInputRef = useRef<HTMLInputElement>(null);
+  const router = useRouter();
 
   // Check if user has permission to manage courses
   const canManageCourses = currentUser?.role === 'Admin' || currentUser?.role === 'HR';
@@ -182,6 +160,29 @@ export default function CoursesPage() {
     showError('SUCCESS001');
   };
 
+  const handleDuplicateCourse = (course: PublicCourse) => {
+    if (!canManageCourses) {
+      showError('USER003');
+      return;
+    }
+
+    const newId = (Math.max(...courses.map(c => parseInt(c.id))) + 1).toString();
+    const now = new Date();
+    const duplicatedCourse = {
+      ...course,
+      id: newId,
+      title: `${course.title} (Bản sao)`,
+      status: 'draft' as const,
+      createdAt: now,
+      modifiedAt: now,
+      createdBy: currentUser.id,
+      modifiedBy: currentUser.id
+    };
+
+    setCourses([...courses, duplicatedCourse]);
+    showError('SUCCESS001');
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row justify-between items-center gap-4">
@@ -220,7 +221,6 @@ export default function CoursesPage() {
                   alt={course.title} 
                   layout="fill" 
                   objectFit="cover" 
-                  data-ai-hint={course.dataAiHint}
                 />
                 )}
                 {canManageCourses && (
@@ -235,6 +235,10 @@ export default function CoursesPage() {
                         <DropdownMenuItem onClick={() => setEditingCourse(course)}>
                           <Pencil className="mr-2 h-4 w-4" />
                           Chỉnh sửa
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleDuplicateCourse(course)}>
+                          <Copy className="mr-2 h-4 w-4" />
+                          Nhân bản
                         </DropdownMenuItem>
                         <DropdownMenuItem 
                           onClick={() => setDeletingCourse(course)}
@@ -258,7 +262,12 @@ export default function CoursesPage() {
                 <p className="text-xs text-muted-foreground">Thời lượng: {course.duration}</p>
               </CardContent>
               <CardFooter className="border-t mt-auto">
-                 <Button className="w-full mt-4">Xem chi tiết</Button>
+                <Button 
+                  className="w-full mt-4"
+                  onClick={() => router.push(`/courses/${course.id}`)}
+                >
+                  Xem chi tiết
+                </Button>
               </CardFooter>
             </Card>
           ))}
@@ -274,43 +283,45 @@ export default function CoursesPage() {
       )}
 
       {/* Dialog thêm khóa học */}
-      {canManageCourses && (
+      {isAddingCourse && (
         <Dialog open={isAddingCourse} onOpenChange={setIsAddingCourse}>
-          <DialogContent>
+          <DialogContent className="max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Thêm khóa học mới</DialogTitle>
               <DialogDescription>
                 Điền thông tin để tạo khóa học mới.
               </DialogDescription>
             </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="grid gap-2">
-                <Label htmlFor="title">Tên khóa học</Label>
+
+            <div className="grid gap-6 py-4">
+              {/* Thông tin cơ bản */}
+              <div className="space-y-2">
+                <h3 className="text-lg font-medium">Thông tin cơ bản</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="md:col-span-2">
+                    <Label htmlFor="title" className="font-medium">
+                      Tên khóa học <span className="text-destructive">*</span>
+                    </Label>
                 <Input
                   id="title"
+                      placeholder="Nhập tên khóa học"
                   value={newCourse.title}
                   onChange={(e) => setNewCourse({ ...newCourse, title: e.target.value })}
-                  placeholder="Nhập tên khóa học"
+                      className="mt-1"
                 />
               </div>
-              <div className="grid gap-2">
-                <Label htmlFor="description">Mô tả</Label>
-                <Textarea
-                  id="description"
-                  value={newCourse.description}
-                  onChange={(e) => setNewCourse({ ...newCourse, description: e.target.value })}
-                  placeholder="Mô tả chi tiết về khóa học"
-                  className="min-h-[100px] resize-y"
-                />
-              </div>
-              <div className="grid sm:grid-cols-2 gap-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="category">Danh mục</Label>
+
+                  <div>
+                    <Label htmlFor="category" className="font-medium">
+                      Danh mục <span className="text-destructive">*</span>
+                    </Label>
                   <Select
                     value={newCourse.category}
-                    onValueChange={(value: CourseCategory) => setNewCourse({ ...newCourse, category: value })}
+                      onValueChange={(value) => 
+                        setNewCourse({ ...newCourse, category: value as PublicCourse['category'] })
+                      }
                   >
-                    <SelectTrigger>
+                      <SelectTrigger className="mt-1">
                       <SelectValue placeholder="Chọn danh mục" />
                     </SelectTrigger>
                     <SelectContent>
@@ -322,74 +333,116 @@ export default function CoursesPage() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="duration">Thời lượng</Label>
-                  <Input
-                    id="duration"
-                    value={newCourse.duration}
-                    onChange={(e) => setNewCourse({ ...newCourse, duration: e.target.value })}
-                    placeholder="Ví dụ: 6 Tuần"
+
+                  <div>
+                    <Label htmlFor="instructor" className="font-medium">
+                      Giảng viên <span className="text-destructive">*</span>
+                    </Label>
+                    <Input
+                      id="instructor"
+                      placeholder="Tên giảng viên"
+                      value={newCourse.instructor}
+                      onChange={(e) => setNewCourse({ ...newCourse, instructor: e.target.value })}
+                      className="mt-1"
+                    />
+                  </div>
+                </div>
+                
+                <div>
+                  <Label htmlFor="description" className="font-medium">
+                    Mô tả ngắn <span className="text-destructive">*</span>
+                  </Label>
+                  <Textarea
+                    id="description"
+                    placeholder="Mô tả chi tiết về khóa học"
+                    value={newCourse.description}
+                    onChange={(e) => setNewCourse({ ...newCourse, description: e.target.value })}
+                    className="mt-1"
                   />
                 </div>
               </div>
-              <div className="grid gap-2">
-                <Label htmlFor="instructor">Giảng viên</Label>
-                <Input
-                  id="instructor"
-                  value={newCourse.instructor}
-                  onChange={(e) => setNewCourse({ ...newCourse, instructor: e.target.value })}
-                  placeholder="Tên giảng viên"
-                />
+
+              {/* Thông tin khóa học */}
+              <div className="space-y-2">
+                <h3 className="text-lg font-medium">Thông tin khóa học</h3>
+
+                <div>
+                  <Label htmlFor="duration" className="font-medium">
+                    Thời lượng <span className="text-destructive">*</span>
+                  </Label>
+                  <Input
+                    id="duration"
+                    placeholder="VD: 6 Tuần"
+                    value={newCourse.duration}
+                    onChange={(e) => setNewCourse({ ...newCourse, duration: e.target.value })}
+                    className="mt-1"
+                  />
+                </div>
               </div>
-              <div className="grid gap-2">
-                <Label>Tải lên ảnh hoặc tài liệu PDF</Label>
-                <div className="flex flex-col sm:flex-row items-center gap-4">
+
+              {/* Hình ảnh khóa học */}
+              <div className="space-y-2">
+                <h3 className="text-lg font-medium">Hình ảnh khóa học</h3>
+                <div className="grid gap-4">
+                  <div>
+                    <Label htmlFor="course-image" className="font-medium">
+                      Tải lên ảnh hoặc tài liệu PDF <span className="text-destructive">*</span>
+                    </Label>
+                    <div className="mt-1 flex items-center gap-4">
                   <Button
                     type="button"
                     variant="outline"
                     onClick={() => fileInputRef.current?.click()}
-                    className="w-full sm:w-auto"
+                        className="flex items-center gap-2"
                   >
-                    <Upload className="mr-2 h-4 w-4" />
+                        <Upload className="h-4 w-4" /> 
                     Chọn file
                   </Button>
                   <input
                     type="file"
+                        id="course-image"
                     ref={fileInputRef}
-                    className="hidden"
-                    accept="image/*,.pdf"
-                    onChange={handleFileSelect}
-                  />
+                        style={{ display: 'none' }}
+                        accept="image/*,application/pdf"
+                        onChange={(e) => handleFileSelect(e)}
+                      />
+                      <p className="text-sm text-muted-foreground">
+                        Hỗ trợ: PNG, JPG, GIF hoặc PDF. Tối đa 5MB.
+                      </p>
+                    </div>
                   {selectedFile && (
-                    <div className="relative h-20 w-20">
+                      <div className="mt-4 flex items-center gap-2">
+                        <div className="relative h-16 w-16 overflow-hidden rounded border">
                       <Image
                         src={selectedFile.preview}
                         alt="Preview"
                         layout="fill"
                         objectFit="cover"
-                        className="rounded"
                       />
+                        </div>
                       <Button
-                        variant="destructive"
+                          type="button"
+                          variant="ghost"
                         size="icon"
-                        className="absolute -top-2 -right-2 h-6 w-6"
-                        onClick={() => setSelectedFile(null)}
+                          onClick={() => {
+                            setSelectedFile(null);
+                            if (fileInputRef.current) fileInputRef.current.value = '';
+                          }}
                       >
                         <X className="h-4 w-4" />
                       </Button>
                     </div>
                   )}
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  Hỗ trợ: PNG, JPG, GIF hoặc PDF. Tối đa 5MB.
-                </p>
+                </div>
               </div>
             </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setIsAddingCourse(false)} className="w-full sm:w-auto">
+
+            <DialogFooter className="mt-4">
+              <Button variant="outline" onClick={() => setIsAddingCourse(false)}>
                 Hủy
               </Button>
-              <Button onClick={handleAddCourse} className="w-full sm:w-auto">
+              <Button onClick={handleAddCourse}>
                 Thêm khóa học
               </Button>
             </DialogFooter>
@@ -432,7 +485,7 @@ export default function CoursesPage() {
                   <Label htmlFor="edit-category">Danh mục</Label>
                   <Select
                     value={editingCourse.category}
-                    onValueChange={(value: CourseCategory) => setEditingCourse({ ...editingCourse, category: value })}
+                    onValueChange={(value: PublicCourse['category']) => setEditingCourse({ ...editingCourse, category: value })}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Chọn danh mục" />

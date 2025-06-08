@@ -14,38 +14,15 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Building2, PlusCircle, MoreHorizontal, Search, Pencil, Trash2, AlertCircle } from "lucide-react";
 import { useToast } from '@/components/ui/use-toast';
 import type { Department } from '@/lib/types';
-
-// Mock data - replace with API calls later
-const mockDepartments: Department[] = [
-  {
-    id: 'd1',
-    name: 'Công nghệ thông tin',
-    code: 'CNTT',
-    description: 'Phòng phát triển và quản lý hệ thống công nghệ thông tin',
-    manager: 'Nguyễn Văn A',
-    status: 'active',
-    createdAt: '2024-01-01',
-    updatedAt: '2024-01-01'
-  },
-  {
-    id: 'd2',
-    name: 'Nhân sự',
-    code: 'HR',
-    description: 'Phòng quản lý nhân sự và tuyển dụng',
-    manager: 'Trần Thị B',
-    status: 'active',
-    createdAt: '2024-01-01',
-    updatedAt: '2024-01-01'
-  }
-];
+import { mockDepartments } from '@/lib/mock';
 
 export default function DepartmentsPage() {
   const { toast } = useToast();
   const [departments, setDepartments] = useState<Department[]>(mockDepartments);
+  const [searchTerm, setSearchTerm] = useState('');
   const [isAddingDepartment, setIsAddingDepartment] = useState(false);
-  const [isEditingDepartment, setIsEditingDepartment] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedDepartment, setSelectedDepartment] = useState<Department | null>(null);
+  const [editingDepartment, setEditingDepartment] = useState<Department | null>(null);
+  const [deletingDepartment, setDeletingDepartment] = useState<Department | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     code: '',
@@ -91,7 +68,7 @@ export default function DepartmentsPage() {
 
   const handleEditDepartment = () => {
     try {
-      if (!selectedDepartment) return;
+      if (!editingDepartment) return;
       if (!formData.name || !formData.code) {
         toast({
           title: "Lỗi",
@@ -102,14 +79,13 @@ export default function DepartmentsPage() {
       }
 
       const updatedDepartments = departments.map(dept =>
-        dept.id === selectedDepartment.id
+        dept.id === editingDepartment.id
           ? { ...dept, ...formData, updatedAt: new Date().toISOString() }
           : dept
       );
 
       setDepartments(updatedDepartments);
-      setIsEditingDepartment(false);
-      setSelectedDepartment(null);
+      setEditingDepartment(null);
       setFormData({ name: '', code: '', description: '', manager: '', status: 'active' as 'active' | 'inactive' });
       toast({
         title: "Thành công",
@@ -143,8 +119,8 @@ export default function DepartmentsPage() {
   };
 
   const filteredDepartments = departments.filter(dept =>
-    dept.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    dept.code.toLowerCase().includes(searchQuery.toLowerCase())
+    dept.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    dept.code.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
@@ -156,8 +132,8 @@ export default function DepartmentsPage() {
             <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Tìm kiếm phòng ban..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-8"
             />
           </div>
@@ -211,7 +187,7 @@ export default function DepartmentsPage() {
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem
                           onClick={() => {
-                            setSelectedDepartment(dept);
+                            setEditingDepartment(dept);
                             setFormData({
                               name: dept.name,
                               code: dept.code,
@@ -219,7 +195,6 @@ export default function DepartmentsPage() {
                               manager: dept.manager || '',
                               status: dept.status
                             });
-                            setIsEditingDepartment(true);
                           }}
                         >
                           <Pencil className="mr-2 h-4 w-4" />
@@ -227,7 +202,7 @@ export default function DepartmentsPage() {
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           className="text-destructive focus:text-destructive"
-                          onClick={() => handleDeleteDepartment(dept.id)}
+                          onClick={() => setDeletingDepartment(dept)}
                         >
                           <Trash2 className="mr-2 h-4 w-4" />
                           Xóa
@@ -314,7 +289,7 @@ export default function DepartmentsPage() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={isEditingDepartment} onOpenChange={setIsEditingDepartment}>
+      <Dialog open={editingDepartment !== null} onOpenChange={() => setEditingDepartment(null)}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Chỉnh sửa phòng ban</DialogTitle>
@@ -374,10 +349,34 @@ export default function DepartmentsPage() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsEditingDepartment(false)}>
+            <Button variant="outline" onClick={() => setEditingDepartment(null)}>
               Hủy
             </Button>
             <Button onClick={handleEditDepartment}>Lưu thay đổi</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={deletingDepartment !== null} onOpenChange={() => setDeletingDepartment(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Xóa phòng ban</DialogTitle>
+            <DialogDescription>
+              Bạn có chắc chắn muốn xóa phòng ban này?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeletingDepartment(null)}>
+              Hủy
+            </Button>
+            <Button variant="destructive" onClick={() => {
+              if (deletingDepartment) {
+                handleDeleteDepartment(deletingDepartment.id);
+              }
+              setDeletingDepartment(null);
+            }}>
+              Xóa
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

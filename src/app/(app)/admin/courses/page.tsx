@@ -11,97 +11,83 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { PlusCircle, MoreHorizontal, Search, Pencil, Trash2, AlertCircle, BookOpen } from "lucide-react";
+import { PlusCircle, MoreHorizontal, Search, Pencil, Trash2, Copy, Archive, AlertCircle, BookOpen, X, Upload } from "lucide-react";
 import { useAuth } from '@/hooks/useAuth';
 import { useError } from '@/hooks/use-error';
-
-type CourseCategory = 'Lập trình' | 'Kinh doanh' | 'Thiết kế' | 'Tiếp thị';
-
-interface Course {
-  id: string;
-  title: string;
-  description: string;
-  category: CourseCategory;
-  instructor: string;
-  duration: string;
-  image: string;
-}
-
-const categoryBadgeVariant: Record<CourseCategory, "default" | "secondary" | "outline" | "destructive"> = {
-  "Lập trình": "default",
-  "Kinh doanh": "secondary",
-  "Thiết kế": "outline",
-  "Tiếp thị": "destructive"
-};
+import type { Course, TraineeLevel, Department } from '@/lib/types';
+import { 
+  statusOptions, 
+  statusBadgeVariant, 
+  departmentOptions, 
+  levelOptions,
+  traineeLevelLabels,
+  categoryOptions
+} from '@/lib/constants';
+import { mockCourses } from '@/lib/mock';
 
 export default function CoursesPage() {
   const { user: currentUser } = useAuth();
   const { showError } = useError();
-  const [courses, setCourses] = useState<Course[]>([
-    {
-      id: '1',
-      title: 'JavaScript Nâng cao',
-      description: 'Tìm hiểu sâu về các tính năng JavaScript hiện đại và các phương pháp hay nhất.',
-      category: 'Lập trình',
-      instructor: 'TS. Code',
-      duration: '6 Tuần',
-      image: 'https://placehold.co/600x400'
+  const [courses, setCourses] = useState<Course[]>(mockCourses);
+
+  // Filters
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState<Course['status'] | 'all'>('all');
+  const [departmentFilter, setDepartmentFilter] = useState<Department | 'all'>('all');
+  const [levelFilter, setLevelFilter] = useState<TraineeLevel | 'all'>('all');
+
+  // Modal states
+  const [isAddingCourse, setIsAddingCourse] = useState(false);
+  const [editingCourse, setEditingCourse] = useState<Course | null>(null);
+  const [deletingCourse, setDeletingCourse] = useState<Course | null>(null);
+  const [archivingCourse, setArchivingCourse] = useState<Course | null>(null);
+
+  // New course state
+  const [newCourse, setNewCourse] = useState<Omit<Course, 'id' | 'createdAt' | 'modifiedAt' | 'createdBy' | 'modifiedBy'>>({
+    title: '',
+    courseCode: '',
+    description: '',
+    objectives: '',
+    category: 'programming',
+    instructor: '',
+    duration: {
+      sessions: 1,
+      hoursPerSession: 2
     },
-    {
-      id: '2',
-      title: 'Nguyên tắc Quản lý Dự án',
-      description: 'Học các yếu tố cần thiết để quản lý dự án hiệu quả.',
-      category: 'Kinh doanh',
-      instructor: 'CN. Planner',
-      duration: '4 Tuần',
-      image: 'https://placehold.co/600x400'
-    },
-    {
-      id: '3',
-      title: 'Nguyên tắc Thiết kế UI/UX',
-      description: 'Nắm vững các nguyên tắc cốt lõi của thiết kế giao diện và trải nghiệm người dùng.',
-      category: 'Thiết kế',
-      instructor: 'KS. Pixel',
-      duration: '8 Tuần',
-      image: 'https://placehold.co/600x400'
-    },
-    {
-      id: '4',
-      title: 'Chiến lược Tiếp thị Kỹ thuật số',
-      description: 'Phát triển và triển khai các chiến lược tiếp thị kỹ thuật số hiệu quả.',
-      category: 'Tiếp thị',
-      instructor: 'CN. Click',
-      duration: '5 Tuần',
-      image: 'https://placehold.co/600x400'
-    },
-  ]);
+    learningType: 'online',
+    startDate: null,
+    endDate: null,
+    location: '', // URL for online course
+    image: 'https://placehold.co/600x400',
+    status: 'draft',
+    department: [],
+    level: [],
+    materials: []
+  });
 
   // Check if user has permission to manage courses
   const canManageCourses = currentUser?.role === 'Admin' || currentUser?.role === 'HR';
 
-  const [searchTerm, setSearchTerm] = useState('');
-  const [isAddingCourse, setIsAddingCourse] = useState(false);
-  const [editingCourse, setEditingCourse] = useState<Course | null>(null);
-  const [deletingCourse, setDeletingCourse] = useState<Course | null>(null);
-  const [newCourse, setNewCourse] = useState<Omit<Course, 'id'>>({
-    title: '',
-    description: '',
-    category: 'Lập trình',
-    instructor: '',
-    duration: '',
-    image: 'https://placehold.co/600x400'
-  });
+  const filteredCourses = courses.filter(course => {
+    const matchesSearch = 
+      course.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      course.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      course.instructor.toLowerCase().includes(searchTerm.toLowerCase());
 
-  const filteredCourses = courses.filter(course => 
-    (course.title || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (course.description || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (course.instructor || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (course.category || '').toLowerCase().includes(searchTerm.toLowerCase())
-  );
+    const matchesStatus = statusFilter === 'all' || course.status === statusFilter;
+    
+    const matchesDepartment = departmentFilter === 'all' || 
+      course.department?.includes(departmentFilter as Department);
+    
+    const matchesLevel = levelFilter === 'all' || 
+      course.level?.includes(levelFilter as TraineeLevel);
+
+    return matchesSearch && matchesStatus && matchesDepartment && matchesLevel;
+  });
 
   const handleAddCourse = () => {
     if (!canManageCourses) {
-      showError('USER003'); // Insufficient permissions
+      showError('USER003');
       return;
     }
 
@@ -111,15 +97,36 @@ export default function CoursesPage() {
     }
 
     const newId = (Math.max(...courses.map(c => parseInt(c.id))) + 1).toString();
-    setCourses([...courses, { id: newId, ...newCourse }]);
+    const now = new Date().toISOString();
+    setCourses([...courses, {
+      id: newId,
+      ...newCourse,
+      createdAt: now,
+      modifiedAt: now,
+      createdBy: currentUser.id,
+      modifiedBy: currentUser.id
+    }]);
     setIsAddingCourse(false);
     setNewCourse({
       title: '',
+      courseCode: '',
       description: '',
-      category: 'Lập trình',
+      objectives: '',
+      category: 'programming',
       instructor: '',
-      duration: '',
-      image: 'https://placehold.co/600x400'
+      duration: {
+        sessions: 1,
+        hoursPerSession: 2
+      },
+      learningType: 'online',
+      startDate: null,
+      endDate: null,
+      location: '',
+      image: 'https://placehold.co/600x400',
+      status: 'draft',
+      department: [],
+      level: [],
+      materials: []
     });
     showError('SUCCESS001');
   };
@@ -131,8 +138,56 @@ export default function CoursesPage() {
     }
 
     if (!editingCourse) return;
-    setCourses(courses.map(c => c.id === editingCourse.id ? editingCourse : c));
+    
+    const now = new Date().toISOString();
+    setCourses(courses.map(c => c.id === editingCourse.id ? {
+      ...editingCourse,
+      modifiedAt: now,
+      modifiedBy: currentUser.id
+    } : c));
     setEditingCourse(null);
+    showError('SUCCESS001');
+  };
+
+  const handleDuplicateCourse = (course: Course) => {
+    if (!canManageCourses) {
+      showError('USER003');
+      return;
+    }
+
+    const newId = (Math.max(...courses.map(c => parseInt(c.id))) + 1).toString();
+    const now = new Date().toISOString();
+    const duplicatedCourse = {
+      ...course,
+      id: newId,
+      title: `${course.title} (Bản sao)`,
+      status: 'draft' as const,
+      createdAt: now,
+      modifiedAt: now,
+      createdBy: currentUser.id,
+      modifiedBy: currentUser.id
+    };
+
+    setCourses([...courses, duplicatedCourse]);
+    showError('SUCCESS001');
+  };
+
+  const handleArchiveCourse = () => {
+    if (!canManageCourses) {
+      showError('USER003');
+      return;
+    }
+
+    if (!archivingCourse) return;
+
+    const now = new Date().toISOString();
+    setCourses(courses.map(c => c.id === archivingCourse.id ? {
+      ...archivingCourse,
+      status: 'archived',
+      modifiedAt: now,
+      modifiedBy: currentUser.id
+    } : c));
+    setArchivingCourse(null);
     showError('SUCCESS001');
   };
 
@@ -143,6 +198,12 @@ export default function CoursesPage() {
     }
 
     if (!deletingCourse) return;
+    
+    if (deletingCourse.status === 'published') {
+      showError('COURSE002'); // Cannot delete published course
+      return;
+    }
+
     setCourses(courses.filter(c => c.id !== deletingCourse.id));
     setDeletingCourse(null);
     showError('SUCCESS001');
@@ -166,23 +227,69 @@ export default function CoursesPage() {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="mb-4 flex items-center gap-2">
-            <Search className="h-4 w-4 text-muted-foreground" />
+          <div className="mb-6 space-y-4">
+            <div className="flex flex-col sm:flex-row gap-4">
+              <div className="relative flex-grow">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input 
               placeholder="Tìm kiếm khóa học..." 
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="max-w-sm"
-            />
+                  className="pl-9"
+                />
+              </div>
+              <Select value={statusFilter} onValueChange={(value: typeof statusFilter) => setStatusFilter(value)}>
+                <SelectTrigger className="w-full sm:w-[180px]">
+                  <SelectValue placeholder="Trạng thái" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tất cả trạng thái</SelectItem>
+                  {statusOptions.map(option => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={departmentFilter} onValueChange={(value: typeof departmentFilter) => setDepartmentFilter(value)}>
+                <SelectTrigger className="w-full sm:w-[180px]">
+                  <SelectValue placeholder="Phòng ban" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tất cả phòng ban</SelectItem>
+                  {departmentOptions.map(option => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={levelFilter} onValueChange={(value: typeof levelFilter) => setLevelFilter(value)}>
+                <SelectTrigger className="w-full sm:w-[180px]">
+                  <SelectValue placeholder="Cấp độ" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tất cả cấp độ</SelectItem>
+                  {levelOptions.map(option => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
+
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Tên khóa học</TableHead>
-                <TableHead>Danh mục</TableHead>
+                <TableHead>Trạng thái</TableHead>
+                <TableHead>Phòng ban</TableHead>
+                <TableHead>Cấp độ</TableHead>
                 <TableHead>Giảng viên</TableHead>
                 <TableHead>Thời lượng</TableHead>
-                {canManageCourses && <TableHead className="w-[100px]">Hành động</TableHead>}
+                {canManageCourses && <TableHead className="w-[100px]">Thao tác</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -195,12 +302,22 @@ export default function CoursesPage() {
                     </div>
                   </TableCell>
                   <TableCell>
-                    <Badge variant={categoryBadgeVariant[course.category]}>
-                      {course.category}
+                    <Badge variant={statusBadgeVariant[course.status]}>
+                      {statusOptions.find(opt => opt.value === course.status)?.label}
                     </Badge>
                   </TableCell>
+                  <TableCell>
+                    {course.department?.map(dept => 
+                      departmentOptions.find(opt => opt.value === dept)?.label
+                    ).join(', ')}
+                  </TableCell>
+                  <TableCell>
+                    {course.level?.map((lvl: TraineeLevel) => traineeLevelLabels[lvl]).join(', ')}
+                  </TableCell>
                   <TableCell>{course.instructor}</TableCell>
-                  <TableCell>{course.duration}</TableCell>
+                  <TableCell>
+                    {`${course.duration.sessions} buổi x ${course.duration.hoursPerSession} giờ`}
+                  </TableCell>
                   {canManageCourses && (
                     <TableCell>
                       <DropdownMenu>
@@ -215,6 +332,16 @@ export default function CoursesPage() {
                             <Pencil className="mr-2 h-4 w-4" />
                             Chỉnh sửa
                           </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleDuplicateCourse(course)}>
+                            <Copy className="mr-2 h-4 w-4" />
+                            Nhân bản
+                          </DropdownMenuItem>
+                          {course.status !== 'archived' && (
+                            <DropdownMenuItem onClick={() => setArchivingCourse(course)}>
+                              <Archive className="mr-2 h-4 w-4" />
+                              Lưu trữ
+                            </DropdownMenuItem>
+                          )}
                           <DropdownMenuItem 
                             onClick={() => setDeletingCourse(course)}
                             className="text-destructive"
@@ -236,70 +363,337 @@ export default function CoursesPage() {
       {/* Dialog thêm khóa học */}
       {canManageCourses && (
         <Dialog open={isAddingCourse} onOpenChange={setIsAddingCourse}>
-          <DialogContent className="max-w-2xl">
+          <DialogContent className="max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Thêm khóa học mới</DialogTitle>
               <DialogDescription>
                 Điền thông tin để tạo khóa học mới.
               </DialogDescription>
             </DialogHeader>
+
             <div className="grid gap-4 py-4">
-              <div className="grid gap-2">
-                <Label htmlFor="title">Tên khóa học</Label>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="col-span-2">
+                  <Label htmlFor="title" className="text-right">
+                    Tên khóa học
+                  </Label>
                 <Input
                   id="title"
+                    placeholder="Nhập tên khóa học"
                   value={newCourse.title}
                   onChange={(e) => setNewCourse({ ...newCourse, title: e.target.value })}
                 />
               </div>
-              <div className="grid gap-2">
-                <Label htmlFor="description">Mô tả</Label>
+
+                <div>
+                  <Label htmlFor="courseCode">
+                    Mã khóa học
+                  </Label>
+                <Input
+                  id="courseCode"
+                    placeholder="VD: REACT001"
+                  value={newCourse.courseCode}
+                  onChange={(e) => setNewCourse({ ...newCourse, courseCode: e.target.value })}
+                />
+              </div>
+
+                <div>
+                  <Label htmlFor="category">
+                    Danh mục
+                  </Label>
+                  <Select
+                    value={newCourse.category}
+                    onValueChange={(value: Course['category']) => 
+                      setNewCourse({ ...newCourse, category: value })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Chọn danh mục" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {categoryOptions.map(option => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="col-span-2">
+                  <Label htmlFor="description">
+                    Mô tả
+                  </Label>
                 <Textarea
                   id="description"
+                    placeholder="Mô tả chi tiết về khóa học"
                   value={newCourse.description}
                   onChange={(e) => setNewCourse({ ...newCourse, description: e.target.value })}
                 />
               </div>
-              <div className="grid gap-2">
-                <Label htmlFor="category">Danh mục</Label>
-                <Select
-                  value={newCourse.category}
-                  onValueChange={(value: CourseCategory) => setNewCourse({ ...newCourse, category: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Chọn danh mục" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Lập trình">Lập trình</SelectItem>
-                    <SelectItem value="Kinh doanh">Kinh doanh</SelectItem>
-                    <SelectItem value="Thiết kế">Thiết kế</SelectItem>
-                    <SelectItem value="Tiếp thị">Tiếp thị</SelectItem>
+
+                <div className="col-span-2">
+                  <Label htmlFor="objectives">
+                    Mục tiêu đào tạo
+                  </Label>
+                <Textarea
+                  id="objectives"
+                    placeholder="Liệt kê các mục tiêu của khóa học"
+                  value={newCourse.objectives}
+                  onChange={(e) => setNewCourse({ ...newCourse, objectives: e.target.value })}
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="instructor">
+                    Giảng viên
+                  </Label>
+                  <Input
+                    id="instructor"
+                    placeholder="Tên giảng viên"
+                    value={newCourse.instructor}
+                    onChange={(e) => setNewCourse({ ...newCourse, instructor: e.target.value })}
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="learningType">
+                    Hình thức học
+                  </Label>
+                  <Select
+                    value={newCourse.learningType}
+                    onValueChange={(value: 'online') => 
+                      setNewCourse({ ...newCourse, learningType: value })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Chọn hình thức" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="online">Trực tuyến</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <Label htmlFor="sessions">
+                    Số buổi học
+                  </Label>
+                  <Input
+                    id="sessions"
+                    type="number"
+                    min={1}
+                    value={newCourse.duration.sessions}
+                    onChange={(e) => setNewCourse({
+                      ...newCourse,
+                      duration: {
+                        ...newCourse.duration,
+                        sessions: parseInt(e.target.value) || 1
+                      }
+                    })}
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="hoursPerSession">
+                    Số giờ/buổi
+                  </Label>
+                  <Input
+                    id="hoursPerSession"
+                    type="number"
+                    min={1}
+                    value={newCourse.duration.hoursPerSession}
+                    onChange={(e) => setNewCourse({
+                      ...newCourse,
+                      duration: {
+                        ...newCourse.duration,
+                        hoursPerSession: parseInt(e.target.value) || 1
+                      }
+                    })}
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="startDate">
+                    Ngày bắt đầu (không bắt buộc)
+                  </Label>
+                  <Input
+                    id="startDate"
+                    type="date"
+                    value={newCourse.startDate || ''}
+                    onChange={(e) => setNewCourse({ ...newCourse, startDate: e.target.value })}
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="endDate">
+                    Ngày kết thúc (không bắt buộc)
+                  </Label>
+                  <Input
+                    id="endDate"
+                    type="date"
+                    value={newCourse.endDate || ''}
+                    onChange={(e) => setNewCourse({ ...newCourse, endDate: e.target.value })}
+                  />
+                </div>
+
+                <div className="col-span-2">
+                  <Label htmlFor="location">
+                    Link học trực tuyến
+                  </Label>
+                  <Input
+                    id="location"
+                    placeholder="Nhập link học trực tuyến"
+                    value={newCourse.location}
+                    onChange={(e) => setNewCourse({ ...newCourse, location: e.target.value })}
+                />
+              </div>
+
+                <div>
+                  <Label htmlFor="department">
+                    Phòng ban
+                  </Label>
+                  <Select
+                    value={newCourse.department[0]}
+                    onValueChange={(value: Department) => 
+                      setNewCourse({ ...newCourse, department: [value] })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Chọn phòng ban" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {departmentOptions.map(option => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <Label htmlFor="level">
+                    Cấp độ
+                  </Label>
+                  <Select
+                    value={newCourse.level[0]}
+                    onValueChange={(value: TraineeLevel) => 
+                      setNewCourse({ ...newCourse, level: [value] })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Chọn cấp độ" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {levelOptions.map(option => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
                   </SelectContent>
                 </Select>
+                </div>
+
+                <div className="col-span-2">
+                  <Label htmlFor="image">
+                    Ảnh khóa học
+                  </Label>
+                  <div className="flex items-center gap-4">
+                    <Input
+                      id="image"
+                      placeholder="URL ảnh khóa học"
+                      value={newCourse.image}
+                      onChange={(e) => setNewCourse({ ...newCourse, image: e.target.value })}
+                    />
+                    {newCourse.image && (
+                      <img 
+                        src={newCourse.image} 
+                        alt="Preview" 
+                        className="w-16 h-16 object-cover rounded"
+                      />
+                    )}
+                </div>
               </div>
-              <div className="grid gap-2">
-                <Label htmlFor="instructor">Giảng viên</Label>
-                <Input
-                  id="instructor"
-                  value={newCourse.instructor}
-                  onChange={(e) => setNewCourse({ ...newCourse, instructor: e.target.value })}
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="duration">Thời lượng</Label>
-                <Input
-                  id="duration"
-                  value={newCourse.duration}
-                  onChange={(e) => setNewCourse({ ...newCourse, duration: e.target.value })}
-                  placeholder="Ví dụ: 6 Tuần"
-                />
+
+                <div className="col-span-2">
+                  <Label>Tài liệu khóa học</Label>
+                  {newCourse.materials.map((material, index) => (
+                    <div key={index} className="flex items-center gap-2 mt-2">
+                  <Select
+                        value={material.type}
+                        onValueChange={(value: 'pdf' | 'slide' | 'video' | 'link') => {
+                          const newMaterials = [...newCourse.materials];
+                          newMaterials[index] = { ...material, type: value };
+                          setNewCourse({ ...newCourse, materials: newMaterials });
+                        }}
+                      >
+                        <SelectTrigger className="w-[120px]">
+                          <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                          <SelectItem value="pdf">PDF</SelectItem>
+                          <SelectItem value="slide">Slide</SelectItem>
+                          <SelectItem value="video">Video</SelectItem>
+                          <SelectItem value="link">Link</SelectItem>
+                    </SelectContent>
+                  </Select>
+                      <Input
+                        placeholder="Tiêu đề tài liệu"
+                        value={material.title}
+                        onChange={(e) => {
+                          const newMaterials = [...newCourse.materials];
+                          newMaterials[index] = { ...material, title: e.target.value };
+                          setNewCourse({ ...newCourse, materials: newMaterials });
+                        }}
+                      />
+                      <Input
+                        placeholder="URL tài liệu"
+                        value={material.url}
+                        onChange={(e) => {
+                          const newMaterials = [...newCourse.materials];
+                          newMaterials[index] = { ...material, url: e.target.value };
+                          setNewCourse({ ...newCourse, materials: newMaterials });
+                        }}
+                      />
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => {
+                          const newMaterials = newCourse.materials.filter((_, i) => i !== index);
+                          setNewCourse({ ...newCourse, materials: newMaterials });
+                        }}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="mt-2"
+                    onClick={() => setNewCourse({
+                        ...newCourse,
+                        materials: [
+                        ...newCourse.materials,
+                        { type: 'pdf', title: '', url: '' }
+                        ]
+                    })}
+                  >
+                    <PlusCircle className="h-4 w-4 mr-2" />
+                    Thêm tài liệu
+                  </Button>
+                </div>
+
               </div>
             </div>
+
             <DialogFooter>
               <Button variant="outline" onClick={() => setIsAddingCourse(false)}>
                 Hủy
               </Button>
-              <Button onClick={handleAddCourse} className="bg-green-600 hover:bg-green-700">
+              <Button onClick={handleAddCourse}>
                 Thêm khóa học
               </Button>
             </DialogFooter>
@@ -308,7 +702,7 @@ export default function CoursesPage() {
       )}
 
       {/* Dialog chỉnh sửa khóa học */}
-      {canManageCourses && (
+      {editingCourse && (
         <Dialog open={!!editingCourse} onOpenChange={() => setEditingCourse(null)}>
           <DialogContent className="max-w-2xl">
             <DialogHeader>
@@ -317,7 +711,6 @@ export default function CoursesPage() {
                 Cập nhật thông tin khóa học.
               </DialogDescription>
             </DialogHeader>
-            {editingCourse && (
               <div className="grid gap-4 py-4">
                 <div className="grid gap-2">
                   <Label htmlFor="edit-title">Tên khóa học</Label>
@@ -334,24 +727,84 @@ export default function CoursesPage() {
                     value={editingCourse.description}
                     onChange={(e) => setEditingCourse({ ...editingCourse, description: e.target.value })}
                   />
+              </div>
+              <div className="grid sm:grid-cols-2 gap-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="edit-status">Trạng thái</Label>
+                  <Select
+                    value={editingCourse.status}
+                    onValueChange={(value: Course['status']) => setEditingCourse({ ...editingCourse, status: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Chọn trạng thái" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {statusOptions.map(option => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="edit-category">Danh mục</Label>
                   <Select
                     value={editingCourse.category}
-                    onValueChange={(value: CourseCategory) => setEditingCourse({ ...editingCourse, category: value })}
+                    onValueChange={(value: Course['category']) => setEditingCourse({ ...editingCourse, category: value })}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Chọn danh mục" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Lập trình">Lập trình</SelectItem>
-                      <SelectItem value="Kinh doanh">Kinh doanh</SelectItem>
-                      <SelectItem value="Thiết kế">Thiết kế</SelectItem>
-                      <SelectItem value="Tiếp thị">Tiếp thị</SelectItem>
+                      {categoryOptions.map(option => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
+              </div>
+              <div className="grid sm:grid-cols-2 gap-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="edit-department">Phòng ban</Label>
+                  <Select
+                    value={editingCourse.department?.[0] || ''}
+                    onValueChange={(value: Department) => setEditingCourse({ ...editingCourse, department: [value] })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Chọn phòng ban" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {departmentOptions.map(option => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="edit-level">Cấp độ</Label>
+                  <Select
+                    value={editingCourse.level?.[0] || ''}
+                    onValueChange={(value: TraineeLevel) => setEditingCourse({ ...editingCourse, level: [value] })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Chọn cấp độ" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {levelOptions.map(option => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="grid sm:grid-cols-2 gap-4">
                 <div className="grid gap-2">
                   <Label htmlFor="edit-instructor">Giảng viên</Label>
                   <Input
@@ -362,19 +815,46 @@ export default function CoursesPage() {
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="edit-duration">Thời lượng</Label>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      id="edit-duration-sessions"
+                      type="number"
+                      min={1}
+                      value={editingCourse.duration.sessions}
+                      onChange={(e) => setEditingCourse({
+                        ...editingCourse,
+                        duration: {
+                          ...editingCourse.duration,
+                          sessions: parseInt(e.target.value) || 1
+                        }
+                      })}
+                      placeholder="Số buổi"
+                    />
+                    <span>x</span>
                   <Input
-                    id="edit-duration"
-                    value={editingCourse.duration}
-                    onChange={(e) => setEditingCourse({ ...editingCourse, duration: e.target.value })}
-                  />
+                      id="edit-duration-hours"
+                      type="number"
+                      min={1}
+                      value={editingCourse.duration.hoursPerSession}
+                      onChange={(e) => setEditingCourse({
+                        ...editingCourse,
+                        duration: {
+                          ...editingCourse.duration,
+                          hoursPerSession: parseInt(e.target.value) || 1
+                        }
+                      })}
+                      placeholder="Số giờ/buổi"
+                    />
+                    <span>giờ</span>
+                  </div>
                 </div>
               </div>
-            )}
+            </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setEditingCourse(null)}>
                 Hủy
               </Button>
-              <Button onClick={handleUpdateCourse} className="bg-green-600 hover:bg-green-700">
+              <Button onClick={handleUpdateCourse}>
                 Lưu thay đổi
               </Button>
             </DialogFooter>
@@ -382,31 +862,54 @@ export default function CoursesPage() {
         </Dialog>
       )}
 
+      {/* Dialog xác nhận lưu trữ */}
+      {archivingCourse && (
+        <Dialog open={!!archivingCourse} onOpenChange={() => setArchivingCourse(null)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Xác nhận lưu trữ</DialogTitle>
+              <DialogDescription>
+                Bạn có chắc chắn muốn lưu trữ khóa học này? Khóa học đã lưu trữ sẽ không hiển thị trong danh sách chính.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setArchivingCourse(null)}>
+                Hủy
+              </Button>
+              <Button onClick={handleArchiveCourse}>
+                Xác nhận lưu trữ
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
+
       {/* Dialog xác nhận xóa */}
-      {canManageCourses && (
+      {deletingCourse && (
         <Dialog open={!!deletingCourse} onOpenChange={() => setDeletingCourse(null)}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Xác nhận xóa khóa học</DialogTitle>
+              <DialogTitle>Xác nhận xóa</DialogTitle>
               <DialogDescription>
                 Bạn có chắc chắn muốn xóa khóa học này? Hành động này không thể hoàn tác.
+                {deletingCourse.status === 'published' && (
+                  <div className="mt-2 flex items-center text-destructive">
+                    <AlertCircle className="h-4 w-4 mr-2" />
+                    Không thể xóa khóa học đang diễn ra.
+                  </div>
+                )}
               </DialogDescription>
             </DialogHeader>
-            {deletingCourse && (
-              <div className="flex items-center gap-4 py-4">
-                <AlertCircle className="h-12 w-12 text-destructive" />
-                <div>
-                  <p className="font-medium">{deletingCourse.title}</p>
-                  <p className="text-sm text-muted-foreground">Giảng viên: {deletingCourse.instructor}</p>
-                </div>
-              </div>
-            )}
             <DialogFooter>
               <Button variant="outline" onClick={() => setDeletingCourse(null)}>
                 Hủy
               </Button>
-              <Button variant="destructive" onClick={handleDeleteCourse}>
-                Xóa khóa học
+              <Button
+                variant="destructive"
+                onClick={handleDeleteCourse}
+                disabled={deletingCourse.status === 'published'}
+              >
+                Xác nhận xóa
               </Button>
             </DialogFooter>
           </DialogContent>

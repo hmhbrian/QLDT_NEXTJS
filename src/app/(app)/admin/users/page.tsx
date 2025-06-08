@@ -31,17 +31,17 @@ const roleTranslations: Record<Role, string> = {
 
 const getLevelBadgeColor = (level: TraineeLevel) => {
   switch (level) {
-    case 'intern': return 'bg-blue-100 text-blue-800';
-    case 'probation': return 'bg-yellow-100 text-yellow-800';
-    case 'employee': return 'bg-green-100 text-green-800';
-    case 'middle_manager': return 'bg-purple-100 text-purple-800';
-    case 'senior_manager': return 'bg-red-100 text-red-800';
+    case 'beginner': return 'bg-blue-100 text-blue-800';
+    case 'intermediate': return 'bg-yellow-100 text-yellow-800';
+    case 'advanced': return 'bg-green-100 text-green-800';
+    case 'expert': return 'bg-red-100 text-red-800';
+    default: return 'bg-gray-100 text-gray-800';
   }
 };
 
 const getStatusColor = (status: WorkStatus) => {
   switch (status) {
-    case 'working': return 'bg-green-100 text-green-800';
+          case 'working': return 'bg-green-100 text-green-800 hover:bg-green-50 transition-colors';
     case 'resigned': return 'bg-red-100 text-red-800';
     case 'suspended': return 'bg-yellow-100 text-yellow-800';
     case 'maternity_leave': return 'bg-purple-100 text-purple-800';
@@ -249,33 +249,34 @@ export default function UsersPage() {
                         <Badge variant="outline" className="ml-2">Bạn</Badge>
                       )}
                       {user.employeeId && (
-                        <span className="text-xs text-muted-foreground">({user.employeeId})</span>
+                        <span className="text-xs text-muted-foreground ml-2">({user.employeeId})</span>
+                      )}
+                      {user.department && (
+                        <span className="text-xs text-muted-foreground ml-2">- {user.department}</span>
                       )}
                     </div>
-                    {user.department && (
-                      <div className="text-xs text-muted-foreground">{user.department}</div>
-                    )}
                   </TableCell>
                     <TableCell>{user.email}</TableCell>
                     <TableCell>
-                    <Badge variant={roleBadgeVariant[user.role]}>
-                      {roleTranslations[user.role]}
-                    </Badge>
-                    {user.level && (
-                      <Badge variant="outline" className={`ml-2 ${getLevelBadgeColor(user.level)}`}>
-                        {user.level.replace('_', ' ').toUpperCase()}
+                    <div className="flex items-center gap-2">
+                      <Badge variant={roleBadgeVariant[user.role]}>
+                        {roleTranslations[user.role]}
                       </Badge>
-                    )}
+                      {user.role === 'Trainee' && user.position === 'INTERN' && (
+                        <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-50 transition-colors ml-2">INTERN</Badge>
+                      )}
+                      {user.level && (
+                        <Badge variant="outline" className={`ml-2 ${getLevelBadgeColor(user.level)}`}>
+                          {user.level.replace('_', ' ').toUpperCase()}
+                        </Badge>
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell>
-                    {user.status ? (
-                      <Badge variant="outline" className={getStatusColor(user.status)}>
-                        {getStatusText(user.status)}
-                      </Badge>
-                    ) : (
-                      <Badge variant="outline">Hoạt động</Badge>
-                    )}
-                    </TableCell>
+                    <Badge className={getStatusColor(user.status || 'working')}>
+                      {getStatusText(user.status || 'working')}
+                    </Badge>
+                  </TableCell>
                   <TableCell>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -486,7 +487,9 @@ export default function UsersPage() {
                   <SelectValue placeholder="Chọn vai trò" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Admin">Quản trị viên</SelectItem>
+                  {currentUser?.role === 'Admin' && (
+                    <SelectItem value="Admin">Quản trị viên</SelectItem>
+                  )}
                   <SelectItem value="HR">Nhân sự</SelectItem>
                   <SelectItem value="Trainee">Học viên</SelectItem>
                 </SelectContent>
@@ -579,15 +582,15 @@ export default function UsersPage() {
           <DialogHeader>
             <DialogTitle>Chỉnh sửa người dùng</DialogTitle>
             <DialogDescription>
-              Chỉnh sửa thông tin tài khoản người dùng.
+              Cập nhật thông tin người dùng.
             </DialogDescription>
           </DialogHeader>
           {editingUser && (
             <div className="grid gap-4 py-4">
               <div className="grid gap-2">
-                <Label htmlFor="edit-name">Họ và tên</Label>
+                <Label htmlFor="edit-fullName">Họ và tên</Label>
                 <Input
-                  id="edit-name"
+                  id="edit-fullName"
                   value={editingUser.fullName}
                   onChange={(e) => setEditingUser({ ...editingUser, fullName: e.target.value })}
                 />
@@ -605,15 +608,15 @@ export default function UsersPage() {
                 <Label htmlFor="edit-role">Vai trò</Label>
                 <Select
                   value={editingUser.role}
-                  onValueChange={(value: Role) => {
-                    setEditingUser({ ...editingUser, role: value });
-                  }}
+                  onValueChange={(value: Role) => setEditingUser({ ...editingUser, role: value })}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Chọn vai trò" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Admin">Quản trị viên</SelectItem>
+                    {currentUser?.role === 'Admin' && (
+                      <SelectItem value="Admin">Quản trị viên</SelectItem>
+                    )}
                     <SelectItem value="HR">Nhân sự</SelectItem>
                     <SelectItem value="Trainee">Học viên</SelectItem>
                   </SelectContent>
@@ -667,11 +670,10 @@ export default function UsersPage() {
                         <SelectValue placeholder="Chọn cấp bậc" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="intern">Thực tập sinh</SelectItem>
-                        <SelectItem value="probation">Thử việc</SelectItem>
-                        <SelectItem value="employee">Nhân viên</SelectItem>
-                        <SelectItem value="middle_manager">Quản lý cấp trung</SelectItem>
-                        <SelectItem value="senior_manager">Quản lý cấp cao</SelectItem>
+                        <SelectItem value="beginner">Bắt đầu</SelectItem>
+                        <SelectItem value="intermediate">Trung bình</SelectItem>
+                        <SelectItem value="advanced">Nâng cao</SelectItem>
+                        <SelectItem value="expert">Chuyên nghiệp</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
