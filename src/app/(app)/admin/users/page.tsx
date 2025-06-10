@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,8 +14,12 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Users, PlusCircle, MoreHorizontal, Search, Pencil, Trash2, AlertCircle, Mail, Phone, Building2, UserCircle2, Calendar, Award } from "lucide-react";
 import { useAuth } from '@/hooks/useAuth';
 import { useError } from '@/hooks/use-error';
+import { useDepartments } from '@/hooks/use-departments';
 import type { User, Role, TraineeLevel, WorkStatus, RegisterDTO } from '@/lib/types';
 import { useUserStore } from '@/stores/user-store';
+import { mockUsers } from "@/lib/mock/users";
+import { mockDepartments } from '@/lib/mock/departments';
+
 
 const roleBadgeVariant: Record<Role, "default" | "secondary" | "outline"> = {
   Admin: "default",
@@ -26,15 +30,25 @@ const roleBadgeVariant: Record<Role, "default" | "secondary" | "outline"> = {
 const roleTranslations: Record<Role, string> = {
   Admin: "Quản trị viên",
   HR: "Nhân sự",
-  Trainee: "Học viên",
+  Trainee: "Học viên"
 };
+
+// Danh sách cấp bậc
+const levelOptions = [
+  { value: 'intern', label: 'Thực tập' },
+  { value: 'probation', label: 'Thử việc' },
+  { value: 'employee', label: 'Nhân viên' },
+  { value: 'middle_manager', label: 'Quản lý cấp trung' },
+  { value: 'senior_manager', label: 'Quản lý cấp cao' }
+];
 
 const getLevelBadgeColor = (level: TraineeLevel) => {
   switch (level) {
-    case 'beginner': return 'bg-blue-100 text-blue-800';
-    case 'intermediate': return 'bg-yellow-100 text-yellow-800';
-    case 'advanced': return 'bg-green-100 text-green-800';
-    case 'expert': return 'bg-red-100 text-red-800';
+    case 'intern': return 'bg-blue-100 text-blue-800';
+    case 'probation': return 'bg-yellow-100 text-yellow-800';
+    case 'employee': return 'bg-green-100 text-green-800';
+    case 'middle_manager': return 'bg-purple-100 text-purple-800';
+    case 'senior_manager': return 'bg-red-100 text-red-800';
     default: return 'bg-gray-100 text-gray-800';
   }
 };
@@ -67,6 +81,7 @@ export default function UsersPage() {
   const { user: currentUser } = useAuth();
   const { showError } = useError();
   const { users, addUser, updateUser, deleteUser } = useUserStore();
+  const { activeDepartments, isLoading: isDepartmentsLoading } = useDepartments();
   const [searchTerm, setSearchTerm] = useState('');
   const [isAddingUser, setIsAddingUser] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
@@ -81,6 +96,10 @@ export default function UsersPage() {
     email: '',
     password: '',
     confirmPassword: '',
+    department: '',
+    position: '',
+    level: 'intern',
+    status: 'working',
   });
   const [errors, setErrors] = useState<Partial<Record<keyof RegisterDTO, string>>>({});
 
@@ -165,12 +184,23 @@ export default function UsersPage() {
       email: newUser.email,
       phoneNumber: newUser.numberPhone,
       role: newUser.role,
+      password: newUser.password, // Lưu mật khẩu khi tạo người dùng mới
       startWork: newUser.startWork,
       endWork: newUser.endWork,
       urlAvatar: 'https://placehold.co/40x40.png',
       createdAt: new Date(),
       modifiedAt: new Date(),
     };
+    
+    // Thêm các thông tin bổ sung cho Trainee
+    if (newUser.role === 'Trainee') {
+      user.department = newUser.department;
+      user.position = newUser.position;
+      user.level = newUser.level;
+      user.status = newUser.status || 'working';
+      // Tạo mã nhân viên tự động
+      user.employeeId = `EMP${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`;
+    }
 
     addUser(user);
     setIsAddingUser(false);
@@ -182,6 +212,10 @@ export default function UsersPage() {
       email: '',
       password: '',
       confirmPassword: '',
+              department: '',
+        position: '',
+        level: 'intern',
+        status: 'working',
     });
     showError('SUCCESS001');
   };
@@ -229,90 +263,83 @@ export default function UsersPage() {
               className="max-w-sm"
             />
           </div>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Tên</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Vai trò</TableHead>
-                <TableHead>Trạng thái</TableHead>
-                <TableHead className="w-[100px]">Hành động</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-              {filteredUsers.map((user) => (
-                  <TableRow key={user.id}>
-                  <TableCell className="font-medium">
-                    <div className="flex items-center gap-2">
-                      {user.fullName}
-                      {user.email === currentUser?.email && (
-                        <Badge variant="outline" className="ml-2">Bạn</Badge>
-                      )}
-                      {user.employeeId && (
-                        <span className="text-xs text-muted-foreground ml-2">({user.employeeId})</span>
-                      )}
-                      {user.department && (
-                        <span className="text-xs text-muted-foreground ml-2">- {user.department}</span>
-                      )}
-                    </div>
-                  </TableCell>
-                    <TableCell>{user.email}</TableCell>
-                    <TableCell>
-                    <div className="flex items-center gap-2">
-                      <Badge variant={roleBadgeVariant[user.role]}>
-                        {roleTranslations[user.role]}
-                      </Badge>
-                      {user.role === 'Trainee' && user.position === 'INTERN' && (
-                        <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-50 transition-colors ml-2">INTERN</Badge>
-                      )}
-                      {user.level && (
-                        <Badge variant="outline" className={`ml-2 ${getLevelBadgeColor(user.level)}`}>
-                          {user.level.replace('_', ' ').toUpperCase()}
-                        </Badge>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge className={getStatusColor(user.status || 'working')}>
-                      {getStatusText(user.status || 'working')}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon">
-                          <MoreHorizontal className="h-4 w-4" />
-                          <span className="sr-only">Mở menu</span>
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                        {user.role === 'Trainee' && (
-                          <DropdownMenuItem onClick={() => {
-                            setSelectedUser(user);
-                            setIsViewingUser(true);
-                          }}>
-                            <UserCircle2 className="mr-2 h-4 w-4" />
-                            Xem chi tiết
-                          </DropdownMenuItem>
-                        )}
-                        <DropdownMenuItem onClick={() => setEditingUser(user)}>
-                          <Pencil className="mr-2 h-4 w-4" />
-                          Chỉnh sửa
-                        </DropdownMenuItem>
-                        <DropdownMenuItem 
-                          onClick={() => setDeletingUser(user)}
-                          className="text-destructive"
-                        >
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          Xóa
-                        </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Tên</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Vai trò</TableHead>
+                  <TableHead>Trạng thái</TableHead>
+                  <TableHead className="w-[100px]">Hành động</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                {filteredUsers.map((user) => (
+                    <TableRow key={user.id}>
+                    <TableCell className="font-medium">
+                      <div className="flex items-center gap-2">
+                        {user.fullName}
+                        {user.email === currentUser?.email && (
+                          <Badge variant="outline" className="ml-2">Bạn</Badge>
+                        )}
+                      </div>
+                    </TableCell>
+                      <TableCell>{user.email}</TableCell>
+                      <TableCell>
+                      <div className="flex items-center gap-2">
+                        <Badge variant={roleBadgeVariant[user.role]}>
+                          {roleTranslations[user.role]}
+                        </Badge>
+                        {user.level && user.role === 'Trainee' && (
+                          <Badge variant="outline" className={`ml-2 ${getLevelBadgeColor(user.level)}`}>
+                            {user.level.replace('_', ' ').toUpperCase()}
+                          </Badge>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge className={getStatusColor(user.status || 'working')}>
+                        {getStatusText(user.status || 'working')}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                            <MoreHorizontal className="h-4 w-4" />
+                            <span className="sr-only">Mở menu</span>
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                          {user.role === 'Trainee' && (
+                            <DropdownMenuItem onClick={() => {
+                              setSelectedUser(user);
+                              setIsViewingUser(true);
+                            }}>
+                              <UserCircle2 className="mr-2 h-4 w-4" />
+                              Xem chi tiết
+                            </DropdownMenuItem>
+                          )}
+                          <DropdownMenuItem onClick={() => setEditingUser(user)}>
+                            <Pencil className="mr-2 h-4 w-4" />
+                            Chỉnh sửa
+                          </DropdownMenuItem>
+                          <DropdownMenuItem 
+                            onClick={() => setDeletingUser(user)}
+                            className="text-destructive focus:text-destructive"
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Xóa
+                          </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
         </CardContent>
       </Card>
 
@@ -537,6 +564,81 @@ export default function UsersPage() {
               />
             </div>
 
+            {newUser.role === 'Trainee' && (
+              <>
+                <div className="grid gap-2">
+                  <Label htmlFor="department">Phòng ban</Label>
+                  <Select
+                    onValueChange={(value) => setNewUser({ ...newUser, department: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Chọn phòng ban" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {isDepartmentsLoading ? (
+                        <SelectItem value="" disabled>Đang tải...</SelectItem>
+                      ) : activeDepartments.length > 0 ? (
+                        activeDepartments.map((dept) => (
+                          <SelectItem key={dept.id} value={dept.code}>{dept.name}</SelectItem>
+                        ))
+                      ) : (
+                        <SelectItem value="" disabled>Không có phòng ban nào</SelectItem>
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="grid gap-2">
+                  <Label htmlFor="position">Chức vụ</Label>
+                  <Input
+                    id="position"
+                    placeholder="Nhập chức vụ"
+                    value={newUser.position || ''}
+                    onChange={(e) => setNewUser({ ...newUser, position: e.target.value })}
+                  />
+                </div>
+
+                <div className="grid gap-2">
+                  <Label htmlFor="level">Cấp bậc</Label>
+                  <Select
+                    onValueChange={(value: TraineeLevel) => setNewUser({ ...newUser, level: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Chọn cấp bậc" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {levelOptions.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="grid gap-2">
+                  <Label htmlFor="status">Trạng thái</Label>
+                  <Select
+                    defaultValue="working"
+                    onValueChange={(value: WorkStatus) => setNewUser({ ...newUser, status: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Chọn trạng thái" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="working">Đang làm việc</SelectItem>
+                      <SelectItem value="resigned">Đã nghỉ việc</SelectItem>
+                      <SelectItem value="suspended">Tạm nghỉ</SelectItem>
+                      <SelectItem value="maternity_leave">Nghỉ thai sản</SelectItem>
+                      <SelectItem value="sick_leave">Nghỉ bệnh dài hạn</SelectItem>
+                      <SelectItem value="sabbatical">Nghỉ phép dài hạn</SelectItem>
+                      <SelectItem value="terminated">Đã sa thải</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+
+              </>
+            )}
+
             <div className="grid gap-2">
               <Label htmlFor="password">Mật khẩu *</Label>
               <Input
@@ -644,17 +746,35 @@ export default function UsersPage() {
                   </div>
                   <div className="grid gap-2">
                     <Label htmlFor="edit-department">Phòng ban</Label>
-                    <Input
-                      id="edit-department"
+                    <Select
                       value={editingUser.department}
-                      onChange={(e) => setEditingUser({ ...editingUser, department: e.target.value })}
-                    />
+                      onValueChange={(value) => setEditingUser({ ...editingUser, department: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Chọn phòng ban" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {isDepartmentsLoading ? (
+                          <SelectItem value="" disabled>Đang tải...</SelectItem>
+                        ) : activeDepartments.length > 0 ? (
+                          activeDepartments.map((dept) => (
+                            <SelectItem key={dept.id} value={dept.code}>
+                              {dept.name}
+                            </SelectItem>
+                          ))
+                        ) : (
+                          <SelectItem value="" disabled>Không có phòng ban nào</SelectItem>
+                        )}
+                      </SelectContent>
+                    </Select>
                   </div>
+                  
                   <div className="grid gap-2">
                     <Label htmlFor="edit-position">Chức vụ</Label>
                     <Input
                       id="edit-position"
-                      value={editingUser.position}
+                      placeholder="Nhập chức vụ"
+                      value={editingUser.position || ''}
                       onChange={(e) => setEditingUser({ ...editingUser, position: e.target.value })}
                     />
                   </div>
@@ -670,10 +790,11 @@ export default function UsersPage() {
                         <SelectValue placeholder="Chọn cấp bậc" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="beginner">Bắt đầu</SelectItem>
-                        <SelectItem value="intermediate">Trung bình</SelectItem>
-                        <SelectItem value="advanced">Nâng cao</SelectItem>
-                        <SelectItem value="expert">Chuyên nghiệp</SelectItem>
+                        {levelOptions.map((level) => (
+                          <SelectItem key={level.value} value={level.value}>
+                            {level.label}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
@@ -699,6 +820,8 @@ export default function UsersPage() {
                       </SelectContent>
                     </Select>
                   </div>
+                  
+
                 </>
       )}
     </div>

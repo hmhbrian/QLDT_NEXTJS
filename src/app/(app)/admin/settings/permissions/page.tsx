@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -63,10 +64,11 @@ export default function PermissionsPage() {
   };
 
   const handleSave = () => {
-    // TODO: Implement save permissions
+    // TODO: Triển khai lưu quyền
     toast({
       title: "Phân quyền đã được lưu",
-      description: "Các thay đổi của bạn đã được áp dụng thành công."
+      description: "Các thay đổi của bạn đã được áp dụng thành công.",
+      variant: "success",
     });
   };
 
@@ -133,4 +135,4 @@ export default function PermissionsPage() {
       </Card>
     </div>
   );
-} 
+}

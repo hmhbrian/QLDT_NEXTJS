@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -6,115 +7,110 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"; // Đã xóa DialogTrigger
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Building2, PlusCircle, MoreHorizontal, Search, Pencil, Trash2, AlertCircle } from "lucide-react";
 import { useToast } from '@/components/ui/use-toast';
-import type { Department } from '@/lib/types';
-import { mockDepartments } from '@/lib/mock';
+import type { DepartmentInfo as Department } from '@/lib/types'; // Cập nhật tên kiểu dữ liệu thành DepartmentInfo
+import { mockDepartments as initialMockDepartments } from '@/lib/mock';
+import { useCookie } from '@/hooks/use-cookie';
+
+const DEPARTMENTS_COOKIE_KEY = 'becamex-departments-data';
 
 export default function DepartmentsPage() {
   const { toast } = useToast();
-  const [departments, setDepartments] = useState<Department[]>(mockDepartments);
+  const [departments, setDepartments] = useCookie<Department[]>(DEPARTMENTS_COOKIE_KEY, initialMockDepartments);
   const [searchTerm, setSearchTerm] = useState('');
-  const [isAddingDepartment, setIsAddingDepartment] = useState(false);
+  const [isFormOpen, setIsFormOpen] = useState(false); // Đổi tên để rõ ràng hơn
   const [editingDepartment, setEditingDepartment] = useState<Department | null>(null);
   const [deletingDepartment, setDeletingDepartment] = useState<Department | null>(null);
-  const [formData, setFormData] = useState({
+  
+  const initialFormData = {
     name: '',
     code: '',
     description: '',
-    manager: '',
-    status: 'active' as 'active' | 'inactive'
-  });
+    managerId: '', // Đổi từ manager (chuỗi) sang managerId (chuỗi)
+    status: 'active' as 'active' | 'inactive',
+    level: 1,
+    path: [] as string[],
+  };
+  const [formData, setFormData] = useState<Omit<Department, 'id' | 'createdAt' | 'updatedAt'>>(initialFormData);
 
-  const handleAddDepartment = () => {
-    try {
-      if (!formData.name || !formData.code) {
-        toast({
-          title: "Lỗi",
-          description: "Vui lòng điền đầy đủ thông tin bắt buộc",
-          variant: "destructive",
-        });
-        return;
-      }
 
-      const newDepartment: Department = {
-        id: `d${departments.length + 1}`,
-        ...formData,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      };
-
-      setDepartments([...departments, newDepartment]);
-      setIsAddingDepartment(false);
-      setFormData({ name: '', code: '', description: '', manager: '', status: 'active' as 'active' | 'inactive' });
-      toast({
-        title: "Thành công",
-        description: "Đã thêm phòng ban mới",
-        variant: "success",
-      });
-    } catch (error) {
-      toast({
-        title: "Lỗi",
-        description: "Không thể thêm phòng ban. Vui lòng thử lại",
-        variant: "destructive",
-      });
-    }
+  const handleOpenAddDialog = () => {
+    setEditingDepartment(null);
+    setFormData(initialFormData);
+    setIsFormOpen(true);
   };
 
-  const handleEditDepartment = () => {
+  const handleOpenEditDialog = (dept: Department) => {
+    setEditingDepartment(dept);
+    setFormData({
+      name: dept.name,
+      code: dept.code,
+      description: dept.description || '',
+      managerId: dept.managerId || '',
+      status: dept.status,
+      level: dept.level,
+      path: dept.path || [dept.name], // Đường dẫn mặc định nếu chưa được đặt
+    });
+    setIsFormOpen(true);
+  };
+  
+  const handleSaveDepartment = () => {
     try {
-      if (!editingDepartment) return;
       if (!formData.name || !formData.code) {
         toast({
           title: "Lỗi",
-          description: "Vui lòng điền đầy đủ thông tin bắt buộc",
+          description: "Vui lòng điền đầy đủ Tên và Mã phòng ban.",
           variant: "destructive",
         });
         return;
       }
+      
+      const now = new Date().toISOString();
 
-      const updatedDepartments = departments.map(dept =>
-        dept.id === editingDepartment.id
-          ? { ...dept, ...formData, updatedAt: new Date().toISOString() }
-          : dept
-      );
-
-      setDepartments(updatedDepartments);
+      if (editingDepartment) {
+        // Cập nhật phòng ban hiện có
+        setDepartments(prevDepts =>
+          prevDepts.map(dept =>
+            dept.id === editingDepartment.id
+              ? { ...editingDepartment, ...formData, updatedAt: now }
+              : dept
+          )
+        );
+        toast({ title: "Thành công", description: "Đã cập nhật thông tin phòng ban.", variant: "success" });
+      } else {
+        // Thêm phòng ban mới
+        const newDepartment: Department = {
+          id: crypto.randomUUID(),
+          ...formData,
+          path: formData.path.length > 0 ? formData.path : [formData.name], // Đảm bảo đường dẫn được đặt
+          createdAt: now,
+          updatedAt: now,
+        };
+        setDepartments(prevDepts => [...prevDepts, newDepartment]);
+        toast({ title: "Thành công", description: "Đã thêm phòng ban mới.", variant: "success" });
+      }
+      setIsFormOpen(false);
       setEditingDepartment(null);
-      setFormData({ name: '', code: '', description: '', manager: '', status: 'active' as 'active' | 'inactive' });
-      toast({
-        title: "Thành công",
-        description: "Đã cập nhật thông tin phòng ban",
-        variant: "success",
-      });
     } catch (error) {
-      toast({
-        title: "Lỗi",
-        description: "Không thể cập nhật phòng ban. Vui lòng thử lại",
-        variant: "destructive",
-      });
+      toast({ title: "Lỗi", description: "Không thể lưu phòng ban. Vui lòng thử lại.", variant: "destructive" });
     }
   };
 
-  const handleDeleteDepartment = (id: string) => {
+
+  const handleDeleteDepartmentSubmit = () => { // Đổi tên để tránh xung đột
+    if (!deletingDepartment) return;
     try {
-      setDepartments(departments.filter(dept => dept.id !== id));
-      toast({
-        title: "Thành công",
-        description: "Đã xóa phòng ban",
-        variant: "success",
-      });
+      setDepartments(prevDepts => prevDepts.filter(dept => dept.id !== deletingDepartment.id));
+      toast({ title: "Thành công", description: "Đã xóa phòng ban.", variant: "success" });
+      setDeletingDepartment(null);
     } catch (error) {
-      toast({
-        title: "Lỗi",
-        description: "Không thể xóa phòng ban. Vui lòng thử lại",
-        variant: "destructive",
-      });
+      toast({ title: "Lỗi", description: "Không thể xóa phòng ban. Vui lòng thử lại.", variant: "destructive" });
     }
   };
 
@@ -137,7 +133,7 @@ export default function DepartmentsPage() {
               className="pl-8"
             />
           </div>
-          <Button onClick={() => setIsAddingDepartment(true)}>
+          <Button onClick={handleOpenAddDialog}>
             <PlusCircle className="mr-2 h-4 w-4" /> Thêm mới
           </Button>
         </div>
@@ -156,7 +152,7 @@ export default function DepartmentsPage() {
               <TableRow>
                 <TableHead>Mã phòng ban</TableHead>
                 <TableHead>Tên phòng ban</TableHead>
-                <TableHead>Quản lý</TableHead>
+                <TableHead>Quản lý (ID)</TableHead>
                 <TableHead>Trạng thái</TableHead>
                 <TableHead className="text-right">Thao tác</TableHead>
               </TableRow>
@@ -171,7 +167,7 @@ export default function DepartmentsPage() {
                       <p className="text-sm text-muted-foreground">{dept.description}</p>
                     </div>
                   </TableCell>
-                  <TableCell>{dept.manager}</TableCell>
+                  <TableCell>{dept.managerId || 'N/A'}</TableCell>
                   <TableCell>
                     <Badge variant={dept.status === 'active' ? 'default' : 'secondary'}>
                       {dept.status === 'active' ? 'Đang hoạt động' : 'Không hoạt động'}
@@ -185,27 +181,14 @@ export default function DepartmentsPage() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem
-                          onClick={() => {
-                            setEditingDepartment(dept);
-                            setFormData({
-                              name: dept.name,
-                              code: dept.code,
-                              description: dept.description || '',
-                              manager: dept.manager || '',
-                              status: dept.status
-                            });
-                          }}
-                        >
-                          <Pencil className="mr-2 h-4 w-4" />
-                          Chỉnh sửa
+                        <DropdownMenuItem onClick={() => handleOpenEditDialog(dept)}>
+                          <Pencil className="mr-2 h-4 w-4" /> Chỉnh sửa
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           className="text-destructive focus:text-destructive"
                           onClick={() => setDeletingDepartment(dept)}
                         >
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          Xóa
+                          <Trash2 className="mr-2 h-4 w-4" /> Xóa
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -214,15 +197,26 @@ export default function DepartmentsPage() {
               ))}
             </TableBody>
           </Table>
+           {filteredDepartments.length === 0 && (
+            <p className="text-center text-muted-foreground py-6">Không có phòng ban nào.</p>
+          )}
         </CardContent>
       </Card>
 
-      <Dialog open={isAddingDepartment} onOpenChange={setIsAddingDepartment}>
+      {/* Add/Edit Dialog */}
+      <Dialog open={isFormOpen} onOpenChange={(isOpen) => {
+          if (!isOpen) {
+            setIsFormOpen(false);
+            setEditingDepartment(null);
+          } else {
+            setIsFormOpen(true);
+          }
+      }}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Thêm phòng ban mới</DialogTitle>
+            <DialogTitle>{editingDepartment ? 'Chỉnh sửa Phòng ban' : 'Thêm phòng ban mới'}</DialogTitle>
             <DialogDescription>
-              Điền thông tin chi tiết về phòng ban mới
+              {editingDepartment ? 'Cập nhật thông tin chi tiết về phòng ban.' : 'Điền thông tin chi tiết về phòng ban mới.'}
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
@@ -248,18 +242,18 @@ export default function DepartmentsPage() {
               <Label htmlFor="description">Mô tả</Label>
               <Textarea
                 id="description"
-                value={formData.description}
+                value={formData.description || ''}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 placeholder="Nhập mô tả về phòng ban"
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="manager">Quản lý</Label>
+              <Label htmlFor="managerId">ID Quản lý</Label>
               <Input
-                id="manager"
-                value={formData.manager}
-                onChange={(e) => setFormData({ ...formData, manager: e.target.value })}
-                placeholder="Nhập tên quản lý"
+                id="managerId"
+                value={formData.managerId || ''}
+                onChange={(e) => setFormData({ ...formData, managerId: e.target.value })}
+                placeholder="Nhập ID của người quản lý (nếu có)"
               />
             </div>
             <div className="grid gap-2">
@@ -281,100 +275,28 @@ export default function DepartmentsPage() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsAddingDepartment(false)}>
+            <Button variant="outline" onClick={() => { setIsFormOpen(false); setEditingDepartment(null); }}>
               Hủy
             </Button>
-            <Button onClick={handleAddDepartment}>Thêm phòng ban</Button>
+            <Button onClick={handleSaveDepartment}>{editingDepartment ? 'Lưu thay đổi' : 'Thêm phòng ban'}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      <Dialog open={editingDepartment !== null} onOpenChange={() => setEditingDepartment(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Chỉnh sửa phòng ban</DialogTitle>
-            <DialogDescription>
-              Cập nhật thông tin chi tiết về phòng ban
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label htmlFor="edit-name">Tên phòng ban</Label>
-              <Input
-                id="edit-name"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="edit-code">Mã phòng ban</Label>
-              <Input
-                id="edit-code"
-                value={formData.code}
-                onChange={(e) => setFormData({ ...formData, code: e.target.value })}
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="edit-description">Mô tả</Label>
-              <Textarea
-                id="edit-description"
-                value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="edit-manager">Quản lý</Label>
-              <Input
-                id="edit-manager"
-                value={formData.manager}
-                onChange={(e) => setFormData({ ...formData, manager: e.target.value })}
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="edit-status">Trạng thái</Label>
-              <Select
-                value={formData.status}
-                onValueChange={(value: 'active' | 'inactive') =>
-                  setFormData({ ...formData, status: value })
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Chọn trạng thái" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="active">Đang hoạt động</SelectItem>
-                  <SelectItem value="inactive">Không hoạt động</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEditingDepartment(null)}>
-              Hủy
-            </Button>
-            <Button onClick={handleEditDepartment}>Lưu thay đổi</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
+      {/* Delete Confirmation Dialog */}
       <Dialog open={deletingDepartment !== null} onOpenChange={() => setDeletingDepartment(null)}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Xóa phòng ban</DialogTitle>
             <DialogDescription>
-              Bạn có chắc chắn muốn xóa phòng ban này?
+              Bạn có chắc chắn muốn xóa phòng ban "{deletingDepartment?.name}"? Hành động này không thể hoàn tác.
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter>
+          <DialogFooter className="mt-4">
             <Button variant="outline" onClick={() => setDeletingDepartment(null)}>
               Hủy
             </Button>
-            <Button variant="destructive" onClick={() => {
-              if (deletingDepartment) {
-                handleDeleteDepartment(deletingDepartment.id);
-              }
-              setDeletingDepartment(null);
-            }}>
+            <Button variant="destructive" onClick={handleDeleteDepartmentSubmit}>
               Xóa
             </Button>
           </DialogFooter>
@@ -382,4 +304,4 @@ export default function DepartmentsPage() {
       </Dialog>
     </div>
   );
-} 
+}

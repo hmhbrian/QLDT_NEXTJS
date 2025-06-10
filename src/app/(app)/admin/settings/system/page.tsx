@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -23,10 +24,11 @@ export default function SystemSettingsPage() {
   });
 
   const handleSave = () => {
-    // TODO: Implement save settings
+    // TODO: Triển khai lưu cài đặt
     toast({
       title: "Cài đặt đã được lưu",
-      description: "Các thay đổi của bạn đã được áp dụng thành công."
+      description: "Các thay đổi của bạn đã được áp dụng thành công.",
+      variant: "success",
     });
   };
 
@@ -136,4 +138,4 @@ export default function SystemSettingsPage() {
       </div>
     </div>
   );
-} 
+}
