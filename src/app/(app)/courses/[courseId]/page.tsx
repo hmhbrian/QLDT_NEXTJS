@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -78,10 +78,11 @@ import {
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/components/ui/use-toast";
 import { PdfLessonViewer } from "@/components/lessons/PdfLessonViewer";
-import { useCookie } from "@/hooks/use-cookie";
+import { useCookie, getCookie } from "@/hooks/use-cookie";
 import { useUserStore } from "@/stores/user-store";
 import { StarRatingDisplay } from "@/components/courses/StarRatingDisplay";
 import { StarRatingInput } from "@/components/courses/StarRatingInput";
+import { forceRefreshCookieData } from "@/lib/utils";
 
 const COURSES_COOKIE_KEY = "becamex-courses-data"; // Khóa cookie cho dữ liệu các khóa học
 const EVALUATIONS_COOKIE_KEY = "becamex-course-evaluations-data"; // Khóa cookie cho dữ liệu đánh giá khóa học
@@ -101,11 +102,13 @@ export default function CourseDetailPage() {
   const { toast } = useToast();
   const allUsers = useUserStore((state) => state.users);
 
-  const [allCoursesFromCookie] = useCookie<Course[]>(
+  // Lấy dữ liệu khóa học từ cookie hoặc mock data
+  const [allCoursesFromCookie, setAllCoursesInCookie] = useCookie<Course[]>(
     COURSES_COOKIE_KEY,
     initialMockCoursesFromLib
   );
 
+  // Lấy dữ liệu đánh giá từ cookie hoặc mock data
   const [allEvaluations, setAllEvaluations] = useCookie<
     StudentCourseEvaluation[]
   >(EVALUATIONS_COOKIE_KEY, initialMockEvaluationsFromLib);
@@ -123,73 +126,116 @@ export default function CourseDetailPage() {
   });
   const [hasSubmittedEvaluation, setHasSubmittedEvaluation] = useState(false);
 
+  // Buộc cập nhật dữ liệu từ cookie mỗi khi component được render
+  useEffect(() => {
+    const refreshedData = forceRefreshCookieData(COURSES_COOKIE_KEY);
+    if (refreshedData) {
+      setAllCoursesInCookie(refreshedData);
+    }
+  }, [setAllCoursesInCookie]);
+
   useEffect(() => {
     const fetchCourse = () => {
       setIsLoading(true);
       try {
-        // Kiểm tra trong mockCourses trước
-        let foundCourse = initialMockCoursesFromLib.find(
-          (c) => c.id === courseIdFromParams
-        );
+        // Tìm khóa học trong cookie
+        const foundCourse = allCoursesFromCookie.find(c => c.id === courseIdFromParams);
         
-        // Nếu không tìm thấy trong mockCourses, thử tìm trong cookie
-        if (!foundCourse) {
-          foundCourse = allCoursesFromCookie.find(
-            (c) => c.id === courseIdFromParams
-          );
-        }
-
         if (foundCourse) {
+          // Kiểm tra xem khóa học có được phép xem hay không (phải là công khai và đã xuất bản)
+          const isPublicAndPublished = foundCourse.isPublic && foundCourse.status === 'published';
+          const isUserAuthorized = currentUser && (currentUser.role === 'Admin' || currentUser.role === 'HR' || 
+              (currentUser.role === 'Trainee' && (isPublicAndPublished || foundCourse.enrolledTrainees?.includes(currentUser.id))));
+          
+          if (!isUserAuthorized && !isPublicAndPublished) {
+            setCourse(null);
+            setIsLoading(false);
+            return;
+          }
+          
           const detailedCourseData: Course = {
             ...foundCourse,
-            id: courseIdFromParams, // Đảm bảo ID là từ params
+            id: courseIdFromParams,
             maxParticipants: foundCourse.maxParticipants || 25,
-            prerequisites: foundCourse.prerequisites || [
-              "Không có yêu cầu tiên quyết cụ thể.",
-            ],
-            syllabus: foundCourse.syllabus || [
-              {
-                title: "Chương trình học đang được cập nhật",
-                content: "",
-                duration: "",
-              },
-            ],
-            slides: foundCourse.slides || [
-              {
-                title: "Nội dung đang được cập nhật",
-                url: "https://placehold.co/800x600.png?text=Updating...",
-                type: "image" as "pdf" | "image",
-              },
-            ],
+            prerequisites: foundCourse.prerequisites || ["Không có yêu cầu tiên quyết cụ thể."],
+            syllabus: foundCourse.syllabus || [{ title: "Chương trình học đang được cập nhật", content: "", duration: "" }],
+            slides: foundCourse.slides || [{ title: "Nội dung đang được cập nhật", url: "https://placehold.co/800x600.png?text=Updating...", type: "image" as "pdf" | "image" }],
             lessons: foundCourse.lessons || [],
             tests: foundCourse.tests || [],
             materials: foundCourse.materials || [],
           };
+          
+          // Cập nhật State
           setCourse(detailedCourseData);
+          
         } else {
-          // Nếu không tìm thấy trong cookie, thử fallback về mockCourseDetail nếu ID khớp
-          if (courseIdFromParams === mockCourseDetail.id) {
-            setCourse({ ...mockCourseDetail, id: courseIdFromParams });
+          // Nếu không tìm thấy trong cookie, tìm trong mock data
+          const mockCourse = initialMockCoursesFromLib.find(c => c.id === courseIdFromParams);
+          
+          if (mockCourse) {
+            const isPublicAndPublished = mockCourse.isPublic && mockCourse.status === 'published';
+            const isUserAuthorized = currentUser && (currentUser.role === 'Admin' || currentUser.role === 'HR' || 
+                (currentUser.role === 'Trainee' && (isPublicAndPublished || mockCourse.enrolledTrainees?.includes(currentUser.id))));
+            
+            if (!isUserAuthorized && !isPublicAndPublished) {
+              setCourse(null);
+              setIsLoading(false);
+              return;
+            }
+            
+            const detailedMockCourse: Course = {
+              ...mockCourse,
+              id: courseIdFromParams,
+              maxParticipants: mockCourse.maxParticipants || 25,
+              prerequisites: mockCourse.prerequisites || ["Không có yêu cầu tiên quyết cụ thể."],
+              syllabus: mockCourse.syllabus || [{ title: "Chương trình học đang được cập nhật", content: "", duration: "" }],
+              slides: mockCourse.slides || [{ title: "Nội dung đang được cập nhật", url: "https://placehold.co/800x600.png?text=Updating...", type: "image" as "pdf" | "image" }],
+              lessons: mockCourse.lessons || [],
+              tests: mockCourse.tests || [],
+              materials: mockCourse.materials || [],
+            };
+            
+            // Cập nhật State
+            setCourse(detailedMockCourse);
+            
+            // Lưu vào cookie nếu chưa có
+            const existsInCookie = allCoursesFromCookie.some(c => c.id === courseIdFromParams);
+            if (!existsInCookie) {
+              const updatedCourses = [...allCoursesFromCookie, detailedMockCourse];
+              setAllCoursesInCookie(updatedCourses);
+            }
+          } else if (courseIdFromParams === mockCourseDetail.id) {
+            // Fallback đến mockCourseDetail nếu ID khớp
+            const detailedCourse = { ...mockCourseDetail, id: courseIdFromParams };
+            
+            // Cập nhật State
+            setCourse(detailedCourse);
+            
+            // Lưu vào cookie nếu chưa có
+            const existsInCookie = allCoursesFromCookie.some(c => c.id === courseIdFromParams);
+            if (!existsInCookie) {
+              const updatedCourses = [...allCoursesFromCookie, detailedCourse];
+              setAllCoursesInCookie(updatedCourses);
+            }
           } else {
-            setCourse(null); // Không tìm thấy khóa học nào
+            setCourse(null);
           }
         }
       } catch (error) {
-        console.error("Lỗi khi tải thông tin khóa học từ cookie:", error);
-        setCourse(null); // Đặt thành null nếu có lỗi
+        console.error("Lỗi khi tải thông tin khóa học:", error);
+        setCourse(null);
       } finally {
         setIsLoading(false);
       }
     };
 
-    // Tải khóa học nếu có courseIdFromParams
     if (courseIdFromParams) {
       fetchCourse();
     } else {
       setCourse(null);
       setIsLoading(false);
     }
-  }, [courseIdFromParams, allCoursesFromCookie]); // Phụ thuộc vào allCoursesFromCookie để cập nhật khi cookie thay đổi
+  }, [courseIdFromParams, allCoursesFromCookie, currentUser]);
 
   useEffect(() => {
     if (currentUser && courseIdFromParams && allEvaluations.length > 0) {
@@ -205,11 +251,15 @@ export default function CourseDetailPage() {
 
   const handleEnroll = () => {
     if (!course) return;
+    
+    // Trong tương lai, bạn có thể cập nhật trạng thái đăng ký và lưu vào cookie
+    // Ví dụ: cập nhật enrolledTrainees và lưu lại vào cookie
+    
     toast({
       title: "Đăng ký khóa học",
       description: `Chức năng đăng ký khóa học "${course.title}" đang được phát triển.`,
       duration: 3000,
-      variant: "default",
+      variant: "success",
     });
   };
 
@@ -270,63 +320,33 @@ export default function CourseDetailPage() {
   const handleSubmitEvaluation = () => {
     if (!currentUser || !course) return;
 
-    const {
-      contentRelevance = 0,
-      clarity = 0,
-      structureLogic = 0,
-      durationAppropriateness = 0,
-      materialsEffectiveness = 0,
-      suggestions = "",
-    } = evaluationFormData;
-
-    // Kiểm tra xem tất cả các tiêu chí đã được đánh giá (lớn hơn 0)
-    if (
-      contentRelevance === 0 ||
-      clarity === 0 ||
-      structureLogic === 0 ||
-      durationAppropriateness === 0 ||
-      materialsEffectiveness === 0
-    ) {
-      toast({
-        variant: "destructive",
-        title: "Lỗi",
-        description:
-          "Vui lòng đánh giá tất cả các tiêu chí bằng cách chọn ít nhất 1 sao.",
-      });
-      return;
-    }
-
+    const now = new Date().toISOString();
     const newEvaluation: StudentCourseEvaluation = {
       id: crypto.randomUUID(),
       courseId: course.id,
       traineeId: currentUser.id,
-      submissionDate: new Date().toISOString(),
       ratings: {
-        contentRelevance,
-        clarity,
-        structureLogic,
-        durationAppropriateness,
-        materialsEffectiveness,
+        contentRelevance: evaluationFormData.contentRelevance || 0,
+        clarity: evaluationFormData.clarity || 0,
+        structureLogic: evaluationFormData.structureLogic || 0,
+        durationAppropriateness: evaluationFormData.durationAppropriateness || 0,
+        materialsEffectiveness: evaluationFormData.materialsEffectiveness || 0,
       },
-      suggestions,
+      suggestions: evaluationFormData.suggestions || "",
+      submissionDate: now,
     };
 
-    setAllEvaluations((prevEvals) => [...prevEvals, newEvaluation]);
-    toast({
-      title: "Đánh giá thành công",
-      description: "Cảm ơn bạn đã gửi đánh giá cho khóa học!",
-      variant: "success",
-    });
+    // Cập nhật state và cookie
+    const updatedEvaluations = [...allEvaluations, newEvaluation];
+    setAllEvaluations(updatedEvaluations);
     setIsEvaluationDialogOpen(false);
-    setHasSubmittedEvaluation(true); // Cập nhật trạng thái đã gửi
-    // Đặt lại form đánh giá
-    setEvaluationFormData({
-      contentRelevance: 0,
-      clarity: 0,
-      structureLogic: 0,
-      durationAppropriateness: 0,
-      materialsEffectiveness: 0,
-      suggestions: "",
+    setHasSubmittedEvaluation(true);
+
+    toast({
+      title: "Đánh giá đã được gửi",
+      description: "Cảm ơn bạn đã đánh giá khóa học!",
+      duration: 3000,
+      variant: "success",
     });
   };
 
@@ -336,7 +356,7 @@ export default function CourseDetailPage() {
       <div className="flex flex-col items-center justify-center py-12 text-center">
         <div className="mb-6 text-red-500">
           <AlertTriangle className="mx-auto h-16 w-16" />
-        </div>
+          </div>
         <h1 className="mb-2 text-2xl font-bold">Không tìm thấy khóa học</h1>
         <p className="mb-6 text-muted-foreground">
           Khóa học bạn đang tìm kiếm không tồn tại hoặc đã bị xóa.
@@ -686,7 +706,7 @@ export default function CourseDetailPage() {
                           <Badge>Cần đạt: {test.passingScorePercentage}%</Badge>
                         </div>
                         <p className="text-sm text-muted-foreground mt-1">
-                          Số lượng câu hỏi: {test.questions.length}
+                          Số lượng câu hỏi: {test.questions ? test.questions.length : 0}
                         </p>
                         <Button
                           variant="outline"

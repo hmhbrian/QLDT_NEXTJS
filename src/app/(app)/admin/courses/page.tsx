@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { PlusCircle, MoreHorizontal, Search, Pencil, Trash2, Copy, Archive, AlertCircle, BookOpen, LayoutGrid, List } from "lucide-react";
+import { PlusCircle, MoreHorizontal, Search, Pencil, Trash2, Copy, Archive, AlertCircle, BookOpen, LayoutGrid, List, Loader2 } from "lucide-react";
 import { useAuth } from '@/hooks/useAuth';
 import { useError } from '@/hooks/use-error';
 import type { Course, TraineeLevel, Department } from '@/lib/types';
@@ -35,28 +35,46 @@ export default function CoursesPage() {
 
   // Chuẩn bị dữ liệu mock
   const preparedMockCourses = initialMockCoursesFromLib.map(course => ({
-    ...course,
-    materials: (course.materials || []).map(material => ({
-      ...material,
-      id: material.id || crypto.randomUUID(),
-    })),
-    lessons: course.lessons || [],
-    tests: course.tests || [],
+      ...course,
+      materials: (course.materials || []).map(material => ({
+        ...material,
+        id: material.id || crypto.randomUUID(),
+      })),
+      lessons: course.lessons || [],
+      tests: course.tests || [],
   }));
 
-  // Lấy dữ liệu từ cookie nhưng không sử dụng
+  // Lấy dữ liệu từ cookie, nếu không có thì sử dụng mock data
   const [coursesFromCookie, setCoursesInCookie] = useCookie<Course[]>(
     COURSES_COOKIE_KEY,
     preparedMockCourses
   );
 
-  // State cho danh sách khóa học hiển thị - chỉ dùng mock data
+  // State cho danh sách khóa học hiển thị
   const [courses, setCourses] = useState<Course[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Chỉ sử dụng mock data khi component mount
+  // Kiểm tra và khởi tạo dữ liệu khi component mount
   useEffect(() => {
-    setCourses(preparedMockCourses);
-  }, []);
+    setIsLoading(true);
+    
+    // Đảm bảo dữ liệu hiển thị ngay cả khi cookie rỗng
+    if (preparedMockCourses.length > 0) {
+      setCourses(preparedMockCourses);
+      
+      // Đồng thời lưu vào cookie nếu cookie rỗng
+      if (coursesFromCookie.length === 0) {
+        setCoursesInCookie(preparedMockCourses);
+      }
+    } else if (coursesFromCookie.length > 0) {
+      setCourses(coursesFromCookie);
+    } else {
+      // Trường hợp cả hai đều rỗng, sẽ không xảy ra nếu preparedMockCourses có dữ liệu
+      setCourses([]);
+    }
+    
+    setIsLoading(false);
+  }, [coursesFromCookie, setCoursesInCookie]);
 
   const [viewMode, setViewMode] = useState<'table' | 'card'>('table');
   const [searchTerm, setSearchTerm] = useState('');
@@ -138,8 +156,9 @@ export default function CoursesPage() {
       updatedCourses = [...courses, courseToAdd];
     }
     
-    // Chỉ cập nhật state, không cập nhật cookie
+    // Cập nhật State và lưu vào Cookie
     setCourses(updatedCourses);
+    setCoursesInCookie(updatedCourses);
     
     showError('SUCCESS006');
     setIsFormDialogOpen(false);
@@ -162,9 +181,10 @@ export default function CoursesPage() {
       materials: (course.materials || []).map(m => ({ ...m, id: m.id || crypto.randomUUID() })),
     };
     
-    // Chỉ cập nhật state, không cập nhật cookie
+    // Cập nhật State và lưu vào Cookie
     const updatedCourses = [...courses, duplicatedCourse];
     setCourses(updatedCourses);
+    setCoursesInCookie(updatedCourses);
     
     showError('SUCCESS006');
   };
@@ -174,10 +194,11 @@ export default function CoursesPage() {
     if (!archivingCourse) return;
     const now = new Date().toISOString();
     
-    // Chỉ cập nhật state, không cập nhật cookie
+    // Cập nhật State và lưu vào Cookie
     const updatedCourses = courses.map(c => c.id === archivingCourse.id ? 
       { ...c, status: 'archived' as const, isPublic: false, modifiedAt: now, modifiedBy: currentUser.id } : c);
     setCourses(updatedCourses);
+    setCoursesInCookie(updatedCourses);
     
     setArchivingCourse(null);
     showError('SUCCESS006');
@@ -188,13 +209,23 @@ export default function CoursesPage() {
     if (!deletingCourse) return;
     if (deletingCourse.status === 'published') { showError('COURSE002'); return; }
     
-    // Chỉ cập nhật state, không cập nhật cookie
+    // Cập nhật State và lưu vào Cookie
     const updatedCourses = courses.filter(c => c.id !== deletingCourse.id);
     setCourses(updatedCourses);
+    setCoursesInCookie(updatedCourses);
     
     setDeletingCourse(null);
     showError('SUCCESS006');
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex h-60 w-full items-center justify-center">
+        <Loader2 className="h-10 w-10 animate-spin text-primary" />
+        <p className="ml-3 text-muted-foreground">Đang tải danh sách khóa học...</p>
+      </div>
+    );
+  }
 
   return (
     <>

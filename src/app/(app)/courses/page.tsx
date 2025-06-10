@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react'; // Đã thêm useEffect
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { BookOpen, Search, MoreHorizontal, Upload, X, CalendarClock, LayoutGrid, List } from "lucide-react";
+import { BookOpen, Search, MoreHorizontal, Upload, X, CalendarClock, LayoutGrid, List, Loader2 } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -13,36 +13,99 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { useAuth } from '@/hooks/useAuth';
 import NextImage from "next/image";
 import { useRouter } from 'next/navigation';
-import type { Course, PublicCourse } from '@/lib/types'; // Kiểu PublicCourse nên được định nghĩa trong types.ts nếu có
+import type { Course, PublicCourse } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/components/ui/use-toast';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useCookie } from '@/hooks/use-cookie';
 import { mockCourses as initialMockCoursesFromLib, mockPublicCourses } from '@/lib/mock';
-import { categoryOptions } from '@/lib/constants'; // Đã sửa đường dẫn import
+import { categoryOptions } from '@/lib/constants';
 
 const COURSES_COOKIE_KEY = 'becamex-courses-data';
+const PUBLIC_COURSES_COOKIE_KEY = 'becamex-public-courses-data';
 
 export default function CoursesPage() {
   const { user: currentUser } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
 
-  // Lấy dữ liệu từ cookie nhưng không sử dụng
+  // Lấy dữ liệu khóa học từ cookie hoặc mock data
   const [allCoursesFromCookie] = useCookie<Course[]>(
     COURSES_COOKIE_KEY,
     initialMockCoursesFromLib
+  );
+  
+  // Lấy dữ liệu khóa học công khai từ cookie hoặc mock data
+  const [publicCoursesFromCookie, setPublicCoursesInCookie] = useCookie<PublicCourse[]>(
+    PUBLIC_COURSES_COOKIE_KEY,
+    mockPublicCourses
   );
 
   const [courses, setCourses] = useState<PublicCourse[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [viewMode, setViewMode] = useState<'card' | 'table'>('card');
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Chỉ sử dụng mockPublicCourses
-    setCourses(mockPublicCourses);
-  }, []);
-
+    setIsLoading(true);
+    
+    // Start with mock data for public courses
+    const publicCourses = mockPublicCourses.length > 0 ? mockPublicCourses : [];
+    
+    // Only use data from all courses if we have some courses
+    if (allCoursesFromCookie.length > 0) {
+      // Filter for only public and published courses from allCoursesFromCookie
+      const publicCoursesFromAll = allCoursesFromCookie
+        .filter(course => course.isPublic && course.status === 'published')
+        .map(course => ({
+          id: course.id,
+          title: course.title,
+          description: course.description,
+          category: categoryOptions.find(c => c.value === course.category)?.label as PublicCourse['category'] || 'Lập trình',
+          instructor: course.instructor,
+          duration: `${course.duration.sessions} buổi (${course.duration.hoursPerSession}h/buổi)`,
+          image: course.image,
+          dataAiHint: course.category,
+          enrollmentType: course.enrollmentType,
+          registrationDeadline: course.registrationDeadline,
+          isPublic: course.isPublic,
+        }));
+      
+      // If we found public courses from allCoursesFromCookie, use those instead
+      if (publicCoursesFromAll.length > 0) {
+        setCourses(publicCoursesFromAll);
+        
+        // Only update the cookie if it differs from current value to prevent loops
+        const currentCookieValue = JSON.stringify(publicCoursesFromCookie);
+        const newValue = JSON.stringify(publicCoursesFromAll);
+        if (currentCookieValue !== newValue) {
+          setPublicCoursesInCookie(publicCoursesFromAll);
+        }
+      } else {
+        // Otherwise use our mock data
+        setCourses(publicCourses);
+        
+        // Only update cookie if needed
+        const currentCookieValue = JSON.stringify(publicCoursesFromCookie);
+        const newValue = JSON.stringify(publicCourses);
+        if (currentCookieValue !== newValue && publicCourses.length > 0) {
+          setPublicCoursesInCookie(publicCourses);
+        }
+      }
+    } else {
+      // If we don't have any courses in allCoursesFromCookie, just use mock data
+      setCourses(publicCourses);
+      
+      // Only update cookie if needed
+      const currentCookieValue = JSON.stringify(publicCoursesFromCookie);
+      const newValue = JSON.stringify(publicCourses);
+      if (currentCookieValue !== newValue && publicCourses.length > 0) {
+        setPublicCoursesInCookie(publicCourses);
+      }
+    }
+    
+    setIsLoading(false);
+  }, [allCoursesFromCookie]); // Remove publicCoursesFromCookie and setPublicCoursesInCookie from dependencies
 
   const filteredCourses = courses.filter(course =>
     course.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -52,6 +115,9 @@ export default function CoursesPage() {
   );
 
   const handleEnroll = (courseId: string) => {
+    // Thêm logic đăng ký khóa học ở đây
+    // Trong tương lai, bạn có thể cập nhật trạng thái đăng ký và lưu vào cookie
+    
     toast({
       title: "Đăng ký",
       description: `Chức năng đăng ký khóa học "${courses.find(c=>c.id === courseId)?.title}" đang được phát triển.`,
@@ -67,6 +133,14 @@ export default function CoursesPage() {
     return now <= deadlineDate;
   };
 
+  if (isLoading) {
+    return (
+      <div className="flex h-60 w-full items-center justify-center">
+        <Loader2 className="h-10 w-10 animate-spin text-primary" />
+        <p className="ml-3 text-muted-foreground">Đang tải danh sách khóa học...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
