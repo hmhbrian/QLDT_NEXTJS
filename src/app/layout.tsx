@@ -1,9 +1,11 @@
+
 import type { Metadata } from 'next';
 import './globals.css';
 import { AuthProvider } from '@/hooks/useAuth';
-import { Toaster } from '@/components/ui/toaster';
+// Toaster component từ Shadcn được import trong ToastProvider
 import { Inter } from 'next/font/google';
 import { ToastProvider } from '@/providers/toast-provider';
+import { CustomThemeProvider } from '@/providers/theme-provider'; // Đã đổi tên import
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -34,12 +36,20 @@ export default function RootLayout({
         <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet" />
       </head>
       <body className={inter.className}>
-        <AuthProvider>
-          <ToastProvider>
-            {children}
-          </ToastProvider>
-        </AuthProvider>
+        <CustomThemeProvider // Đã đổi thành CustomThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <AuthProvider>
+            <ToastProvider>
+              {children}
+            </ToastProvider>
+          </AuthProvider>
+        </CustomThemeProvider>
       </body>
     </html>
   );
 }
+

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -23,7 +24,7 @@ export default function SettingsPage() {
     try {
       setIsLoading(true);
       await changePassword(oldPassword, newPassword);
-      // Reset form after successful change
+      // Đặt lại form sau khi thay đổi thành công
       setOldPassword('');
       setNewPassword('');
     } catch (error) {
@@ -73,4 +74,4 @@ export default function SettingsPage() {
       </Card>
     </div>
   );
-} 
+}
