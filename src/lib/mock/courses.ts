@@ -1,22 +1,21 @@
-
 import type { Course, CourseMaterial, Lesson, Test, Question } from '../types';
 import { categoryOptions } from '../constants';
 
 // --- Sample Lessons and Tests Data ---
 const sampleLessons: Lesson[] = [
-  { id: 'l1', title: 'Bài 1: Giới thiệu về JavaScript', contentType: 'video_url', content: 'https://www.youtube.com/watch?v=DHvZL2xTBNs', duration: '45 phút' },
-  { id: 'l2', title: 'Bài 2: Biến và Kiểu dữ liệu', contentType: 'pdf_url', content: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf', duration: '60 phút' },
-  { id: 'l3', title: 'Bài 3: Hàm và Phạm vi', contentType: 'text', content: '### Hàm trong JavaScript\nMột hàm là một khối mã được thiết kế để thực hiện một tác vụ cụ thể...', duration: '75 phút' },
+    { id: 'l1', title: 'Bài 1: Giới thiệu về JavaScript', contentType: 'video_url', content: 'https://www.youtube.com/watch?v=DHvZL2xTBNs', duration: '45 phút' },
+    { id: 'l2', title: 'Bài 2: Biến và Kiểu dữ liệu', contentType: 'pdf_url', content: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf', duration: '60 phút' },
+    { id: 'l3', title: 'Bài 3: Hàm và Phạm vi', contentType: 'text', content: '### Hàm trong JavaScript\nMột hàm là một khối mã được thiết kế để thực hiện một tác vụ cụ thể...', duration: '75 phút' },
 ];
 
 const sampleQuestions: Question[] = [
-  { id: 'q1', text: 'JavaScript là ngôn ngữ gì?', options: ['Biên dịch', 'Thông dịch', 'Cả hai', 'Không phải cả hai'], correctAnswerIndex: 1 },
-  { id: 'q2', text: '`let` và `const` được giới thiệu trong phiên bản JavaScript nào?', options: ['ES5', 'ES6 (ES2015)', 'ES7', 'ES2018'], correctAnswerIndex: 1 },
+    { id: 'q1', text: 'JavaScript là ngôn ngữ gì?', options: ['Biên dịch', 'Thông dịch', 'Cả hai', 'Không phải cả hai'], correctAnswerIndex: 1 },
+    { id: 'q2', text: '`let` và `const` được giới thiệu trong phiên bản JavaScript nào?', options: ['ES5', 'ES6 (ES2015)', 'ES7', 'ES2018'], correctAnswerIndex: 1 },
 ];
 
 const sampleTests: Test[] = [
-  { id: 't1', title: 'Kiểm tra cuối Chương 1', questions: sampleQuestions, passingScorePercentage: 70 },
-  { id: 't2', title: 'Kiểm tra giữa kỳ', questions: [...sampleQuestions, { id: 'q3', text: '`typeof null` trả về gì?', options: ['object', 'null', 'undefined', 'string'], correctAnswerIndex: 0 }], passingScorePercentage: 70 },
+    { id: 't1', title: 'Kiểm tra cuối Chương 1', questions: sampleQuestions, passingScorePercentage: 70 },
+    { id: 't2', title: 'Kiểm tra giữa kỳ', questions: [...sampleQuestions, { id: 'q3', text: '`typeof null` trả về gì?', options: ['object', 'null', 'undefined', 'string'], correctAnswerIndex: 0 }], passingScorePercentage: 70 },
 ];
 // --- End Sample Data ---
 
@@ -38,7 +37,7 @@ export const mockCourses: Course[] = [
         image: 'https://placehold.co/600x400.png',
         status: 'draft',
         department: ['it'],
-        level: ['beginner', 'intermediate'],
+        level: ['intern', 'probation'],
         startDate: '2024-08-01',
         endDate: '2024-09-15',
         location: 'https://meet.google.com/abc-xyz',
@@ -56,7 +55,7 @@ export const mockCourses: Course[] = [
                 url: 'https://placehold.co/800x600.png?text=Slide+Tuan+1'
             }
         ],
-        lessons: sampleLessons.slice(0,2),
+        lessons: sampleLessons.slice(0, 2),
         tests: [sampleTests[0]],
         createdAt: new Date().toISOString(),
         modifiedAt: new Date().toISOString(),
@@ -83,7 +82,7 @@ export const mockCourses: Course[] = [
         image: 'https://placehold.co/600x400.png',
         status: 'published',
         department: ['hr'],
-        level: ['intermediate', 'advanced'],
+        level: ['employee', 'middle_manager'],
         startDate: '2024-09-01',
         endDate: '2024-09-30',
         location: 'https://meet.google.com/def-ghi',
@@ -96,11 +95,11 @@ export const mockCourses: Course[] = [
             }
         ],
         lessons: [
-            { id: 'lpm1', title: 'Bài 1: Giới thiệu Quản lý dự án', contentType: 'video_url', content: 'https://www.youtube.com/watch?v=some_pm_video', duration: '30 phút'},
-            { id: 'lpm2', title: 'Bài 2: Lập kế hoạch dự án', contentType: 'slide_url', content: 'https://placehold.co/800x600.png?text=Project+Planning+Slides', duration: '90 phút'},
+            { id: 'lpm1', title: 'Bài 1: Giới thiệu Quản lý dự án', contentType: 'video_url', content: 'https://www.youtube.com/watch?v=some_pm_video', duration: '30 phút' },
+            { id: 'lpm2', title: 'Bài 2: Lập kế hoạch dự án', contentType: 'slide_url', content: 'https://placehold.co/800x600.png?text=Project+Planning+Slides', duration: '90 phút' },
         ],
         tests: [
-            { id: 'tpm1', title: 'Kiểm tra kiến thức cơ bản QLDA', questions: [{id: 'qpm1', text: 'PMP là viết tắt của gì?', options: ['Project Management Professional', 'Program Management Professional', 'Product Management Professional'], correctAnswerIndex: 0}], passingScorePercentage: 75}
+            { id: 'tpm1', title: 'Kiểm tra kiến thức cơ bản QLDA', questions: [{ id: 'qpm1', text: 'PMP là viết tắt của gì?', options: ['Project Management Professional', 'Program Management Professional', 'Product Management Professional'], correctAnswerIndex: 0 }], passingScorePercentage: 75 }
         ],
         createdAt: new Date().toISOString(),
         modifiedAt: new Date().toISOString(),
@@ -126,7 +125,7 @@ export const mockCourses: Course[] = [
         image: 'https://placehold.co/600x400.png',
         status: 'draft',
         department: ['it'],
-        level: ['beginner', 'intermediate'],
+        level: ['intern', 'probation'],
         startDate: '2024-10-01',
         endDate: '2024-11-30',
         location: 'https://meet.google.com/jkl-mno',
@@ -164,12 +163,12 @@ export const mockCourses: Course[] = [
         image: 'https://placehold.co/600x400.png',
         status: 'archived',
         department: ['marketing'],
-        level: ['intermediate', 'advanced'],
+        level: ['employee', 'middle_manager'],
         startDate: '2024-07-01',
         endDate: '2024-08-10',
         location: 'https://meet.google.com/pqr-stu',
         materials: [
-             {
+            {
                 id: 'mat-mkt-001',
                 type: 'link',
                 title: 'Blog về Digital Marketing Trends',
@@ -197,11 +196,11 @@ export const mockCourses: Course[] = [
         image: 'https://placehold.co/600x400.png',
         status: 'published',
         department: ['it', 'operations'],
-        level: ['intermediate', 'advanced'],
+        level: ['employee', 'middle_manager'],
         startDate: '2024-09-05',
         endDate: '2024-11-20',
         location: 'https://zoom.us/j/python-ds',
-        materials: [{ id: 'mat-pyds-001', type: 'link', title: 'Tài liệu Pandas chính thức', url: 'https://pandas.pydata.org/docs/'}],
+        materials: [{ id: 'mat-pyds-001', type: 'link', title: 'Tài liệu Pandas chính thức', url: 'https://pandas.pydata.org/docs/' }],
         lessons: sampleLessons, // Using all sample lessons
         tests: sampleTests, // Using all sample tests
         createdAt: new Date().toISOString(),
@@ -226,11 +225,11 @@ export const mockCourses: Course[] = [
         image: 'https://placehold.co/600x400.png',
         status: 'published',
         department: ['hr', 'sales', 'marketing'],
-        level: ['beginner', 'intermediate', 'advanced', 'expert'], // All levels
+        level: ['intern', 'probation', 'employee', 'middle_manager', 'senior_manager'], // All levels
         startDate: '2024-08-15',
         endDate: '2024-09-20',
         location: 'https://teams.microsoft.com/comms-skills',
-        materials: [{ id: 'mat-comms-001', type: 'pdf', title: 'Sách: Giao tiếp không bạo lực', url: 'https://example.com/nvc.pdf'}],
+        materials: [{ id: 'mat-comms-001', type: 'pdf', title: 'Sách: Giao tiếp không bạo lực', url: 'https://example.com/nvc.pdf' }],
         createdAt: new Date().toISOString(),
         modifiedAt: new Date().toISOString(),
         createdBy: 'hr_user',
@@ -260,7 +259,7 @@ export const mockCourseDetail: Course = {
     image: 'https://placehold.co/1200x400.png?text=JavaScript+Advanced+Banner',
     status: 'published',
     department: ['it', 'operations'],
-    level: ['intermediate', 'advanced'],
+    level: ['employee', 'middle_manager'],
     startDate: '2024-08-01',
     endDate: '2024-10-15',
     location: 'https://meet.google.com/js-advanced-class',
@@ -289,7 +288,7 @@ export const mockCourseDetail: Course = {
             title: 'Tài liệu tham khảo: MDN Web Docs - JavaScript',
             url: 'https://developer.mozilla.org/en-US/docs/Web/JavaScript',
         },
-         {
+        {
             id: 'mat-jsadv-005',
             type: 'pdf',
             title: 'Bài tập thực hành Chương 1',
@@ -347,7 +346,7 @@ export const mockCourseDetail: Course = {
 // Mock My Courses for trainees
 export const mockMyCourses = [
     {
-        id: '1',
+        id: '1', // Matches mockCourseDetail and first course in mockCourses
         title: 'JavaScript Nâng cao',
         description: 'Nắm vững các tính năng JS hiện đại.',
         progress: 75,
@@ -356,7 +355,7 @@ export const mockMyCourses = [
         nextLesson: 'Tìm hiểu sâu về Async/Await'
     },
     {
-        id: '2',
+        id: '2', // Matches second course in mockCourses
         title: 'Nguyên tắc Thiết kế UI/UX',
         description: 'Học cách tạo giao diện trực quan.',
         progress: 40,
@@ -365,7 +364,7 @@ export const mockMyCourses = [
         nextLesson: 'Tạo Persona Người dùng'
     },
     {
-        id: '3',
+        id: '3', // Matches third course in mockCourses
         title: 'Chiến lược Tiếp thị Kỹ thuật số',
         description: 'Phát triển chiến lược trực tuyến hiệu quả.',
         progress: 100,
@@ -391,17 +390,17 @@ export interface PublicCourse {
 }
 
 export const mockPublicCourses: PublicCourse[] = mockCourses
-  .filter(course => course.isPublic) // Filter for public courses
-  .map(course => ({
-    id: course.id,
-    title: course.title,
-    description: course.description,
-    category: categoryOptions.find(c => c.value === course.category)?.label as PublicCourse['category'] || 'Lập trình',
-    instructor: course.instructor,
-    duration: `${course.duration.sessions} buổi (${course.duration.hoursPerSession}h/buổi)`,
-    image: course.image,
-    dataAiHint: course.category,
-    enrollmentType: course.enrollmentType,
-    registrationDeadline: course.registrationDeadline,
-    isPublic: course.isPublic,
-}));
+    .filter(course => course.isPublic) // Filter for public courses
+    .map(course => ({
+        id: course.id,
+        title: course.title,
+        description: course.description,
+        category: categoryOptions.find(c => c.value === course.category)?.label as PublicCourse['category'] || 'Lập trình',
+        instructor: course.instructor,
+        duration: `${course.duration.sessions} buổi (${course.duration.hoursPerSession}h/buổi)`,
+        image: course.image,
+        dataAiHint: course.category,
+        enrollmentType: course.enrollmentType,
+        registrationDeadline: course.registrationDeadline,
+        isPublic: course.isPublic,
+    }));
