@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
@@ -22,10 +21,28 @@ export function useCookie<T>(
       });
       return initialValue;
     } catch (error) {
-      console.error(`Lỗi khi đọc cookie “${key}”:`, error);
+      console.error(`Lỗi khi đọc cookie "${key}":`, error);
       return initialValue;
     }
   });
+
+  // Hàm để tải lại dữ liệu từ cookie
+  const reloadFromCookie = useCallback(() => {
+    try {
+      const item = Cookies.get(key);
+      if (item) {
+        const newValue = JSON.parse(item);
+        if (JSON.stringify(newValue) !== JSON.stringify(storedValue)) {
+          setStoredValue(newValue);
+          return true; // Đã cập nhật
+        }
+      }
+      return false; // Không cần cập nhật
+    } catch (error) {
+      console.error(`Lỗi khi tải lại cookie "${key}":`, error);
+      return false;
+    }
+  }, [key, storedValue]);
 
   const setValue = useCallback(
     (value: T | ((val: T) => T)) => {
@@ -41,41 +58,41 @@ export function useCookie<T>(
           sameSite: 'strict',
           secure: process.env.NODE_ENV === 'production',
         });
+
+        // Buộc cập nhật lại giá trị từ cookie sau một khoảng thời gian ngắn
+        // để đảm bảo các thành phần khác đều có dữ liệu mới nhất
+        setTimeout(() => {
+          // Thông báo cho các component khác biết cookie đã thay đổi
+          window.dispatchEvent(new CustomEvent('cookie-change', { detail: { key } }));
+        }, 50);
       } catch (error) {
-        console.error(`Lỗi khi đặt cookie “${key}”:`, error);
+        console.error(`Lỗi khi đặt cookie "${key}":`, error);
       }
     },
     [key, storedValue]
   );
 
-  // Effect để lắng nghe thay đổi cookie từ các tab/cửa sổ khác (tùy chọn, phiên bản cơ bản)
+  // Effect để lắng nghe thay đổi cookie từ các tab/cửa sổ khác
   useEffect(() => {
     const handleCookieChange = () => {
-      try {
-        const item = Cookies.get(key);
-        if (item) {
-          const newValue = JSON.parse(item);
-          if (JSON.stringify(newValue) !== JSON.stringify(storedValue)) { // Chỉ cập nhật nếu giá trị thực sự thay đổi
-            setStoredValue(newValue);
-          }
-        } else {
-           // Nếu cookie bị xóa ở nơi khác, đặt lại về initialValue
-          if (JSON.stringify(initialValue) !== JSON.stringify(storedValue)) {
-            setStoredValue(initialValue);
-          }
-        }
-      } catch (error) {
-        console.error(`Lỗi khi đọc lại cookie “${key}”:`, error);
-      }
+      reloadFromCookie();
     };
 
-    // Kiểm tra định kỳ cơ bản vì các sự kiện thay đổi cookie trực tiếp không phải là tiêu chuẩn
-    // Để đồng bộ hóa giữa các tab mạnh mẽ hơn, hãy xem xét BroadcastChannel hoặc sự kiện window.storage (cho localStorage)
-    const intervalId = setInterval(handleCookieChange, 2000); // Kiểm tra mỗi 2 giây
+    // Lắng nghe sự kiện cookie-change
+    window.addEventListener('cookie-change', (e: any) => {
+      if (e.detail.key === key) {
+        handleCookieChange();
+      }
+    });
 
-    return () => clearInterval(intervalId); // Dọn dẹp interval khi unmount
-  }, [key, initialValue, storedValue]);
+    // Kiểm tra định kỳ với tần suất cao hơn
+    const intervalId = setInterval(handleCookieChange, 500); // Kiểm tra mỗi 0.5 giây
 
+    return () => {
+      clearInterval(intervalId); // Dọn dẹp interval khi unmount
+      window.removeEventListener('cookie-change', handleCookieChange as any);
+    };
+  }, [key, reloadFromCookie]);
 
   return [storedValue, setValue] as const;
 }
@@ -83,6 +100,8 @@ export function useCookie<T>(
 // Hàm tiện ích để xóa cookie
 export function removeCookie(key: string) {
   Cookies.remove(key);
+  // Thông báo cookie đã thay đổi
+  window.dispatchEvent(new CustomEvent('cookie-change', { detail: { key } }));
 }
 
 // Hàm tiện ích để lấy giá trị cookie
@@ -110,5 +129,8 @@ export function setCookie<T>(
     secure: process.env.NODE_ENV === 'production',
     ...options, // Ghi đè các tùy chọn mặc định nếu được cung cấp
   });
+
+  // Thông báo cookie đã thay đổi
+  window.dispatchEvent(new CustomEvent('cookie-change', { detail: { key } }));
 }
 
