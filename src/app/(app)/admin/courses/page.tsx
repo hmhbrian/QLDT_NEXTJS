@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
@@ -26,7 +25,7 @@ import {
 import { mockCourses as initialMockCoursesFromLib } from '@/lib/mock'; // Đổi tên để tránh xung đột
 import NextImage from 'next/image';
 import { CourseFormDialog } from '@/components/courses/dialogs/CourseFormDialog';
-import { useCookie } from '@/hooks/use-cookie';
+import { useCookie, getCookie, setCookie } from '@/hooks/use-cookie';
 
 const COURSES_COOKIE_KEY = 'becamex-courses-data';
 
@@ -34,19 +33,30 @@ export default function CoursesPage() {
   const { user: currentUser } = useAuth();
   const { showError } = useError();
 
-  const [courses, setCourses] = useCookie<Course[]>(
+  // Chuẩn bị dữ liệu mock
+  const preparedMockCourses = initialMockCoursesFromLib.map(course => ({
+    ...course,
+    materials: (course.materials || []).map(material => ({
+      ...material,
+      id: material.id || crypto.randomUUID(),
+    })),
+    lessons: course.lessons || [],
+    tests: course.tests || [],
+  }));
+
+  // Lấy dữ liệu từ cookie nhưng không sử dụng
+  const [coursesFromCookie, setCoursesInCookie] = useCookie<Course[]>(
     COURSES_COOKIE_KEY,
-    initialMockCoursesFromLib.map(course => ({ // Sử dụng import đã đổi tên
-      ...course,
-      materials: (course.materials || []).map(material => ({
-        ...material,
-        id: material.id || crypto.randomUUID(),
-      })),
-      lessons: course.lessons || [],
-      tests: course.tests || [],
-    }))
+    preparedMockCourses
   );
 
+  // State cho danh sách khóa học hiển thị - chỉ dùng mock data
+  const [courses, setCourses] = useState<Course[]>([]);
+
+  // Chỉ sử dụng mock data khi component mount
+  useEffect(() => {
+    setCourses(preparedMockCourses);
+  }, []);
 
   const [viewMode, setViewMode] = useState<'table' | 'card'>('table');
   const [searchTerm, setSearchTerm] = useState('');
@@ -94,17 +104,19 @@ export default function CoursesPage() {
     if (!canManageCourses || !currentUser) { showError('USER003'); return; }
 
     const now = new Date().toISOString();
+    let updatedCourses: Course[] = [];
+    
     if (isEditing) {
       const courseToUpdate = courseData as Course;
       if (courses.some(c => c.id !== courseToUpdate.id && c.courseCode === courseToUpdate.courseCode)) {
         showError('COURSE001');
         return;
       }
-      setCourses(prevCourses => prevCourses.map(c => c.id === courseToUpdate.id ? {
+      updatedCourses = courses.map(c => c.id === courseToUpdate.id ? {
         ...courseToUpdate,
         modifiedAt: now,
         modifiedBy: currentUser.id
-      } : c));
+      } : c);
     } else {
       const newCourseData = courseData as Omit<Course, 'id' | 'createdAt' | 'modifiedAt' | 'createdBy' | 'modifiedBy'>;
        if (courses.some(c => c.courseCode === newCourseData.courseCode)) {
@@ -123,12 +135,15 @@ export default function CoursesPage() {
         tests: newCourseData.tests || [],
         materials: newCourseData.materials || [],
       };
-      setCourses(prevCourses => [...prevCourses, courseToAdd]);
+      updatedCourses = [...courses, courseToAdd];
     }
+    
+    // Chỉ cập nhật state, không cập nhật cookie
+    setCourses(updatedCourses);
+    
     showError('SUCCESS006');
     setIsFormDialogOpen(false);
   };
-
 
   const handleDuplicateCourse = (course: Course) => {
     if (!canManageCourses || !currentUser) { showError('USER003'); return; }
@@ -146,7 +161,11 @@ export default function CoursesPage() {
       tests: (course.tests || []).map(t => ({ ...t, id: crypto.randomUUID(), questions: t.questions.map(q => ({ ...q, id: crypto.randomUUID() })) })),
       materials: (course.materials || []).map(m => ({ ...m, id: m.id || crypto.randomUUID() })),
     };
-    setCourses(prevCourses => [...prevCourses, duplicatedCourse]);
+    
+    // Chỉ cập nhật state, không cập nhật cookie
+    const updatedCourses = [...courses, duplicatedCourse];
+    setCourses(updatedCourses);
+    
     showError('SUCCESS006');
   };
 
@@ -154,7 +173,12 @@ export default function CoursesPage() {
     if (!canManageCourses || !currentUser) { showError('USER003'); return; }
     if (!archivingCourse) return;
     const now = new Date().toISOString();
-    setCourses(prevCourses => prevCourses.map(c => c.id === archivingCourse.id ? { ...c, status: 'archived', isPublic: false, modifiedAt: now, modifiedBy: currentUser.id } : c));
+    
+    // Chỉ cập nhật state, không cập nhật cookie
+    const updatedCourses = courses.map(c => c.id === archivingCourse.id ? 
+      { ...c, status: 'archived' as const, isPublic: false, modifiedAt: now, modifiedBy: currentUser.id } : c);
+    setCourses(updatedCourses);
+    
     setArchivingCourse(null);
     showError('SUCCESS006');
   };
@@ -163,7 +187,11 @@ export default function CoursesPage() {
     if (!canManageCourses) { showError('USER003'); return; }
     if (!deletingCourse) return;
     if (deletingCourse.status === 'published') { showError('COURSE002'); return; }
-    setCourses(prevCourses => prevCourses.filter(c => c.id !== deletingCourse.id));
+    
+    // Chỉ cập nhật state, không cập nhật cookie
+    const updatedCourses = courses.filter(c => c.id !== deletingCourse.id);
+    setCourses(updatedCourses);
+    
     setDeletingCourse(null);
     showError('SUCCESS006');
   };

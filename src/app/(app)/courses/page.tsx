@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react'; // Đã thêm useEffect
@@ -19,16 +18,17 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/components/ui/use-toast';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useCookie } from '@/hooks/use-cookie';
-import { mockCourses as initialMockCoursesFromLib } from '@/lib/mock';
+import { mockCourses as initialMockCoursesFromLib, mockPublicCourses } from '@/lib/mock';
 import { categoryOptions } from '@/lib/constants'; // Đã sửa đường dẫn import
 
-const COURSES_COOKIE_KEY = 'becamex-courses-data'; // Cùng key với trang admin
+const COURSES_COOKIE_KEY = 'becamex-courses-data';
 
 export default function CoursesPage() {
   const { user: currentUser } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
 
+  // Lấy dữ liệu từ cookie nhưng không sử dụng
   const [allCoursesFromCookie] = useCookie<Course[]>(
     COURSES_COOKIE_KEY,
     initialMockCoursesFromLib
@@ -39,23 +39,9 @@ export default function CoursesPage() {
   const [viewMode, setViewMode] = useState<'card' | 'table'>('card');
 
   useEffect(() => {
-    const publicCoursesData = allCoursesFromCookie
-      .filter(course => course.isPublic) // Lọc các khóa học công khai
-      .map(course => ({
-        id: course.id,
-        title: course.title,
-        description: course.description,
-        category: categoryOptions.find(c => c.value === course.category)?.label as PublicCourse['category'] || 'Chưa phân loại',
-        instructor: course.instructor,
-        duration: `${course.duration.sessions} buổi (${course.duration.hoursPerSession}h/buổi)`,
-        image: course.image,
-        dataAiHint: course.category,
-        enrollmentType: course.enrollmentType,
-        registrationDeadline: course.registrationDeadline,
-        isPublic: course.isPublic,
-      }));
-    setCourses(publicCoursesData);
-  }, [allCoursesFromCookie]);
+    // Chỉ sử dụng mockPublicCourses
+    setCourses(mockPublicCourses);
+  }, []);
 
 
   const filteredCourses = courses.filter(course =>

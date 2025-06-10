@@ -127,9 +127,17 @@ export default function CourseDetailPage() {
     const fetchCourse = () => {
       setIsLoading(true);
       try {
-        const foundCourse = allCoursesFromCookie.find(
+        // Kiểm tra trong mockCourses trước
+        let foundCourse = initialMockCoursesFromLib.find(
           (c) => c.id === courseIdFromParams
         );
+        
+        // Nếu không tìm thấy trong mockCourses, thử tìm trong cookie
+        if (!foundCourse) {
+          foundCourse = allCoursesFromCookie.find(
+            (c) => c.id === courseIdFromParams
+          );
+        }
 
         if (foundCourse) {
           const detailedCourseData: Course = {
@@ -174,21 +182,10 @@ export default function CourseDetailPage() {
       }
     };
 
-    // Ưu tiên tải từ cookie nếu có dữ liệu và courseIdFromParams
-    if (courseIdFromParams && allCoursesFromCookie.length > 0) {
+    // Tải khóa học nếu có courseIdFromParams
+    if (courseIdFromParams) {
       fetchCourse();
-    } else if (courseIdFromParams) {
-      // Nếu cookie rỗng (hoặc chưa được load xong) nhưng có courseIdFromParams
-      // Trường hợp này, có thể là lần tải đầu tiên hoặc cookie bị xóa
-      // Chúng ta vẫn có thể thử fallback về mockCourseDetail nếu ID khớp
-      if (courseIdFromParams === mockCourseDetail.id) {
-        setCourse({ ...mockCourseDetail, id: courseIdFromParams });
-      } else {
-        setCourse(null);
-      }
-      setIsLoading(false);
     } else {
-      // Không có courseIdFromParams (ít xảy ra nếu route được cấu hình đúng)
       setCourse(null);
       setIsLoading(false);
     }
@@ -333,41 +330,32 @@ export default function CourseDetailPage() {
     });
   };
 
-  if (isLoading) {
+  // Hiển thị thông báo nếu không tìm thấy khóa học
+  if (!isLoading && !course) {
     return (
-      <div className="space-y-8 p-4 md:p-6">
-        <Skeleton className="h-60 w-full rounded-lg" />
-        <div className="flex flex-col md:flex-row justify-between items-start gap-4">
-          <div className="space-y-2">
-            <Skeleton className="h-8 w-3/4" />
-            <Skeleton className="h-5 w-1/2" />
-          </div>
-          <Skeleton className="h-8 w-24 rounded-full" />
+      <div className="flex flex-col items-center justify-center py-12 text-center">
+        <div className="mb-6 text-red-500">
+          <AlertTriangle className="mx-auto h-16 w-16" />
         </div>
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-          {[...Array(4)].map((_, i) => (
-            <Skeleton key={i} className="h-24 w-full rounded-lg" />
-          ))}
-        </div>
-        <Skeleton className="h-10 w-1/3 rounded-md" />{" "}
-        {/* Skeleton cho danh sách các tab */}
-        <Skeleton className="h-40 w-full rounded-lg" />{" "}
-        {/* Skeleton cho nội dung các tab */}
+        <h1 className="mb-2 text-2xl font-bold">Không tìm thấy khóa học</h1>
+        <p className="mb-6 text-muted-foreground">
+          Khóa học bạn đang tìm kiếm không tồn tại hoặc đã bị xóa.
+        </p>
+        <Button asChild>
+          <Link href="/trainee/my-courses">Quay lại</Link>
+        </Button>
       </div>
     );
   }
 
-  if (!course) {
+  if (isLoading) {
     return (
-      <div className="flex flex-col items-center justify-center h-[60vh] text-center p-4">
-        <AlertTriangle className="mx-auto h-16 w-16 text-destructive mb-4" />
-        <h3 className="mt-2 text-2xl font-semibold">Không tìm thấy khóa học</h3>
-        <p className="mt-2 text-muted-foreground">
-          Khóa học bạn đang tìm kiếm không tồn tại hoặc đã bị xóa.
-        </p>
-        <Button onClick={() => window.history.back()} className="mt-6">
-          Quay lại
-        </Button>
+      <div className="flex h-60 w-full items-center justify-center">
+        <Skeleton className="h-12 w-12 rounded-full" />
+        <div className="ml-4 space-y-2">
+          <Skeleton className="h-6 w-40" />
+          <Skeleton className="h-4 w-60" />
+        </div>
       </div>
     );
   }

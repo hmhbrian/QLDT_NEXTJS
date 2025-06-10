@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -11,9 +10,10 @@ import Link from "next/link";
 import { useAuth } from '@/hooks/useAuth';
 import { useCookie } from '@/hooks/use-cookie';
 import type { Course, User } from '@/lib/types';
-import { mockCourses as initialMockCoursesFromLib } from '@/lib/mock'; // Dùng cho giá trị cookie ban đầu
+import { mockCourses as initialMockCoursesFromLib, mockMyCourses } from '@/lib/mock'; // Thêm mockMyCourses
 
 const COURSES_COOKIE_KEY = 'becamex-courses-data';
+const MY_COURSES_COOKIE_KEY = 'becamex-my-courses-data';
 
 interface DisplayCourse {
   id: string;
@@ -22,52 +22,29 @@ interface DisplayCourse {
   progress: number;
   image: string;
   dataAiHint?: string;
-  // nextLesson?: string; // This was in mockMyCourses, harder to determine dynamically for now
+  nextLesson?: string;
 }
 
 export default function MyCoursesPage() {
   const { user: currentUser, loadingAuth } = useAuth();
+  // Giữ lại hook useCookie để dùng trong tương lai
   const [allCoursesFromCookie] = useCookie<Course[]>(COURSES_COOKIE_KEY, initialMockCoursesFromLib);
+  const [myCoursesFromCookie, setMyCoursesInCookie] = useCookie<DisplayCourse[]>(MY_COURSES_COOKIE_KEY, mockMyCourses);
+  
   const [myDisplayCourses, setMyDisplayCourses] = useState<DisplayCourse[]>([]);
   const [isLoadingCourses, setIsLoadingCourses] = useState(true);
 
   useEffect(() => {
-    if (!loadingAuth && currentUser && allCoursesFromCookie.length > 0) {
+    if (!loadingAuth) {
       setIsLoadingCourses(true);
-      const enrolledAndPublishedCourses = allCoursesFromCookie.filter(course =>
-        course.status === 'published' &&
-        course.enrolledTrainees?.includes(currentUser.id)
-      );
-
-      const processedCourses = enrolledAndPublishedCourses.map(course => {
-        const isCompleted = currentUser.completedCourses?.some(cc => cc.courseId === course.id);
-        let progressValue = 0;
-        if (isCompleted) {
-          progressValue = 100;
-        } else {
-          // Giá trị giữ chỗ cho trạng thái "đang tiến hành". Một ứng dụng thực tế sẽ tính toán điều này.
-          // Hiện tại, nếu đã ghi danh nhưng chưa hoàn thành, hiển thị một chút tiến độ.
-          // Hãy sử dụng 25% cho các khóa học đã ghi danh nhưng chưa hoàn thành một cách rõ ràng.
-          progressValue = 25;
-        }
-
-        return {
-          id: course.id,
-          title: course.title,
-          description: course.description,
-          progress: progressValue,
-          image: course.image || 'https://placehold.co/600x400.png',
-          dataAiHint: course.category || 'course education',
-        };
-      });
-      setMyDisplayCourses(processedCourses);
+      
+      // Sử dụng dữ liệu động từ mockMyCourses
+      // Trong tương lai, có thể thay bằng myCoursesFromCookie
+      setMyDisplayCourses(mockMyCourses);
+      
       setIsLoadingCourses(false);
-    } else if (!loadingAuth) {
-      // Không tải xác thực, nhưng không có người dùng hoặc không có khóa học từ cookie
-      setIsLoadingCourses(false);
-      setMyDisplayCourses([]);
     }
-  }, [currentUser, allCoursesFromCookie, loadingAuth]);
+  }, [loadingAuth]);
 
   if (loadingAuth || isLoadingCourses) {
     return (
@@ -109,6 +86,11 @@ export default function MyCoursesPage() {
                     <span className="font-semibold text-primary">{course.progress}%</span>
                   </div>
                   <Progress value={course.progress} className="h-2" aria-label={`Tiến độ ${course.progress}%`} />
+                  {course.nextLesson && (
+                    <p className="text-xs text-muted-foreground mt-2">
+                      <span className="font-medium">Bài tiếp theo:</span> {course.nextLesson}
+                    </p>
+                  )}
                 </div>
               </CardContent>
               <CardFooter className="flex-none p-4 md:p-6 pt-0 border-t">
