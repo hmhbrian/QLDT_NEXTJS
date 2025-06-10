@@ -3,7 +3,7 @@ import Image from 'next/image';
 
 interface LogoProps {
   className?: string;
-  collapsed?: boolean; // This prop might be re-evaluated based on new logo usage
+  collapsed?: boolean; // Prop này có thể được đánh giá lại dựa trên cách sử dụng logo mới
 }
 
 export function Logo({ className, collapsed = false }: LogoProps) {
@@ -16,7 +16,7 @@ export function Logo({ className, collapsed = false }: LogoProps) {
         height={50}
         className="h-12 w-auto object-contain" // Tăng kích thước và đảm bảo tỷ lệ ảnh
         data-ai-hint="company logo orange"
-        priority // Preload the logo image as it's likely LCP
+        priority // Tải trước hình ảnh logo vì nó có khả năng là LCP (Largest Contentful Paint)
       />
     </div>
   );

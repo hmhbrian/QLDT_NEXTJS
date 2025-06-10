@@ -1,269 +1,124 @@
+
 'use client';
 
-import { useState } from 'react';
+import React from 'react'; 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useToast } from "@/components/ui/use-toast";
-import { useAuth } from "@/hooks/useAuth";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { UserCircle, Mail, Phone, Lock, Bell } from "lucide-react";
+
+
+import { Bell } from "lucide-react"; 
 import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 
-export function TraineeSettings() {
-  const { user } = useAuth();
-  const { toast } = useToast();
-  const [isLoading, setIsLoading] = useState(false);
+// Định nghĩa cấu trúc cho props cài đặt thông báo
+interface NotificationSettingsData {
+  emailNotifications: boolean;
+  courseUpdates: boolean;
+  deadlineReminders: boolean;
+  evaluationResults: boolean;
+}
 
-  // Profile form state
-  const [profile, setProfile] = useState({
-    fullName: user?.fullName || '',
-    email: user?.email || '',
-    phone: user?.phoneNumber || '',
-    currentPassword: '',
-    newPassword: '',
-    confirmPassword: ''
-  });
+interface TraineeSettingsProps {
+  notifications: NotificationSettingsData;
+  onNotificationChange: (settingName: keyof NotificationSettingsData, value: boolean) => void;
+}
 
-  // Notification settings state
-  const [notifications, setNotifications] = useState({
-    emailNotifications: true,
-    courseUpdates: true,
-    deadlineReminders: true,
-    evaluationResults: true
-  });
+export function TraineeSettings({ notifications, onNotificationChange }: TraineeSettingsProps) {
+  
 
-  const handleProfileUpdate = async () => {
-    setIsLoading(true);
-    try {
-      // TODO: Implement profile update logic
-      toast({
-        title: "Thành công",
-        description: "Thông tin cá nhân đã được cập nhật",
-      });
-    } catch (error) {
-      toast({
-        title: "Lỗi",
-        description: "Không thể cập nhật thông tin. Vui lòng thử lại.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
-  const handlePasswordChange = async () => {
-    if (profile.newPassword !== profile.confirmPassword) {
-      toast({
-        title: "Lỗi",
-        description: "Mật khẩu mới không khớp",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      // TODO: Implement password change logic
-    toast({
-      title: "Thành công",
-        description: "Mật khẩu đã được cập nhật",
-      });
-      setProfile(prev => ({
-        ...prev,
-        currentPassword: '',
-        newPassword: '',
-        confirmPassword: ''
-      }));
-    } catch (error) {
-      toast({
-        title: "Lỗi",
-        description: "Không thể cập nhật mật khẩu. Vui lòng thử lại.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  // Trạng thái cài đặt thông báo và các hàm liên quan được chuyển đến component cha
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Avatar className="h-16 w-16">
-          <AvatarImage src={user?.urlAvatar} alt={user?.fullName} />
-          <AvatarFallback>
-            <UserCircle className="h-8 w-8" />
-          </AvatarFallback>
-        </Avatar>
-        <div>
-          <h1 className="text-2xl font-semibold">{user?.fullName}</h1>
-          <p className="text-sm text-muted-foreground">{user?.email}</p>
-        </div>
-      </div>
+      <Tabs defaultValue="notifications">
+        <TabsList>
+          <TabsTrigger value="notifications">Thông báo</TabsTrigger>
+        </TabsList>
 
-      <Tabs defaultValue="profile">
-      <TabsList>
-          <TabsTrigger value="profile">Thông tin cá nhân</TabsTrigger>
-          <TabsTrigger value="security">Bảo mật</TabsTrigger>
-        <TabsTrigger value="notifications">Thông báo</TabsTrigger>
-      </TabsList>
-
-      <TabsContent value="profile" className="space-y-4">
-        <Card>
-          <CardHeader>
-            <CardTitle>Thông tin cá nhân</CardTitle>
-            <CardDescription>
-              Cập nhật thông tin cá nhân của bạn
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-              <div className="grid gap-2">
-                <Label htmlFor="fullName">Họ và tên</Label>
-                <Input
-                  id="fullName"
-                  value={profile.fullName}
-                  onChange={(e) => setProfile({ ...profile, fullName: e.target.value })}
+        <TabsContent value="notifications" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center"> 
+                <Bell className="mr-2 h-5 w-5 text-primary" /> {/* Đã thêm icon và styling */}
+                Cài đặt thông báo
+              </CardTitle>
+              <CardDescription>
+                Tùy chỉnh cách bạn nhận thông báo.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6 pt-6"> {/* Đã thêm pt-6 cho khoảng cách */}
+              <div className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+                <div className="space-y-0.5">
+                  <Label htmlFor="emailNotificationsSwitch" className="font-medium cursor-pointer">Thông báo qua email</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Nhận các thông báo quan trọng và cập nhật qua email.
+                  </p>
+                </div>
+                <Switch
+                  id="emailNotificationsSwitch"
+                  checked={notifications.emailNotifications}
+                  onCheckedChange={(checked) =>
+                    onNotificationChange('emailNotifications', checked)
+                  }
+                  aria-label="Thông báo qua email"
                 />
               </div>
-              <div className="grid gap-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={profile.email}
-                  onChange={(e) => setProfile({ ...profile, email: e.target.value })}
+              <div className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+                <div className="space-y-0.5">
+                  <Label htmlFor="courseUpdatesSwitch" className="font-medium cursor-pointer">Cập nhật khóa học</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Nhận thông báo về bài giảng mới, tài liệu hoặc thay đổi lịch học.
+                  </p>
+                </div>
+                <Switch
+                  id="courseUpdatesSwitch"
+                  checked={notifications.courseUpdates}
+                  onCheckedChange={(checked) =>
+                    onNotificationChange('courseUpdates', checked)
+                  }
+                  aria-label="Cập nhật khóa học"
                 />
               </div>
-              <div className="grid gap-2">
-                <Label htmlFor="phone">Số điện thoại</Label>
-                <Input 
-                  id="phone" 
-                  type="tel"
-                  value={profile.phone}
-                  onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
+              <div className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+                <div className="space-y-0.5">
+                  <Label htmlFor="deadlineRemindersSwitch" className="font-medium cursor-pointer">Nhắc nhở hạn chót</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Nhận nhắc nhở về các bài tập hoặc nhiệm vụ sắp đến hạn.
+                  </p>
+                </div>
+                <Switch
+                  id="deadlineRemindersSwitch"
+                  checked={notifications.deadlineReminders}
+                  onCheckedChange={(checked) =>
+                    onNotificationChange('deadlineReminders', checked)
+                  }
+                  aria-label="Nhắc nhở hạn chót"
                 />
               </div>
-              <Button onClick={handleProfileUpdate} disabled={isLoading}>
-                Cập nhật thông tin
-              </Button>
+              <div className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+                <div className="space-y-0.5">
+                  <Label htmlFor="evaluationResultsSwitch" className="font-medium cursor-pointer">Kết quả đánh giá</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Thông báo khi có kết quả đánh giá hoặc phản hồi mới.
+                  </p>
+                </div>
+                <Switch
+                  id="evaluationResultsSwitch"
+                  checked={notifications.evaluationResults}
+                  onCheckedChange={(checked) =>
+                    onNotificationChange('evaluationResults', checked)
+                  }
+                  aria-label="Kết quả đánh giá"
+                />
+              </div>
+              
             </CardContent>
           </Card>
         </TabsContent>
-
-        <TabsContent value="security" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Đổi mật khẩu</CardTitle>
-              <CardDescription>
-                Cập nhật mật khẩu của bạn
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid gap-2">
-                <Label htmlFor="currentPassword">Mật khẩu hiện tại</Label>
-                <Input 
-                  id="currentPassword"
-                  type="password"
-                  value={profile.currentPassword}
-                  onChange={(e) => setProfile({ ...profile, currentPassword: e.target.value })}
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="newPassword">Mật khẩu mới</Label>
-                <Input 
-                  id="newPassword"
-                  type="password"
-                  value={profile.newPassword}
-                  onChange={(e) => setProfile({ ...profile, newPassword: e.target.value })}
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="confirmPassword">Xác nhận mật khẩu mới</Label>
-                <Input 
-                  id="confirmPassword"
-                  type="password"
-                  value={profile.confirmPassword}
-                  onChange={(e) => setProfile({ ...profile, confirmPassword: e.target.value })}
-                />
-              </div>
-              <Button onClick={handlePasswordChange} disabled={isLoading}>
-                Đổi mật khẩu
-              </Button>
-          </CardContent>
-        </Card>
-      </TabsContent>
-
-      <TabsContent value="notifications" className="space-y-4">
-        <Card>
-          <CardHeader>
-            <CardTitle>Cài đặt thông báo</CardTitle>
-            <CardDescription>
-                Tùy chỉnh cách bạn nhận thông báo
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="space-y-0.5">
-                <Label>Thông báo qua email</Label>
-                <p className="text-sm text-muted-foreground">
-                    Nhận thông báo qua email
-                </p>
-              </div>
-              <Switch
-                  checked={notifications.emailNotifications}
-                  onCheckedChange={(checked) =>
-                    setNotifications({ ...notifications, emailNotifications: checked })
-                  }
-                />
-              </div>
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label>Cập nhật khóa học</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Thông báo khi có cập nhật từ khóa học
-                  </p>
-                </div>
-                <Switch
-                  checked={notifications.courseUpdates}
-                  onCheckedChange={(checked) =>
-                    setNotifications({ ...notifications, courseUpdates: checked })
-                  }
-              />
-            </div>
-            <div className="flex items-center justify-between">
-              <div className="space-y-0.5">
-                  <Label>Nhắc nhở deadline</Label>
-                <p className="text-sm text-muted-foreground">
-                    Thông báo khi gần đến hạn nộp bài
-                </p>
-              </div>
-              <Switch
-                  checked={notifications.deadlineReminders}
-                  onCheckedChange={(checked) =>
-                    setNotifications({ ...notifications, deadlineReminders: checked })
-                  }
-                />
-              </div>
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label>Kết quả đánh giá</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Thông báo khi có kết quả đánh giá mới
-                  </p>
-                </div>
-                <Switch
-                  checked={notifications.evaluationResults}
-                  onCheckedChange={(checked) =>
-                    setNotifications({ ...notifications, evaluationResults: checked })
-                  }
-              />
-            </div>
-          </CardContent>
-        </Card>
-      </TabsContent>
-    </Tabs>
+      </Tabs>
     </div>
   );
-} 
+}
+

@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -32,9 +33,9 @@ const toastVariants = cva(
         default: "border bg-background",
         destructive:
           "destructive group border-destructive bg-destructive text-destructive-foreground",
-        success:
+        success: // Thêm biến thể thành công
           "bg-green-500 text-white border-none",
-        warning:
+        warning: // Thêm biến thể cảnh báo
           "border-orange-500 bg-orange-500 text-white",
       },
     },
@@ -131,3 +132,4 @@ export {
   ToastClose,
   ToastAction,
 }
+

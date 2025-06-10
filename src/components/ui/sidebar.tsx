@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -23,15 +24,15 @@ import {
 } from "@/components/ui/tooltip"
 import { ScrollArea } from '@/components/ui/scroll-area';
 
-const SIDEBAR_COOKIE_NAME = "sidebar_state"
-const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7
-const SIDEBAR_WIDTH = "16rem"
-const SIDEBAR_WIDTH_MOBILE = "18rem"
-const SIDEBAR_WIDTH_ICON = "3rem"
-const SIDEBAR_KEYBOARD_SHORTCUT = "b"
+const SIDEBAR_COOKIE_NAME = "sidebar_state" // Tên cookie cho trạng thái sidebar
+const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7 // Thời gian sống của cookie (7 ngày)
+const SIDEBAR_WIDTH = "16rem" // Chiều rộng sidebar
+const SIDEBAR_WIDTH_MOBILE = "18rem" // Chiều rộng sidebar trên mobile
+const SIDEBAR_WIDTH_ICON = "3rem" // Chiều rộng sidebar khi thu gọn thành icon
+const SIDEBAR_KEYBOARD_SHORTCUT = "b" // Phím tắt để bật/tắt sidebar
 
 type SidebarContext = {
-  state: "expanded" | "collapsed"
+  state: "expanded" | "collapsed" // Trạng thái: mở rộng hoặc thu gọn
   open: boolean
   setOpen: (open: boolean) => void
   openMobile: boolean
@@ -54,9 +55,9 @@ function useSidebar() {
 const SidebarProvider = React.forwardRef<
   HTMLDivElement,
   React.ComponentProps<"div"> & {
-    defaultOpen?: boolean
-    open?: boolean
-    onOpenChange?: (open: boolean) => void
+    defaultOpen?: boolean // Trạng thái mở mặc định
+    open?: boolean // Trạng thái mở (được kiểm soát từ bên ngoài)
+    onOpenChange?: (open: boolean) => void // Callback khi trạng thái mở thay đổi
   }
 >(
   (
@@ -74,8 +75,8 @@ const SidebarProvider = React.forwardRef<
     const isMobile = useIsMobile()
     const [openMobile, setOpenMobile] = React.useState(false)
 
-    // This is the internal state of the sidebar.
-    // We use openProp and setOpenProp for control from outside the component.
+    // Đây là trạng thái nội bộ của sidebar.
+    // Chúng ta sử dụng openProp và setOpenProp để điều khiển từ bên ngoài component.
     const [_open, _setOpen] = React.useState(defaultOpen)
     const open = openProp ?? _open
     const setOpen = React.useCallback(
@@ -87,20 +88,20 @@ const SidebarProvider = React.forwardRef<
           _setOpen(openState)
         }
 
-        // This sets the cookie to keep the sidebar state.
+        // Điều này đặt cookie để giữ trạng thái sidebar.
         document.cookie = `${SIDEBAR_COOKIE_NAME}=${openState}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}`
       },
       [setOpenProp, open]
     )
 
-    // Helper to toggle the sidebar.
+    // Hàm trợ giúp để bật/tắt sidebar.
     const toggleSidebar = React.useCallback(() => {
       return isMobile
         ? setOpenMobile((open) => !open)
         : setOpen((open) => !open)
     }, [isMobile, setOpen, setOpenMobile])
 
-    // Adds a keyboard shortcut to toggle the sidebar.
+    // Thêm phím tắt để bật/tắt sidebar.
     React.useEffect(() => {
       const handleKeyDown = (event: KeyboardEvent) => {
         if (
@@ -116,8 +117,8 @@ const SidebarProvider = React.forwardRef<
       return () => window.removeEventListener("keydown", handleKeyDown)
     }, [toggleSidebar])
 
-    // We add a state so that we can do data-state="expanded" or "collapsed".
-    // This makes it easier to style the sidebar with Tailwind classes.
+    // Chúng ta thêm một state để có thể sử dụng data-state="expanded" hoặc "collapsed".
+    // Điều này giúp dễ dàng tạo kiểu cho sidebar bằng các class Tailwind.
     const state = open ? "expanded" : "collapsed"
 
     const contextValue = React.useMemo<SidebarContext>(
@@ -163,9 +164,9 @@ SidebarProvider.displayName = "SidebarProvider"
 const Sidebar = React.forwardRef<
   HTMLDivElement,
   React.ComponentProps<"div"> & {
-    side?: "left" | "right"
-    variant?: "sidebar" | "floating" | "inset"
-    collapsible?: "offcanvas" | "icon" | "none"
+    side?: "left" | "right" // Vị trí của sidebar (trái hoặc phải)
+    variant?: "sidebar" | "floating" | "inset" // Kiểu hiển thị của sidebar
+    collapsible?: "offcanvas" | "icon" | "none" // Cách thu gọn sidebar
   }
 >(
   (
@@ -225,7 +226,7 @@ const Sidebar = React.forwardRef<
         data-variant={variant}
         data-side={side}
       >
-        {/* This is what handles the sidebar gap on desktop */}
+        {/* Đây là phần xử lý khoảng trống của sidebar trên desktop */}
         <div
           className={cn(
             "duration-200 relative h-svh w-[--sidebar-width] bg-transparent transition-[width] ease-linear",
@@ -242,7 +243,7 @@ const Sidebar = React.forwardRef<
             side === "left"
               ? "left-0 group-data-[collapsible=offcanvas]:left-[calc(var(--sidebar-width)*-1)]"
               : "right-0 group-data-[collapsible=offcanvas]:right-[calc(var(--sidebar-width)*-1)]",
-            // Adjust the padding for floating and inset variants.
+            // Điều chỉnh padding cho các biến thể floating và inset.
             variant === "floating" || variant === "inset"
               ? "p-2 group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)_+_theme(spacing.4)_+2px)]"
               : "group-data-[collapsible=icon]:w-[--sidebar-width-icon] group-data-[side=left]:border-r group-data-[side=right]:border-l",
@@ -465,7 +466,7 @@ const SidebarGroupAction = React.forwardRef<
       data-sidebar="group-action"
       className={cn(
         "absolute right-3 top-3.5 flex aspect-square w-5 items-center justify-center rounded-md p-0 text-sidebar-foreground outline-none ring-sidebar-ring transition-transform hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 [&>svg]:size-4 [&>svg]:shrink-0",
-        // Increases the hit area of the button on mobile.
+        // Tăng vùng chạm của nút trên thiết bị di động.
         "after:absolute after:-inset-2 after:md:hidden",
         "group-data-[collapsible=icon]:hidden",
         className
@@ -540,9 +541,9 @@ const sidebarMenuButtonVariants = cva(
 const SidebarMenuButton = React.forwardRef<
   HTMLButtonElement,
   React.ComponentProps<"button"> & {
-    asChild?: boolean
-    isActive?: boolean
-    tooltip?: string | React.ComponentProps<typeof TooltipContent>
+    asChild?: boolean // Cho phép sử dụng Slot component
+    isActive?: boolean // Trạng thái active của nút menu
+    tooltip?: string | React.ComponentProps<typeof TooltipContent> // Nội dung tooltip
   } & VariantProps<typeof sidebarMenuButtonVariants>
 >(
   (
@@ -600,7 +601,7 @@ const SidebarMenuAction = React.forwardRef<
   HTMLButtonElement,
   React.ComponentProps<"button"> & {
     asChild?: boolean
-    showOnHover?: boolean
+    showOnHover?: boolean // Hiển thị khi hover
   }
 >(({ className, asChild = false, showOnHover = false, ...props }, ref) => {
   const Comp = asChild ? Slot : "button"
@@ -611,7 +612,7 @@ const SidebarMenuAction = React.forwardRef<
       data-sidebar="menu-action"
       className={cn(
         "absolute right-1 top-1.5 flex aspect-square w-5 items-center justify-center rounded-md p-0 text-sidebar-foreground outline-none ring-sidebar-ring transition-transform hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 peer-hover/menu-button:text-sidebar-accent-foreground [&>svg]:size-4 [&>svg]:shrink-0",
-        // Increases the hit area of the button on mobile.
+        // Tăng vùng chạm của nút trên thiết bị di động.
         "after:absolute after:-inset-2 after:md:hidden",
         "peer-data-[size=sm]/menu-button:top-1",
         "peer-data-[size=default]/menu-button:top-1.5",
@@ -651,10 +652,10 @@ SidebarMenuBadge.displayName = "SidebarMenuBadge"
 const SidebarMenuSkeleton = React.forwardRef<
   HTMLDivElement,
   React.ComponentProps<"div"> & {
-    showIcon?: boolean
+    showIcon?: boolean // Hiển thị icon skeleton
   }
 >(({ className, showIcon = false, ...props }, ref) => {
-  // Random width between 50 to 90%.
+  // Chiều rộng ngẫu nhiên từ 50 đến 90%.
   const width = React.useMemo(() => {
     return `${Math.floor(Math.random() * 40) + 50}%`
   }, [])
@@ -765,3 +766,4 @@ export {
   SidebarTrigger,
   useSidebar,
 }
+

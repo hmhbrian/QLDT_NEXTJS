@@ -20,7 +20,7 @@ import { useAuth } from '@/hooks/useAuth';
 
 const formSchema = z.object({
   email: z.string().email('Email không hợp lệ'),
-  password: z.string().min(8, 'Mật khẩu phải có ít nhất 8 ký tự'),
+  password: z.string().min(6, 'Mật khẩu phải có ít nhất 6 ký tự'),
 });
 
 export function LoginForm() {
