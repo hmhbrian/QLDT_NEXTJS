@@ -4,18 +4,18 @@ const path = require('path');
 
 async function generateFavicon() {
   try {
-    // Convert SVG to PNG first
+    // Chuyển đổi SVG sang PNG trước
     await sharp('public/favicon.svg')
       .resize(32, 32)
       .toFile('public/favicon.png');
 
-    // Convert PNG to ICO format
+    // Chuyển đổi PNG sang định dạng ICO
     const pngBuffer = fs.readFileSync('public/favicon.png');
     await sharp(pngBuffer)
       .toFormat('ico')
       .toFile('public/favicon.ico');
 
-    // Clean up temporary PNG file
+    // Dọn dẹp file PNG tạm thời
     fs.unlinkSync('public/favicon.png');
 
     console.log('Favicon generated successfully!');
@@ -24,4 +24,4 @@ async function generateFavicon() {
   }
 }
 
-generateFavicon(); 
+generateFavicon();
