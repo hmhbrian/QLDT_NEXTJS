@@ -71,7 +71,7 @@ export const ERROR_MESSAGES: Record<string, ErrorMessage> = {
         type: 'warning',
         code: 'PASSWORD001',
         message: 'Mật khẩu quá ngắn',
-        details: 'Mật khẩu phải có ít nhất 8 ký tự'
+        details: 'Mật khẩu phải có ít nhất 6 ký tự'
     },
     'PASSWORD002': {
         type: 'warning',
@@ -109,7 +109,7 @@ export const ERROR_MESSAGES: Record<string, ErrorMessage> = {
         type: 'warning',
         code: 'FORM003',
         message: 'Mật khẩu không đủ mạnh',
-        details: 'Mật khẩu phải có ít nhất 8 ký tự, bao gồm chữ hoa, chữ thường và số'
+        details: 'Mật khẩu phải có ít nhất 6 ký tự, bao gồm chữ hoa, chữ thường và số'
     },
 
     // Lỗi hệ thống
@@ -144,20 +144,38 @@ export const ERROR_MESSAGES: Record<string, ErrorMessage> = {
     'SUCCESS001': {
         type: 'info',
         code: 'SUCCESS001',
-        message: 'Thao tác thành công',
-        details: 'Yêu cầu của bạn đã được xử lý thành công'
+        message: 'Thêm người dùng thành công',
+        details: 'Người dùng mới đã được thêm vào hệ thống'
     },
     'SUCCESS002': {
         type: 'info',
         code: 'SUCCESS002',
-        message: 'Đổi mật khẩu thành công',
-        details: 'Mật khẩu của bạn đã được cập nhật'
+        message: 'Cập nhật thông tin thành công',
+        details: 'Thông tin người dùng đã được cập nhật'
     },
     'SUCCESS003': {
         type: 'info',
         code: 'SUCCESS003',
+        message: 'Xóa người dùng thành công',
+        details: 'Người dùng đã được xóa khỏi hệ thống'
+    },
+    'SUCCESS004': {
+        type: 'info',
+        code: 'SUCCESS004',
+        message: 'Đổi mật khẩu thành công',
+        details: 'Mật khẩu của bạn đã được cập nhật'
+    },
+    'SUCCESS005': {
+        type: 'info',
+        code: 'SUCCESS005',
         message: 'Đăng nhập thành công',
         details: 'Chào mừng bạn quay trở lại'
+    },
+    'SUCCESS006': {
+        type: 'info',
+        code: 'SUCCESS006',
+        message: 'Thao tác khóa học thành công',
+        details: 'Khóa học đã được cập nhật trong hệ thống'
     },
 
     // Lỗi người dùng
@@ -197,7 +215,6 @@ export function useError() {
                 title: errorMessage.message,
                 description: errorMessage.details,
                 duration: 1500,
-                className: errorCode.startsWith('SUCCESS') ? 'bg-green-500 text-white border-none' : undefined,
             });
             setToastInstance(instance);
         }
@@ -213,4 +230,4 @@ export function useError() {
         showError,
         clearError,
     };
-} 
+}

@@ -3,13 +3,15 @@ import {
   LayoutDashboard,
   BookOpen,
   Users,
-  Settings,
   ClipboardList,
   UserCheck,
   GraduationCap,
-  CalendarDays,
+  MessageCircle,
   LineChart,
   Building2,
+  UserCircle,
+  AreaChart,
+  // ClipboardCheck, // Removed as it's merged
 } from 'lucide-react';
 
 export const navigationItems: NavItem[] = [
@@ -20,29 +22,35 @@ export const navigationItems: NavItem[] = [
     roles: ['Admin', 'HR', 'Trainee'],
   },
   {
-    label: 'Khóa học',
+    label: 'Khóa học công khai',
     href: '/courses',
     icon: BookOpen,
-    roles: ['HR', 'Trainee'],
+    roles: ['Admin', 'HR', 'Trainee'],
   },
   {
     label: 'Quản lý khóa học',
     href: '/admin/courses',
-    icon: BookOpen,
-    roles: ['Admin'],
+    icon: GraduationCap,
+    roles: ['Admin', 'HR'],
   },
   {
     label: 'Khóa học của tôi',
     href: '/trainee/my-courses',
-    icon: GraduationCap,
+    icon: BookOpen,
     roles: ['Trainee'],
   },
   {
-    label: 'Lập lịch học',
-    href: '/classes',
-    icon: CalendarDays,
-    roles: ['Admin', 'HR'],
+    label: 'Báo cáo Tổng quan',
+    href: '/admin/reports/overview', // This now includes evaluation details
+    icon: AreaChart,
+    roles: ['Admin'],
   },
+  // { // Removed this entry as it's merged into Overview Report
+  //   label: 'Báo cáo Đánh giá',
+  //   href: '/admin/reports/evaluations',
+  //   icon: ClipboardCheck,
+  //   roles: ['Admin'], 
+  // },
   {
     label: 'Quản lý Người dùng',
     href: '/admin/users',
@@ -72,13 +80,6 @@ export const navigationItems: NavItem[] = [
     href: '/training-plans',
     icon: ClipboardList,
     roles: ['Admin', 'HR'],
-    disabled: true,
-  },
-  {
-    label: 'Cài đặt Hệ thống',
-    href: '/admin/settings',
-    icon: Settings,
-    roles: ['Admin'],
     disabled: true,
   },
 ];
