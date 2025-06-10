@@ -1,4 +1,24 @@
-import type { Course } from '../types';
+
+import type { Course, CourseMaterial, Lesson, Test, Question } from '../types';
+import { categoryOptions } from '../constants';
+
+// --- Sample Lessons and Tests Data ---
+const sampleLessons: Lesson[] = [
+  { id: 'l1', title: 'Bài 1: Giới thiệu về JavaScript', contentType: 'video_url', content: 'https://www.youtube.com/watch?v=DHvZL2xTBNs', duration: '45 phút' },
+  { id: 'l2', title: 'Bài 2: Biến và Kiểu dữ liệu', contentType: 'pdf_url', content: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf', duration: '60 phút' },
+  { id: 'l3', title: 'Bài 3: Hàm và Phạm vi', contentType: 'text', content: '### Hàm trong JavaScript\nMột hàm là một khối mã được thiết kế để thực hiện một tác vụ cụ thể...', duration: '75 phút' },
+];
+
+const sampleQuestions: Question[] = [
+  { id: 'q1', text: 'JavaScript là ngôn ngữ gì?', options: ['Biên dịch', 'Thông dịch', 'Cả hai', 'Không phải cả hai'], correctAnswerIndex: 1 },
+  { id: 'q2', text: '`let` và `const` được giới thiệu trong phiên bản JavaScript nào?', options: ['ES5', 'ES6 (ES2015)', 'ES7', 'ES2018'], correctAnswerIndex: 1 },
+];
+
+const sampleTests: Test[] = [
+  { id: 't1', title: 'Kiểm tra cuối Chương 1', questions: sampleQuestions, passingScorePercentage: 70 },
+  { id: 't2', title: 'Kiểm tra giữa kỳ', questions: [...sampleQuestions, { id: 'q3', text: '`typeof null` trả về gì?', options: ['object', 'null', 'undefined', 'string'], correctAnswerIndex: 0 }], passingScorePercentage: 70 },
+];
+// --- End Sample Data ---
 
 // Mock Courses List for admin
 export const mockCourses: Course[] = [
@@ -7,7 +27,7 @@ export const mockCourses: Course[] = [
         title: 'JavaScript Nâng cao',
         courseCode: 'JS001',
         description: 'Tìm hiểu sâu về các tính năng JavaScript hiện đại và các phương pháp hay nhất.',
-        objectives: 'Nắm vững ES6+, async/await, và các pattern hiện đại',
+        objectives: 'Nắm vững ES6+, async/await, và các pattern hiện đại. Xây dựng ứng dụng thực tế với kiến thức đã học. Hiểu rõ về tối ưu hóa hiệu suất trong JavaScript.',
         category: 'programming',
         instructor: 'TS. Code',
         duration: {
@@ -15,31 +35,44 @@ export const mockCourses: Course[] = [
             hoursPerSession: 2
         },
         learningType: 'online',
-        image: 'https://placehold.co/600x400',
+        image: 'https://placehold.co/600x400.png',
         status: 'draft',
         department: ['it'],
         level: ['beginner', 'intermediate'],
-        startDate: '2024-03-01',
-        endDate: '2024-04-15',
+        startDate: '2024-08-01',
+        endDate: '2024-09-15',
         location: 'https://meet.google.com/abc-xyz',
         materials: [
             {
+                id: 'mat-js-001',
                 type: 'pdf',
-                title: 'Tài liệu JavaScript',
-                url: 'https://example.com/js.pdf'
+                title: 'Tài liệu JavaScript căn bản',
+                url: 'https://mozilla.github.io/pdf.js/web/compressed.tracemonkey-pldi-09.pdf'
+            },
+            {
+                id: 'mat-js-002',
+                type: 'slide',
+                title: 'Slide bài giảng tuần 1',
+                url: 'https://placehold.co/800x600.png?text=Slide+Tuan+1'
             }
         ],
+        lessons: sampleLessons.slice(0,2),
+        tests: [sampleTests[0]],
         createdAt: new Date().toISOString(),
         modifiedAt: new Date().toISOString(),
         createdBy: '1',
-        modifiedBy: '1'
+        modifiedBy: '1',
+        enrollmentType: 'optional',
+        registrationDeadline: '2024-07-25',
+        enrolledTrainees: ['3'],
+        isPublic: true,
     },
     {
         id: '2',
         title: 'Nguyên tắc Quản lý Dự án',
         courseCode: 'PM001',
         description: 'Học các yếu tố cần thiết để quản lý dự án hiệu quả.',
-        objectives: 'Nắm vững các nguyên tắc quản lý dự án và áp dụng vào thực tế',
+        objectives: 'Nắm vững các nguyên tắc quản lý dự án và áp dụng vào thực tế. Lập kế hoạch, theo dõi và báo cáo tiến độ dự án. Quản lý rủi ro và các bên liên quan.',
         category: 'business',
         instructor: 'CN. Planner',
         duration: {
@@ -47,31 +80,42 @@ export const mockCourses: Course[] = [
             hoursPerSession: 2
         },
         learningType: 'online',
-        image: 'https://placehold.co/600x400',
+        image: 'https://placehold.co/600x400.png',
         status: 'published',
         department: ['hr'],
         level: ['intermediate', 'advanced'],
-        startDate: '2024-04-01',
-        endDate: '2024-04-30',
+        startDate: '2024-09-01',
+        endDate: '2024-09-30',
         location: 'https://meet.google.com/def-ghi',
         materials: [
             {
+                id: 'mat-pm-001',
                 type: 'pdf',
-                title: 'Tài liệu quản lý dự án',
-                url: 'https://example.com/pm.pdf'
+                title: 'Sổ tay quản lý dự án',
+                url: 'https://mozilla.github.io/pdf.js/web/compressed.tracemonkey-pldi-09.pdf'
             }
+        ],
+        lessons: [
+            { id: 'lpm1', title: 'Bài 1: Giới thiệu Quản lý dự án', contentType: 'video_url', content: 'https://www.youtube.com/watch?v=some_pm_video', duration: '30 phút'},
+            { id: 'lpm2', title: 'Bài 2: Lập kế hoạch dự án', contentType: 'slide_url', content: 'https://placehold.co/800x600.png?text=Project+Planning+Slides', duration: '90 phút'},
+        ],
+        tests: [
+            { id: 'tpm1', title: 'Kiểm tra kiến thức cơ bản QLDA', questions: [{id: 'qpm1', text: 'PMP là viết tắt của gì?', options: ['Project Management Professional', 'Program Management Professional', 'Product Management Professional'], correctAnswerIndex: 0}], passingScorePercentage: 75}
         ],
         createdAt: new Date().toISOString(),
         modifiedAt: new Date().toISOString(),
         createdBy: '1',
-        modifiedBy: '1'
+        modifiedBy: '1',
+        enrollmentType: 'mandatory',
+        enrolledTrainees: ['3'],
+        isPublic: true,
     },
     {
         id: '3',
         title: 'Nguyên tắc Thiết kế UI/UX',
         courseCode: 'UI001',
         description: 'Nắm vững các nguyên tắc cốt lõi của thiết kế giao diện và trải nghiệm người dùng.',
-        objectives: 'Hiểu và áp dụng các nguyên tắc thiết kế UI/UX vào thực tế',
+        objectives: 'Hiểu và áp dụng các nguyên tắc thiết kế UI/UX vào thực tế. Tạo wireframes, prototypes và user flows. Thực hiện user testing và cải thiện thiết kế.',
         category: 'design',
         instructor: 'KS. Pixel',
         duration: {
@@ -79,31 +123,37 @@ export const mockCourses: Course[] = [
             hoursPerSession: 2
         },
         learningType: 'online',
-        image: 'https://placehold.co/600x400',
+        image: 'https://placehold.co/600x400.png',
         status: 'draft',
         department: ['it'],
         level: ['beginner', 'intermediate'],
-        startDate: '2024-05-01',
-        endDate: '2024-06-30',
+        startDate: '2024-10-01',
+        endDate: '2024-11-30',
         location: 'https://meet.google.com/jkl-mno',
         materials: [
             {
-                type: 'pdf',
-                title: 'Tài liệu thiết kế UI/UX',
-                url: 'https://example.com/uiux.pdf'
+                id: 'mat-ui-001',
+                type: 'slide',
+                title: 'Nguyên tắc vàng trong thiết kế UI',
+                url: 'https://placehold.co/800x600.png?text=UI+Design+Principles'
             }
         ],
+        lessons: [],
+        tests: [],
         createdAt: new Date().toISOString(),
         modifiedAt: new Date().toISOString(),
         createdBy: '1',
-        modifiedBy: '1'
+        modifiedBy: '1',
+        enrollmentType: 'optional',
+        registrationDeadline: '2024-09-20',
+        isPublic: false,
     },
     {
         id: '4',
         title: 'Chiến lược Tiếp thị Kỹ thuật số',
         courseCode: 'MKT001',
         description: 'Phát triển và triển khai các chiến lược tiếp thị kỹ thuật số hiệu quả.',
-        objectives: 'Xây dựng và triển khai chiến lược marketing số hiệu quả',
+        objectives: 'Xây dựng và triển khai chiến lược marketing số hiệu quả. Phân tích đối thủ và thị trường. Đo lường và tối ưu hóa chiến dịch.',
         category: 'marketing',
         instructor: 'CN. Click',
         duration: {
@@ -111,70 +161,188 @@ export const mockCourses: Course[] = [
             hoursPerSession: 2
         },
         learningType: 'online',
-        image: 'https://placehold.co/600x400',
+        image: 'https://placehold.co/600x400.png',
         status: 'archived',
         department: ['marketing'],
         level: ['intermediate', 'advanced'],
-        startDate: '2024-02-01',
-        endDate: '2024-03-10',
+        startDate: '2024-07-01',
+        endDate: '2024-08-10',
         location: 'https://meet.google.com/pqr-stu',
         materials: [
-            {
-                type: 'pdf',
-                title: 'Tài liệu marketing số',
-                url: 'https://example.com/marketing.pdf'
+             {
+                id: 'mat-mkt-001',
+                type: 'link',
+                title: 'Blog về Digital Marketing Trends',
+                url: 'https://blog.hubspot.com/marketing/digital-marketing-trends'
             }
         ],
         createdAt: new Date().toISOString(),
         modifiedAt: new Date().toISOString(),
         createdBy: '1',
-        modifiedBy: '1'
+        modifiedBy: '1',
+        enrollmentType: 'mandatory',
+        enrolledTrainees: [],
+        isPublic: true,
+    },
+    {
+        id: '5',
+        title: 'Python cho Khoa học Dữ liệu',
+        courseCode: 'PYDS001',
+        description: 'Khám phá Python cho phân tích dữ liệu, học máy và trực quan hóa.',
+        objectives: 'Sử dụng Pandas, NumPy, Matplotlib. Xây dựng mô hình học máy cơ bản. Trực quan hóa dữ liệu hiệu quả.',
+        category: 'programming',
+        instructor: 'Dr. Data',
+        duration: { sessions: 15, hoursPerSession: 3 },
+        learningType: 'online',
+        image: 'https://placehold.co/600x400.png',
+        status: 'published',
+        department: ['it', 'operations'],
+        level: ['intermediate', 'advanced'],
+        startDate: '2024-09-05',
+        endDate: '2024-11-20',
+        location: 'https://zoom.us/j/python-ds',
+        materials: [{ id: 'mat-pyds-001', type: 'link', title: 'Tài liệu Pandas chính thức', url: 'https://pandas.pydata.org/docs/'}],
+        lessons: sampleLessons, // Using all sample lessons
+        tests: sampleTests, // Using all sample tests
+        createdAt: new Date().toISOString(),
+        modifiedAt: new Date().toISOString(),
+        createdBy: 'admin',
+        modifiedBy: 'admin',
+        enrollmentType: 'optional',
+        registrationDeadline: '2024-08-30',
+        isPublic: true,
+        enrolledTrainees: ['3']
+    },
+    {
+        id: '6',
+        title: 'Kỹ năng Giao tiếp Hiệu quả',
+        courseCode: 'COMMS001',
+        description: 'Nâng cao kỹ năng giao tiếp trong công việc và cuộc sống.',
+        objectives: 'Lắng nghe chủ động. Trình bày ý tưởng rõ ràng. Giải quyết xung đột hiệu quả.',
+        category: 'soft_skills',
+        instructor: 'Chuyên gia Tâm lý',
+        duration: { sessions: 6, hoursPerSession: 1.5 },
+        learningType: 'online',
+        image: 'https://placehold.co/600x400.png',
+        status: 'published',
+        department: ['hr', 'sales', 'marketing'],
+        level: ['beginner', 'intermediate', 'advanced', 'expert'], // All levels
+        startDate: '2024-08-15',
+        endDate: '2024-09-20',
+        location: 'https://teams.microsoft.com/comms-skills',
+        materials: [{ id: 'mat-comms-001', type: 'pdf', title: 'Sách: Giao tiếp không bạo lực', url: 'https://example.com/nvc.pdf'}],
+        createdAt: new Date().toISOString(),
+        modifiedAt: new Date().toISOString(),
+        createdBy: 'hr_user',
+        modifiedBy: 'hr_user',
+        enrollmentType: 'mandatory',
+        isPublic: false, // Internal mandatory course
     }
 ];
 
 // Mock Course Detail
-export const mockCourseDetail = {
-    id: '1',
-    title: 'JavaScript Nâng cao',
-    description: 'Tìm hiểu sâu về các tính năng JavaScript hiện đại và các phương pháp hay nhất.',
+export const mockCourseDetail: Course = {
+    id: '1', // Matches one of the mockCourses for consistency
+    title: 'JavaScript Nâng cao: Từ Cơ Bản Đến Chuyên Sâu',
+    courseCode: 'JSADV001',
+    description: 'Khóa học này cung cấp kiến thức toàn diện về JavaScript, từ các khái niệm cốt lõi đến các kỹ thuật nâng cao và các pattern thiết kế hiện đại. Bạn sẽ học cách viết code sạch, hiệu quả và dễ bảo trì.',
+    objectives: `Sau khóa học, bạn sẽ có thể:
+- Nắm vững các tính năng mới nhất của ES6+ (bao gồm let/const, arrow functions, classes, modules, destructuring, spread/rest operators).
+- Hiểu sâu về cơ chế bất đồng bộ trong JavaScript: Promises, async/await.
+- Áp dụng các design patterns phổ biến trong JavaScript.
+- Kỹ thuật tối ưu hóa hiệu năng và gỡ lỗi (debugging) hiệu quả.
+- Xây dựng một dự án nhỏ hoàn chỉnh để áp dụng kiến thức đã học.
+- Tự tin làm việc với các framework JavaScript hiện đại như React, Angular, hoặc Vue.js.`,
     category: 'programming',
-    instructor: 'TS. Code',
-    duration: '6 Tuần',
-    image: 'https://placehold.co/600x400',
-    status: 'active',
-    startDate: '2024-03-01',
-    endDate: '2024-04-15',
+    instructor: 'TS. Code Master',
+    duration: { sessions: 20, hoursPerSession: 2.5 },
+    learningType: 'online',
+    image: 'https://placehold.co/1200x400.png?text=JavaScript+Advanced+Banner',
+    status: 'published',
+    department: ['it', 'operations'],
+    level: ['intermediate', 'advanced'],
+    startDate: '2024-08-01',
+    endDate: '2024-10-15',
+    location: 'https://meet.google.com/js-advanced-class',
+    materials: [
+        {
+            id: 'mat-jsadv-001',
+            type: 'pdf',
+            title: 'Giáo trình JavaScript Nâng cao (PDF)',
+            url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
+        },
+        {
+            id: 'mat-jsadv-002',
+            type: 'slide',
+            title: 'Slide Bài 1: Tổng quan ES6+',
+            url: 'https://placehold.co/800x600.png?text=ES6+Overview+Slides',
+        },
+        {
+            id: 'mat-jsadv-003',
+            type: 'video',
+            title: 'Video: Xử lý bất đồng bộ với Promises',
+            url: 'https://www.youtube.com/watch?v=DHvZL2xTBNs',
+        },
+        {
+            id: 'mat-jsadv-004',
+            type: 'link',
+            title: 'Tài liệu tham khảo: MDN Web Docs - JavaScript',
+            url: 'https://developer.mozilla.org/en-US/docs/Web/JavaScript',
+        },
+         {
+            id: 'mat-jsadv-005',
+            type: 'pdf',
+            title: 'Bài tập thực hành Chương 1',
+            url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
+        },
+    ],
+    lessons: sampleLessons,
+    tests: sampleTests,
     maxParticipants: 30,
     prerequisites: [
-        'Kiến thức cơ bản về JavaScript',
-        'Hiểu biết về HTML và CSS',
-        'Có kinh nghiệm lập trình web'
+        'Kiến thức cơ bản về JavaScript (biến, hàm, vòng lặp, điều kiện).',
+        'Hiểu biết về HTML và CSS.',
+        'Có kinh nghiệm làm việc với Git và các công cụ dòng lệnh là một lợi thế.'
     ],
     syllabus: [
         {
-            title: 'Tuần 1: Giới thiệu',
-            content: 'Tổng quan về khóa học và các công nghệ sẽ sử dụng',
-            duration: '1 tuần'
+            title: 'Tuần 1-2: Ôn tập JavaScript Cơ bản & Giới thiệu ES6+',
+            content: 'Tổng quan về khóa học. Cài đặt môi trường. Các khái niệm cơ bản của JS. Giới thiệu về let, const, arrow functions, template literals, default parameters, rest/spread operators.',
+            duration: '2 tuần'
         },
         {
-            title: 'Tuần 2: ES6+ Features',
-            content: 'Các tính năng mới trong ES6 và các phiên bản sau',
-            duration: '1 tuần'
+            title: 'Tuần 3-4: Lập trình Hướng đối tượng (OOP) với Classes & Modules',
+            content: 'Classes, constructors, inheritance, static methods, getters/setters. JavaScript Modules: import/export.',
+            duration: '2 tuần'
+        },
+        {
+            title: 'Tuần 5-6: Xử lý Bất đồng bộ',
+            content: 'Callbacks, Promises (then, catch, finally, Promise.all, Promise.race), Async/Await.',
+            duration: '2 tuần'
         }
     ],
     slides: [
         {
-            title: 'Giới thiệu khóa học',
-            url: '/slides/introduction.pdf',
-            type: 'pdf'
+            title: 'Bài giảng 1: ES6+ Overview',
+            url: 'https://placehold.co/800x600.png?text=ES6+Slide+1',
+            type: 'image' as 'pdf' | 'image',
         },
         {
-            title: 'ES6 Features',
-            url: '/slides/es6-features.pdf',
-            type: 'pdf'
+            title: 'Bài giảng 2: Promises Deep Dive (PDF)',
+            url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
+            type: 'pdf' as 'pdf' | 'image',
         }
-    ]
+    ],
+    createdAt: new Date().toISOString(),
+    modifiedAt: new Date().toISOString(),
+    createdBy: '1',
+    modifiedBy: '1',
+    enrollmentType: 'optional',
+    registrationDeadline: '2024-07-25',
+    enrolledTrainees: ['3'],
+    isPublic: true,
 };
+
 
 // Mock My Courses for trainees
 export const mockMyCourses = [
@@ -217,87 +385,23 @@ export interface PublicCourse {
     duration: string;
     image: string;
     dataAiHint?: string;
+    enrollmentType?: 'optional' | 'mandatory';
+    registrationDeadline?: string | null;
+    isPublic?: boolean; // Added to align with Course type
 }
 
-export const mockPublicCourses: PublicCourse[] = [
-    {
-        id: '1',
-        title: 'JavaScript Nâng cao',
-        description: 'Tìm hiểu sâu về các tính năng JavaScript hiện đại và các phương pháp hay nhất.',
-        category: 'Lập trình',
-        instructor: 'TS. Code',
-        duration: '6 Tuần',
-        image: 'https://placehold.co/600x400.png',
-        dataAiHint: 'technology code'
-    },
-    {
-        id: '2',
-        title: 'Nguyên tắc Quản lý Dự án',
-        description: 'Học các yếu tố cần thiết để quản lý dự án hiệu quả.',
-        category: 'Kinh doanh',
-        instructor: 'CN. Planner',
-        duration: '4 Tuần',
-        image: 'https://placehold.co/600x400.png',
-        dataAiHint: 'office meeting'
-    },
-    {
-        id: '3',
-        title: 'Nguyên tắc Thiết kế UI/UX',
-        description: 'Nắm vững các nguyên tắc cốt lõi của thiết kế giao diện và trải nghiệm người dùng.',
-        category: 'Thiết kế',
-        instructor: 'KS. Pixel',
-        duration: '8 Tuần',
-        image: 'https://placehold.co/600x400.png',
-        dataAiHint: 'design art'
-    },
-    {
-        id: '4',
-        title: 'Chiến lược Tiếp thị Kỹ thuật số',
-        description: 'Phát triển và triển khai các chiến lược tiếp thị kỹ thuật số hiệu quả.',
-        category: 'Tiếp thị',
-        instructor: 'CN. Click',
-        duration: '5 Tuần',
-        image: 'https://placehold.co/600x400.png',
-        dataAiHint: 'marketing social media'
-    },
-    {
-        id: '5',
-        title: 'Machine Learning Cơ bản',
-        description: 'Khám phá các khái niệm cơ bản về học máy và ứng dụng thực tế.',
-        category: 'Lập trình',
-        instructor: 'TS. AI',
-        duration: '10 Tuần',
-        image: 'https://placehold.co/600x400.png',
-        dataAiHint: 'artificial intelligence'
-    },
-    {
-        id: '6',
-        title: 'Kỹ năng Thuyết trình',
-        description: 'Phát triển kỹ năng thuyết trình chuyên nghiệp và tự tin trước đám đông.',
-        category: 'Kỹ năng mềm',
-        instructor: 'ThS. Speaker',
-        duration: '3 Tuần',
-        image: 'https://placehold.co/600x400.png',
-        dataAiHint: 'presentation skills'
-    },
-    {
-        id: '7',
-        title: 'Phân tích Dữ liệu với Python',
-        description: 'Học cách xử lý và phân tích dữ liệu sử dụng Python và các thư viện phổ biến.',
-        category: 'Lập trình',
-        instructor: 'TS. Data',
-        duration: '8 Tuần',
-        image: 'https://placehold.co/600x400.png',
-        dataAiHint: 'data analysis python'
-    },
-    {
-        id: '8',
-        title: 'Quản lý Thời gian Hiệu quả',
-        description: 'Các phương pháp và công cụ để quản lý thời gian và tăng năng suất làm việc.',
-        category: 'Kỹ năng mềm',
-        instructor: 'ThS. Time',
-        duration: '4 Tuần',
-        image: 'https://placehold.co/600x400.png',
-        dataAiHint: 'time management'
-    }
-]; 
+export const mockPublicCourses: PublicCourse[] = mockCourses
+  .filter(course => course.isPublic) // Filter for public courses
+  .map(course => ({
+    id: course.id,
+    title: course.title,
+    description: course.description,
+    category: categoryOptions.find(c => c.value === course.category)?.label as PublicCourse['category'] || 'Lập trình',
+    instructor: course.instructor,
+    duration: `${course.duration.sessions} buổi (${course.duration.hoursPerSession}h/buổi)`,
+    image: course.image,
+    dataAiHint: course.category,
+    enrollmentType: course.enrollmentType,
+    registrationDeadline: course.registrationDeadline,
+    isPublic: course.isPublic,
+}));

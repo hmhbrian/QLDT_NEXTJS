@@ -1,7 +1,9 @@
 import type { LucideIcon } from 'lucide-react';
 
+// Vai trò người dùng
 export type Role = 'Admin' | 'HR' | 'Trainee';
 
+// Trạng thái làm việc
 export type WorkStatus =
   | 'working'           // Đang làm việc
   | 'resigned'          // Đã nghỉ việc
@@ -11,124 +13,158 @@ export type WorkStatus =
   | 'sabbatical'        // Nghỉ phép dài hạn
   | 'terminated';       // Đã sa thải
 
-export type TraineeLevel = 'beginner' | 'intermediate' | 'advanced' | 'expert';
+// Trình độ học viên
+export type TraineeLevel = 'intern' | 'probation' | 'employee' | 'middle_manager' | 'senior_manager';
 
-export type MaterialType = 'pdf' | 'video' | 'image' | 'other';
+// Loại tài liệu
+export type MaterialType = 'pdf' | 'video' | 'image' | 'other'; // Dùng cho tài liệu khóa học chung
 
+// Danh mục khóa học
 export type CourseCategory = 'programming' | 'business' | 'design' | 'marketing' | 'soft_skills';
 
+// Trạng thái khóa học
 export type CourseStatus = 'draft' | 'published' | 'archived';
 
+// Loại phòng ban - cần đồng bộ với code của DepartmentInfo
+// Để đơn giản, giữ nguyên các literal string cụ thể.
 export type Department = 'it' | 'hr' | 'marketing' | 'sales' | 'finance' | 'operations';
+
+// Loại ghi danh
+export type EnrollmentType = 'optional' | 'mandatory';
+
+// --- Cấu trúc mới cho Bài học và Bài kiểm tra ---
+export interface Question {
+  id: string;
+  questionCode?: string; // Mã câu hỏi
+  text: string;
+  options: string[];
+  correctAnswerIndex: number; // Vị trí đáp án đúng trong mảng options
+  explanation?: string; // Lời giải
+}
+
+export interface Test {
+  id: string;
+  title: string;
+  questions: Question[];
+  passingScorePercentage: number; // Ví dụ: 70 cho 70%
+}
+
+export type LessonContentType = 'text' | 'video_url' | 'pdf_url' | 'slide_url' | 'external_link';
+
+export interface Lesson {
+  id: string;
+  title: string;
+  contentType: LessonContentType;
+  content: string; // Có thể là markdown hoặc URL
+  duration?: string; // Ví dụ: "30 phút", "1 giờ"
+}
+// --- Kết thúc cấu trúc mới ---
 
 // Thông tin khóa học đã hoàn thành
 export interface CompletedCourse {
   courseId: string;
   courseName: string;
   completionDate: string;
-  grade: number;          // Điểm số
-  feedback?: string;      // Phản hồi
-  instructor?: string;    // Người hướng dẫn
-  duration?: string;      // Thời lượng khóa học
+  grade: number;
+  feedback?: string;
+  instructor?: string;
+  duration?: string;
 }
 
 // Thông tin chứng chỉ
 export interface Certificate {
   id: string;
   name: string;
-  issuingOrganization: string;  // Tổ chức cấp
-  issueDate: string;            // Ngày cấp
-  expiryDate?: string;         // Ngày hết hạn (nếu có)
-  credentialId?: string;       // Mã chứng chỉ
-  description?: string;        // Mô tả
+  issuingOrganization: string;
+  issueDate: string;
+  expiryDate?: string;
+  credentialId?: string;
+  description?: string;
 }
 
-// Đánh giá học viên
+// Đánh giá học viên (định kỳ)
 export interface Evaluation {
   id: string;
-  evaluator: string;           // Người đánh giá
-  evaluationDate: string;      // Ngày đánh giá
-  type: 'monthly' | 'quarterly' | 'yearly';  // Loại đánh giá
-  criteria: {                  // Tiêu chí đánh giá
+  evaluator: string;
+  evaluationDate: string;
+  type: 'monthly' | 'quarterly' | 'yearly';
+  criteria: {
     name: string;
     score: number;
     maxScore: number;
     comment?: string;
   }[];
-  overallScore: number;        // Điểm tổng
-  strengths?: string[];        // Điểm mạnh
-  weaknesses?: string[];       // Điểm yếu
-  recommendations?: string[];  // Đề xuất cải thiện
+  overallScore: number;
+  strengths?: string[];
+  weaknesses?: string[];
+  recommendations?: string[];
   status: 'draft' | 'submitted' | 'reviewed' | 'approved';
 }
 
-// Cấu trúc phòng ban
+// Cấu trúc phòng ban - dùng cho quản lý phòng ban chi tiết
 export interface DepartmentInfo {
   id: string;
-  name: string;               // Tên phòng ban
-  code: string;               // Mã phòng ban
-  description?: string;       // Mô tả
-  parentId?: string;          // ID phòng ban cha
-  managerId?: string;         // ID người quản lý
-  managerName?: string;       // Tên người quản lý
-  level: number;              // Cấp bậc trong cơ cấu
-  path: string[];             // Đường dẫn từ root (để biết vị trí trong cây)
+  name: string;
+  code: string; // Trùng với kiểu 'Department' để đơn giản nếu dùng làm khóa ngoại
+  description?: string;
+  parentId?: string;
+  managerId?: string; // ID của trưởng phòng (User ID)
+  managerName?: string; // Tên trưởng phòng (hiển thị)
+  level: number; // Cấp bậc trong hệ thống
+  path: string[]; // Đường dẫn từ gốc, vd: ['Phòng cha', 'Phòng con']
   status: 'active' | 'inactive';
-  createdAt: string;
-  updatedAt: string;
+  createdAt: string; // Chuỗi ngày ISO
+  updatedAt: string; // Chuỗi ngày ISO
 }
 
 // Thông tin học viên đầy đủ
 export interface Trainee {
-  // Thông tin cơ bản
   id: string;
-  fullName: string;           // Họ và tên
-  employeeId: string;         // Mã nhân viên
-  email: string;              // Email công ty
-  phoneNumber: string;        // Số điện thoại
-  urlAvatar?: string;         // Ảnh đại diện
-
-  // Thông tin công việc
-  department: Department;     // Phòng ban
-  position: string;          // Chức vụ
-  level: TraineeLevel;       // Cấp bậc
-  workStatus: WorkStatus;    // Trạng thái làm việc
-
-  // Thông tin quản lý
-  managerId: string;         // ID quản lý trực tiếp
-  managerName: string;       // Tên quản lý trực tiếp
-
-  // Thông tin thời gian
-  joinDate: string;          // Ngày vào công ty
-  startWork?: Date;          // Ngày bắt đầu làm việc
-  endWork?: Date;            // Ngày kết thúc (nếu đã nghỉ)
+  fullName: string;
+  employeeId: string;
+  email: string;
+  phoneNumber: string;
+  urlAvatar?: string;
+  department: Department; // Nên đồng bộ với DepartmentInfo.code
+  position: string;
+  level: TraineeLevel;
+  workStatus: WorkStatus;
+  managerId: string;
+  managerName: string;
+  joinDate: string;
+  startWork?: Date;
+  endWork?: Date;
   createdAt: Date;
   modifiedAt: Date;
-
-  // Hồ sơ học tập
-  completedCourses: CompletedCourse[];  // Các khóa học đã hoàn thành
-  evaluations: Evaluation[];            // Lịch sử đánh giá
-  certificates: Certificate[];          // Chứng chỉ đạt được
+  completedCourses: CompletedCourse[];
+  evaluations: Evaluation[];
+  certificates: Certificate[];
 }
 
 // Interface cho form đăng ký học viên mới
 export interface RegisterDTO {
-  fullName: string;      // max 50 chars, required
-  idCard: string;        // 10-50 chars, required
-  role: Role;           // required
-  numberPhone: string;   // 10-50 chars, required
-  email: string;        // required, must be @becamex.com or @becamex.com.vn
-  startWork?: Date;     // optional
-  endWork?: Date;       // optional
-  password: string;     // 6-100 chars, required
-  confirmPassword: string; // must match password, required
+  fullName: string;
+  idCard: string;
+  role: Role;
+  numberPhone: string;
+  email: string;
+  startWork?: Date;
+  endWork?: Date;
+  password: string;
+  confirmPassword: string;
+  // Các trường bổ sung cho Trainee
+  department?: string;
+  position?: string;
+  level?: TraineeLevel;
+  status?: WorkStatus;
+  employeeId?: string;
 }
 
 // Interface cho đăng nhập
 export interface LoginDTO {
-  email: string;        // required, must be @becamex.com
-  password: string;     // required, 6-100 chars
-  rememberMe?: boolean; // optional
+  email: string;
+  password: string;
+  rememberMe?: boolean;
 }
 
 // Interface cho navigation
@@ -141,10 +177,11 @@ export interface NavItem {
 }
 
 export interface CourseMaterial {
+  id: string;
+  type: 'pdf' | 'slide' | 'video' | 'link';
   title: string;
-  description: string;
   url: string;
-  type: MaterialType;
+  __file?: File; // Đối tượng file phía client trước khi upload
 }
 
 export interface Course {
@@ -160,25 +197,62 @@ export interface Course {
     hoursPerSession: number;
   };
   learningType: 'online';
-  startDate: string | null;
-  endDate: string | null;
-  location: string; // URL for online course
+  startDate: string | null; // Chuỗi ngày ISO hoặc null
+  endDate: string | null;   // Chuỗi ngày ISO hoặc null
+  location: string;
   image: string;
   status: CourseStatus;
-  department: Department[];
+  department: Department[]; // Mảng mã phòng ban
   level: TraineeLevel[];
-  materials: {
-    type: 'pdf' | 'slide' | 'video' | 'link';
-    title: string;
-    url: string;
-  }[];
-  createdAt: string;
-  modifiedAt: string;
-  createdBy: string;
-  modifiedBy: string;
+  materials: CourseMaterial[];
+  lessons?: Lesson[];
+  tests?: Test[];
+  createdAt: string; // Chuỗi ngày ISO
+  modifiedAt: string; // Chuỗi ngày ISO
+  createdBy: string; // ID hoặc tên người tạo
+  modifiedBy: string; // ID hoặc tên người sửa
+  enrollmentType: EnrollmentType;
+  registrationDeadline?: string | null; // Chuỗi ngày ISO hoặc null
+  enrolledTrainees?: string[]; // Mảng ID học viên đã ghi danh
+  isPublic?: boolean;
+  maxParticipants?: number;
+  prerequisites?: string[];
+  syllabus?: { title: string; content: string; duration: string }[];
+  slides?: { title: string; url: string; type: 'pdf' | 'image' }[];
 }
 
-// Base User interface
+// Kiểu PublicCourse dùng cho trang khóa học công khai, ánh xạ từ Course
+export interface PublicCourse {
+  id: string;
+  title: string;
+  description: string;
+  category: string; // Lấy từ label của categoryOptions
+  instructor: string;
+  duration: string; // Chuỗi đã định dạng
+  image: string;
+  dataAiHint?: string;
+  enrollmentType?: EnrollmentType;
+  registrationDeadline?: string | null;
+  isPublic?: boolean;
+}
+
+// Đánh giá của học viên về khóa học
+export interface StudentCourseEvaluation {
+  id: string;
+  courseId: string;
+  traineeId: string;
+  submissionDate: string;
+  ratings: {
+    contentRelevance: number; // Mức độ phù hợp nội dung
+    clarity: number; // Độ rõ ràng
+    structureLogic: number; // Logic cấu trúc
+    durationAppropriateness: number; // Thời lượng hợp lý
+    materialsEffectiveness: number; // Hiệu quả tài liệu
+  };
+  suggestions?: string; // Góp ý thêm
+}
+
+// Base User interface, bao gồm cả các trường của Trainee
 export interface User {
   id: string;
   fullName: string;
@@ -187,17 +261,22 @@ export interface User {
   email: string;
   phoneNumber: string;
   role: Role;
-  startWork?: Date;
-  endWork?: Date;
-  createdAt?: Date;
-  modifiedAt?: Date;
-  // Optional Trainee fields
+  password?: string; // Mật khẩu người dùng (không băm trong demo)
+  startWork?: Date; // Đối tượng Date
+  endWork?: Date;   // Đối tượng Date
+  createdAt?: Date; // Đối tượng Date
+  modifiedAt?: Date;// Đối tượng Date
+
+  // Trường dành riêng cho Trainee/Nhân viên (tùy chọn)
   employeeId?: string;
-  department?: string;
+  department?: string; // Mã hoặc tên phòng ban
   position?: string;
   level?: TraineeLevel;
   status?: WorkStatus;
-  manager?: string;
+  manager?: string; // Tên hoặc ID quản lý
+  joinDate?: string; // Chuỗi ngày ISO cho ngày vào làm, khác với startWork
+
+  // Trường liên quan đến học tập (tùy chọn, chủ yếu cho Trainee)
   completedCourses?: CompletedCourse[];
   certificates?: Certificate[];
   evaluations?: Evaluation[];

@@ -1,11 +1,11 @@
-import type { Department } from '../types';
+import type { DepartmentInfo } from '../types';
 
 // Mock Departments List
-export const mockDepartments: Department[] = [
+export const mockDepartments: DepartmentInfo[] = [
     {
         id: 'd1',
         name: 'Công nghệ thông tin',
-        code: 'CNTT',
+        code: 'it',
         description: 'Phòng phát triển và quản lý hệ thống công nghệ thông tin',
         managerId: '1',
         status: 'active',
@@ -17,7 +17,7 @@ export const mockDepartments: Department[] = [
     {
         id: 'd2',
         name: 'Nhân sự',
-        code: 'HR',
+        code: 'hr',
         description: 'Phòng quản lý nhân sự và tuyển dụng',
         managerId: '2',
         status: 'active',
@@ -29,7 +29,7 @@ export const mockDepartments: Department[] = [
     {
         id: 'd3',
         name: 'Kinh doanh',
-        code: 'SALES',
+        code: 'sales',
         description: 'Phòng phát triển kinh doanh và bán hàng',
         managerId: '3',
         status: 'active',
@@ -41,7 +41,7 @@ export const mockDepartments: Department[] = [
     {
         id: 'd4',
         name: 'Marketing',
-        code: 'MKT',
+        code: 'marketing',
         description: 'Phòng tiếp thị và truyền thông',
         managerId: '4',
         status: 'active',

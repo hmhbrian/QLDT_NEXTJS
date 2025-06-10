@@ -26,18 +26,20 @@ export const departmentOptions = [
 
 // Các tùy chọn cấp độ
 export const levelOptions = [
-    { value: 'beginner', label: 'Mới bắt đầu' },
-    { value: 'intermediate', label: 'Trung cấp' },
-    { value: 'advanced', label: 'Nâng cao' },
-    { value: 'expert', label: 'Chuyên gia' }
+    { value: 'intern', label: 'Thực tập' },
+    { value: 'probation', label: 'Thử việc' },
+    { value: 'employee', label: 'Nhân viên' },
+    { value: 'middle_manager', label: 'Quản lý cấp trung' },
+    { value: 'senior_manager', label: 'Quản lý cấp cao' }
 ] as const;
 
 // Mapping cấp độ học viên sang tiếng Việt
 export const traineeLevelLabels: Record<TraineeLevel, string> = {
-    beginner: 'Mới bắt đầu',
-    intermediate: 'Trung cấp',
-    advanced: 'Nâng cao',
-    expert: 'Chuyên gia'
+    intern: 'Thực tập',
+    probation: 'Thử việc',
+    employee: 'Nhân viên',
+    middle_manager: 'Quản lý cấp trung',
+    senior_manager: 'Quản lý cấp cao'
 };
 
 // Các tùy chọn danh mục khóa học
@@ -48,6 +50,11 @@ export const categoryOptions = [
     { value: 'marketing', label: 'Tiếp thị' },
     { value: 'soft_skills', label: 'Kỹ năng mềm' }
 ] as const;
+
+// Giá trị đặc biệt cho Select khi không chọn phòng ban hoặc cấp độ
+export const NO_DEPARTMENT_VALUE = "__NO_DEPARTMENT__";
+export const NO_LEVEL_VALUE = "__NO_LEVEL__";
+
 
 // Mock data cho khóa học
 export const mockCourses: Course[] = [
@@ -63,6 +70,7 @@ export const mockCourses: Course[] = [
             sessions: 15,
             hoursPerSession: 2
         },
+        enrollmentType: 'optional',
         learningType: 'online',
         startDate: '2024-03-01',
         endDate: '2024-04-01',
@@ -70,9 +78,10 @@ export const mockCourses: Course[] = [
         image: 'https://placehold.co/600x400',
         status: 'draft',
         department: ['it'],
-        level: ['beginner', 'intermediate'],
+        level: ['intern', 'probation'],
         materials: [
             {
+                id: 'mat-react-001',
                 type: 'pdf',
                 title: 'Giáo trình React',
                 url: 'https://example.com/react.pdf'
