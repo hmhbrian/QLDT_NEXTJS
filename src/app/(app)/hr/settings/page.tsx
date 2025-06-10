@@ -1,3 +1,4 @@
+
 'use client';
 
 import { HRSettings } from "@/components/settings/HRSettings";
@@ -17,6 +18,7 @@ export default function HRSettingsPage() {
       toast({
         title: "Cài đặt đã được lưu",
         description: "Các thay đổi của bạn đã được cập nhật thành công.",
+        variant: "success",
       });
     } catch (error) {
       toast({
@@ -51,4 +53,4 @@ export default function HRSettingsPage() {
       <HRSettings />
     </div>
   );
-} 
+}

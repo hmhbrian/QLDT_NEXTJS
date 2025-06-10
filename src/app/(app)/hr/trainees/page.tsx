@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,34 +12,54 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { UserCheck, PlusCircle, MoreHorizontal, Search, Mail, Phone, Building2, UserCircle2, Calendar, Award } from "lucide-react";
-import { useState } from "react";
-import { User, TraineeLevel, WorkStatus } from "@/lib/types";
+import { UserCheck, PlusCircle, MoreHorizontal, Search, Mail, Phone, Building2, UserCircle2, Calendar, Award, Edit, Trash2, AlertCircle, BookOpen } from "lucide-react"; // Đã thêm BookOpen
+import { useState, useEffect } from "react";
+import type { User, TraineeLevel, WorkStatus } from "@/lib/types";
 import { useToast } from "@/components/ui/use-toast";
 import { useUserStore } from "@/stores/user-store";
+import { useError } from "@/hooks/use-error";
+
+
+const initialNewTraineeState = {
+  fullName: '',
+  employeeId: '',
+  email: '',
+  phoneNumber: '',
+  department: '',
+  position: '',
+  level: 'beginner' as TraineeLevel,
+  joinDate: '',
+  manager: '',
+  status: 'working' as WorkStatus,
+  idCard: '',
+  urlAvatar: 'https://placehold.co/40x40.png',
+};
+
 
 export default function TraineesPage() {
   const { toast } = useToast();
+  const { showError } = useError();
   const { users, addUser, updateUser, deleteUser } = useUserStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTrainee, setSelectedTrainee] = useState<User | null>(null);
   const [isAddingTrainee, setIsAddingTrainee] = useState(false);
   const [isViewingTrainee, setIsViewingTrainee] = useState(false);
+  const [editingTrainee, setEditingTrainee] = useState<User | null>(null);
+  const [deletingTrainee, setDeletingTrainee] = useState<User | null>(null);
 
-  // New trainee form state
-  const [newTrainee, setNewTrainee] = useState({
-    fullName: '',
-    employeeId: '',
-    email: '',
-    phoneNumber: '',
-    department: '',
-    position: '',
-    level: 'beginner' as TraineeLevel,
-    joinDate: '',
-    manager: '',
-    status: 'working' as WorkStatus,
-    idCard: '',
-  });
+
+  // Trạng thái form cho học viên mới
+  const [newTraineeData, setNewTraineeData] = useState<Omit<User, 'id' | 'role' | 'completedCourses' | 'certificates' | 'evaluations' | 'createdAt' | 'modifiedAt' | 'startWork' | 'endWork'>>(initialNewTraineeState);
+  const [editTraineeData, setEditTraineeData] = useState<Partial<User>>({});
+
+
+  useEffect(() => {
+    if (editingTrainee) {
+      setEditTraineeData({ ...editingTrainee });
+    } else {
+      setEditTraineeData({});
+    }
+  }, [editingTrainee]);
 
   const trainees = users.filter((user: User) => user.role === 'Trainee');
   
@@ -50,46 +71,59 @@ export default function TraineesPage() {
   );
 
   const handleAddTrainee = () => {
-    // Validate required fields
-    if (!newTrainee.fullName || !newTrainee.employeeId || !newTrainee.email || !newTrainee.idCard) {
-      toast({
-        title: "Lỗi",
-        description: "Vui lòng điền đầy đủ thông tin bắt buộc",
-        variant: "destructive",
-      });
+    if (!newTraineeData.fullName || !newTraineeData.employeeId || !newTraineeData.email || !newTraineeData.idCard) {
+      showError('FORM001');
       return;
     }
 
-    const trainee: User = {
+    const traineeToAdd: User = {
       id: crypto.randomUUID(),
-      ...newTrainee,
+      ...newTraineeData,
       role: 'Trainee',
-      urlAvatar: 'https://placehold.co/40x40.png',
-      completedCourses: [],
-      certificates: [],
-      evaluations: [],
+      createdAt: new Date(),
+      modifiedAt: new Date(),
     };
 
-    addUser(trainee);
+    addUser(traineeToAdd);
     setIsAddingTrainee(false);
-    toast({
-      title: "Thành công",
-      description: "Đã thêm học viên mới",
-    });
-    setIsAddingTrainee(false);
+    setNewTraineeData(initialNewTraineeState); // Đặt lại form
+    toast({ title: "Thành công", description: "Đã thêm học viên mới.", variant: "success" });
   };
 
-  const getLevelBadgeColor = (level: TraineeLevel) => {
+  const handleUpdateTrainee = () => {
+    if (!editingTrainee || !editTraineeData.id) return;
+    if (!editTraineeData.fullName || !editTraineeData.employeeId || !editTraineeData.email || !editTraineeData.idCard) {
+      showError('FORM001');
+      return;
+    }
+    
+    updateUser(editingTrainee.id, { ...editTraineeData, modifiedAt: new Date() });
+    setEditingTrainee(null);
+    toast({ title: "Thành công", description: "Thông tin học viên đã được cập nhật.", variant: "success" });
+  };
+
+  const handleDeleteTrainee = () => {
+    if (!deletingTrainee) return;
+    deleteUser(deletingTrainee.id);
+    setDeletingTrainee(null);
+    toast({ title: "Thành công", description: "Đã xóa học viên.", variant: "success" });
+  };
+
+
+  const getLevelBadgeColor = (level?: TraineeLevel) => {
+    if (!level) return 'bg-gray-100 text-gray-800';
     switch (level) {
-      case 'beginner': return 'bg-blue-100 text-blue-800';
-      case 'intermediate': return 'bg-yellow-100 text-yellow-800';
-      case 'advanced': return 'bg-green-100 text-green-800';
-      case 'expert': return 'bg-purple-100 text-purple-800';
+      case 'intern': return 'bg-blue-100 text-blue-800';
+      case 'probation': return 'bg-yellow-100 text-yellow-800';
+      case 'employee': return 'bg-green-100 text-green-800';
+      case 'middle_manager': return 'bg-purple-100 text-purple-800';
+      case 'senior_manager': return 'bg-red-100 text-red-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
 
-  const getStatusColor = (status: WorkStatus) => {
+  const getStatusColor = (status?: WorkStatus) => {
+    if (!status) return 'bg-gray-100 text-gray-800';
     switch (status) {
       case 'working': return 'bg-green-100 text-green-800';
       case 'resigned': return 'bg-red-100 text-red-800';
@@ -101,7 +135,8 @@ export default function TraineesPage() {
     }
   };
 
-  const getStatusText = (status: WorkStatus) => {
+  const getStatusText = (status?: WorkStatus) => {
+    if (!status) return 'Không xác định';
     switch (status) {
       case 'working': return 'Đang làm việc';
       case 'resigned': return 'Đã nghỉ việc';
@@ -112,6 +147,32 @@ export default function TraineesPage() {
       case 'terminated': return 'Đã sa thải';
     }
   };
+  
+  const handleInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>, 
+    field: keyof Omit<User, 'id' | 'role' | 'completedCourses' | 'certificates' | 'evaluations' | 'createdAt' | 'modifiedAt' | 'startWork' | 'endWork'>, 
+    isEdit: boolean
+  ) => {
+    const value = e.target.value;
+    if (isEdit) {
+      setEditTraineeData(prev => ({ ...prev, [field]: value }));
+    } else {
+      setNewTraineeData(prev => ({ ...prev, [field]: value }));
+    }
+  };
+
+  const handleSelectChange = (
+    value: string, 
+    field: keyof Omit<User, 'id' | 'role' | 'completedCourses' | 'certificates' | 'evaluations' | 'createdAt' | 'modifiedAt' | 'startWork' | 'endWork'>, 
+    isEdit: boolean
+  ) => {
+    if (isEdit) {
+      setEditTraineeData(prev => ({ ...prev, [field]: value as TraineeLevel | WorkStatus }));
+    } else {
+      setNewTraineeData(prev => ({ ...prev, [field]: value as TraineeLevel | WorkStatus }));
+    }
+  };
+
 
   return (
     <div className="space-y-6">
@@ -127,7 +188,7 @@ export default function TraineesPage() {
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
-          <Button onClick={() => setIsAddingTrainee(true)} className="w-full sm:w-auto">
+          <Button onClick={() => { setNewTraineeData(initialNewTraineeState); setIsAddingTrainee(true); }} className="w-full sm:w-auto">
             <PlusCircle className="mr-2 h-5 w-5" /> Thêm Học viên
           </Button>
         </div>
@@ -157,7 +218,7 @@ export default function TraineesPage() {
                     <TableCell>
                       <div className="flex items-center gap-3">
                         <Avatar>
-                          <AvatarImage src={trainee.urlAvatar} alt={trainee.fullName} />
+                          <AvatarImage src={trainee.urlAvatar} alt={trainee.fullName} data-ai-hint="avatar person" />
                           <AvatarFallback>{trainee.fullName.split(' ').map((n: string) => n[0]).join('').toUpperCase()}</AvatarFallback>
                         </Avatar>
                         <div>
@@ -176,9 +237,11 @@ export default function TraineesPage() {
                     </TableCell>
                     <TableCell className="hidden lg:table-cell">{trainee.department}</TableCell>
                     <TableCell className="hidden lg:table-cell">
-                      <Badge variant="outline" className={getLevelBadgeColor(trainee.level ?? 'beginner')}>
-                        {trainee.level?.toUpperCase() ?? 'BEGINNER'}
-                      </Badge>
+                      {trainee.level && (
+                        <Badge variant="outline" className={getLevelBadgeColor(trainee.level)}>
+                          {trainee.level.replace('_', ' ').toUpperCase()}
+                        </Badge>
+                      )}
                     </TableCell>
                     <TableCell>
                       <Badge variant="outline" className={getStatusColor(trainee.status ?? 'working')}>
@@ -198,12 +261,16 @@ export default function TraineesPage() {
                             setSelectedTrainee(trainee);
                             setIsViewingTrainee(true);
                           }}>
-                            Xem Chi tiết
+                            <UserCircle2 className="mr-2 h-4 w-4" /> Xem Chi tiết
                           </DropdownMenuItem>
-                          <DropdownMenuItem>Sửa Thông tin</DropdownMenuItem>
-                          <DropdownMenuItem>Quản lý Khóa học</DropdownMenuItem>
-                          <DropdownMenuItem className="text-destructive focus:text-destructive">
-                            Xóa Học viên
+                          <DropdownMenuItem onClick={() => setEditingTrainee(trainee)}>
+                            <Edit className="mr-2 h-4 w-4" /> Sửa Thông tin
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => toast({ title: "Thông báo", description: "Chức năng quản lý khóa học cho học viên đang được phát triển.", variant: "default" })}>
+                            <BookOpen className="mr-2 h-4 w-4" /> Quản lý Khóa học
+                          </DropdownMenuItem>
+                          <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => setDeletingTrainee(trainee)}>
+                            <Trash2 className="mr-2 h-4 w-4" /> Xóa Học viên
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -216,111 +283,85 @@ export default function TraineesPage() {
         </CardContent>
       </Card>
 
-      {/* Add Trainee Dialog */}
-      <Dialog open={isAddingTrainee} onOpenChange={setIsAddingTrainee}>
+      {/* Add or Edit Trainee Dialog */}
+      <Dialog open={isAddingTrainee || !!editingTrainee} onOpenChange={(isOpen) => {
+        if (!isOpen) {
+          setIsAddingTrainee(false);
+          setEditingTrainee(null);
+        }
+      }}>
         <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
-            <DialogTitle>Thêm Học viên Mới</DialogTitle>
+            <DialogTitle>{editingTrainee ? 'Chỉnh sửa Học viên' : 'Thêm Học viên Mới'}</DialogTitle>
             <DialogDescription>
-              Nhập thông tin chi tiết của học viên mới. Các trường có dấu * là bắt buộc.
+              {editingTrainee ? 'Cập nhật thông tin chi tiết của học viên.' : 'Nhập thông tin chi tiết của học viên mới. Các trường có dấu * là bắt buộc.'}
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="fullName">Họ và tên *</Label>
-                <Input
-                  id="fullName"
-                  value={newTrainee.fullName}
-                  onChange={(e) => setNewTrainee({...newTrainee, fullName: e.target.value})}
-                  placeholder="Nguyễn Văn A"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="employeeId">Mã nhân viên *</Label>
-                <Input
-                  id="employeeId"
-                  value={newTrainee.employeeId}
-                  onChange={(e) => setNewTrainee({...newTrainee, employeeId: e.target.value})}
-                  placeholder="EMP001"
-                />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="idCard">CMND/CCCD *</Label>
-                <Input
-                  id="idCard"
-                  value={newTrainee.idCard}
-                  onChange={(e) => setNewTrainee({...newTrainee, idCard: e.target.value})}
-                  placeholder="012345678910"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="email">Email công ty *</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={newTrainee.email}
-                  onChange={(e) => setNewTrainee({...newTrainee, email: e.target.value})}
-                  placeholder="example@company.com"
-                />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="phoneNumber">Số điện thoại</Label>
-                <Input
-                  id="phoneNumber"
-                  value={newTrainee.phoneNumber}
-                  onChange={(e) => setNewTrainee({...newTrainee, phoneNumber: e.target.value})}
-                  placeholder="0901234567"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="department">Phòng ban</Label>
-                <Input
-                  id="department"
-                  value={newTrainee.department}
-                  onChange={(e) => setNewTrainee({...newTrainee, department: e.target.value})}
-                  placeholder="CNTT"
-                />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="position">Chức vụ</Label>
-                <Input
-                  id="position"
-                  value={newTrainee.position}
-                  onChange={(e) => setNewTrainee({...newTrainee, position: e.target.value})}
-                  placeholder="Developer"
-                />
-              </div>
-              <div className="space-y-2">
+          <div className="grid gap-4 py-4 max-h-[70vh] overflow-y-auto pr-2">
+            {/* Các trường form chung */}
+            {(['fullName', 'employeeId', 'idCard', 'email', 'phoneNumber', 'department', 'position', 'manager', 'joinDate'] as const).map(fieldKey => {
+              const isDateField = fieldKey === 'joinDate';
+              const currentData = editingTrainee ? editTraineeData : newTraineeData;
+              
+              return (
+                <div key={fieldKey} className="space-y-2">
+                  <Label htmlFor={fieldKey}>
+                    {fieldKey === 'fullName' && 'Họ và tên *'}
+                    {fieldKey === 'employeeId' && 'Mã nhân viên *'}
+                    {fieldKey === 'idCard' && 'CMND/CCCD *'}
+                    {fieldKey === 'email' && 'Email công ty *'}
+                    {fieldKey === 'phoneNumber' && 'Số điện thoại'}
+                    {fieldKey === 'department' && 'Phòng ban'}
+                    {fieldKey === 'position' && 'Chức vụ'}
+                    {fieldKey === 'manager' && 'Quản lý trực tiếp'}
+                    {fieldKey === 'joinDate' && 'Ngày vào công ty'}
+                  </Label>
+                  <Input
+                    id={fieldKey}
+                    type={isDateField ? 'date' : 'text'}
+                    value={
+                        isDateField 
+                        ? (currentData[fieldKey] ? new Date(currentData[fieldKey]!).toISOString().split('T')[0] : '') 
+                        : (currentData[fieldKey as keyof typeof currentData] as string || '')
+                    }
+                    onChange={(e) => handleInputChange(e, fieldKey as any, !!editingTrainee)}
+                    placeholder={
+                        fieldKey === 'fullName' ? 'Nguyễn Văn A' :
+                        fieldKey === 'employeeId' ? 'EMP001' :
+                        fieldKey === 'idCard' ? '012345678910' :
+                        fieldKey === 'email' ? 'example@company.com' :
+                        fieldKey === 'phoneNumber' ? '0901234567' :
+                        fieldKey === 'department' ? 'CNTT' :
+                        fieldKey === 'position' ? 'Developer' :
+                        fieldKey === 'manager' ? 'Nguyễn Văn B' : ''
+                    }
+                  />
+                </div>
+              );
+            })}
+            <div className="space-y-2">
                 <Label htmlFor="level">Cấp bậc</Label>
                 <Select
-                  value={newTrainee.level}
-                  onValueChange={(value: TraineeLevel) => setNewTrainee({...newTrainee, level: value})}
+                  value={editingTrainee ? editTraineeData.level : newTraineeData.level}
+                  onValueChange={(value: TraineeLevel) => handleSelectChange(value, 'level' as any, !!editingTrainee)}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Chọn cấp bậc" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="beginner">Sơ cấp</SelectItem>
-                    <SelectItem value="intermediate">Trung cấp</SelectItem>
-                    <SelectItem value="advanced">Nâng cao</SelectItem>
-                    <SelectItem value="expert">Chuyên gia</SelectItem>
+                    <SelectItem value="intern">Thực tập</SelectItem>
+                    <SelectItem value="probation">Thử việc</SelectItem>
+                    <SelectItem value="employee">Nhân viên</SelectItem>
+                    <SelectItem value="middle_manager">Quản lý cấp trung</SelectItem>
+                    <SelectItem value="senior_manager">Quản lý cấp cao</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="status">Trạng thái</Label>
                 <Select
-                  value={newTrainee.status}
-                  onValueChange={(value: WorkStatus) => setNewTrainee({...newTrainee, status: value})}
+                  value={editingTrainee ? editTraineeData.status : newTraineeData.status}
+                  onValueChange={(value: WorkStatus) => handleSelectChange(value, 'status' as any, !!editingTrainee)}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Chọn trạng thái" />
@@ -336,29 +377,12 @@ export default function TraineesPage() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="joinDate">Ngày vào công ty</Label>
-                <Input
-                  id="joinDate"
-                  type="date"
-                  value={newTrainee.joinDate}
-                  onChange={(e) => setNewTrainee({...newTrainee, joinDate: e.target.value})}
-                />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="manager">Quản lý trực tiếp</Label>
-              <Input
-                id="manager"
-                value={newTrainee.manager}
-                onChange={(e) => setNewTrainee({...newTrainee, manager: e.target.value})}
-                placeholder="Nguyễn Văn B"
-              />
-            </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsAddingTrainee(false)}>Hủy</Button>
-            <Button onClick={handleAddTrainee}>Thêm Học viên</Button>
+            <Button variant="outline" onClick={() => { setIsAddingTrainee(false); setEditingTrainee(null); }}>Hủy</Button>
+            <Button onClick={editingTrainee ? handleUpdateTrainee : handleAddTrainee}>
+              {editingTrainee ? 'Lưu thay đổi' : 'Thêm Học viên'}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -489,7 +513,31 @@ export default function TraineesPage() {
         </DialogContent>
       </Dialog>
 
-      {filteredTrainees.length === 0 && (
+      {/* Delete Trainee Confirmation Dialog */}
+      <Dialog open={!!deletingTrainee} onOpenChange={() => setDeletingTrainee(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Xác nhận xóa học viên</DialogTitle>
+            <DialogDescription>
+              Bạn có chắc chắn muốn xóa học viên "{deletingTrainee?.fullName}"? Hành động này không thể hoàn tác.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex items-center gap-4 py-4">
+            <AlertCircle className="h-10 w-10 text-destructive flex-shrink-0" />
+            <div>
+              <p className="font-medium">{deletingTrainee?.fullName}</p>
+              <p className="text-sm text-muted-foreground">{deletingTrainee?.email}</p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeletingTrainee(null)}>Hủy</Button>
+            <Button variant="destructive" onClick={handleDeleteTrainee}>Xóa Học viên</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+
+      {filteredTrainees.length === 0 && !isAddingTrainee && !editingTrainee && (
         <div className="text-center py-12">
           <UserCheck className="mx-auto h-12 w-12 text-muted-foreground" />
           <h3 className="mt-2 text-xl font-semibold">Không tìm thấy Học viên nào</h3>
@@ -501,3 +549,8 @@ export default function TraineesPage() {
     </div>
   );
 }
+
+
+    
+
+    

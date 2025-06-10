@@ -1,22 +1,67 @@
+
 'use client';
 
+import React, { useState, useEffect } from 'react'; // Đã thêm useEffect và useState
 import { TraineeSettings } from "@/components/settings/TraineeSettings";
 import { useAuth } from "@/hooks/useAuth";
-import { Settings } from "lucide-react";
+import { Settings, Save } from "lucide-react"; // Đã thêm icon Save
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/use-toast";
+
+// Định nghĩa cấu trúc cho cài đặt thông báo
+interface NotificationSettings {
+  emailNotifications: boolean;
+  courseUpdates: boolean;
+  deadlineReminders: boolean;
+  evaluationResults: boolean;
+}
 
 export default function TraineeSettingsPage() {
   const { user } = useAuth();
 
-  if (!user) return null;
+  // State for notification settings, moved from TraineeSettings component
+  const [notifications, setNotifications] = useState<NotificationSettings>({
+    emailNotifications: true,
+    courseUpdates: true,
+    deadlineReminders: true,
+    evaluationResults: true
+  });
+
+  // Effect để tải cài đặt thông báo từ localStorage
+  useEffect(() => {
+    if (user) {
+      const savedNotifSettings = localStorage.getItem(`notifications_${user.id}`);
+      if (savedNotifSettings) {
+        try {
+          setNotifications(JSON.parse(savedNotifSettings));
+        } catch (e) {
+          console.error("Failed to parse notification settings from localStorage", e);
+          // Khởi tạo với giá trị mặc định nếu phân tích cú pháp thất bại
+          localStorage.setItem(`notifications_${user.id}`, JSON.stringify(notifications));
+        }
+      } else {
+        // Nếu không tìm thấy cài đặt nào, lưu các cài đặt mặc định
+        localStorage.setItem(`notifications_${user.id}`, JSON.stringify(notifications));
+      }
+    }
+  }, [user]); // Phụ thuộc vào người dùng để tải/lưu cài đặt cho mỗi người dùng
+
+  const handleNotificationChange = (settingName: keyof NotificationSettings, value: boolean) => {
+    setNotifications(prevSettings => ({
+      ...prevSettings,
+      [settingName]: value
+    }));
+  };
 
   const handleSaveSettings = async () => {
     try {
-      // TODO: Implement actual settings save
+      if (user) {
+        localStorage.setItem(`notifications_${user.id}`, JSON.stringify(notifications));
+      }
       toast({
         title: "Cài đặt đã được lưu",
         description: "Các thay đổi của bạn đã được cập nhật thành công.",
+        variant: "success",
       });
     } catch (error) {
       toast({
@@ -26,6 +71,8 @@ export default function TraineeSettingsPage() {
       });
     }
   };
+
+  if (!user) return null;
 
   if (user.role !== 'Trainee') {
     return (
@@ -44,11 +91,15 @@ export default function TraineeSettingsPage() {
       <div className="flex flex-col md:flex-row justify-between items-center gap-4">
         <h1 className="text-2xl md:text-3xl font-headline font-semibold">Cài đặt cá nhân</h1>
         <Button onClick={handleSaveSettings}>
-          <Settings className="mr-2 h-5 w-5" />
+          <Save className="mr-2 h-5 w-5" /> {/* Đã thay đổi icon thành Save */}
           Lưu thay đổi
         </Button>
       </div>
-      <TraineeSettings />
+      <TraineeSettings 
+        notifications={notifications} // truyền notifications
+        onNotificationChange={handleNotificationChange} // truyền onNotificationChange
+      />
     </div>
   );
-} 
+}
+
