@@ -5,28 +5,17 @@ import { useState, useEffect } from "react";
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { AlertTriangle, CheckCircle, XCircle, ArrowLeft, ArrowRight } from "lucide-react";
-import { useCookie } from "@/hooks/use-cookie";
-import { mockCourses as initialMockCourses } from "@/lib/mock";
+import { useCourseStore } from "@/stores/course-store";
 import type { Course, Test, Question } from "@/lib/types";
-import { forceRefreshCookieData } from "@/lib/utils";
 import { Progress } from "@/components/ui/progress";
 
-const COURSES_COOKIE_KEY = "becamex-courses-data";
 const OPTION_LABELS = ["A", "B", "C", "D", "E", "F", "G", "H"];
 
 export default function TestDetailPage() {
   const params = useParams();
   const courseId = params.courseId as string;
   const testId = params.testId as string;
-  const [allCourses, setAllCourses] = useCookie<Course[]>(COURSES_COOKIE_KEY, initialMockCourses);
-
-  // Buộc cập nhật dữ liệu từ cookie mỗi khi trang được load
-  useEffect(() => {
-    const refreshedData = forceRefreshCookieData(COURSES_COOKIE_KEY);
-    if (refreshedData) {
-      setAllCourses(refreshedData);
-    }
-  }, [setAllCourses]);
+  const { courses: allCourses } = useCourseStore();
 
   // Tìm course và test tương ứng
   const course = allCourses.find((c) => c.id === courseId);
