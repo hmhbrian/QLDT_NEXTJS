@@ -25,56 +25,22 @@ import {
 import { mockCourses as initialMockCoursesFromLib } from '@/lib/mock'; // Đổi tên để tránh xung đột
 import NextImage from 'next/image';
 import { CourseFormDialog } from '@/components/courses/dialogs/CourseFormDialog';
-import { useCookie, getCookie, setCookie } from '@/hooks/use-cookie';
-
-const COURSES_COOKIE_KEY = 'becamex-courses-data';
+import { useCourseStore } from '@/stores/course-store';
 
 export default function CoursesPage() {
   const { user: currentUser } = useAuth();
   const { showError } = useError();
 
-  // Chuẩn bị dữ liệu mock
-  const preparedMockCourses = initialMockCoursesFromLib.map(course => ({
-      ...course,
-      materials: (course.materials || []).map(material => ({
-        ...material,
-        id: material.id || crypto.randomUUID(),
-      })),
-      lessons: course.lessons || [],
-      tests: course.tests || [],
-  }));
-
-  // Lấy dữ liệu từ cookie, nếu không có thì sử dụng mock data
-  const [coursesFromCookie, setCoursesInCookie] = useCookie<Course[]>(
-    COURSES_COOKIE_KEY,
-    preparedMockCourses
-  );
-
-  // State cho danh sách khóa học hiển thị
-  const [courses, setCourses] = useState<Course[]>([]);
+  // Use the course store instead of cookies
+  const { courses, addCourse, updateCourse, deleteCourse } = useCourseStore();
   const [isLoading, setIsLoading] = useState(true);
 
   // Kiểm tra và khởi tạo dữ liệu khi component mount
   useEffect(() => {
     setIsLoading(true);
-    
-    // Đảm bảo dữ liệu hiển thị ngay cả khi cookie rỗng
-    if (preparedMockCourses.length > 0) {
-      setCourses(preparedMockCourses);
-      
-      // Đồng thời lưu vào cookie nếu cookie rỗng
-      if (coursesFromCookie.length === 0) {
-        setCoursesInCookie(preparedMockCourses);
-      }
-    } else if (coursesFromCookie.length > 0) {
-      setCourses(coursesFromCookie);
-    } else {
-      // Trường hợp cả hai đều rỗng, sẽ không xảy ra nếu preparedMockCourses có dữ liệu
-      setCourses([]);
-    }
-    
+    // Dữ liệu đã được quản lý qua store, chỉ cần đánh dấu đã tải xong
     setIsLoading(false);
-  }, [coursesFromCookie, setCoursesInCookie]);
+  }, []);
 
   const [viewMode, setViewMode] = useState<'table' | 'card'>('table');
   const [searchTerm, setSearchTerm] = useState('');
@@ -122,7 +88,6 @@ export default function CoursesPage() {
     if (!canManageCourses || !currentUser) { showError('USER003'); return; }
 
     const now = new Date().toISOString();
-    let updatedCourses: Course[] = [];
     
     if (isEditing) {
       const courseToUpdate = courseData as Course;
@@ -130,14 +95,15 @@ export default function CoursesPage() {
         showError('COURSE001');
         return;
       }
-      updatedCourses = courses.map(c => c.id === courseToUpdate.id ? {
+      // Update using the store
+      updateCourse(courseToUpdate.id, {
         ...courseToUpdate,
         modifiedAt: now,
         modifiedBy: currentUser.id
-      } : c);
+      });
     } else {
       const newCourseData = courseData as Omit<Course, 'id' | 'createdAt' | 'modifiedAt' | 'createdBy' | 'modifiedBy'>;
-       if (courses.some(c => c.courseCode === newCourseData.courseCode)) {
+      if (courses.some(c => c.courseCode === newCourseData.courseCode)) {
         showError('COURSE001');
         return;
       }
@@ -153,12 +119,9 @@ export default function CoursesPage() {
         tests: newCourseData.tests || [],
         materials: newCourseData.materials || [],
       };
-      updatedCourses = [...courses, courseToAdd];
+      // Add using the store
+      addCourse(courseToAdd);
     }
-    
-    // Cập nhật State và lưu vào Cookie
-    setCourses(updatedCourses);
-    setCoursesInCookie(updatedCourses);
     
     showError('SUCCESS006');
     setIsFormDialogOpen(false);
@@ -181,10 +144,8 @@ export default function CoursesPage() {
       materials: (course.materials || []).map(m => ({ ...m, id: m.id || crypto.randomUUID() })),
     };
     
-    // Cập nhật State và lưu vào Cookie
-    const updatedCourses = [...courses, duplicatedCourse];
-    setCourses(updatedCourses);
-    setCoursesInCookie(updatedCourses);
+    // Add the duplicated course using the store
+    addCourse(duplicatedCourse);
     
     showError('SUCCESS006');
   };
@@ -194,11 +155,13 @@ export default function CoursesPage() {
     if (!archivingCourse) return;
     const now = new Date().toISOString();
     
-    // Cập nhật State và lưu vào Cookie
-    const updatedCourses = courses.map(c => c.id === archivingCourse.id ? 
-      { ...c, status: 'archived' as const, isPublic: false, modifiedAt: now, modifiedBy: currentUser.id } : c);
-    setCourses(updatedCourses);
-    setCoursesInCookie(updatedCourses);
+    // Update the course status using the store
+    updateCourse(archivingCourse.id, {
+      status: 'archived' as const,
+      isPublic: false,
+      modifiedAt: now,
+      modifiedBy: currentUser.id
+    });
     
     setArchivingCourse(null);
     showError('SUCCESS006');
@@ -209,10 +172,8 @@ export default function CoursesPage() {
     if (!deletingCourse) return;
     if (deletingCourse.status === 'published') { showError('COURSE002'); return; }
     
-    // Cập nhật State và lưu vào Cookie
-    const updatedCourses = courses.filter(c => c.id !== deletingCourse.id);
-    setCourses(updatedCourses);
-    setCoursesInCookie(updatedCourses);
+    // Delete the course using the store
+    deleteCourse(deletingCourse.id);
     
     setDeletingCourse(null);
     showError('SUCCESS006');

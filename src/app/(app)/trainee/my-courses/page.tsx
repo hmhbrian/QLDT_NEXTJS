@@ -8,11 +8,11 @@ import { GraduationCap, BookOpenCheck, PlayCircle, Loader2 } from "lucide-react"
 import Image from "next/image";
 import Link from "next/link";
 import { useAuth } from '@/hooks/useAuth';
-import { useCookie, getCookie } from '@/hooks/use-cookie';
-import type { Course, User } from '@/lib/types';
-import { mockCourses as initialMockCoursesFromLib, mockMyCourses } from '@/lib/mock';
+import { useCookie } from '@/hooks/use-cookie';
+import { useCourseStore } from '@/stores/course-store';
+import type { Course } from '@/lib/types';
+import { mockMyCourses } from '@/lib/mock';
 
-const COURSES_COOKIE_KEY = 'becamex-courses-data';
 const MY_COURSES_COOKIE_KEY = 'becamex-my-courses-data';
 
 interface DisplayCourse {
@@ -27,10 +27,10 @@ interface DisplayCourse {
 
 export default function MyCoursesPage() {
   const { user: currentUser, loadingAuth } = useAuth();
-  // Lấy dữ liệu khóa học từ cookie hoặc mock data
-  const [allCoursesFromCookie] = useCookie<Course[]>(COURSES_COOKIE_KEY, initialMockCoursesFromLib);
+  // Get courses from the course store
+  const { courses: allCoursesFromStore } = useCourseStore();
   
-  // Lấy dữ liệu khóa học của tôi từ cookie hoặc mock data
+  // Get my courses progress data from cookie
   const [myCoursesFromCookie, setMyCoursesInCookie] = useCookie<DisplayCourse[]>(MY_COURSES_COOKIE_KEY, mockMyCourses);
   
   const [myDisplayCourses, setMyDisplayCourses] = useState<DisplayCourse[]>([]);
@@ -40,24 +40,24 @@ export default function MyCoursesPage() {
     if (!loadingAuth) {
       setIsLoadingCourses(true);
       
-      // Tìm khóa học từ danh sách tổng mà user đã đăng ký
-      const enrolledCourses = currentUser ? allCoursesFromCookie.filter(
+      // Find enrolled courses from store for the current user
+      const enrolledCourses = currentUser ? allCoursesFromStore.filter(
         course => course.enrolledTrainees?.includes(currentUser.id)
       ) : [];
       
-      // Tạo một đối tượng Map để lưu trữ các khóa học dựa trên ID
+      // Create a Map to store courses based on ID
       const courseMap = new Map<string, DisplayCourse>();
       
-      // Ưu tiên các khóa học từ cookie hiện có
+      // Prioritize existing courses from cookie
       if (myCoursesFromCookie.length > 0) {
         myCoursesFromCookie.forEach(course => {
           courseMap.set(course.id, course);
         });
       }
       
-      // Thêm các khóa học đã đăng ký từ allCoursesFromCookie (nếu có)
+      // Add enrolled courses from store
       enrolledCourses.forEach(course => {
-        // Nếu khóa học đã tồn tại trong map, chỉ cập nhật các thông tin cơ bản
+        // If course already exists in map, just update the basic information
         const existingProgress = courseMap.has(course.id) ? courseMap.get(course.id)!.progress : 0;
         
         courseMap.set(course.id, {
@@ -71,20 +71,20 @@ export default function MyCoursesPage() {
         });
       });
       
-      // Thêm các khóa học từ mock nếu chưa có khóa học nào và mockMyCourses có dữ liệu
+      // Add mock courses if no courses exist and mockMyCourses has data
       if (courseMap.size === 0 && mockMyCourses.length > 0) {
         mockMyCourses.forEach(course => {
           courseMap.set(course.id, course);
         });
       }
       
-      // Chuyển đổi Map thành mảng
+      // Convert Map to array
       const combinedCourses = Array.from(courseMap.values());
       
-      // Cập nhật state
+      // Update state
       setMyDisplayCourses(combinedCourses);
       
-      // Lưu vào cookie chỉ khi có sự thay đổi
+      // Save to cookie only if there are changes
       const currentCookieJSON = JSON.stringify(myCoursesFromCookie);
       const newCoursesJSON = JSON.stringify(combinedCourses);
       
@@ -94,17 +94,17 @@ export default function MyCoursesPage() {
       
       setIsLoadingCourses(false);
     }
-  }, [loadingAuth, allCoursesFromCookie, currentUser]);
+  }, [loadingAuth, allCoursesFromStore, myCoursesFromCookie, currentUser, setMyCoursesInCookie]);
 
-  // Hàm cập nhật tiến độ khóa học
+  // Function to update course progress
   const updateCourseProgress = (courseId: string, newProgress: number) => {
-    // Cập nhật State
+    // Update state
     const updatedCourses = myDisplayCourses.map(course => 
       course.id === courseId ? {...course, progress: newProgress} : course
     );
     setMyDisplayCourses(updatedCourses);
     
-    // Lưu vào cookie
+    // Save to cookie
     setMyCoursesInCookie(updatedCourses);
   };
 

@@ -18,10 +18,10 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/components/ui/use-toast';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useCookie } from '@/hooks/use-cookie';
-import { mockCourses as initialMockCoursesFromLib, mockPublicCourses } from '@/lib/mock';
+import { mockPublicCourses } from '@/lib/mock';
 import { categoryOptions } from '@/lib/constants';
+import { useCourseStore } from '@/stores/course-store';
 
-const COURSES_COOKIE_KEY = 'becamex-courses-data';
 const PUBLIC_COURSES_COOKIE_KEY = 'becamex-public-courses-data';
 
 export default function CoursesPage() {
@@ -29,13 +29,10 @@ export default function CoursesPage() {
   const { toast } = useToast();
   const router = useRouter();
 
-  // Lấy dữ liệu khóa học từ cookie hoặc mock data
-  const [allCoursesFromCookie] = useCookie<Course[]>(
-    COURSES_COOKIE_KEY,
-    initialMockCoursesFromLib
-  );
+  // Get courses from the store
+  const { courses: allCoursesFromStore } = useCourseStore();
   
-  // Lấy dữ liệu khóa học công khai từ cookie hoặc mock data
+  // Keep using cookies for public courses display data
   const [publicCoursesFromCookie, setPublicCoursesInCookie] = useCookie<PublicCourse[]>(
     PUBLIC_COURSES_COOKIE_KEY,
     mockPublicCourses
@@ -53,9 +50,9 @@ export default function CoursesPage() {
     const publicCourses = mockPublicCourses.length > 0 ? mockPublicCourses : [];
     
     // Only use data from all courses if we have some courses
-    if (allCoursesFromCookie.length > 0) {
-      // Filter for only public and published courses from allCoursesFromCookie
-      const publicCoursesFromAll = allCoursesFromCookie
+    if (allCoursesFromStore.length > 0) {
+      // Filter for only public and published courses from the store
+      const publicCoursesFromAll = allCoursesFromStore
         .filter(course => course.isPublic && course.status === 'published')
         .map(course => ({
           id: course.id,
@@ -71,7 +68,7 @@ export default function CoursesPage() {
           isPublic: course.isPublic,
         }));
       
-      // If we found public courses from allCoursesFromCookie, use those instead
+      // If we found public courses from the store, use those instead
       if (publicCoursesFromAll.length > 0) {
         setCourses(publicCoursesFromAll);
         
@@ -93,7 +90,7 @@ export default function CoursesPage() {
         }
       }
     } else {
-      // If we don't have any courses in allCoursesFromCookie, just use mock data
+      // If we don't have any courses in the store, just use mock data
       setCourses(publicCourses);
       
       // Only update cookie if needed
@@ -105,7 +102,7 @@ export default function CoursesPage() {
     }
     
     setIsLoading(false);
-  }, [allCoursesFromCookie]); // Remove publicCoursesFromCookie and setPublicCoursesInCookie from dependencies
+  }, [allCoursesFromStore, publicCoursesFromCookie, setPublicCoursesInCookie]); 
 
   const filteredCourses = courses.filter(course =>
     course.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -115,8 +112,8 @@ export default function CoursesPage() {
   );
 
   const handleEnroll = (courseId: string) => {
-    // Thêm logic đăng ký khóa học ở đây
-    // Trong tương lai, bạn có thể cập nhật trạng thái đăng ký và lưu vào cookie
+    // Add enrollment logic here
+    // In the future, you can update the enrollment status and save to store
     
     toast({
       title: "Đăng ký",

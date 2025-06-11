@@ -13,6 +13,7 @@ import NextImage from 'next/image';
 import type { Course, TraineeLevel, Department, CourseMaterial, EnrollmentType, User, Lesson, Test, Question, LessonContentType } from '@/lib/types';
 import { categoryOptions, departmentOptions, levelOptions, statusOptions, NO_DEPARTMENT_VALUE, NO_LEVEL_VALUE } from '@/lib/constants';
 import { useUserStore } from '@/stores/user-store';
+import { useCourseStore } from '@/stores/course-store';
 import { useAuth } from '@/hooks/useAuth';
 import { useError } from '@/hooks/use-error';
 import * as XLSX from 'xlsx'; 

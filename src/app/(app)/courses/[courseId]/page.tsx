@@ -78,14 +78,14 @@ import {
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/components/ui/use-toast";
 import { PdfLessonViewer } from "@/components/lessons/PdfLessonViewer";
-import { useCookie, getCookie } from "@/hooks/use-cookie";
+import { useCookie } from "@/hooks/use-cookie";
 import { useUserStore } from "@/stores/user-store";
+import { useCourseStore } from "@/stores/course-store";
 import { StarRatingDisplay } from "@/components/courses/StarRatingDisplay";
 import { StarRatingInput } from "@/components/courses/StarRatingInput";
-import { forceRefreshCookieData } from "@/lib/utils";
 
-const COURSES_COOKIE_KEY = "becamex-courses-data"; // Khóa cookie cho dữ liệu các khóa học
-const EVALUATIONS_COOKIE_KEY = "becamex-course-evaluations-data"; // Khóa cookie cho dữ liệu đánh giá khóa học
+// Just keep the evaluations in cookies for now
+const EVALUATIONS_COOKIE_KEY = "becamex-course-evaluations-data";
 
 const getCategoryLabel = (categoryValue?: CourseCategory) => {
   if (!categoryValue) return "Chưa xác định";
@@ -95,20 +95,16 @@ const getCategoryLabel = (categoryValue?: CourseCategory) => {
 
 export default function CourseDetailPage() {
   const params = useParams();
+  const router = useRouter();
   const courseIdFromParams = params.courseId as string;
   const [course, setCourse] = useState<Course | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const { user: currentUser } = useAuth();
   const { toast } = useToast();
   const allUsers = useUserStore((state) => state.users);
+  const { courses: allCoursesFromStore } = useCourseStore();
 
-  // Lấy dữ liệu khóa học từ cookie hoặc mock data
-  const [allCoursesFromCookie, setAllCoursesInCookie] = useCookie<Course[]>(
-    COURSES_COOKIE_KEY,
-    initialMockCoursesFromLib
-  );
-
-  // Lấy dữ liệu đánh giá từ cookie hoặc mock data
+  // Get evaluations from cookie
   const [allEvaluations, setAllEvaluations] = useCookie<
     StudentCourseEvaluation[]
   >(EVALUATIONS_COOKIE_KEY, initialMockEvaluationsFromLib);
@@ -126,26 +122,24 @@ export default function CourseDetailPage() {
   });
   const [hasSubmittedEvaluation, setHasSubmittedEvaluation] = useState(false);
 
-  // Buộc cập nhật dữ liệu từ cookie mỗi khi component được render
-  useEffect(() => {
-    const refreshedData = forceRefreshCookieData(COURSES_COOKIE_KEY);
-    if (refreshedData) {
-      setAllCoursesInCookie(refreshedData);
-    }
-  }, [setAllCoursesInCookie]);
-
   useEffect(() => {
     const fetchCourse = () => {
       setIsLoading(true);
       try {
-        // Tìm khóa học trong cookie
-        const foundCourse = allCoursesFromCookie.find(c => c.id === courseIdFromParams);
+        // Find course in the store
+        const foundCourse = allCoursesFromStore.find(c => c.id === courseIdFromParams);
         
         if (foundCourse) {
-          // Kiểm tra xem khóa học có được phép xem hay không (phải là công khai và đã xuất bản)
+          // Check if the course is allowed to be viewed (must be public and published)
           const isPublicAndPublished = foundCourse.isPublic && foundCourse.status === 'published';
-          const isUserAuthorized = currentUser && (currentUser.role === 'Admin' || currentUser.role === 'HR' || 
-              (currentUser.role === 'Trainee' && (isPublicAndPublished || foundCourse.enrolledTrainees?.includes(currentUser.id))));
+          const isUserAuthorized = currentUser && (
+            currentUser.role === 'Admin' || 
+            currentUser.role === 'HR' || 
+            (currentUser.role === 'Trainee' && (
+              isPublicAndPublished || 
+              foundCourse.enrolledTrainees?.includes(currentUser.id)
+            ))
+          );
           
           if (!isUserAuthorized && !isPublicAndPublished) {
             setCourse(null);
@@ -165,77 +159,35 @@ export default function CourseDetailPage() {
             materials: foundCourse.materials || [],
           };
           
-          // Cập nhật State
+          // Update state
           setCourse(detailedCourseData);
-          
         } else {
-          // Nếu không tìm thấy trong cookie, tìm trong mock data
-          const mockCourse = initialMockCoursesFromLib.find(c => c.id === courseIdFromParams);
-          
-          if (mockCourse) {
-            const isPublicAndPublished = mockCourse.isPublic && mockCourse.status === 'published';
-            const isUserAuthorized = currentUser && (currentUser.role === 'Admin' || currentUser.role === 'HR' || 
-                (currentUser.role === 'Trainee' && (isPublicAndPublished || mockCourse.enrolledTrainees?.includes(currentUser.id))));
-            
-            if (!isUserAuthorized && !isPublicAndPublished) {
-              setCourse(null);
-              setIsLoading(false);
-              return;
-            }
-            
-            const detailedMockCourse: Course = {
-              ...mockCourse,
-              id: courseIdFromParams,
-              maxParticipants: mockCourse.maxParticipants || 25,
-              prerequisites: mockCourse.prerequisites || ["Không có yêu cầu tiên quyết cụ thể."],
-              syllabus: mockCourse.syllabus || [{ title: "Chương trình học đang được cập nhật", content: "", duration: "" }],
-              slides: mockCourse.slides || [{ title: "Nội dung đang được cập nhật", url: "https://placehold.co/800x600.png?text=Updating...", type: "image" as "pdf" | "image" }],
-              lessons: mockCourse.lessons || [],
-              tests: mockCourse.tests || [],
-              materials: mockCourse.materials || [],
-            };
-            
-            // Cập nhật State
-            setCourse(detailedMockCourse);
-            
-            // Lưu vào cookie nếu chưa có
-            const existsInCookie = allCoursesFromCookie.some(c => c.id === courseIdFromParams);
-            if (!existsInCookie) {
-              const updatedCourses = [...allCoursesFromCookie, detailedMockCourse];
-              setAllCoursesInCookie(updatedCourses);
-            }
-          } else if (courseIdFromParams === mockCourseDetail.id) {
-            // Fallback đến mockCourseDetail nếu ID khớp
-            const detailedCourse = { ...mockCourseDetail, id: courseIdFromParams };
-            
-            // Cập nhật State
-            setCourse(detailedCourse);
-            
-            // Lưu vào cookie nếu chưa có
-            const existsInCookie = allCoursesFromCookie.some(c => c.id === courseIdFromParams);
-            if (!existsInCookie) {
-              const updatedCourses = [...allCoursesFromCookie, detailedCourse];
-              setAllCoursesInCookie(updatedCourses);
-            }
-          } else {
-            setCourse(null);
-          }
+          // If not found in the store, show error message
+          toast({
+            title: "Không tìm thấy khóa học",
+            description: "Khóa học bạn đang tìm kiếm không tồn tại hoặc đã bị xóa.",
+            variant: "destructive",
+          });
+          setCourse(null);
+          // Redirect back to courses page after 2 seconds
+          setTimeout(() => {
+            router.push('/courses');
+          }, 2000);
         }
       } catch (error) {
-        console.error("Lỗi khi tải thông tin khóa học:", error);
-        setCourse(null);
+        console.error("Lỗi khi tải dữ liệu khóa học:", error);
+        toast({
+          title: "Lỗi tải dữ liệu",
+          description: "Đã xảy ra lỗi khi tải thông tin khóa học. Vui lòng thử lại sau.",
+          variant: "destructive",
+        });
       } finally {
         setIsLoading(false);
       }
     };
 
-    if (courseIdFromParams) {
-      fetchCourse();
-    } else {
-      setCourse(null);
-      setIsLoading(false);
-    }
-  }, [courseIdFromParams, allCoursesFromCookie, currentUser]);
+    fetchCourse();
+  }, [courseIdFromParams, allCoursesFromStore, currentUser, toast, router]);
 
   useEffect(() => {
     if (currentUser && courseIdFromParams && allEvaluations.length > 0) {
