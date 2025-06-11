@@ -21,7 +21,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
     // Nếu người dùng đã đăng nhập nhưng đang ở trang gốc, chuyển hướng đến dashboard
     if (!loadingAuth && user && pathname === '/') {
-      router.replace('/dashboard');
+        router.replace('/dashboard');
     }
   }, [loadingAuth, user, router, pathname]);
 

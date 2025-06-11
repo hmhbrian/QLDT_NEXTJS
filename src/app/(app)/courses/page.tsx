@@ -66,6 +66,7 @@ export default function CoursesPage() {
           enrollmentType: course.enrollmentType,
           registrationDeadline: course.registrationDeadline,
           isPublic: course.isPublic,
+          enrolledTrainees: course.enrolledTrainees,
         }));
       
       // If we found public courses from the store, use those instead
@@ -113,14 +114,69 @@ export default function CoursesPage() {
 
   const handleEnroll = (courseId: string) => {
     // Add enrollment logic here
-    // In the future, you can update the enrollment status and save to store
+    if (!currentUser) {
+      toast({
+        title: "Chưa đăng nhập",
+        description: "Vui lòng đăng nhập để đăng ký khóa học.",
+        variant: "destructive"
+      });
+      router.push('/login');
+      return;
+    }
     
+    const courseToEnroll = courses.find(c => c.id === courseId);
+    if (!courseToEnroll) {
+      toast({
+        title: "Lỗi",
+        description: "Không tìm thấy thông tin khóa học.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    // Get the course from store to update
+    const courseInStore = allCoursesFromStore.find(c => c.id === courseId);
+    if (!courseInStore) {
+      toast({
+        title: "Lỗi",
+        description: "Không tìm thấy thông tin khóa học trong hệ thống.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Check if user is already enrolled
+    if (courseInStore.enrolledTrainees?.includes(currentUser.id)) {
+      // User already enrolled, redirect to course detail
+      toast({
+        title: "Đã đăng ký",
+        description: `Bạn đã đăng ký khóa học "${courseToEnroll.title}" trước đó.`,
+        variant: "default"
+      });
+      router.push(`/courses/${courseId}`);
+      return;
+    }
+
+    // Add user to enrolledTrainees list
+    const updatedEnrolledTrainees = [
+      ...(courseInStore.enrolledTrainees || []),
+      currentUser.id
+    ];
+
+    // Update course in store
+    useCourseStore.getState().updateCourse(courseId, {
+      enrolledTrainees: updatedEnrolledTrainees
+    });
+
     toast({
-      title: "Đăng ký",
-      description: `Chức năng đăng ký khóa học "${courses.find(c=>c.id === courseId)?.title}" đang được phát triển.`,
+      title: "Đăng ký thành công",
+      description: `Bạn đã đăng ký khóa học "${courseToEnroll.title}" thành công.`,
       duration: 3000,
       variant: "success"
     });
+    
+    // Redirect to course detail page
+    router.push(`/courses/${courseId}`);
   };
 
   const isRegistrationOpen = (deadline: string | null | undefined): boolean => {
@@ -205,19 +261,24 @@ export default function CoursesPage() {
                   )}
                 </CardContent>
                 <CardFooter className="border-t mt-auto pt-4 flex flex-col sm:flex-row gap-2">
-                  <Button
-                    variant="outline"
-                    className="w-full sm:flex-1"
-                    onClick={() => router.push(`/courses/${course.id}`)}
-                  >
-                    Xem chi tiết
-                  </Button>
-                  {currentUser?.role === 'Trainee' && course.enrollmentType === 'optional' && isRegistrationOpen(course.registrationDeadline) && (
-                     <Button
-                      className="w-full sm:flex-1"
-                      onClick={() => handleEnroll(course.id)}
+                  {currentUser?.role === 'Trainee' && 
+                   course.enrollmentType === 'optional' && 
+                   !course.enrolledTrainees?.includes(currentUser?.id || '') ? (
+                    isRegistrationOpen(course.registrationDeadline) && (
+                      <Button
+                        className="w-full"
+                        onClick={() => handleEnroll(course.id)}
+                      >
+                        Đăng ký
+                      </Button>
+                    )
+                  ) : (
+                    <Button
+                      variant="outline"
+                      className="w-full"
+                      onClick={() => router.push(`/courses/${course.id}`)}
                     >
-                      Đăng ký
+                      Xem chi tiết
                     </Button>
                   )}
                 </CardFooter>
@@ -250,12 +311,24 @@ export default function CoursesPage() {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <Button variant="outline" size="sm" onClick={() => router.push(`/courses/${course.id}`)}>
-                        Xem chi tiết
-                      </Button>
-                      {currentUser?.role === 'Trainee' && course.enrollmentType === 'optional' && isRegistrationOpen(course.registrationDeadline) && (
-                        <Button size="sm" onClick={() => handleEnroll(course.id)} className="ml-2">
-                          Đăng ký
+                      {currentUser?.role === 'Trainee' && 
+                       course.enrollmentType === 'optional' && 
+                       !course.enrolledTrainees?.includes(currentUser?.id || '') ? (
+                        isRegistrationOpen(course.registrationDeadline) && (
+                          <Button
+                            size="sm"
+                            onClick={() => handleEnroll(course.id)}
+                          >
+                            Đăng ký
+                          </Button>
+                        )
+                      ) : (
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={() => router.push(`/courses/${course.id}`)}
+                        >
+                          Xem chi tiết
                         </Button>
                       )}
                     </TableCell>

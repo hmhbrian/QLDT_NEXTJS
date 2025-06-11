@@ -282,110 +282,126 @@ export function CourseFormDialog({ isOpen, onOpenChange, courseToEdit, onSave }:
             return;
         }
 
-        const reader = new FileReader(); // Tạo đối tượng FileReader
-        reader.onload = (e) => { // Khi file được đọc xong
-            try { // Bắt lỗi nếu có
-                const data = e.target?.result; // Lấy dữ liệu file
-                const workbook = XLSX.read(data, { type: 'array' }); // Đọc workbook
-                const sheetName = workbook.SheetNames[0]; // Lấy tên sheet đầu tiên
-                const worksheet = workbook.Sheets[sheetName]; // Lấy worksheet
-                const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as any[][]; // Chuyển sang JSON
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const data = e.target?.result;
+                const workbook = XLSX.read(data, { type: 'array' });
+                const sheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[sheetName];
+                const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as any[][];
 
                 if (jsonData.length < 2) {
                     showError('FILE001');
                     return;
                 }
 
-                const headers = (jsonData[0] as string[]).map(h => h.toString().trim().toLowerCase()); // Lấy header
-                const questions: Question[] = []; // Mảng chứa câu hỏi
+                // Lấy header từ dòng đầu tiên và chuyển về chữ thường
+                const headers = (jsonData[0] as string[]).map(h => h?.toString().trim().toLowerCase() || '');
+                const questions: Question[] = [];
 
-                const expectedHeaders = {
-                    questionCode: 'mã câu hỏi',
-                    text: 'câu hỏi',
-                    correctAnswerRaw: 'câu trả lời đúng',
-                    explanation: 'lời giải',
-                    optionA: 'a',
-                    optionB: 'b',
-                    optionC: 'c',
-                    optionD: 'd',
+                // Xác định vị trí các cột dựa trên tiêu đề
+                const headerMap = {
+                    code: headers.indexOf('mã câu hỏi'),
+                    question: headers.indexOf('câu hỏi'),
+                    correctAnswer: headers.indexOf('câu trả lời'),
+                    questionType: headers.indexOf('loại câu hỏi'),
+                    explanation: headers.indexOf('lời giải'),
+                    optionA: headers.indexOf('a'),
+                    optionB: headers.indexOf('b'),
+                    optionC: headers.indexOf('c'),
+                    optionD: headers.indexOf('d')
                 };
-                
-                const headerIndices: Record<keyof typeof expectedHeaders, number> = {} as any;
-                for (const key in expectedHeaders) {
-                    const headerName = expectedHeaders[key as keyof typeof expectedHeaders];
-                    const index = headers.indexOf(headerName);
-                    if (index === -1 && (key === 'text' || key === 'correctAnswerRaw' || key === 'optionA' || key === 'optionB')) { 
-                         showError('FORM001');
+
+                // Kiểm tra các cột bắt buộc
+                if (headerMap.question === -1 || headerMap.correctAnswer === -1 || 
+                    headerMap.optionA === -1 || headerMap.optionB === -1) {
+                    console.error("Cấu trúc file Excel không đúng. Cần có các cột: 'Câu hỏi', 'Câu trả lời', 'A', 'B'");
+                    showError('FILE001');
                          return;
-                    }
-                    headerIndices[key as keyof typeof expectedHeaders] = index; // Lưu chỉ số của header
                 }
 
-
+                // Xử lý từng dòng dữ liệu
                 for (let i = 1; i < jsonData.length; i++) {
-                    const row = jsonData[i]; // Lấy từng dòng
-                    if (!row || row.every(cell => cell === null || cell === undefined || cell.toString().trim() === '')) continue; // Bỏ qua dòng trống
+                    const row = jsonData[i];
+                    if (!row || row.length === 0) continue;
 
-                    const questionText = row[headerIndices.text]?.toString().trim(); // Lấy nội dung câu hỏi
-                    const optionA = row[headerIndices.optionA]?.toString().trim(); // Lấy đáp án A
-                    const optionB = row[headerIndices.optionB]?.toString().trim(); // Lấy đáp án B
-
-                    if (!questionText || !optionA || !optionB) {
-                        console.warn(`Bỏ qua dòng ${i+1} do thiếu câu hỏi hoặc ít nhất 2 đáp án.`);
-                        continue; // Bỏ qua nếu thiếu thông tin cần thiết
-                    }
+                    // Lấy các giá trị từ hàng
+                    const code = headerMap.code !== -1 ? row[headerMap.code]?.toString().trim() || `Q${i}` : `Q${i}`;
+                    const question = row[headerMap.question]?.toString().trim();
+                    const correctAnswerLabel = row[headerMap.correctAnswer]?.toString().trim();
+                    const questionType = headerMap.questionType !== -1 ? row[headerMap.questionType]?.toString().trim() : '';
+                    const explanation = headerMap.explanation !== -1 ? row[headerMap.explanation]?.toString().trim() : '';
                     
-                    const options = [ // Tạo mảng các lựa chọn
-                        optionA, 
-                        optionB, 
-                        row[headerIndices.optionC]?.toString().trim() || '', 
-                        row[headerIndices.optionD]?.toString().trim() || '' 
-                    ].filter(opt => opt); // Chỉ giữ lại các lựa chọn không rỗng
+                    const optionA = headerMap.optionA !== -1 ? row[headerMap.optionA]?.toString().trim() : '';
+                    const optionB = headerMap.optionB !== -1 ? row[headerMap.optionB]?.toString().trim() : '';
+                    const optionC = headerMap.optionC !== -1 ? row[headerMap.optionC]?.toString().trim() : '';
+                    const optionD = headerMap.optionD !== -1 ? row[headerMap.optionD]?.toString().trim() : '';
 
-                    if (options.length < 2) {
-                         console.warn(`Bỏ qua dòng ${i+1} do có ít hơn 2 đáp án hợp lệ.`);
-                         continue; // Bỏ qua nếu ít hơn 2 lựa chọn
+                    // Kiểm tra dữ liệu hợp lệ
+                    if (!question || !correctAnswerLabel || !optionA || !optionB) {
+                        console.warn(`Bỏ qua dòng ${i+1} do thiếu dữ liệu bắt buộc.`);
+                        continue;
                     }
 
-                    const correctAnswerRaw = row[headerIndices.correctAnswerRaw]?.toString().trim(); // Lấy đáp án đúng (dạng thô)
-                    let correctAnswerIndex = parseInt(correctAnswerRaw) - 1; // Chuyển sang index (0-based)
+                    // Tạo mảng các lựa chọn, chỉ giữ lại các option không rỗng
+                    const options = [optionA, optionB];
+                    if (optionC) options.push(optionC);
+                    if (optionD) options.push(optionD);
 
-                    if (isNaN(correctAnswerIndex) || correctAnswerIndex < 0 || correctAnswerIndex >= options.length) {
-                        console.warn(`Đáp án đúng không hợp lệ hoặc ngoài phạm vi ở dòng ${i+1}. Mặc định về 0.`);
-                        correctAnswerIndex = 0; // Mặc định về 0 nếu không hợp lệ
-                    }
+                    // Xác định chỉ số đáp án đúng
+                    let correctAnswerIndex = 0;
                     
+                    // Có thể là số (1,2,3,4) hoặc chữ cái (A,B,C,D)
+                    if (/^\d+$/.test(correctAnswerLabel)) {
+                        // Nếu là số, chuyển về index (0-based)
+                        correctAnswerIndex = parseInt(correctAnswerLabel) - 1;
+                    } else {
+                        // Nếu là chữ cái, chuyển về index (A=0, B=1, etc.)
+                        const upperLabel = correctAnswerLabel.toUpperCase();
+                        const labelMap: Record<string, number> = { 'A': 0, 'B': 1, 'C': 2, 'D': 3 };
+                        correctAnswerIndex = labelMap[upperLabel] || 0;
+                    }
+
+                    // Kiểm tra tính hợp lệ của đáp án
+                    if (correctAnswerIndex < 0 || correctAnswerIndex >= options.length) {
+                        console.warn(`Đáp án đúng không hợp lệ ở dòng ${i+1}. Đặt về 0.`);
+                        correctAnswerIndex = 0;
+                    }
+
+                    // Thêm câu hỏi mới
                     questions.push({
                         id: crypto.randomUUID(),
-                        questionCode: row[headerIndices.questionCode]?.toString().trim() || `IMP-${Date.now()}-${i}`,
-                        text: questionText,
+                        questionCode: code,
+                        text: question,
                         options: options,
                         correctAnswerIndex: correctAnswerIndex,
-                        explanation: row[headerIndices.explanation]?.toString().trim() || '',
+                        explanation: explanation
                     });
                 }
 
-                if (questions.length === 0) { // Nếu không có câu hỏi nào hợp lệ
+                if (questions.length === 0) {
                     showError('FILE001');
-                    return; // Dừng lại
+                    return;
                 }
 
+                // Cập nhật state với các câu hỏi mới
                 setTestFormData(prev => ({
                     ...prev,
                     questions: [...prev.questions, ...questions]
                 }));
-                showError('FILE001');
+                showError('SUCCESS006'); // Thông báo thành công
 
-            } catch (error) { // Nếu có lỗi trong quá trình xử lý
+            } catch (error) {
                 console.error("Lỗi khi import file Excel:", error);
                 showError('FILE001');
             }
         };
-        reader.onerror = () => { // Nếu lỗi đọc file
+        reader.onerror = () => {
             showError('FILE001');
         };
-        reader.readAsArrayBuffer(file); // Đọc file dưới dạng ArrayBuffer
-        if(testExcelImportInputRef.current) testExcelImportInputRef.current.value = ''; // Đặt lại input file
+        reader.readAsArrayBuffer(file);
+        if(testExcelImportInputRef.current) testExcelImportInputRef.current.value = '';
     };
 
 

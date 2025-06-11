@@ -54,6 +54,7 @@ import {
   AlertTriangle,
   MessageSquareQuote,
   Star,
+  User,
 } from "lucide-react";
 import { CourseViewer } from "@/components/courses/CourseViewer";
 import type {
@@ -128,7 +129,7 @@ export default function CourseDetailPage() {
       try {
         // Find course in the store
         const foundCourse = allCoursesFromStore.find(c => c.id === courseIdFromParams);
-        
+
         if (foundCourse) {
           // Check if the course is allowed to be viewed (must be public and published)
           const isPublicAndPublished = foundCourse.isPublic && foundCourse.status === 'published';
@@ -136,17 +137,13 @@ export default function CourseDetailPage() {
             currentUser.role === 'Admin' || 
             currentUser.role === 'HR' || 
             (currentUser.role === 'Trainee' && (
-              isPublicAndPublished || 
               foundCourse.enrolledTrainees?.includes(currentUser.id)
             ))
           );
           
-          if (!isUserAuthorized && !isPublicAndPublished) {
-            setCourse(null);
-            setIsLoading(false);
-            return;
-          }
+          const isPublicAndCanView = isPublicAndPublished;
           
+          // Always show course basic information, but content access is controlled later
           const detailedCourseData: Course = {
             ...foundCourse,
             id: courseIdFromParams,
@@ -186,7 +183,7 @@ export default function CourseDetailPage() {
       }
     };
 
-    fetchCourse();
+      fetchCourse();
   }, [courseIdFromParams, allCoursesFromStore, currentUser, toast, router]);
 
   useEffect(() => {
@@ -201,18 +198,80 @@ export default function CourseDetailPage() {
     }
   }, [currentUser, courseIdFromParams, allEvaluations]); // Phụ thuộc vào allEvaluations để cập nhật
 
+  // Check if user is enrolled to show content
+  const isUserEnrolled = currentUser && (
+    currentUser.role === 'Admin' || 
+    currentUser.role === 'HR' || 
+    (currentUser.role === 'Trainee' && course?.enrolledTrainees?.includes(currentUser.id))
+  );
+  
+  const showRegisterGate = currentUser?.role === 'Trainee' && 
+    course && 
+    !course.enrolledTrainees?.includes(currentUser.id) &&
+    course.enrollmentType === 'optional';
+
   const handleEnroll = () => {
     if (!course) return;
     
-    // Trong tương lai, bạn có thể cập nhật trạng thái đăng ký và lưu vào cookie
-    // Ví dụ: cập nhật enrolledTrainees và lưu lại vào cookie
+    // Redirect to login if not logged in
+    if (!currentUser) {
+      router.push('/login');
+      return;
+    }
     
+    // User is already enrolled
+    if (course.enrolledTrainees?.includes(currentUser.id)) {
     toast({
-      title: "Đăng ký khóa học",
-      description: `Chức năng đăng ký khóa học "${course.title}" đang được phát triển.`,
+        title: "Đã đăng ký",
+        description: `Bạn đã đăng ký khóa học "${course.title}" trước đó.`,
+        variant: "default"
+      });
+      return;
+    }
+    
+    // Add user to enrolledTrainees list
+    const updatedEnrolledTrainees = [
+      ...(course.enrolledTrainees || []),
+      currentUser.id
+    ];
+
+    // Update course in store
+    useCourseStore.getState().updateCourse(course.id, {
+      enrolledTrainees: updatedEnrolledTrainees
+    });
+    
+    // Force re-fetch course from store after updating
+    const updatedCourse = useCourseStore.getState().courses.find(c => c.id === course.id);
+    
+    if (updatedCourse) {
+      // Update local course state with all details
+      setCourse({
+        ...updatedCourse,
+        id: course.id,
+        maxParticipants: updatedCourse.maxParticipants || course.maxParticipants || 25,
+        prerequisites: updatedCourse.prerequisites || course.prerequisites || ["Không có yêu cầu tiên quyết cụ thể."],
+        syllabus: updatedCourse.syllabus || course.syllabus || [{ title: "Chương trình học đang được cập nhật", content: "", duration: "" }],
+        slides: updatedCourse.slides || course.slides || [{ title: "Nội dung đang được cập nhật", url: "https://placehold.co/800x600.png?text=Updating...", type: "image" as "pdf" | "image" }],
+        lessons: updatedCourse.lessons || course.lessons || [],
+        tests: updatedCourse.tests || course.tests || [],
+        materials: updatedCourse.materials || course.materials || []
+      });
+    }
+
+    toast({
+      title: "Đăng ký thành công",
+      description: `Bạn đã đăng ký khóa học "${course.title}" thành công.`,
       duration: 3000,
       variant: "success",
     });
+    
+    // Force re-render after small delay to ensure UI updates
+    setTimeout(() => {
+      setCourse(prevCourse => {
+        if (!prevCourse) return null;
+        return {...prevCourse};
+      });
+    }, 100);
   };
 
   const isRegistrationOpen = (deadline?: string | null): boolean => {
@@ -381,6 +440,7 @@ export default function CourseDetailPage() {
           <div className="flex flex-col sm:flex-row gap-2 mt-4 md:mt-0 w-full md:w-auto">
             {currentUser?.role === "Trainee" &&
               course.enrollmentType === "optional" &&
+              !course.enrolledTrainees?.includes(currentUser.id) &&
               isRegistrationOpen(course.registrationDeadline) && (
                 <Button
                   onClick={handleEnroll}
@@ -388,6 +448,18 @@ export default function CourseDetailPage() {
                   className="w-full sm:w-auto"
                 >
                   <UserPlus className="mr-2 h-5 w-5" /> Đăng ký ngay
+                </Button>
+              )}
+            {currentUser?.role === "Trainee" && 
+              course.enrollmentType === "optional" &&
+              course.enrolledTrainees?.includes(currentUser.id) && (
+                <Button
+                  variant="secondary"
+                  size="lg"
+                  className="w-full sm:w-auto"
+                  disabled
+                >
+                  <CheckCircle className="mr-2 h-5 w-5" /> Đã đăng ký
                 </Button>
               )}
             {currentUser?.role === "Trainee" && ( // Chỉ hiển thị nút đánh giá cho Trainee
@@ -527,6 +599,28 @@ export default function CourseDetailPage() {
             )}
           </TabsList>
 
+          {showRegisterGate && (
+            <div className="my-6 p-6 border-2 border-dashed rounded-lg bg-muted/30 text-center">
+              <GraduationCap className="mx-auto h-16 w-16 text-primary/70 mb-4" />
+              <h3 className="text-xl font-semibold">Bạn cần đăng ký khóa học này để xem nội dung</h3>
+              <p className="mt-2 text-muted-foreground mb-4">
+                Đăng ký khóa học để tiếp cận đầy đủ nội dung bài học, tài liệu và bài kiểm tra.
+              </p>
+              {isRegistrationOpen(course.registrationDeadline) ? (
+                <Button onClick={handleEnroll} size="lg">
+                  <UserPlus className="mr-2 h-5 w-5" /> Đăng ký ngay
+                </Button>
+              ) : (
+                <div className="bg-destructive/10 text-destructive p-3 rounded-md inline-flex items-center">
+                  <AlertTriangle className="h-5 w-5 mr-2" />
+                  Đã hết hạn đăng ký
+                </div>
+              )}
+            </div>
+          )}
+
+          {!showRegisterGate && (
+            <>
           <TabsContent value="content">
             {course.slides && course.slides.length > 0 ? (
               <CourseViewer course={course} />
@@ -658,7 +752,7 @@ export default function CourseDetailPage() {
                           <Badge>Cần đạt: {test.passingScorePercentage}%</Badge>
                         </div>
                         <p className="text-sm text-muted-foreground mt-1">
-                          Số lượng câu hỏi: {test.questions ? test.questions.length : 0}
+                              Số lượng câu hỏi: {test.questions ? test.questions.length : 0}
                         </p>
                         <Button
                           variant="outline"
@@ -901,6 +995,8 @@ export default function CourseDetailPage() {
                 </CardContent>
               </Card>
             </TabsContent>
+              )}
+            </>
           )}
         </Tabs>
       </div>
