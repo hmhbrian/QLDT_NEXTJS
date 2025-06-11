@@ -264,12 +264,16 @@ export default function CoursesPage() {
                   {currentUser?.role === 'Trainee' && 
                    course.enrollmentType === 'optional' && 
                    !course.enrolledTrainees?.includes(currentUser?.id || '') ? (
-                    isRegistrationOpen(course.registrationDeadline) && (
+                    isRegistrationOpen(course.registrationDeadline) ? (
                       <Button
                         className="w-full"
                         onClick={() => handleEnroll(course.id)}
                       >
                         Đăng ký
+                      </Button>
+                    ) : (
+                      <Button variant="outline" disabled className="w-full">
+                        Hết hạn đăng ký
                       </Button>
                     )
                   ) : (
@@ -314,12 +318,16 @@ export default function CoursesPage() {
                       {currentUser?.role === 'Trainee' && 
                        course.enrollmentType === 'optional' && 
                        !course.enrolledTrainees?.includes(currentUser?.id || '') ? (
-                        isRegistrationOpen(course.registrationDeadline) && (
+                        isRegistrationOpen(course.registrationDeadline) ? (
                           <Button
                             size="sm"
                             onClick={() => handleEnroll(course.id)}
                           >
                             Đăng ký
+                          </Button>
+                        ) : (
+                          <Button variant="outline" disabled size="sm">
+                            Hết hạn đăng ký
                           </Button>
                         )
                       ) : (
