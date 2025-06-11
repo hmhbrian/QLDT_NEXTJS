@@ -790,6 +790,7 @@ export interface PublicCourse {
     enrollmentType?: 'optional' | 'mandatory';
     registrationDeadline?: string | null;
     isPublic?: boolean; // Added to align with Course type
+    enrolledTrainees?: string[]; // Add enrolledTrainees field
 }
 
 export const mockPublicCourses: PublicCourse[] = mockCourses
@@ -806,4 +807,5 @@ export const mockPublicCourses: PublicCourse[] = mockCourses
     enrollmentType: course.enrollmentType,
     registrationDeadline: course.registrationDeadline,
     isPublic: course.isPublic,
+        enrolledTrainees: course.enrolledTrainees,
 }));

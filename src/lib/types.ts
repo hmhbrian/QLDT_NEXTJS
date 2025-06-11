@@ -234,6 +234,7 @@ export interface PublicCourse {
   enrollmentType?: EnrollmentType;
   registrationDeadline?: string | null;
   isPublic?: boolean;
+  enrolledTrainees?: string[]; // Add enrolledTrainees property
 }
 
 // Đánh giá của học viên về khóa học
