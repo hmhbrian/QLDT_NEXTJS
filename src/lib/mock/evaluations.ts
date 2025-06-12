@@ -44,7 +44,7 @@ export const mockEvaluations: StudentCourseEvaluation[] = [
     },
     suggestions: 'Tài liệu slide rất tốt, dễ theo dõi. Phần bài tập hơi khó với người mới.',
   },
-    {
+  {
     id: 'eval4',
     courseId: '5', // Python cho Khoa học Dữ liệu - Giữ nguyên traineeId: '3' để test
     traineeId: '3', // Nguyễn Văn An
