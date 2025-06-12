@@ -4,7 +4,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { AdminDashboard } from '@/components/dashboard/AdminDashboard';
 import { HrDashboard } from '@/components/dashboard/HrDashboard';
 import { TraineeDashboard } from '@/components/dashboard/TraineeDashboard';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export default function DashboardPage() {

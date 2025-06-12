@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect } from 'react'; // Đã thêm useEffect và useState
@@ -44,7 +43,7 @@ export default function TraineeSettingsPage() {
         localStorage.setItem(`notifications_${user.id}`, JSON.stringify(notifications));
       }
     }
-  }, [user]); // Phụ thuộc vào người dùng để tải/lưu cài đặt cho mỗi người dùng
+  }, [user, notifications]); // Phụ thuộc vào người dùng để tải/lưu cài đặt cho mỗi người dùng
 
   const handleNotificationChange = (settingName: keyof NotificationSettings, value: boolean) => {
     setNotifications(prevSettings => ({

@@ -1,21 +1,17 @@
-
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { UserCircle, Edit3, Save, XSquare, Image as ImageIcon, KeyRound, Award, BookOpen, Star, Calendar, Clock, TrendingUp, Upload } from "lucide-react";
+import { UserCircle, Edit3, Save, XSquare, Image as ImageIcon, KeyRound, Award, Star, Calendar, TrendingUp, Upload } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from '@/components/ui/use-toast';
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
-import type { Trainee, User } from '@/lib/types'; // Import kiểu Trainee và User
-import { mockUsers } from '@/lib/mock'; // Import mockUsers
 import { useError } from '@/hooks/use-error';
 
 
@@ -86,7 +82,7 @@ export default function UserProfilePage() {
       .toUpperCase();
   };
 
-  const handleAvatarChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
       if (file.size > 2 * 1024 * 1024) { 
@@ -151,8 +147,9 @@ export default function UserProfilePage() {
       setAvatarFile(null); // Xóa file avatar đã chọn
       if (avatarInputRef.current) avatarInputRef.current.value = ''; // Đặt lại input file avatar
 
-    } catch (error: any) {
-      if (!error.message?.startsWith('AUTH') && !error.message?.startsWith('PASSWORD') && !error.message?.startsWith('FILE')) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : '';
+      if (!(errorMessage.startsWith('AUTH') || errorMessage.startsWith('PASSWORD') || errorMessage.startsWith('FILE'))) {
         toast({
             title: 'Lỗi',
             description: 'Không thể cập nhật thông tin hồ sơ. Vui lòng thử lại.',
@@ -442,7 +439,7 @@ export default function UserProfilePage() {
                         type="file"
                         ref={avatarInputRef}
                         accept="image/*"
-                        onChange={handleAvatarChange}
+                        onChange={handleFileChange}
                         className="hidden"
                     />
                 </div>

@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -35,6 +34,8 @@ const initialNewTraineeState = {
   urlAvatar: 'https://placehold.co/40x40.png',
 };
 
+// Thêm type helper cho các key có thể sử dụng trong User
+type KeysOfUser = keyof Omit<User, 'id' | 'role' | 'completedCourses' | 'certificates' | 'evaluations' | 'createdAt' | 'modifiedAt' | 'startWork' | 'endWork'>;
 
 export default function TraineesPage() {
   const { toast } = useToast();
@@ -150,7 +151,7 @@ export default function TraineesPage() {
   
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>, 
-    field: keyof Omit<User, 'id' | 'role' | 'completedCourses' | 'certificates' | 'evaluations' | 'createdAt' | 'modifiedAt' | 'startWork' | 'endWork'>, 
+    field: KeysOfUser, 
     isEdit: boolean
   ) => {
     const value = e.target.value;
@@ -163,7 +164,7 @@ export default function TraineesPage() {
 
   const handleSelectChange = (
     value: string, 
-    field: keyof Omit<User, 'id' | 'role' | 'completedCourses' | 'certificates' | 'evaluations' | 'createdAt' | 'modifiedAt' | 'startWork' | 'endWork'>, 
+    field: KeysOfUser, 
     isEdit: boolean
   ) => {
     if (isEdit) {
@@ -172,7 +173,6 @@ export default function TraineesPage() {
       setNewTraineeData(prev => ({ ...prev, [field]: value as TraineeLevel | WorkStatus }));
     }
   };
-
 
   return (
     <div className="space-y-6">
@@ -324,7 +324,7 @@ export default function TraineesPage() {
                         ? (currentData[fieldKey] ? new Date(currentData[fieldKey]!).toISOString().split('T')[0] : '') 
                         : (currentData[fieldKey as keyof typeof currentData] as string || '')
                     }
-                    onChange={(e) => handleInputChange(e, fieldKey as any, !!editingTrainee)}
+                    onChange={(e) => handleInputChange(e, fieldKey as KeysOfUser, !!editingTrainee)}
                     placeholder={
                         fieldKey === 'fullName' ? 'Nguyễn Văn A' :
                         fieldKey === 'employeeId' ? 'EMP001' :
@@ -343,7 +343,7 @@ export default function TraineesPage() {
                 <Label htmlFor="level">Cấp bậc</Label>
                 <Select
                   value={editingTrainee ? editTraineeData.level : newTraineeData.level}
-                  onValueChange={(value: TraineeLevel) => handleSelectChange(value, 'level' as any, !!editingTrainee)}
+                  onValueChange={(value: TraineeLevel) => handleSelectChange(value, 'level' as KeysOfUser, !!editingTrainee)}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Chọn cấp bậc" />
@@ -361,7 +361,7 @@ export default function TraineesPage() {
                 <Label htmlFor="status">Trạng thái</Label>
                 <Select
                   value={editingTrainee ? editTraineeData.status : newTraineeData.status}
-                  onValueChange={(value: WorkStatus) => handleSelectChange(value, 'status' as any, !!editingTrainee)}
+                  onValueChange={(value: WorkStatus) => handleSelectChange(value, 'status' as KeysOfUser, !!editingTrainee)}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Chọn trạng thái" />
@@ -519,7 +519,7 @@ export default function TraineesPage() {
           <DialogHeader>
             <DialogTitle>Xác nhận xóa học viên</DialogTitle>
             <DialogDescription>
-              Bạn có chắc chắn muốn xóa học viên "{deletingTrainee?.fullName}"? Hành động này không thể hoàn tác.
+              Bạn có chắc chắn muốn xóa học viên &quot;{deletingTrainee?.fullName}&quot;? Hành động này không thể hoàn tác.
             </DialogDescription>
           </DialogHeader>
           <div className="flex items-center gap-4 py-4">

@@ -10,7 +10,6 @@ import Link from "next/link";
 import { useAuth } from '@/hooks/useAuth';
 import { useCookie } from '@/hooks/use-cookie';
 import { useCourseStore } from '@/stores/course-store';
-import type { Course } from '@/lib/types';
 import { mockMyCourses } from '@/lib/mock';
 
 const MY_COURSES_COOKIE_KEY = 'becamex-my-courses-data';
@@ -95,18 +94,6 @@ export default function MyCoursesPage() {
       setIsLoadingCourses(false);
     }
   }, [loadingAuth, allCoursesFromStore, myCoursesFromCookie, currentUser, setMyCoursesInCookie]);
-
-  // Function to update course progress
-  const updateCourseProgress = (courseId: string, newProgress: number) => {
-    // Update state
-    const updatedCourses = myDisplayCourses.map(course => 
-      course.id === courseId ? {...course, progress: newProgress} : course
-    );
-    setMyDisplayCourses(updatedCourses);
-    
-    // Save to cookie
-    setMyCoursesInCookie(updatedCourses);
-  };
 
   if (loadingAuth || isLoadingCourses) {
     return (

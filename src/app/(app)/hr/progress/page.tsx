@@ -3,7 +3,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { LineChart as LineChartIcon, Users, BookOpen, Filter, Download } from "lucide-react"; // Renamed to avoid conflict
+import { LineChart as LineChartIcon, Users, BookOpen, Download } from "lucide-react"; // Renamed to avoid conflict
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis, Tooltip, Legend } from 'recharts';
 import { mockProgressData, mockCourseCompletion } from '@/lib/mock';
 
