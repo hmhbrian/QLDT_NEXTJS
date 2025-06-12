@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -13,7 +12,8 @@ import { useUserStore } from "@/stores/user-store";
 import type { Course, User, StudentCourseEvaluation, Department } from "@/lib/types";
 import {
     mockCourses as initialMockCourses,
-    mockEvaluations as initialMockEvaluations
+    mockEvaluations as initialMockEvaluations,
+    mockUsers
 } from "@/lib/mock";
 import { departmentOptions as globalDepartmentOptions } from '@/lib/constants';
 import {
@@ -85,10 +85,29 @@ export default function TrainingOverviewReportPage() {
 
   const [selectedPeriod, setSelectedPeriod] = useState<string>("all_time");
 
+  // Ensure we have data even if cookies are empty
+  const allCourses = useMemo(() => {
+    return Array.isArray(allCoursesFromCookie) && allCoursesFromCookie.length > 0 
+      ? allCoursesFromCookie 
+      : initialMockCourses;
+  }, [allCoursesFromCookie]);
+
+  const allEvaluations = useMemo(() => {
+    return Array.isArray(allEvaluationsFromCookie) && allEvaluationsFromCookie.length > 0
+      ? allEvaluationsFromCookie
+      : initialMockEvaluations;
+  }, [allEvaluationsFromCookie]);
+
+  const allUsers = useMemo(() => {
+    return Array.isArray(allUsersFromStore) && allUsersFromStore.length > 0
+      ? allUsersFromStore
+      : mockUsers;
+  }, [allUsersFromStore]);
+
   const reportData = useMemo(() => {
-    const safeCourses = Array.isArray(allCoursesFromCookie) ? allCoursesFromCookie : [];
-    const safeEvaluations = Array.isArray(allEvaluationsFromCookie) ? allEvaluationsFromCookie : [];
-    const safeUsers = Array.isArray(allUsersFromStore) ? allUsersFromStore : [];
+    const safeCourses = allCourses;
+    const safeEvaluations = allEvaluations;
+    const safeUsers = allUsers;
 
     const dateRange = getDateRange(selectedPeriod);
 
@@ -309,7 +328,7 @@ export default function TrainingOverviewReportPage() {
       perCourseEvaluationAverages,
       totalValidEvaluationsForCriteria,
     };
-  }, [allCoursesFromCookie, allEvaluationsFromCookie, allUsersFromStore, selectedPeriod]);
+  }, [allCourses, allEvaluations, allUsers, selectedPeriod]);
 
 
   const metrics = [

@@ -103,7 +103,7 @@ export default function CoursesPage() {
       });
     } else {
       const newCourseData = courseData as Omit<Course, 'id' | 'createdAt' | 'modifiedAt' | 'createdBy' | 'modifiedBy'>;
-      if (courses.some(c => c.courseCode === newCourseData.courseCode)) {
+       if (courses.some(c => c.courseCode === newCourseData.courseCode)) {
         showError('COURSE001');
         return;
       }
