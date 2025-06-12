@@ -1,19 +1,13 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { BookOpen, Search, MoreHorizontal, Upload, X, CalendarClock, LayoutGrid, List, Loader2 } from "lucide-react";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Search, CalendarClock, LayoutGrid, List, Loader2, BookOpen } from "lucide-react";
 import { useAuth } from '@/hooks/useAuth';
 import NextImage from "next/image";
 import { useRouter } from 'next/navigation';
-import type { Course, PublicCourse } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/components/ui/use-toast';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -21,6 +15,7 @@ import { useCookie } from '@/hooks/use-cookie';
 import { mockPublicCourses } from '@/lib/mock';
 import { categoryOptions } from '@/lib/constants';
 import { useCourseStore } from '@/stores/course-store';
+import type { PublicCourse } from '@/lib/types';
 
 const PUBLIC_COURSES_COOKIE_KEY = 'becamex-public-courses-data';
 

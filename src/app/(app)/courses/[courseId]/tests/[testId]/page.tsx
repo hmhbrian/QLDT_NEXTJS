@@ -1,12 +1,11 @@
 "use client";
 
 import { useParams } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { AlertTriangle, CheckCircle, XCircle, ArrowLeft, ArrowRight } from "lucide-react";
 import { useCourseStore } from "@/stores/course-store";
-import type { Course, Test, Question } from "@/lib/types";
 import { Progress } from "@/components/ui/progress";
 
 const OPTION_LABELS = ["A", "B", "C", "D", "E", "F", "G", "H"];

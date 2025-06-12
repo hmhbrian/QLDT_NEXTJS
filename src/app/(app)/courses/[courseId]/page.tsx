@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
@@ -10,7 +10,6 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-  CardFooter,
 } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -35,7 +34,6 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   Clock,
   GraduationCap,
-  Users,
   BookOpen,
   CheckCircle,
   FileText,
@@ -45,7 +43,6 @@ import {
   ListChecks,
   Target,
   UserPlus,
-  CalendarClock,
   Info,
   Library,
   FileQuestion,
@@ -54,7 +51,6 @@ import {
   AlertTriangle,
   MessageSquareQuote,
   Star,
-  User,
 } from "lucide-react";
 import { CourseViewer } from "@/components/courses/CourseViewer";
 import type {
@@ -62,18 +58,13 @@ import type {
   CourseCategory,
   CourseMaterial,
   Lesson,
-  Test,
   StudentCourseEvaluation,
 } from "@/lib/types";
 import {
-  mockCourseDetail,
-  mockCourses as initialMockCoursesFromLib,
   mockEvaluations as initialMockEvaluationsFromLib,
 } from "@/lib/mock";
 import {
   categoryOptions,
-  traineeLevelLabels,
-  departmentOptions,
   statusOptions as courseStatusOptions,
 } from "@/lib/constants";
 import { useAuth } from "@/hooks/useAuth";
@@ -131,18 +122,6 @@ export default function CourseDetailPage() {
         const foundCourse = allCoursesFromStore.find(c => c.id === courseIdFromParams);
 
         if (foundCourse) {
-          // Check if the course is allowed to be viewed (must be public and published)
-          const isPublicAndPublished = foundCourse.isPublic && foundCourse.status === 'published';
-          const isUserAuthorized = currentUser && (
-            currentUser.role === 'Admin' || 
-            currentUser.role === 'HR' || 
-            (currentUser.role === 'Trainee' && (
-              foundCourse.enrolledTrainees?.includes(currentUser.id)
-            ))
-          );
-          
-          const isPublicAndCanView = isPublicAndPublished;
-          
           // Always show course basic information, but content access is controlled later
           const detailedCourseData: Course = {
             ...foundCourse,
@@ -199,12 +178,6 @@ export default function CourseDetailPage() {
   }, [currentUser, courseIdFromParams, allEvaluations]); // Phụ thuộc vào allEvaluations để cập nhật
 
   // Check if user is enrolled to show content
-  const isUserEnrolled = currentUser && (
-    currentUser.role === 'Admin' || 
-    currentUser.role === 'HR' || 
-    (currentUser.role === 'Trainee' && course?.enrolledTrainees?.includes(currentUser.id))
-  );
-  
   const showRegisterGate = currentUser?.role === 'Trainee' && 
     course && 
     !course.enrolledTrainees?.includes(currentUser.id) &&
