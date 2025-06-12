@@ -9,7 +9,6 @@ import {
   LineChart,
   Building2,
   AreaChart,
-  // ClipboardCheck, // Removed as it's merged
 } from 'lucide-react';
 
 export const navigationItems: NavItem[] = [
@@ -43,12 +42,6 @@ export const navigationItems: NavItem[] = [
     icon: AreaChart,
     roles: ['Admin'],
   },
-  // { // Removed this entry as it's merged into Overview Report
-  //   label: 'Báo cáo Đánh giá',
-  //   href: '/admin/reports/evaluations',
-  //   icon: ClipboardCheck,
-  //   roles: ['Admin'], 
-  // },
   {
     label: 'Quản lý Người dùng',
     href: '/admin/users',

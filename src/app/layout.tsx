@@ -1,16 +1,14 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import { AuthProvider } from '@/hooks/useAuth';
-// Toaster component từ Shadcn được import trong ToastProvider
-import { Inter, Poppins } from 'next/font/google';
+// Chỉ sử dụng Inter font
+import { Inter } from 'next/font/google';
 import { ToastProvider } from '@/providers/toast-provider';
-import { CustomThemeProvider } from '@/providers/theme-provider'; // Đã đổi tên import
+import { CustomThemeProvider } from '@/providers/theme-provider';
 
-const inter = Inter({ subsets: ['latin'] });
-const poppins = Poppins({ 
-  weight: ['400', '500', '600', '700'],
+const inter = Inter({ 
   subsets: ['latin'],
-  variable: '--font-poppins'
+  display: 'swap'
 });
 
 export const metadata: Metadata = {
@@ -35,8 +33,8 @@ export default function RootLayout({
     <html lang="vi" suppressHydrationWarning>
       <head>
       </head>
-      <body className={`${inter.className} ${poppins.variable}`}>
-        <CustomThemeProvider // Đã đổi thành CustomThemeProvider
+      <body className={inter.className}>
+        <CustomThemeProvider
           attribute="class"
           defaultTheme="system"
           enableSystem
