@@ -1,4 +1,4 @@
-import type { Course, TraineeLevel, Department, CourseCategory } from './types';
+import type { Course, TraineeLevel } from './types';
 
 // Các tùy chọn trạng thái khóa học
 export const statusOptions = [

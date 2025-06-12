@@ -1,4 +1,3 @@
-
 import type { User, Trainee, WorkStatus, TraineeLevel } from '../types';
 
 // Mock Users Data
@@ -70,7 +69,7 @@ export const mockTrainee: Trainee = { // Trainee type might need review if User 
     fullName: 'Nguyễn Văn An (Học viên)',
     email: 'trainee@becamex.com',
     phoneNumber: '0903456789',
-    department: 'it' as any, // Assuming Department type is string for simplicity in mock
+    department: 'it', // Giả định Department là string
     position: 'Thực tập',
     level: 'intern' as TraineeLevel,
     joinDate: '2024-01-01',
@@ -122,4 +121,11 @@ export const mockTrainee: Trainee = { // Trainee type might need review if User 
             status: 'approved'
         }
     ]
+};
+
+export const getUserByEmailAndPassword = (_email: string, _password: string): User | null => {
+    // Implementation of the function
+    // Tìm user có email và password khớp
+    const user = mockUsers.find(user => user.email === _email && user.password === _password);
+    return user || null;
 };
