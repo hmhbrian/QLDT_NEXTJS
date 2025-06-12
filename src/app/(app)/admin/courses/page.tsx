@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,10 +19,7 @@ import {
   departmentOptions as globalDepartmentOptions,
   levelOptions as globalLevelOptions,
   traineeLevelLabels,
-  NO_DEPARTMENT_VALUE,
-  NO_LEVEL_VALUE,
 } from '@/lib/constants';
-import { mockCourses as initialMockCoursesFromLib } from '@/lib/mock'; // Đổi tên để tránh xung đột
 import NextImage from 'next/image';
 import { CourseFormDialog } from '@/components/courses/dialogs/CourseFormDialog';
 import { useCourseStore } from '@/stores/course-store';
@@ -347,7 +344,7 @@ export default function CoursesPage() {
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Xác nhận lưu trữ</DialogTitle>
-              <DialogDescription>Bạn có chắc chắn muốn lưu trữ khóa học "{archivingCourse.title}"?</DialogDescription>
+              <DialogDescription>Bạn có chắc chắn muốn lưu trữ khóa học &quot;{archivingCourse.title}&quot;?</DialogDescription>
             </DialogHeader>
             <DialogFooter className="mt-4">
               <Button variant="outline" onClick={() => setArchivingCourse(null)}>Hủy</Button>
@@ -363,7 +360,7 @@ export default function CoursesPage() {
             <DialogHeader>
               <DialogTitle>Xác nhận xóa</DialogTitle>
               <DialogDescription>
-                Bạn có chắc chắn muốn xóa khóa học "{deletingCourse.title}"? Hành động này không thể hoàn tác.
+                Bạn có chắc chắn muốn xóa khóa học &quot;{deletingCourse.title}&quot;? Hành động này không thể hoàn tác.
                 {deletingCourse.status === 'published' && <div className="mt-2 flex items-center text-destructive"><AlertCircle className="h-4 w-4 mr-2" />Không thể xóa khóa học đã xuất bản.</div>}
               </DialogDescription>
             </DialogHeader>

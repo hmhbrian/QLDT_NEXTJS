@@ -5,11 +5,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from '@/components/ui/badge';
 import { StarRatingDisplay } from '@/components/courses/StarRatingDisplay';
-import { BookCheck, Users, Percent, Clock, Award, TrendingUp, FileText, Activity, PieChart, CheckSquare, BarChartHorizontalBig, BookText as BookTextIcon } from "lucide-react";
-import { useEffect, useState, useMemo } from "react";
+import { BookText as BookTextIcon, FileText, Users, CheckSquare, Clock, Award, BarChartHorizontalBig, Activity } from "lucide-react";
+import { useState, useMemo } from "react";
 import { useCookie } from "@/hooks/use-cookie";
 import { useUserStore } from "@/stores/user-store";
-import type { Course, User, StudentCourseEvaluation, Department } from "@/lib/types";
+import type { Course, StudentCourseEvaluation, Department } from "@/lib/types";
 import {
     mockCourses as initialMockCourses,
     mockEvaluations as initialMockEvaluations,
@@ -208,7 +208,7 @@ export default function TrainingOverviewReportPage() {
         : 0;
 
     // Khởi tạo điểm đánh giá tổng thể
-    const overallScores: Record<CriteriaKey, { sum: number, count: number }> = {} as any;
+    const overallScores: Record<CriteriaKey, { sum: number, count: number }> = {} as Record<CriteriaKey, { sum: number, count: number }>;
     criteriaOrder.forEach(key => {
         overallScores[key] = { sum: 0, count: 0 };
     });
@@ -244,7 +244,7 @@ export default function TrainingOverviewReportPage() {
         const courseEvaluations = evaluationsInPeriod.filter(ev => ev && ev.courseId === course.id);
         if (!courseEvaluations.length) return null;
 
-        const courseScores: Record<CriteriaKey, { sum: number, count: number }> = {} as any;
+        const courseScores: Record<CriteriaKey, { sum: number, count: number }> = {} as Record<CriteriaKey, { sum: number, count: number }>;
         criteriaOrder.forEach(key => {
             courseScores[key] = { sum: 0, count: 0 };
         });

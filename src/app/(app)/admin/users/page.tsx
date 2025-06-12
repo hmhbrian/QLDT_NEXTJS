@@ -1,24 +1,22 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Users, PlusCircle, MoreHorizontal, Search, Pencil, Trash2, AlertCircle, Mail, Phone, Building2, UserCircle2, Calendar, Award } from "lucide-react";
 import { useAuth } from '@/hooks/useAuth';
 import { useError } from '@/hooks/use-error';
 import { useDepartments } from '@/hooks/use-departments';
 import type { User, Role, TraineeLevel, WorkStatus, RegisterDTO } from '@/lib/types';
 import { useUserStore } from '@/stores/user-store';
-import { mockUsers } from "@/lib/mock/users";
-import { mockDepartments } from '@/lib/mock/departments';
+import { PlusCircle, Search, MoreHorizontal, UserCircle2, Pencil, Trash2, Building2, Calendar, Award, AlertCircle } from "lucide-react";
 
 
 const roleBadgeVariant: Record<Role, "default" | "secondary" | "outline"> = {
