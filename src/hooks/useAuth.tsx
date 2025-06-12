@@ -1,10 +1,8 @@
-
 'use client';
 
-import type { User, Role } from '@/lib/types';
+import { User } from '@/lib/types';
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
-import { useToast } from '@/components/ui/use-toast';
 import { useError } from './use-error';
 import { useUserStore } from '@/stores/user-store';
 
@@ -24,7 +22,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loadingAuth, setLoadingAuth] = useState(true);
   const router = useRouter();
-  const { toast } = useToast();
   const { showError } = useError();
   const users = useUserStore(state => state.users);
 
@@ -148,8 +145,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       showError('SUCCESS004'); // Thông báo đổi mật khẩu thành công
       return true;
-    } catch (error: any) {
-      const errorCode = error.message || 'SYS002';
+    } catch (error) {
+      const errorCode = error instanceof Error ? error.message : 'SYS002';
       showError(errorCode); 
       throw error; // Ném lại lỗi để component gọi có thể xử lý nếu cần
     }

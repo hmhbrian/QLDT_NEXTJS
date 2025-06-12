@@ -1,4 +1,3 @@
-
 import { create } from 'zustand';
 import { persist, createJSONStorage, StateStorage } from 'zustand/middleware';
 import type { User } from '@/lib/types';
@@ -47,8 +46,8 @@ const deserializeDates = (users: User[]): User[] => {
 
 export const useUserStore = create<UserStore>()(
   persist( // Sử dụng middleware persist của Zustand
-    (set, get) => ({
-      users: mockUsers.map(user => ({ 
+    (set) => ({
+      users: mockUsers.map(user => ({
         ...user,
         startWork: user.startWork ? new Date(user.startWork) : undefined,
         endWork: user.endWork ? new Date(user.endWork) : undefined,
@@ -80,13 +79,13 @@ export const useUserStore = create<UserStore>()(
           users: state.users.map((user) =>
             user.id === userId
               ? {
-                  ...user,
-                  ...userData,
-                  modifiedAt: new Date(),
-                  // Đảm bảo các ngày trong userData cũng được chuyển đổi nếu chúng là chuỗi
-                  startWork: userData.startWork ? new Date(userData.startWork) : user.startWork,
-                  endWork: userData.endWork ? new Date(userData.endWork) : user.endWork,
-                }
+                ...user,
+                ...userData,
+                modifiedAt: new Date(),
+                // Đảm bảo các ngày trong userData cũng được chuyển đổi nếu chúng là chuỗi
+                startWork: userData.startWork ? new Date(userData.startWork) : user.startWork,
+                endWork: userData.endWork ? new Date(userData.endWork) : user.endWork,
+              }
               : user
           ),
         }));

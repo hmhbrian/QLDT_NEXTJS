@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from './useAuth';
-import { mockLoginAPI, type LoginResponse } from '@/lib/mock';
+import { mockLoginAPI } from '@/lib/mock';
 
 export function useLogin() {
   const [isLoading, setIsLoading] = useState(false);
@@ -18,7 +18,13 @@ export function useLogin() {
       const response = await mockLoginAPI(email, password);
 
       if (response.success && response.user) {
-        setUser(response.user);
+        const userWithMissingProps = {
+          ...response.user,
+          idCard: '',
+          phoneNumber: '',
+          role: response.user.role as 'Admin' | 'HR' | 'Trainee'
+        };
+        setUser(userWithMissingProps);
         toast({
           title: 'Thành công',
           description: response.message,
@@ -31,7 +37,7 @@ export function useLogin() {
           description: response.message,
         });
       }
-    } catch (error) {
+    } catch {
       toast({
         variant: 'destructive',
         title: 'Lỗi',

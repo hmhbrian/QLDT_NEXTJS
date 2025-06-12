@@ -59,7 +59,7 @@ const preparedMockCourses = mockCourses.map(course => ({
 
 export const useCourseStore = create<CourseStore>()(
     persist(
-        (set, get) => ({
+        (set) => ({
             courses: preparedMockCourses,
             _hasHydrated: false,
             setHasHydrated: (hydrated) => set({ _hasHydrated: hydrated }),

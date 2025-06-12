@@ -79,7 +79,7 @@ export function useCookie<T>(
     };
 
     // Lắng nghe sự kiện cookie-change
-    window.addEventListener('cookie-change', (e: any) => {
+    window.addEventListener('cookie-change', (e: CustomEvent<{ key: string }>) => {
       if (e.detail.key === key) {
         handleCookieChange();
       }
@@ -90,7 +90,7 @@ export function useCookie<T>(
 
     return () => {
       clearInterval(intervalId); // Dọn dẹp interval khi unmount
-      window.removeEventListener('cookie-change', handleCookieChange as any);
+      window.removeEventListener('cookie-change', handleCookieChange);
     };
   }, [key, reloadFromCookie]);
 
