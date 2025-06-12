@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from './useAuth';
-import { mockLoginAPI } from '@/lib/mock';
+import { authService } from '@/lib/api';
 
 export function useLogin() {
   const [isLoading, setIsLoading] = useState(false);
@@ -15,13 +15,13 @@ export function useLogin() {
   const login = async (email: string, password: string) => {
     try {
       setIsLoading(true);
-      const response = await mockLoginAPI(email, password);
+      const response = await authService.login({ email, password });
 
       if (response.success && response.user) {
         const userWithMissingProps = {
           ...response.user,
-          idCard: '',
-          phoneNumber: '',
+          idCard: response.user.idCard || '',
+          phoneNumber: response.user.phoneNumber || '',
           role: response.user.role as 'Admin' | 'HR' | 'Trainee'
         };
         setUser(userWithMissingProps);
@@ -37,7 +37,7 @@ export function useLogin() {
           description: response.message,
         });
       }
-    } catch {
+    } catch (error) {
       toast({
         variant: 'destructive',
         title: 'Lỗi',

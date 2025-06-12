@@ -104,6 +104,9 @@ export function flattenDepartmentTree(
     });
 }
 
+// Also export as departmentTreeToList for backward compatibility
+export const departmentTreeToList = flattenDepartmentTree;
+
 /**
  * Tải cây phòng ban một cách lười biếng đến độ sâu cụ thể
  * Trả về cả cây đã tải một phần và một hàm để tải thêm các phòng ban con
@@ -229,7 +232,7 @@ export function validateDepartmentTree(departments: DepartmentInfo[]): {
             }
 
             // Kiểm tra tính nhất quán của đường dẫn
-            if (parent && (dept.path.length !== parent.path.length + 1 ||
+            if (parent && dept.path && parent.path && (dept.path.length !== parent.path.length + 1 ||
                 !dept.path.slice(0, -1).every((item, i) => item === parent.path[i]))) {
                 issues.push({
                     type: 'invalid_path',
@@ -239,7 +242,7 @@ export function validateDepartmentTree(departments: DepartmentInfo[]): {
             }
         } else {
             // Phòng ban cấp độ gốc nên có level = 1
-            if (dept.level !== 1) {
+            if (dept.level && dept.level !== 1) {
                 issues.push({
                     type: 'invalid_level',
                     departmentId: dept.id,
@@ -248,7 +251,7 @@ export function validateDepartmentTree(departments: DepartmentInfo[]): {
             }
 
             // Phòng ban gốc nên có đường dẫn chỉ với tên của nó
-            if (dept.path.length !== 1 || dept.path[0] !== dept.name) {
+            if (dept.path && (dept.path.length !== 1 || dept.path[0] !== dept.name)) {
                 issues.push({
                     type: 'invalid_path',
                     departmentId: dept.id,
