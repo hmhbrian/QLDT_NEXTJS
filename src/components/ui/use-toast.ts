@@ -1,4 +1,3 @@
-
 "use client"
 
 // Lấy cảm hứng từ thư viện react-hot-toast
@@ -19,14 +18,6 @@ type ToasterToast = ToastProps & {
     action?: ToastActionElement
 }
 
-// Các loại hành động cho reducer
-const actionTypes = {
-    ADD_TOAST: "ADD_TOAST",
-    UPDATE_TOAST: "UPDATE_TOAST",
-    DISMISS_TOAST: "DISMISS_TOAST",
-    REMOVE_TOAST: "REMOVE_TOAST",
-} as const
-
 let count = 0 // Biến đếm để tạo ID duy nhất cho toast
 
 // Hàm tạo ID duy nhất
@@ -35,24 +26,22 @@ function genId() {
     return count.toString()
 }
 
-type ActionType = typeof actionTypes
-
 // Các loại hành động có thể xảy ra
 type Action =
     | {
-        type: ActionType["ADD_TOAST"] // Thêm toast mới
+        type: "ADD_TOAST" // Thêm toast mới
         toast: ToasterToast
     }
     | {
-        type: ActionType["UPDATE_TOAST"] // Cập nhật toast hiện có
+        type: "UPDATE_TOAST" // Cập nhật toast hiện có
         toast: Partial<ToasterToast>
     }
     | {
-        type: ActionType["DISMISS_TOAST"] // Ẩn toast (có thể theo ID hoặc tất cả)
+        type: "DISMISS_TOAST" // Ẩn toast (có thể theo ID hoặc tất cả)
         toastId?: ToasterToast["id"]
     }
     | {
-        type: ActionType["REMOVE_TOAST"] // Xóa toast khỏi DOM (có thể theo ID hoặc tất cả)
+        type: "REMOVE_TOAST" // Xóa toast khỏi DOM (có thể theo ID hoặc tất cả)
         toastId?: ToasterToast["id"]
     }
 
@@ -164,7 +153,7 @@ function toast(props: Toast) {
     const dismiss = () => dispatch({ type: "DISMISS_TOAST", toastId: id })
 
     // Bỏ qua bất kỳ toast hiện có nào trước khi hiển thị toast mới, quan trọng đối với TOAST_LIMIT = 1
-    dispatch({ type: "DISMISS_TOAST" }); 
+    dispatch({ type: "DISMISS_TOAST" });
 
     // Phân tách tường minh các thuộc tính đã biết và trải rộng phần còn lại
     const { title, description, action, variant, ...remainingToastProps } = props;
@@ -174,7 +163,7 @@ function toast(props: Toast) {
         title,
         description,
         action,
-        variant, 
+        variant,
         open: true,
         onOpenChange: (open) => {
             if (!open) dismiss()

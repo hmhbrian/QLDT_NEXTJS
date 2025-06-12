@@ -1,8 +1,6 @@
-
 'use client';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -11,9 +9,7 @@ import { useCookie } from "@/hooks/use-cookie";
 
 export function AdminSettings() {
   // Sử dụng cookies để lưu trữ cài đặt
-  const [emailNotifications, setEmailNotifications] = useCookie('admin_email_notifications', true);
   const [maintenanceMode, setMaintenanceMode] = useCookie('admin_maintenance_mode', false);
-  const [darkMode, setDarkMode] = useCookie('admin_dark_mode', false);
   const [siteName, setSiteName] = useCookie('admin_site_name', 'QLDT - Quản lý đào tạo');
   const [adminEmail, setAdminEmail] = useCookie('admin_email', 'admin@example.com');
   const [autoApprove, setAutoApprove] = useCookie('admin_auto_approve', false);

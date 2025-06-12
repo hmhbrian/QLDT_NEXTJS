@@ -17,8 +17,6 @@ import { navigationItems } from '@/config/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import type { NavItem } from '@/lib/types';
 import { cn } from '@/lib/utils';
-import { Button } from '../ui/button';
-import { LogOut, UserCircle } from 'lucide-react';
 
 export function ActualSidebar() {
   const { user } = useAuth();

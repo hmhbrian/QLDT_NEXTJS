@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useAuth } from '@/hooks/useAuth';
@@ -14,25 +13,12 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { LogOut, UserCircle, Settings, ChevronDown } from 'lucide-react';
-import { usePathname, useRouter } from 'next/navigation';
-import { navigationItems } from '@/config/navigation';
-import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { ThemeToggle } from './ThemeToggle'; // Import ThemeToggle
 
 export function Header() {
   const { user, logout } = useAuth();
-  const pathname = usePathname();
   const router = useRouter();
-
-  const getPageTitle = () => {
-    let navItem = navigationItems.find(item => item.href === pathname);
-    if (!navItem) {
-      navItem = navigationItems.find(item => pathname.startsWith(item.href) && item.href !== '/');
-    }
-    return navItem ? navItem.label : "";
-  };
-  
-  const pageTitle = getPageTitle();
 
   if (!user) return null;
 

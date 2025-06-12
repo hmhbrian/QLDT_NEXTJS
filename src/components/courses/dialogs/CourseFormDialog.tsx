@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,13 +8,11 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import { PlusCircle, Upload, X, Users, Library, FileQuestion, Edit, Trash2, Paperclip, ListChecks, AlertTriangle } from "lucide-react";
+import { PlusCircle, Upload, X, Users, Library, FileQuestion, Edit, Trash2, Paperclip, ListChecks } from "lucide-react";
 import NextImage from 'next/image';
-import type { Course, TraineeLevel, Department, CourseMaterial, EnrollmentType, User, Lesson, Test, Question, LessonContentType } from '@/lib/types';
+import type { Course, TraineeLevel, Department, CourseMaterial, EnrollmentType, Lesson, Test, Question, LessonContentType } from '@/lib/types';
 import { categoryOptions, departmentOptions, levelOptions, statusOptions, NO_DEPARTMENT_VALUE, NO_LEVEL_VALUE } from '@/lib/constants';
 import { useUserStore } from '@/stores/user-store';
-import { useCourseStore } from '@/stores/course-store';
-import { useAuth } from '@/hooks/useAuth';
 import { useError } from '@/hooks/use-error';
 import * as XLSX from 'xlsx'; 
 
@@ -57,7 +55,6 @@ interface CourseFormDialogProps {
 }
 
 export function CourseFormDialog({ isOpen, onOpenChange, courseToEdit, onSave }: CourseFormDialogProps) {
-    const { user: currentUser } = useAuth();
     const { showError } = useError(); 
     const allUsers = useUserStore(state => state.users);
     const trainees = allUsers.filter(u => u.role === 'Trainee');
@@ -66,7 +63,6 @@ export function CourseFormDialog({ isOpen, onOpenChange, courseToEdit, onSave }:
         courseToEdit || initialNewCourseStateForDialog // Nếu có courseToEdit thì dùng nó, không thì dùng state ban đầu
     );
 
-    const [courseImageFile, setCourseImageFile] = useState<File | null>(null);
     const [courseImagePreview, setCourseImagePreview] = useState<string | null>(
         courseToEdit?.image || initialNewCourseStateForDialog.image // Ưu tiên ảnh của khóa học đang sửa
     );
@@ -110,7 +106,6 @@ export function CourseFormDialog({ isOpen, onOpenChange, courseToEdit, onSave }:
                 setCourseImagePreview(initialNewCourseStateForDialog.image);
                 setTempSelectedTraineeIds([]);
             }
-            setCourseImageFile(null); // Xóa file ảnh đã chọn
             if (courseImageInputRef.current) courseImageInputRef.current.value = ''; // Reset input file ảnh
         }
     }, [isOpen, courseToEdit]);
@@ -134,7 +129,7 @@ export function CourseFormDialog({ isOpen, onOpenChange, courseToEdit, onSave }:
     }, [courseImagePreview, formData.materials, lessonFormData]);
 
 
-    const handleInputChange = (field: keyof typeof formData, value: any) => {
+    const handleInputChange = (field: keyof typeof formData, value: unknown) => {
         setFormData(prev => ({ ...prev, [field]: value }));
     };
 
@@ -150,30 +145,29 @@ export function CourseFormDialog({ isOpen, onOpenChange, courseToEdit, onSave }:
         }));
     };
 
-    const handleCourseImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
         if (file) {
             if (file.size > 5 * 1024 * 1024) { showError('FILE002'); return; }
             if (!file.type.startsWith('image/')) { showError('FILE001'); return; }
             if (courseImagePreview && courseImagePreview.startsWith('blob:')) URL.revokeObjectURL(courseImagePreview);
             const previewUrl = URL.createObjectURL(file);
-            setCourseImageFile(file);
             setCourseImagePreview(previewUrl);
             handleInputChange('image', previewUrl); 
         }
     };
 
-    const handleMaterialFileChange = (event: React.ChangeEvent<HTMLInputElement>, materialIndex: number) => {
+    const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>, field: number) => {
         const file = event.target.files?.[0];
         if (file) {
             if (file.size > 10 * 1024 * 1024) { showError('FILE002'); return; }
             const objectUrl = URL.createObjectURL(file);
             const newMaterials = [...formData.materials];
-            if (newMaterials[materialIndex]) {
-                if (newMaterials[materialIndex].url && newMaterials[materialIndex].url.startsWith('blob:')) {
-                    URL.revokeObjectURL(newMaterials[materialIndex].url);
+            if (newMaterials[field]) {
+                if (newMaterials[field].url && newMaterials[field].url.startsWith('blob:')) {
+                    URL.revokeObjectURL(newMaterials[field].url);
                 }
-                newMaterials[materialIndex] = { ...newMaterials[materialIndex], url: objectUrl, __file: file };
+                newMaterials[field] = { ...newMaterials[field], url: objectUrl, __file: file };
                 handleInputChange('materials', newMaterials);
             }
         }
@@ -289,7 +283,7 @@ export function CourseFormDialog({ isOpen, onOpenChange, courseToEdit, onSave }:
                 const workbook = XLSX.read(data, { type: 'array' });
                 const sheetName = workbook.SheetNames[0];
                 const worksheet = workbook.Sheets[sheetName];
-                const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as any[][];
+                const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as (string | number | null)[][];
 
                 if (jsonData.length < 2) {
                     showError('FILE001');
@@ -330,7 +324,6 @@ export function CourseFormDialog({ isOpen, onOpenChange, courseToEdit, onSave }:
                     const code = headerMap.code !== -1 ? row[headerMap.code]?.toString().trim() || `Q${i}` : `Q${i}`;
                     const question = row[headerMap.question]?.toString().trim();
                     const correctAnswerLabel = row[headerMap.correctAnswer]?.toString().trim();
-                    const questionType = headerMap.questionType !== -1 ? row[headerMap.questionType]?.toString().trim() : '';
                     const explanation = headerMap.explanation !== -1 ? row[headerMap.explanation]?.toString().trim() : '';
                     
                     const optionA = headerMap.optionA !== -1 ? row[headerMap.optionA]?.toString().trim() : '';
@@ -613,7 +606,7 @@ export function CourseFormDialog({ isOpen, onOpenChange, courseToEdit, onSave }:
                                     <Button type="button" variant="outline" onClick={() => courseImageInputRef.current?.click()}>
                                         <Upload className="mr-2 h-4 w-4" /> Tải ảnh lên
                                     </Button>
-                                    <input id="course-image-upload" type="file" ref={courseImageInputRef} accept="image/*" onChange={handleCourseImageChange} className="hidden" />
+                                    <input id="course-image-upload" type="file" ref={courseImageInputRef} accept="image/*" onChange={handleImageChange} className="hidden" />
                                     {courseImagePreview && courseImagePreview !== 'https://placehold.co/600x400.png' && (
                                         <NextImage src={courseImagePreview} alt="Xem trước" width={96} height={64} className="w-24 h-16 object-cover rounded border" data-ai-hint="course thumbnail" />
                                     )}
@@ -621,8 +614,6 @@ export function CourseFormDialog({ isOpen, onOpenChange, courseToEdit, onSave }:
                                         <Button type="button" variant="ghost" size="icon" onClick={() => {
                                             if (courseImagePreview && courseImagePreview.startsWith('blob:')) URL.revokeObjectURL(courseImagePreview);
                                             setCourseImagePreview(initialNewCourseStateForDialog.image);
-                                            setCourseImageFile(null);
-                                            if (courseImageInputRef.current) courseImageInputRef.current.value = '';
                                             handleInputChange('image', initialNewCourseStateForDialog.image);
                                         }}><X className="h-4 w-4" /></Button>
                                     )}
@@ -710,7 +701,7 @@ export function CourseFormDialog({ isOpen, onOpenChange, courseToEdit, onSave }:
                                 <Label>Tài liệu khóa học</Label>
                                 <input type="file" ref={materialFileInputRef} className="hidden" onChange={(e) => {
                                     if (currentMaterialUploadIndex !== null) {
-                                        handleMaterialFileChange(e, currentMaterialUploadIndex);
+                                        handleFileChange(e, currentMaterialUploadIndex);
                                         setCurrentMaterialUploadIndex(null); // Đặt lại sau khi xử lý
                                     }
                                 }} />
@@ -731,7 +722,8 @@ export function CourseFormDialog({ isOpen, onOpenChange, courseToEdit, onSave }:
                                             <div className="flex items-center gap-1">
                                                 <Input placeholder="URL hoặc tải lên" value={material.url} onChange={(e) => handleMaterialDetailChange(index, 'url', e.target.value)} readOnly={!!material.__file} />
                                                 {(material.type === 'pdf' || material.type === 'slide') && (
-                                                    <Button type="button" variant="outline" size="icon" onClick={() => {
+                                                    <Button type="button" variant="outline" size="icon" onClick={(e) => {
+                                                        e.stopPropagation();
                                                         setCurrentMaterialUploadIndex(index);
                                                         if (materialFileInputRef.current) {
                                                             materialFileInputRef.current.accept = material.type === 'pdf' ? '.pdf' : '.ppt, .pptx, .key, .pdf'; // Đặt loại file chấp nhận
