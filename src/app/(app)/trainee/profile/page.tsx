@@ -13,6 +13,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { useToast } from '@/components/ui/use-toast';
 import { Badge } from "@/components/ui/badge";
 import { useError } from '@/hooks/use-error';
+import { mockUsers } from '@/lib/mock';
+import type { User } from '@/lib/types';
 
 
 export default function UserProfilePage() { 
