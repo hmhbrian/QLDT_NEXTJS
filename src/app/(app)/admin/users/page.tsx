@@ -474,7 +474,7 @@ export default function UsersPage() {
         positionId: newUser.role === "HOCVIEN" ? 1 : undefined, // Default position
         code:
           newUser.role === "HOCVIEN"
-            ? `EMP${Math.floor(Math.random() * 10000)
+            ? `EMP${Math.floor(Math.random() * 1000000000)
                 .toString()
                 .padStart(4, "0")}`
             : undefined,
@@ -514,9 +514,19 @@ export default function UsersPage() {
       }
     } catch (error: any) {
       console.error("Error creating user:", error);
+
+      let errorMessage = "Đã xảy ra lỗi khi thêm người dùng.";
+
+      // Xử lý validation errors
+      if (error.errors && Array.isArray(error.errors)) {
+        errorMessage = error.errors.join("\n");
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+
       toast({
         title: "Lỗi",
-        description: error.message || "Đã xảy ra lỗi khi thêm người dùng.",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
