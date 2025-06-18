@@ -1,15 +1,22 @@
-import { create } from 'zustand';
-import { persist, createJSONStorage, StateStorage } from 'zustand/middleware';
-import type { User } from '@/lib/types';
-import { mockUsers } from '@/lib/mock';
-import Cookies from 'js-cookie';
+import { create } from "zustand";
+import { persist, createJSONStorage, StateStorage } from "zustand/middleware";
+import type { User, CreateUserRequest } from "@/lib/types";
+import { mockUsers } from "@/lib/mock";
+import Cookies from "js-cookie";
+import UserApiService from "@/lib/services/user-api.service";
 
 interface UserStore {
   users: User[];
   setUsers: (users: User[]) => void;
-  addUser: (user: User) => void;
+  addUser: (user: User) => Promise<void>;
+  addUserViaApi: (userData: CreateUserRequest) => Promise<void>;
   updateUser: (userId: string, userData: Partial<User>) => void;
+  updateUserViaApi: (
+    userId: string,
+    userData: Partial<CreateUserRequest>
+  ) => Promise<void>;
   deleteUser: (userId: string) => void;
+  deleteUserViaApi: (userId: string) => Promise<void>;
   fetchUsers: () => Promise<void>;
   _hasHydrated: boolean;
   setHasHydrated: (hydrated: boolean) => void;
@@ -24,8 +31,8 @@ const cookieStorage: StateStorage = {
   setItem: (name: string, value: string): void => {
     Cookies.set(name, value, {
       expires: 7, // Cookie hết hạn sau 7 ngày
-      sameSite: 'strict', // Chính sách SameSite
-      secure: process.env.NODE_ENV === 'production', // Chỉ gửi qua HTTPS ở môi trường production
+      sameSite: "strict", // Chính sách SameSite
+      secure: process.env.NODE_ENV === "production", // Chỉ gửi qua HTTPS ở môi trường production
     });
   },
   removeItem: (name: string): void => {
@@ -45,9 +52,10 @@ const deserializeDates = (users: User[]): User[] => {
 };
 
 export const useUserStore = create<UserStore>()(
-  persist( // Sử dụng middleware persist của Zustand
+  persist(
+    // Sử dụng middleware persist của Zustand
     (set) => ({
-      users: mockUsers.map(user => ({
+      users: mockUsers.map((user) => ({
         ...user,
         startWork: user.startWork ? new Date(user.startWork) : undefined,
         endWork: user.endWork ? new Date(user.endWork) : undefined,
@@ -57,51 +65,123 @@ export const useUserStore = create<UserStore>()(
       _hasHydrated: false, // Flag để theo dõi trạng thái hydration
       setHasHydrated: (hydrated) => set({ _hasHydrated: hydrated }),
       fetchUsers: async () => {
-        // Dữ liệu đã được quản lý bằng cookie, không cần gọi API
+        try {
+          if (!UserApiService.shouldUseApi()) {
+            // Nếu API bị tắt, sử dụng mock data
+            return;
+          }
+          const users = await UserApiService.getUsers();
+          set({ users: deserializeDates(users) });
+        } catch (error: any) {
+          console.error("Error fetching users:", error);
+          throw error; // Throw error để component có thể xử lý
+        }
       },
       setUsers: (users) => {
         set({ users: deserializeDates(users) }); // Chuyển đổi date khi set
       },
-      addUser: (user) => {
+      addUser: async (user) => {
         set((state) => {
-          const newUserWithDate = { // Đảm bảo user mới cũng có date object
+          const newUserWithDate = {
+            // Đảm bảo user mới cũng có date object
             ...user,
             createdAt: user.createdAt ? new Date(user.createdAt) : new Date(),
-            modifiedAt: user.modifiedAt ? new Date(user.modifiedAt) : new Date(),
+            modifiedAt: user.modifiedAt
+              ? new Date(user.modifiedAt)
+              : new Date(),
             startWork: user.startWork ? new Date(user.startWork) : undefined,
             endWork: user.endWork ? new Date(user.endWork) : undefined,
           };
           return { users: [...state.users, newUserWithDate] };
         });
       },
+      addUserViaApi: async (userData) => {
+        try {
+          if (!UserApiService.shouldUseApi()) {
+            throw {
+              message:
+                "API đã được tắt. Vui lòng bật API trong file .env để sử dụng chức năng này.",
+              statusCode: 503,
+              code: "API_DISABLED",
+            };
+          }
+
+          const response = await UserApiService.createUser(userData);
+          if (response.statusCode === 200 || response.statusCode === 201) {
+            // Refresh users list after successful creation
+            const users = await UserApiService.getUsers();
+            set({ users: deserializeDates(users) });
+          } else {
+            throw new Error(response.message || "Failed to create user");
+          }
+        } catch (error) {
+          console.error("Error creating user:", error);
+          throw error;
+        }
+      },
       updateUser: (userId, userData) => {
         set((state) => ({
           users: state.users.map((user) =>
             user.id === userId
               ? {
-                ...user,
-                ...userData,
-                modifiedAt: new Date(),
-                // Đảm bảo các ngày trong userData cũng được chuyển đổi nếu chúng là chuỗi
-                startWork: userData.startWork ? new Date(userData.startWork) : user.startWork,
-                endWork: userData.endWork ? new Date(userData.endWork) : user.endWork,
-              }
+                  ...user,
+                  ...userData,
+                  modifiedAt: new Date(),
+                  // Đảm bảo các ngày trong userData cũng được chuyển đổi nếu chúng là chuỗi
+                  startWork: userData.startWork
+                    ? new Date(userData.startWork)
+                    : user.startWork,
+                  endWork: userData.endWork
+                    ? new Date(userData.endWork)
+                    : user.endWork,
+                }
               : user
           ),
         }));
+      },
+      updateUserViaApi: async (userId, userData) => {
+        try {
+          const response = await UserApiService.updateUser(userId, userData);
+          if (response.statusCode === 200) {
+            // Refresh users list after successful update
+            const users = await UserApiService.getUsers();
+            set({ users: deserializeDates(users) });
+          } else {
+            throw new Error(response.message || "Failed to update user");
+          }
+        } catch (error) {
+          console.error("Error updating user:", error);
+          throw error;
+        }
       },
       deleteUser: (userId) => {
         set((state) => ({
           users: state.users.filter((user) => user.id !== userId),
         }));
       },
+      deleteUserViaApi: async (userId) => {
+        try {
+          const response = await UserApiService.deleteUser(userId);
+          if (response.statusCode === 200) {
+            // Refresh users list after successful deletion
+            const users = await UserApiService.getUsers();
+            set({ users: deserializeDates(users) });
+          } else {
+            throw new Error(response.message || "Failed to delete user");
+          }
+        } catch (error) {
+          console.error("Error deleting user:", error);
+          throw error;
+        }
+      },
     }),
     {
-      name: 'becamex-user-list-storage', // Tên cookie
+      name: "becamex-user-list-storage", // Tên cookie
       storage: createJSONStorage(() => cookieStorage), // Sử dụng cookieStorage tùy chỉnh
-      onRehydrateStorage: () => (state, error) => { // Callback khi tải lại từ storage
+      onRehydrateStorage: () => (state, error) => {
+        // Callback khi tải lại từ storage
         if (error) {
-          console.error('Lỗi khi tải dữ liệu người dùng từ cookie:', error);
+          console.error("Lỗi khi tải dữ liệu người dùng từ cookie:", error);
         } else if (state) {
           state.users = deserializeDates(state.users); // Chuyển đổi date
           state.setHasHydrated(true); // Đánh dấu đã hydrate
@@ -113,9 +193,8 @@ export const useUserStore = create<UserStore>()(
   )
 );
 
-
 // Để đảm bảo _hasHydrated được đặt sau khi tải ban đầu từ cookie:
-if (typeof window !== 'undefined') { // Chỉ chạy ở client
+if (typeof window !== "undefined") {
+  // Chỉ chạy ở client
   useUserStore.persist.rehydrate(); // Kích hoạt rehydration
 }
-

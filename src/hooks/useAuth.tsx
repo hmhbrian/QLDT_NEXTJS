@@ -64,7 +64,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.setItem(API_CONFIG.storage.user, JSON.stringify(user));
       localStorage.setItem(API_CONFIG.storage.token, token);
       setTimeout(() => {
-        if (user.role === "Admin") {
+        if (user.role === "ADMIN") {
           router.push("/admin/users");
         } else if (user.role === "HR") {
           router.push("/hr/trainees");

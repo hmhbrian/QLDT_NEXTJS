@@ -1,10 +1,10 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { useToast } from '@/components/ui/use-toast';
-import { useAuth } from './useAuth';
-import { authService } from '@/lib/api';
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useToast } from "@/components/ui/use-toast";
+import { useAuth } from "./useAuth";
+import { authService } from "@/lib/api";
 
 export function useLogin() {
   const [isLoading, setIsLoading] = useState(false);
@@ -20,28 +20,28 @@ export function useLogin() {
       if (response.success && response.user) {
         const userWithMissingProps = {
           ...response.user,
-          idCard: response.user.idCard || '',
-          phoneNumber: response.user.phoneNumber || '',
-          role: response.user.role as 'Admin' | 'HR' | 'Trainee'
+          idCard: response.user.idCard || "",
+          phoneNumber: response.user.phoneNumber || "",
+          role: response.user.role as "ADMIN" | "HR" | "HOCVIEN",
         };
         setUser(userWithMissingProps);
         toast({
-          title: 'Thành công',
+          title: "Thành công",
           description: response.message,
         });
-        router.push('/dashboard');
+        router.push("/dashboard");
       } else {
         toast({
-          variant: 'destructive',
-          title: 'Lỗi',
+          variant: "destructive",
+          title: "Lỗi",
           description: response.message,
         });
       }
     } catch (error) {
       toast({
-        variant: 'destructive',
-        title: 'Lỗi',
-        description: 'Đã có lỗi xảy ra khi đăng nhập',
+        variant: "destructive",
+        title: "Lỗi",
+        description: "Đã có lỗi xảy ra khi đăng nhập",
       });
     } finally {
       setIsLoading(false);
@@ -50,6 +50,6 @@ export function useLogin() {
 
   return {
     login,
-    isLoading
+    isLoading,
   };
-} 
+}
