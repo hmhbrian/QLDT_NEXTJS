@@ -357,11 +357,8 @@ export default function UsersPage() {
     // Validate email
     if (!newUser.email) {
       newErrors.email = "EMAIL IS REQUIRE!";
-    } else if (
-      !/^[a-zA-Z0-9._%+-]+@(becamex\.com|becamex\.com\.vn)$/.test(newUser.email)
-    ) {
-      newErrors.email =
-        "Email must be from becamex.com or becamex.com.vn domain.";
+    } else if (!/^[a-zA-Z0-9._%+-]+@becamex\.com$/.test(newUser.email)) {
+      newErrors.email = "Email must be from @becamex.com domain.";
     } else if (newUser.email.length > 100) {
       newErrors.email = "EMAIL cannot exceed 100 characters.";
     }
@@ -515,17 +512,25 @@ export default function UsersPage() {
     } catch (error: any) {
       console.error("Error creating user:", error);
 
+      let errorTitle = "Lỗi";
       let errorMessage = "Đã xảy ra lỗi khi thêm người dùng.";
 
-      // Xử lý validation errors
-      if (error.errors && Array.isArray(error.errors)) {
-        errorMessage = error.errors.join("\n");
+      // Xử lý validation errors từ .NET backend
+      if (
+        error.code === "VALIDATION_ERROR" &&
+        error.errors &&
+        Array.isArray(error.errors)
+      ) {
+        errorTitle = "Dữ liệu không hợp lệ";
+        errorMessage =
+          error.errors.slice(0, 3).join(".\n") +
+          (error.errors.length > 3 ? "..." : "");
       } else if (error.message) {
         errorMessage = error.message;
       }
 
       toast({
-        title: "Lỗi",
+        title: errorTitle,
         description: errorMessage,
         variant: "destructive",
       });

@@ -4,8 +4,7 @@
  */
 
 // API Environment configuration
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:5228/api";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "/api"; // Sử dụng proxy Next.js thay vì gọi trực tiếp backend
 const API_TIMEOUT = parseInt(process.env.NEXT_PUBLIC_API_TIMEOUT || "30000");
 const USE_API = process.env.NEXT_PUBLIC_USE_API === "true";
 
@@ -13,7 +12,7 @@ const USE_API = process.env.NEXT_PUBLIC_USE_API === "true";
 console.log("API Configuration:", {
   baseURL: API_BASE_URL,
   useApi: USE_API,
-  timeout: API_TIMEOUT
+  timeout: API_TIMEOUT,
 });
 
 export const API_CONFIG = {

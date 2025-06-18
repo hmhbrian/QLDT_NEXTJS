@@ -61,52 +61,69 @@ export class UserApiService {
       console.log("User creation response:", response.data);
       return response.data;
     } catch (error: any) {
-      console.error("Error creating user:", error);      // Log chi tiết hơn về lỗi
+      console.error("Error creating user:", error); // Log chi tiết hơn về lỗi
       if (error.response) {
         console.error("Error response data:", error.response.data);
         console.error("Error response status:", error.response.status);
-        console.error("Error response headers:", error.response.headers);
-        
-        // Log chi tiết validation errors nếu có
+        console.error("Error response headers:", error.response.headers); // Log chi tiết validation errors nếu có
         if (error.response.data?.errors) {
-          console.error("Validation errors details:", error.response.data.errors);
+          console.error(
+            "Validation errors details:",
+            error.response.data.errors
+          );
+
+          // Nếu là object errors (từ .NET validation), log từng field
+          if (
+            typeof error.response.data.errors === "object" &&
+            !Array.isArray(error.response.data.errors)
+          ) {
+            console.error("Field-specific validation errors:");
+            Object.keys(error.response.data.errors).forEach((field) => {
+              console.error(`  ${field}:`, error.response.data.errors[field]);
+            });
+          }
         }
       } else if (error.request) {
         console.error("Error request:", error.request);
       } else {
         console.error("Error message:", error.message);
       }
-      console.error("Error config:", error.config);      // Xử lý lỗi từ API
+      console.error("Error config:", error.config); // Xử lý lỗi từ API
       if (error.response?.data) {
         const errorData = error.response.data;
-        
+
         // Xử lý validation errors từ .NET
-        if (errorData.errors && typeof errorData.errors === 'object') {
+        if (errorData.errors && typeof errorData.errors === "object") {
           // Chuyển đổi object validation errors thành array messages
           const validationErrors: string[] = [];
-          Object.keys(errorData.errors).forEach(field => {
+          Object.keys(errorData.errors).forEach((field) => {
             const fieldErrors = errorData.errors[field];
             if (Array.isArray(fieldErrors)) {
-              fieldErrors.forEach(err => {
+              fieldErrors.forEach((err) => {
                 validationErrors.push(`${field}: ${err}`);
               });
             } else {
               validationErrors.push(`${field}: ${fieldErrors}`);
             }
           });
-          
+
           throw {
-            message: errorData.title || errorData.message || "Dữ liệu không hợp lệ",
+            message:
+              errorData.title || errorData.message || "Dữ liệu không hợp lệ",
             statusCode: errorData.status || error.response.status,
             code: "VALIDATION_ERROR",
             errors: validationErrors,
           };
         }
-        
+
         // Xử lý các lỗi khác
         throw {
-          message: errorData.message || errorData.title || "Đã xảy ra lỗi khi tạo người dùng",
-          statusCode: errorData.statusCode || errorData.status || error.response.status,
+          message:
+            errorData.message ||
+            errorData.title ||
+            "Đã xảy ra lỗi khi tạo người dùng",
+          statusCode:
+            errorData.statusCode || errorData.status || error.response.status,
           code: errorData.code || "API_ERROR",
           errors: errorData.errors || [error.message],
         };
