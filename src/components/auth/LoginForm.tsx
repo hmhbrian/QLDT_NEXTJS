@@ -36,7 +36,7 @@ export function LoginForm() {
     resolver: zodResolver(formSchema),
     defaultValues: {
       email: "admin@becamex.com",
-      password: "123456",
+      password: "123123",
     },
   });
 
