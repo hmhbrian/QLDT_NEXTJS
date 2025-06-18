@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Spinner } from "@/components/ui/spinner";
+import { Loading, LoadingButton, Spinner } from "@/components/ui/loading";
 import {
   Table,
   TableBody,
@@ -190,7 +190,7 @@ export default function UsersPage() {
   const [isEditing, setIsEditing] = useState(false);
 
   // Debounce search term để tránh gọi API quá nhiều
-  const debouncedSearchTerm = useDebounce(searchTerm, 500);
+  const debouncedSearchTerm = useDebounce(searchTerm, 100); // Faster search debounce
 
   const loadUsers = async () => {
     try {
@@ -1286,9 +1286,13 @@ export default function UsersPage() {
             >
               Hủy
             </Button>
-            <Button onClick={handleAddUser} disabled={isSubmitting}>
-              {isSubmitting ? "Đang xử lý..." : "Thêm người dùng"}
-            </Button>
+            <LoadingButton
+              onClick={handleAddUser}
+              isLoading={isSubmitting}
+              disabled={isSubmitting}
+            >
+              Thêm người dùng
+            </LoadingButton>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -1516,7 +1520,13 @@ export default function UsersPage() {
             >
               Hủy
             </Button>
-            <Button onClick={handleEditUser}>Lưu thay đổi</Button>
+            <LoadingButton
+              onClick={handleEditUser}
+              isLoading={isEditing}
+              disabled={isEditing}
+            >
+              Lưu thay đổi
+            </LoadingButton>
           </DialogFooter>
         </DialogContent>
       </Dialog>

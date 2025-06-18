@@ -9,6 +9,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { LoadingButton, Spinner } from "@/components/ui/loading";
 import { Input } from "@/components/ui/input";
 import {
   Table,
@@ -80,6 +81,11 @@ export default function DepartmentsPage() {
     useState<Department | null>(null);
   const [selectedDepartment, setSelectedDepartment] =
     useState<Department | null>(null);
+
+  // Loading states
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Pagination for table view
   const [pageSize] = useState(10);
@@ -206,7 +212,8 @@ export default function DepartmentsPage() {
     setIsFormOpen(true);
   };
 
-  const handleSaveDepartment = () => {
+  const handleSaveDepartment = async () => {
+    setIsSaving(true);
     try {
       if (!formData.name || !formData.code) {
         toast({
@@ -314,11 +321,15 @@ export default function DepartmentsPage() {
         description: "Không thể lưu phòng ban. Vui lòng thử lại.",
         variant: "destructive",
       });
+    } finally {
+      setIsSaving(false);
     }
   };
 
-  const handleDeleteDepartmentSubmit = () => {
+  const handleDeleteDepartmentSubmit = async () => {
     if (!deletingDepartment) return;
+
+    setIsDeleting(true);
 
     // Kiểm tra xem phòng ban có phòng ban con không
     const hasChildren = departments.some(
@@ -332,6 +343,7 @@ export default function DepartmentsPage() {
           "Phòng ban này có các phòng ban con. Vui lòng xóa các phòng ban con trước.",
         variant: "destructive",
       });
+      setIsDeleting(false);
       return;
     }
 
@@ -351,6 +363,8 @@ export default function DepartmentsPage() {
         description: "Không thể xóa phòng ban. Vui lòng thử lại.",
         variant: "destructive",
       });
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -870,9 +884,13 @@ export default function DepartmentsPage() {
             >
               Hủy
             </Button>
-            <Button onClick={handleSaveDepartment}>
+            <LoadingButton
+              onClick={handleSaveDepartment}
+              isLoading={isSaving}
+              disabled={isSaving}
+            >
               {editingDepartment ? "Lưu thay đổi" : "Thêm phòng ban"}
-            </Button>
+            </LoadingButton>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -898,12 +916,14 @@ export default function DepartmentsPage() {
             >
               Hủy
             </Button>
-            <Button
+            <LoadingButton
               variant="destructive"
               onClick={handleDeleteDepartmentSubmit}
+              isLoading={isDeleting}
+              disabled={isDeleting}
             >
               Xóa
-            </Button>
+            </LoadingButton>
           </DialogFooter>
         </DialogContent>
       </Dialog>

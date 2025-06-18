@@ -56,6 +56,7 @@ import {
 } from "lucide-react";
 
 import { useCookie } from "@/hooks/use-cookie";
+import { cn } from "@/lib/utils";
 import {
   categoryOptions,
   statusOptions as courseStatusOptions,
@@ -73,40 +74,10 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { useUserStore } from "@/stores/user-store";
 import { useCourseStore } from "@/stores/course-store";
+import { StarRatingInput } from "@/components/courses/StarRatingInput";
+import { StarRatingDisplay } from "@/components/courses/StarRatingDisplay";
 
 // Dynamic imports với lazy loading để tối ưu performance
-const StarRatingDisplay = dynamic(
-  () => import("@/components/ui/StarRatingDisplay"),
-  {
-    ssr: false,
-    loading: () => (
-      <div className="flex gap-1">
-        {Array(5)
-          .fill(0)
-          .map((_, i) => (
-            <div key={i} className="w-4 h-4 bg-gray-200 rounded" />
-          ))}
-      </div>
-    ),
-  }
-);
-
-const StarRatingInput = dynamic(
-  () => import("@/components/ui/StarRatingInput"),
-  {
-    ssr: false,
-    loading: () => (
-      <div className="flex gap-1">
-        {Array(5)
-          .fill(0)
-          .map((_, i) => (
-            <div key={i} className="w-5 h-5 bg-gray-200 rounded" />
-          ))}
-      </div>
-    ),
-  }
-);
-
 const CourseViewer = dynamic(
   () => import("@/components/courses/CourseViewer"),
   {
@@ -263,7 +234,8 @@ export default function CourseDetailPage() {
             variant: "destructive",
           });
           setCourse(null);
-          setTimeout(() => router.push("/courses"), 2000);
+          // Instant redirect - no delay
+          router.push("/courses");
         }
       } catch (error) {
         console.error("Lỗi khi tải dữ liệu khóa học:", error);
@@ -328,30 +300,19 @@ export default function CourseDetailPage() {
     toast({
       title: "Đăng ký thành công",
       description: `Bạn đã đăng ký khóa học "${course.title}" thành công.`,
-      duration: 3000,
+      duration: 1500, // Faster toast - 1.5 seconds
       variant: "success",
     });
 
-    // Update local state
-    setTimeout(() => setCourse((prev) => (prev ? { ...prev } : null)), 100);
+    // Update local state instantly
+    setCourse((prev) => (prev ? { ...prev } : null));
   }, [course, currentUser, router, toast]);
 
-  // Evaluation handlers được tối ưu
   const handleEvaluationRatingChange = useCallback(
     (field: keyof StudentCourseEvaluation["ratings"], rating: number) => {
       setEvaluationFormData((prev) => ({
         ...prev,
         [field]: rating,
-      }));
-    },
-    []
-  );
-
-  const handleEvaluationSuggestionsChange = useCallback(
-    (suggestions: string) => {
-      setEvaluationFormData((prev) => ({
-        ...prev,
-        suggestions,
       }));
     },
     []
@@ -487,11 +448,23 @@ export default function CourseDetailPage() {
               <Button
                 onClick={() => setIsEvaluationDialogOpen(true)}
                 disabled={hasSubmittedEvaluation}
-                variant="outline"
+                variant={hasSubmittedEvaluation ? "outline" : "outline"}
                 size="lg"
-                className="w-full sm:w-auto"
+                className={cn(
+                  "w-full sm:w-auto transition-all duration-300",
+                  hasSubmittedEvaluation
+                    ? "bg-green-50/80 dark:bg-green-950/20 text-green-600 dark:text-green-400 border-green-200/50 dark:border-green-800/30 opacity-60 cursor-not-allowed"
+                    : "bg-gray-50/80 dark:bg-gray-900/50 text-gray-700 dark:text-gray-200 border-gray-200/50 dark:border-gray-700/50 hover:bg-gray-100 dark:hover:bg-gray-800/70 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-md hover:scale-[1.02] active:scale-[0.98]"
+                )}
               >
-                <Star className="mr-2 h-5 w-5" />
+                <Star
+                  className={cn(
+                    "mr-2 h-5 w-5",
+                    hasSubmittedEvaluation
+                      ? "text-green-500"
+                      : "text-gray-500 dark:text-gray-400"
+                  )}
+                />
                 {hasSubmittedEvaluation ? "Đã đánh giá" : "Đánh giá khóa học"}
               </Button>
             )}
@@ -1020,7 +993,7 @@ export default function CourseDetailPage() {
                                   Ý kiến đóng góp:
                                 </p>
                                 <p className="text-muted-foreground mt-1">
-                                  "{evaluation.suggestions}"
+                                  &ldquo;{evaluation.suggestions}&rdquo;
                                 </p>
                               </div>
                             )}
@@ -1042,67 +1015,65 @@ export default function CourseDetailPage() {
         </Tabs>
       </div>
 
-      {/* Evaluation Dialog */}
+      {/* Dialog Đánh giá cho Học viên */}
       <Dialog
         open={isEvaluationDialogOpen}
         onOpenChange={setIsEvaluationDialogOpen}
       >
-        <DialogContent className="sm:max-w-[600px]">
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>Đánh giá khóa học: {course.title}</DialogTitle>
+            <DialogTitle>Đánh giá khóa học: {course?.title}</DialogTitle>
             <DialogDescription>
-              Vui lòng chia sẻ trải nghiệm của bạn với khóa học này để giúp
-              chúng tôi cải thiện chất lượng.
+              Cảm ơn bạn đã tham gia khóa học. Vui lòng chia sẻ ý kiến của bạn
+              để chúng tôi cải thiện hơn.
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
-            {Object.entries(EVALUATION_CRITERIA_LABELS).map(([key, label]) => (
-              <div key={key} className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor={key} className="text-right text-sm">
-                  {label}
+          <div className="py-4 space-y-6 max-h-[60vh] overflow-y-auto pr-2">
+            {(
+              Object.keys(EVALUATION_CRITERIA_LABELS) as Array<
+                keyof StudentCourseEvaluation["ratings"]
+              >
+            ).map((key) => (
+              <div key={String(key)} className="space-y-2">
+                <Label htmlFor={`rating-${String(key)}`}>
+                  {EVALUATION_CRITERIA_LABELS[key]}
                 </Label>
-                <div className="col-span-3">
-                  <StarRatingInput
-                    rating={
-                      evaluationFormData[
-                        key as keyof StudentCourseEvaluation["ratings"]
-                      ] || 0
-                    }
-                    setRating={(rating) =>
-                      handleEvaluationRatingChange(
-                        key as keyof StudentCourseEvaluation["ratings"],
-                        rating
-                      )
-                    }
-                    size={6}
-                  />
-                </div>
+                <StarRatingInput
+                  rating={evaluationFormData[key] || 0}
+                  setRating={(rating) =>
+                    handleEvaluationRatingChange(key, rating)
+                  }
+                  size={6}
+                />
               </div>
             ))}
             <div className="space-y-2">
-              <Label htmlFor="suggestions">Ý kiến đóng góp (tùy chọn)</Label>
+              <Label htmlFor="suggestions">
+                Điều anh/chị chưa hài lòng hoặc đề xuất cải tiến:
+              </Label>
               <Textarea
                 id="suggestions"
-                placeholder="Chia sẻ thêm ý kiến của bạn về khóa học..."
                 value={evaluationFormData.suggestions || ""}
                 onChange={(e) =>
-                  handleEvaluationSuggestionsChange(e.target.value)
+                  setEvaluationFormData((prev) => ({
+                    ...prev,
+                    suggestions: e.target.value,
+                  }))
                 }
+                placeholder="Ý kiến của bạn..."
                 rows={4}
+                className="resize-none border-gray-200 dark:border-gray-700 focus:border-gray-400 dark:focus:border-gray-500 focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0"
               />
             </div>
           </div>
           <DialogFooter>
             <Button
-              type="button"
               variant="outline"
               onClick={() => setIsEvaluationDialogOpen(false)}
             >
               Hủy
             </Button>
-            <Button type="button" onClick={handleSubmitEvaluation}>
-              Gửi đánh giá
-            </Button>
+            <Button onClick={handleSubmitEvaluation}>Gửi đánh giá</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
