@@ -1,39 +1,51 @@
 /**
  * API Services Index
- * This file exports all API services and their types from a single location
+ * This file exports all API services and configuration from a single location
  */
 
 // Re-export from config
-export * from './config';
-export { default as API_CONFIG } from './config';
+export * from "./config";
+export { default as API_CONFIG } from "./config";
 
-// Re-export from api-utils
-export * from './api-utils';
+// Re-export individual API modules
+export * from "./auth";
+export * from "./users";
 
-// Re-export from base-service
-export * from './base-service';
+// Re-export commonly used functions with better names
+export { loginApi as login, logout, validateToken } from "./auth";
+export { fetchUsers, getUserById, createUser } from "./users";
 
-// Re-export all services
-export * from './services';
-export { default as services } from './services';
-
-// Create API object with all service instances
-import {
-  authService,
-  departmentsService,
-  coursesService,
-  usersService,
-  analyticsService
-} from './services';
-
-// Aggregate all services into a single API object for convenience
-export const api = {
-  auth: authService,
-  departments: departmentsService,
-  courses: coursesService,
-  users: usersService,
-  analytics: analyticsService,
+// Create a unified API object for convenience
+const api = {
+  auth: {
+    login: async (email: string, password: string) => {
+      const { loginApi } = await import("./auth");
+      return loginApi({ email, password });
+    },
+    logout: async () => {
+      const { logout } = await import("./auth");
+      return logout();
+    },
+    validateToken: async () => {
+      const { validateToken } = await import("./auth");
+      return validateToken();
+    },
+  },
+  users: {
+    getAll: async (params?: any) => {
+      const { fetchUsers } = await import("./users");
+      return fetchUsers(params);
+    },
+    getById: async (id: string) => {
+      const { getUserById } = await import("./users");
+      return getUserById(id);
+    },
+    create: async (userData: any) => {
+      const { createUser } = await import("./users");
+      return createUser(userData);
+    },
+  },
 };
 
 // Default export for direct import
-export default api; 
+export default api;
