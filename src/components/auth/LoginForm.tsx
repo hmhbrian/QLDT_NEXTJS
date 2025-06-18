@@ -16,6 +16,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { useError } from "@/hooks/use-error";
+import { LoadingButton } from "@/components/ui/loading";
 import { useAuth } from "@/hooks/useAuth";
 
 const formSchema = z.object({
@@ -61,9 +62,14 @@ export function LoginForm() {
           name="email"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Địa chỉ Email</FormLabel>
+              <FormLabel className="text-sm font-medium">Email</FormLabel>
               <FormControl>
-                <Input type="email" placeholder="user@becamex.com" {...field} />
+                <Input 
+                  type="email" 
+                  placeholder="abc@becamex.com" 
+                  className="h-12 rounded-lg border-border/50 bg-background/50 px-4 text-base transition-all  focus:ring-1 focus:ring-primary"
+                  {...field} 
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -74,19 +80,20 @@ export function LoginForm() {
           name="password"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Mật khẩu</FormLabel>
+              <FormLabel className="text-sm font-medium">Mật khẩu</FormLabel>
               <FormControl>
                 <div className="relative">
                   <Input
                     type={showPassword ? "text" : "password"}
-                    placeholder="Nhập mật khẩu của bạn"
+                    placeholder="Mật khẩu"
+                    className="h-12 rounded-lg border-border/50 bg-background/50 px-4 pr-12 text-base transition-all  focus:ring-1 focus:ring-primary"
                     {...field}
                   />
                   <Button
                     type="button"
                     variant="ghost"
                     size="icon"
-                    className="absolute right-1 top-1/2 h-7 w-7 -translate-y-1/2"
+                    className="absolute right-2 top-1/2 h-8 w-8 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                     onClick={() => setShowPassword(!showPassword)}
                     aria-label={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
                   >
@@ -102,10 +109,14 @@ export function LoginForm() {
             </FormItem>
           )}
         />
-        <Button type="submit" className="w-full" disabled={isLoading}>
-          {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+        <LoadingButton
+          type="submit"
+          className="w-full h-12 rounded-lg bg-primary text-primary-foreground font-medium text-base shadow-lg hover:bg-primary/90 transition-all duration-200"
+          isLoading={isLoading}
+          disabled={isLoading}
+        >
           Đăng nhập
-        </Button>
+        </LoadingButton>
       </form>
     </Form>
   );
