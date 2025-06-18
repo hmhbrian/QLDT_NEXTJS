@@ -108,4 +108,111 @@
     @apply bg-background text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;
   }
+
+  /* Override focus ring colors for form elements */
+  input:focus-visible,
+  textarea:focus-visible,
+  select:focus-visible {
+    --tw-ring-color: rgb(156 163 175); /* gray-400 */
+    border-color: rgb(156 163 175);
+  }
+
+  .dark input:focus-visible,
+  .dark textarea:focus-visible,
+  .dark select:focus-visible {
+    --tw-ring-color: rgb(107 114 128); /* gray-500 */
+    border-color: rgb(107 114 128);
+  }
+}
+
+/* Custom Loading Animations */
+@layer utilities {
+  .animate-spin-smooth {
+    animation: spin-smooth 1s linear infinite;
+  }
+
+  @keyframes spin-smooth {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  .loading-gradient {
+    background: linear-gradient(45deg, hsl(var(--primary)), hsl(var(--accent)));
+    background-size: 200% 200%;
+    animation: gradient-shift 2s ease-in-out infinite;
+  }
+
+  @keyframes gradient-shift {
+    0%,
+    100% {
+      background-position: 0% 50%;
+    }
+    50% {
+      background-position: 100% 50%;
+    }
+  }
+
+  .fade-in-up {
+    animation: fade-in-up 0.3s ease-out;
+  }
+
+  @keyframes fade-in-up {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* Evaluation Form Styles */
+  .evaluation-card {
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    transition: all 0.3s ease;
+  }
+
+  .evaluation-card:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.2);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  }
+
+  .star-glow {
+    filter: drop-shadow(0 0 4px rgba(245, 158, 11, 0.4));
+  }
+
+  .gradient-border {
+    position: relative;
+    border-radius: 0.5rem;
+    background: linear-gradient(45deg, hsl(var(--primary)), hsl(var(--accent)));
+    padding: 1px;
+  }
+
+  .gradient-border::before {
+    content: "";
+    position: absolute;
+    inset: 1px;
+    border-radius: calc(0.5rem - 1px);
+    background: hsl(var(--background));
+  }
+
+  .glass-morphism {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+  }
+
+  .dark .glass-morphism {
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
 }
