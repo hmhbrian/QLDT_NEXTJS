@@ -1,11 +1,40 @@
-'use client';
+"use client";
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { LineChart as LineChartIcon, Users, BookOpen, Download } from "lucide-react"; // Renamed to avoid conflict
-import { Bar, BarChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis, Tooltip, Legend } from 'recharts';
-import { mockProgressData, mockCourseCompletion } from '@/lib/mock';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  LineChart as LineChartIcon,
+  Users,
+  BookOpen,
+  Download,
+} from "lucide-react";
+import dynamic from "next/dynamic";
+
+const ProgressCharts = dynamic(
+  () =>
+    import("@/components/hr/ProgressCharts").then((mod) => mod.ProgressCharts),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="h-[300px] w-full flex items-center justify-center">
+        <p>Đang tải biểu đồ...</p>
+      </div>
+    ),
+  }
+);
 
 export default function ProgressPage() {
   return (
@@ -13,7 +42,9 @@ export default function ProgressPage() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-3xl font-bold tracking-tight">Tiến độ Học tập</h2>
-          <p className="text-muted-foreground">Theo dõi tiến độ học tập của nhân viên</p>
+          <p className="text-muted-foreground">
+            Theo dõi tiến độ học tập của nhân viên
+          </p>
         </div>
         <div className="flex items-center gap-4">
           <Select defaultValue="all">
@@ -40,11 +71,15 @@ export default function ProgressPage() {
               <Users className="h-5 w-5" />
               Học viên Đang học
             </CardTitle>
-            <CardDescription>Tổng số học viên đang tham gia khóa học</CardDescription>
+            <CardDescription>
+              Tổng số học viên đang tham gia khóa học
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold">140</div>
-            <p className="text-xs text-muted-foreground">+12% so với tháng trước</p>
+            <p className="text-xs text-muted-foreground">
+              +12% so với tháng trước
+            </p>
           </CardContent>
         </Card>
 
@@ -54,11 +89,15 @@ export default function ProgressPage() {
               <BookOpen className="h-5 w-5" />
               Khóa học Hoàn thành
             </CardTitle>
-            <CardDescription>Số khóa học đã hoàn thành trong tháng</CardDescription>
+            <CardDescription>
+              Số khóa học đã hoàn thành trong tháng
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold">90</div>
-            <p className="text-xs text-muted-foreground">+5% so với tháng trước</p>
+            <p className="text-xs text-muted-foreground">
+              +5% so với tháng trước
+            </p>
           </CardContent>
         </Card>
 
@@ -68,58 +107,20 @@ export default function ProgressPage() {
               <LineChartIcon className="h-5 w-5" />
               Tỷ lệ Hoàn thành
             </CardTitle>
-            <CardDescription>Tỷ lệ hoàn thành khóa học trung bình</CardDescription>
+            <CardDescription>
+              Tỷ lệ hoàn thành khóa học trung bình
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold">85%</div>
-            <p className="text-xs text-muted-foreground">+3% so với tháng trước</p>
+            <p className="text-xs text-muted-foreground">
+              +3% so với tháng trước
+            </p>
           </CardContent>
         </Card>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Tiến độ Theo Tháng</CardTitle>
-            <CardDescription>Số lượng học viên đăng ký và hoàn thành khóa học</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="h-[300px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={mockProgressData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="name" />
-                  <YAxis />
-                  <Tooltip />
-                  <Legend />
-                  <Bar dataKey="enrolled" name="Đăng ký" fill="#93c5fd" />
-                  <Bar dataKey="completed" name="Hoàn thành" fill="#22c55e" />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Tỷ lệ Hoàn thành Theo Khóa học</CardTitle>
-            <CardDescription>Phần trăm học viên hoàn thành từng khóa học</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="h-[300px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={mockCourseCompletion} layout="vertical">
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis type="number" domain={[0, 100]} />
-                  <YAxis dataKey="name" type="category" width={150} />
-                  <Tooltip />
-                  <Bar dataKey="completion" name="Tỷ lệ hoàn thành" fill="#22c55e" />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      <ProgressCharts />
     </div>
   );
 }
