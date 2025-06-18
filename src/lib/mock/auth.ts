@@ -31,8 +31,8 @@ export const mockLoginAPI = async (
   email: string,
   password: string
 ): Promise<LoginResponse> => {
-  // Simulate API delay
-  await new Promise((resolve) => setTimeout(resolve, 1000));
+  // NO DELAY - Instant response for fast login
+  // await new Promise((resolve) => setTimeout(resolve, 50)); // Removed delay
 
   // Check credentials
   if (

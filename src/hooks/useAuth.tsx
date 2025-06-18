@@ -63,15 +63,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(user);
       localStorage.setItem(API_CONFIG.storage.user, JSON.stringify(user));
       localStorage.setItem(API_CONFIG.storage.token, token);
-      setTimeout(() => {
-        if (user.role === "ADMIN") {
-          router.push("/admin/users");
-        } else if (user.role === "HR") {
-          router.push("/hr/trainees");
-        } else {
-          router.push("/dashboard");
-        }
-      }, 500);
+
+      // Navigate immediately without delay
+      if (user.role === "ADMIN") {
+        router.push("/admin/users");
+      } else if (user.role === "HR") {
+        router.push("/hr/trainees");
+      } else {
+        router.push("/dashboard");
+      }
+
       showError("SUCCESS005");
     } catch (error: any) {
       setLoadingAuth(false);
@@ -93,8 +94,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       showError("AUTH003");
       throw new Error("AUTH003");
     }
-    // Giả lập gọi API
-    await new Promise((resolve) => setTimeout(resolve, 300));
+    // NO DELAY - Instant avatar update
+    // await new Promise((resolve) => setTimeout(resolve, 300)); // Removed delay
 
     // Cho phép URL http, https và blob cho prototype
     if (
@@ -144,7 +145,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         oldPassword,
         newPassword,
       });
-      await new Promise((resolve) => setTimeout(resolve, 500)); // Giả lập độ trễ API
+      // NO DELAY - Instant password change
+      // await new Promise((resolve) => setTimeout(resolve, 500)); // Removed delay
       // const response = await fetch('/api/auth/change-password', {
       //   method: 'POST',
       //   headers: {
