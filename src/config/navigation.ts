@@ -1,4 +1,4 @@
-import type { NavItem } from '@/lib/types';
+import type { NavItem } from "@/lib/types";
 import {
   LayoutDashboard,
   BookOpen,
@@ -9,69 +9,68 @@ import {
   LineChart,
   Building2,
   AreaChart,
-} from 'lucide-react';
+} from "lucide-react";
 
 export const navigationItems: NavItem[] = [
   {
-    label: 'Bảng điều khiển',
-    href: '/dashboard',
+    label: "Bảng điều khiển",
+    href: "/dashboard",
     icon: LayoutDashboard,
-    roles: ['Admin', 'HR', 'Trainee'],
+    roles: ["ADMIN", "HR", "HOCVIEN"],
   },
   {
-    label: 'Khóa học công khai',
-    href: '/courses',
+    label: "Khóa học công khai",
+    href: "/courses",
     icon: BookOpen,
-    roles: ['Admin', 'HR', 'Trainee'],
+    roles: ["ADMIN", "HR", "HOCVIEN"],
   },
   {
-    label: 'Quản lý khóa học',
-    href: '/admin/courses',
+    label: "Quản lý khóa học",
+    href: "/admin/courses",
     icon: GraduationCap,
-    roles: ['Admin', 'HR'],
+    roles: ["ADMIN", "HR"],
   },
   {
-    label: 'Khóa học của tôi',
-    href: '/trainee/my-courses',
+    label: "Khóa học của tôi",
+    href: "/trainee/my-courses",
     icon: BookOpen,
-    roles: ['Trainee'],
+    roles: ["HOCVIEN"],
   },
   {
-    label: 'Báo cáo Tổng quan',
-    href: '/admin/reports/overview', // This now includes evaluation details
+    label: "Báo cáo Tổng quan",
+    href: "/admin/reports/overview", // This now includes evaluation details
     icon: AreaChart,
-    roles: ['Admin'],
+    roles: ["ADMIN"],
   },
   {
-    label: 'Quản lý Người dùng',
-    href: '/admin/users',
+    label: "Quản lý Người dùng",
+    href: "/admin/users",
     icon: Users,
-    roles: ['Admin'],
+    roles: ["ADMIN"],
   },
   {
-    label: 'Quản lý Phòng ban',
-    href: '/admin/departments',
+    label: "Quản lý Phòng ban",
+    href: "/admin/departments",
     icon: Building2,
-    roles: ['Admin'],
+    roles: ["ADMIN"],
   },
   {
-    label: 'Quản lý Học viên',
-    href: '/hr/trainees',
+    label: "Quản lý Học viên",
+    href: "/hr/trainees",
     icon: UserCheck,
-    roles: ['HR'],
+    roles: ["HR"],
   },
   {
-    label: 'Tiến độ Học tập',
-    href: '/hr/progress',
+    label: "Tiến độ Học tập",
+    href: "/hr/progress",
     icon: LineChart,
-    roles: ['HR'],
+    roles: ["HR"],
   },
   {
-    label: 'Kế hoạch Đào tạo',
-    href: '/training-plans',
+    label: "Kế hoạch Đào tạo",
+    href: "/training-plans",
     icon: ClipboardList,
-    roles: ['Admin', 'HR'],
+    roles: ["ADMIN", "HR"],
     disabled: true,
   },
 ];
-
