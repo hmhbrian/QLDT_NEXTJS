@@ -65,8 +65,26 @@ export interface UserLoginDto {
   password: string;
 }
 
+// Interface cho request tạo user phù hợp với backend
+export interface CreateUserRequest {
+  fullName: string;
+  idCard?: string;
+  code?: string;
+  positionId?: number;
+  roleId: string;
+  managerUId?: string;
+  departmentId?: number;
+  statusId?: number;
+  numberPhone?: string;
+  startWork?: string; // ISO string format
+  endWork?: string; // ISO string format
+  email: string;
+  password: string;
+  confirmPassword: string;
+}
+
 // Vai trò người dùng
-export type Role = "Admin" | "HR" | "Trainee";
+export type Role = "ADMIN" | "HR" | "HOCVIEN";
 
 // Trạng thái làm việc
 export type WorkStatus =
