@@ -6,6 +6,7 @@ const axiosInstance: AxiosInstance = axios.create({
   baseURL: API_CONFIG.baseURL,
   headers: API_CONFIG.defaultHeaders,
   timeout: API_CONFIG.timeout,
+  withCredentials: false, // Tắt credentials cho CORS
 });
 
 // Request interceptor to include auth token
@@ -26,7 +27,7 @@ axiosInstance.interceptors.request.use(
       console.log("API Request:", {
         method: config.method?.toUpperCase(),
         url: config.url,
-        baseURL: config.baseURL,
+        baseURL: config.baseURL || API_CONFIG.baseURL,
         params: config.params,
         hasTokenInStorage: !!token,
         isLoginEndpoint,

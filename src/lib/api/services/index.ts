@@ -9,6 +9,7 @@ export * from './courses';
 export * from './departments';
 export * from './users';
 export * from './analytics';
+export * from './roles';
 
 // Export default instances
 import authService from './auth';
