@@ -1,9 +1,9 @@
-'use client';
+"use client";
 
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { useAuth } from '@/hooks/useAuth';
-import { Loader2 } from 'lucide-react';
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/hooks/useAuth";
+import { Loader2 } from "lucide-react";
 
 export default function HomePage() {
   const { user, loadingAuth } = useAuth();
@@ -12,15 +12,15 @@ export default function HomePage() {
   useEffect(() => {
     if (!loadingAuth) {
       if (user) {
-        if (user.role === 'Admin') {
-          router.replace('/admin/users');
-        } else if (user.role === 'HR') {
-          router.replace('/hr/trainees');
+        if (user.role === "ADMIN") {
+          router.replace("/admin/users");
+        } else if (user.role === "HR") {
+          router.replace("/hr/trainees");
         } else {
-          router.replace('/dashboard');
+          router.replace("/dashboard");
         }
       } else {
-        router.replace('/login');
+        router.replace("/login");
       }
     }
   }, [user, loadingAuth, router]);

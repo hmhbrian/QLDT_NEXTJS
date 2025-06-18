@@ -1,3 +1,4 @@
+"use client";
 import dynamic from "next/dynamic";
 
 const UserList = dynamic(() => import("@/components/users/UserList"), {
