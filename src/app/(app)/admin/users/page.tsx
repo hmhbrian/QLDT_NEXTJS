@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { fetchUsers } from "@/lib/api/users";
+import { fetchRoles, Role as ApiRole } from "@/lib/api/services/roles";
 import {
   Card,
   CardContent,
@@ -47,13 +48,19 @@ import {
 import { useAuth } from "@/hooks/useAuth";
 import { useError } from "@/hooks/use-error";
 import { useDepartments } from "@/hooks/use-departments";
+import { useDebounce } from "@/hooks/use-debounce";
 import type {
   User,
   Role,
   TraineeLevel,
   WorkStatus,
   RegisterDTO,
+  CreateUserRequest,
 } from "@/lib/types";
+import UserApiService from "@/lib/services/user-api.service";
+import { useToast } from "@/components/ui/use-toast";
+import { API_CONFIG } from "@/lib/api/config";
+
 import {
   PlusCircle,
   Search,
@@ -68,15 +75,15 @@ import {
 } from "lucide-react";
 
 const roleBadgeVariant: Record<Role, "default" | "secondary" | "outline"> = {
-  Admin: "default",
+  ADMIN: "default",
   HR: "secondary",
-  Trainee: "outline",
+  HOCVIEN: "outline",
 };
 
 const roleTranslations: Record<Role, string> = {
-  Admin: "Quản trị viên",
+  ADMIN: "Quản trị viên",
   HR: "Nhân sự",
-  Trainee: "Học viên",
+  HOCVIEN: "Học viên",
 };
 
 // Danh sách cấp bậc
@@ -146,6 +153,7 @@ const getStatusText = (status: WorkStatus) => {
 export default function UsersPage() {
   const { user: currentUser } = useAuth();
   const { showError } = useError();
+  const { toast } = useToast();
   const { activeDepartments, isLoading: isDepartmentsLoading } =
     useDepartments();
   const [searchTerm, setSearchTerm] = useState("");
@@ -155,10 +163,12 @@ export default function UsersPage() {
   const [deletingUser, setDeletingUser] = useState<User | null>(null);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [isViewingUser, setIsViewingUser] = useState(false);
+  const [roles, setRoles] = useState<ApiRole[]>([]);
+  const [loadingRoles, setLoadingRoles] = useState(false);
   const [newUser, setNewUser] = useState<RegisterDTO>({
     fullName: "",
     idCard: "",
-    role: "Trainee",
+    role: "HOCVIEN",
     numberPhone: "",
     email: "",
     password: "",
@@ -173,51 +183,143 @@ export default function UsersPage() {
   >({});
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [apiError, setApiError] = useState("");
+  const [isSearching, setIsSearching] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+
+  // Debounce search term để tránh gọi API quá nhiều
+  const debouncedSearchTerm = useDebounce(searchTerm, 500);
+
+  const loadUsers = async () => {
+    try {
+      setLoading(true);
+      setApiError("");
+      const res = await fetchUsers({
+        Page: 1,
+        Limit: 20, // Backend chỉ cho phép 1-24
+        SortField: "created.at",
+        SortType: "desc",
+      });
+
+      console.log("API response:", res);
+      // Xử lý response dựa trên cấu trúc backend trả về
+      if (res && res.data && res.data.items) {
+        // Backend trả về: { data: { items: [...], pagination: {...} } }
+        setUsers(Array.isArray(res.data.items) ? res.data.items : []);
+      } else {
+        setUsers([]);
+        setApiError("Không tìm thấy dữ liệu người dùng");
+      }
+    } catch (err: any) {
+      console.error("Error loading users:", err);
+      setApiError(
+        err.message || "Lỗi kết nối đến máy chủ. Vui lòng thử lại sau."
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadRoles = async () => {
+    if (!API_CONFIG.useApi) return;
+
+    try {
+      setLoadingRoles(true);
+      const response = await fetchRoles();
+      console.log("Loaded roles data:", response); // Debug roles data
+      if (response && response.data) {
+        console.log("Available roles:", response.data); // Debug roles
+        setRoles(response.data);
+      }
+    } catch (error) {
+      console.error("Error loading roles:", error);
+      toast({
+        title: "Lỗi",
+        description: "Không thể tải danh sách vai trò từ server.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingRoles(false);
+    }
+  };
 
   useEffect(() => {
-    setLoading(true);
-    setApiError("");
-    fetchUsers({
-      Page: 1,
-      Limit: 20, // Backend chỉ cho phép 1-24
-      SortField: "created.at",
-      SortType: "desc",
-    })
-      .then((res) => {
-        console.log("API response:", res);
-        // Xử lý response dựa trên cấu trúc backend trả về
-        if (res && res.data && res.data.items) {
-          // Backend trả về: { data: { items: [...], pagination: {...} } }
-          setUsers(Array.isArray(res.data.items) ? res.data.items : []);
-        } else {
-          setUsers([]);
-          setApiError("Không tìm thấy dữ liệu người dùng");
-        }
-      })
-      .catch((err) => {
-        console.error("Error loading users:", err);
-        setApiError(
-          err.message || "Lỗi kết nối đến máy chủ. Vui lòng thử lại sau."
-        );
-      })
-      .finally(() => {
-        setLoading(false);
-      });
+    loadUsers();
+    loadRoles();
   }, []);
 
-  const filteredUsers = users.filter(
-    (user) =>
-      (user.fullName || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (user.email || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (roleTranslations[user.role] || "")
-        .toLowerCase()
-        .includes(searchTerm.toLowerCase()) ||
-      (user.employeeId || "")
-        .toLowerCase()
-        .includes(searchTerm.toLowerCase()) ||
-      (user.department || "").toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Effect để handle search
+  useEffect(() => {
+    const handleSearch = async () => {
+      if (!debouncedSearchTerm.trim()) {
+        // Nếu không có search term, load lại toàn bộ users
+        loadUsers();
+        return;
+      }
+
+      try {
+        setIsSearching(true);
+        setApiError("");
+
+        if (API_CONFIG.useApi) {
+          const response = await UserApiService.searchUsers(
+            debouncedSearchTerm
+          );
+
+          // Backend trả về: { data: { items: [...], pagination: {...} } }
+          if (response.data && response.data.items) {
+            setUsers(
+              Array.isArray(response.data.items) ? response.data.items : []
+            );
+          } else {
+            setUsers([]);
+          }
+        } else {
+          // Fallback to client-side filtering khi API tắt
+          const allUsers = await fetchUsers({
+            Page: 1,
+            Limit: 20,
+            SortField: "created.at",
+            SortType: "desc",
+          });
+
+          if (allUsers?.data?.items) {
+            const filtered = allUsers.data.items.filter(
+              (user: User) =>
+                (user.fullName || "")
+                  .toLowerCase()
+                  .includes(debouncedSearchTerm.toLowerCase()) ||
+                (user.email || "")
+                  .toLowerCase()
+                  .includes(debouncedSearchTerm.toLowerCase()) ||
+                (user.employeeId || "")
+                  .toLowerCase()
+                  .includes(debouncedSearchTerm.toLowerCase())
+            );
+            setUsers(filtered);
+          }
+        }
+      } catch (error: any) {
+        console.error("Error searching users:", error);
+        setApiError(error.message || "Lỗi khi tìm kiếm người dùng");
+      } finally {
+        setIsSearching(false);
+      }
+    };
+
+    handleSearch();
+  }, [debouncedSearchTerm]);
+
+  // Sắp xếp users với user hiện tại lên đầu (không mutate original array)
+  const sortedUsers = [...users].sort((a, b) => {
+    // Đưa user hiện tại lên đầu danh sách
+    if (a.email === currentUser?.email) return -1;
+    if (b.email === currentUser?.email) return 1;
+    // Sắp xếp theo tên cho các user khác
+    return (a.fullName || "").localeCompare(b.fullName || "");
+  });
 
   const validateForm = () => {
     const newErrors: Partial<Record<keyof RegisterDTO, string>> = {};
@@ -284,82 +386,300 @@ export default function UsersPage() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleAddUser = () => {
+  const handleAddUser = async () => {
     if (!validateForm()) {
       showError("FORM001");
       return;
     }
 
-    const user: User = {
-      id: crypto.randomUUID(),
-      fullName: newUser.fullName,
-      idCard: newUser.idCard,
-      email: newUser.email,
-      phoneNumber: newUser.numberPhone,
-      role: newUser.role,
-      password: newUser.password, // Lưu mật khẩu khi tạo người dùng mới
-      startWork: newUser.startWork,
-      endWork: newUser.endWork,
-      urlAvatar: "https://placehold.co/40x40.png",
-      createdAt: new Date(),
-      modifiedAt: new Date(),
-    };
-
-    // Thêm các thông tin bổ sung cho Trainee
-    if (newUser.role === "Trainee") {
-      user.department = newUser.department;
-      user.position = newUser.position;
-      user.level = newUser.level;
-      user.status = newUser.status || "working";
-      // Tạo mã nhân viên tự động
-      user.employeeId = `EMP${Math.floor(Math.random() * 10000)
-        .toString()
-        .padStart(4, "0")}`;
+    // Kiểm tra API có được bật không
+    if (!API_CONFIG.useApi) {
+      toast({
+        title: "API đã được tắt",
+        description:
+          "Vui lòng bật API trong file .env để sử dụng chức năng này.",
+        variant: "destructive",
+      });
+      return;
     }
 
-    setIsAddingUser(false);
-    setNewUser({
-      fullName: "",
-      idCard: "",
-      role: "Trainee",
-      numberPhone: "",
-      email: "",
-      password: "",
-      confirmPassword: "",
-      department: "",
-      position: "",
-      level: "intern",
-      status: "working",
-    });
-    showError("SUCCESS001");
+    setIsSubmitting(true);
+
+    try {
+      // Tạo payload phù hợp với API backend
+
+      // Tìm roleId từ danh sách roles theo tên vai trò
+      let roleIdValue: string | undefined;
+
+      console.log("Current role selection:", newUser.role);
+      console.log("Available roles:", roles);
+
+      if (roles.length > 0) {
+        // Tìm role từ danh sách đã tải từ API
+        const selectedRole = roles.find(
+          (role) => role.name && role.name.toUpperCase() === newUser.role
+        );
+
+        console.log("Selected role:", selectedRole);
+
+        if (selectedRole) {
+          roleIdValue = selectedRole.id;
+        } else {
+          // Không tìm thấy role - hiển thị lỗi
+          toast({
+            title: "Lỗi",
+            description: `Không tìm thấy vai trò ${newUser.role} trong hệ thống.`,
+            variant: "destructive",
+          });
+          setIsSubmitting(false);
+          return;
+        }
+      } else {
+        // Không có dữ liệu roles - hiển thị lỗi
+        toast({
+          title: "Lỗi",
+          description: "Không thể tải danh sách vai trò từ server.",
+          variant: "destructive",
+        });
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Kiểm tra xem đã có roleId chưa
+      if (!roleIdValue) {
+        toast({
+          title: "Lỗi",
+          description:
+            "Không thể xác định vai trò người dùng. Vui lòng thử lại.",
+          variant: "destructive",
+        });
+        setIsSubmitting(false);
+        return;
+      }
+
+      const createUserPayload: CreateUserRequest = {
+        fullName: newUser.fullName,
+        email: newUser.email,
+        password: newUser.password,
+        confirmPassword: newUser.confirmPassword,
+        idCard: newUser.idCard,
+        numberPhone: newUser.numberPhone,
+        roleId: roleIdValue,
+        startWork: newUser.startWork
+          ? new Date(newUser.startWork).toISOString()
+          : new Date().toISOString(),
+        // Thêm các thông tin bổ sung cho Trainee
+        departmentId: newUser.role === "HOCVIEN" ? 1 : undefined, // Default department
+        statusId: newUser.role === "HOCVIEN" ? 1 : undefined, // Default status (working)
+        positionId: newUser.role === "HOCVIEN" ? 1 : undefined, // Default position
+        code:
+          newUser.role === "HOCVIEN"
+            ? `EMP${Math.floor(Math.random() * 10000)
+                .toString()
+                .padStart(4, "0")}`
+            : undefined,
+      };
+
+      console.log("Final payload for user creation:", createUserPayload);
+
+      const response = await UserApiService.createUser(createUserPayload);
+
+      if (response.statusCode === 200 || response.statusCode === 201) {
+        // Refresh danh sách users
+        await loadUsers();
+
+        setIsAddingUser(false);
+        setNewUser({
+          fullName: "",
+          idCard: "",
+          role: "HOCVIEN",
+          numberPhone: "",
+          email: "",
+          password: "",
+          confirmPassword: "",
+          department: "",
+          position: "",
+          level: "intern",
+          status: "working",
+        });
+        setErrors({});
+
+        toast({
+          title: "Thành công",
+          description: "Đã thêm người dùng mới thành công.",
+          variant: "success",
+        });
+      } else {
+        throw new Error(response.message || "Failed to create user");
+      }
+    } catch (error: any) {
+      console.error("Error creating user:", error);
+      toast({
+        title: "Lỗi",
+        description: error.message || "Đã xảy ra lỗi khi thêm người dùng.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  const handleEditUser = () => {
+  const handleEditUser = async () => {
     if (!editingUser) return;
 
     // Check if password field is filled and if so, confirm it matches
     if (editingUser.password && editingUser.password !== confirmPassword) {
-      showError("Mật khẩu và xác nhận mật khẩu không khớp!");
+      toast({
+        title: "Lỗi",
+        description: "Mật khẩu và xác nhận mật khẩu không khớp!",
+        variant: "destructive",
+      });
       return;
     }
 
-    // Here you would typically call your API to update the user
-    // const updatedUser = { ...editingUser };
-    // Call API with updatedUser
+    if (!API_CONFIG.useApi) {
+      toast({
+        title: "API đã được tắt",
+        description:
+          "Vui lòng bật API trong file .env để sử dụng chức năng này.",
+        variant: "destructive",
+      });
+      return;
+    }
 
-    setEditingUser(null);
-    setConfirmPassword("");
-    showError("SUCCESS002");
+    setIsEditing(true);
+
+    try {
+      // Tạo payload update
+      const updatePayload: Partial<CreateUserRequest> = {
+        fullName: editingUser.fullName,
+        email: editingUser.email,
+        idCard: editingUser.idCard,
+        numberPhone: editingUser.phoneNumber, // User có phoneNumber, API expect numberPhone
+      };
+
+      // Chỉ thêm password nếu có thay đổi
+      if (editingUser.password && editingUser.password.trim()) {
+        updatePayload.password = editingUser.password;
+        updatePayload.confirmPassword = confirmPassword;
+      }
+
+      // Thêm thông tin role nếu có thay đổi
+      if (editingUser.role) {
+        const selectedRole = roles.find(
+          (role) => role.name.toUpperCase() === editingUser.role
+        );
+        if (selectedRole) {
+          updatePayload.roleId = selectedRole.id;
+        }
+      }
+
+      console.log("Update payload:", updatePayload);
+      console.log("EditingUser:", editingUser);
+
+      const response = await UserApiService.updateUserByAdmin(
+        editingUser.id,
+        updatePayload
+      );
+
+      if (response.statusCode === 200) {
+        toast({
+          title: "Thành công",
+          description: "Thông tin người dùng đã được cập nhật.",
+          variant: "success",
+        });
+
+        // Refresh danh sách users
+        await loadUsers();
+
+        setEditingUser(null);
+        setConfirmPassword("");
+      } else {
+        throw new Error(response.message || "Cập nhật thất bại");
+      }
+    } catch (error: any) {
+      console.error("Error updating user:", error);
+
+      let errorMessage = "Đã xảy ra lỗi khi cập nhật người dùng.";
+
+      // Xử lý lỗi validation từ backend
+      if (error.errors && typeof error.errors === "object") {
+        const validationErrors = Object.entries(error.errors)
+          .map(([field, messages]: [string, any]) => {
+            if (Array.isArray(messages)) {
+              return `${field}: ${messages.join(", ")}`;
+            }
+            return `${field}: ${messages}`;
+          })
+          .join("\n");
+        errorMessage = `Lỗi validation:\n${validationErrors}`;
+      } else if (error.message) {
+        errorMessage = error.message;
+      } else if (error.title) {
+        errorMessage = error.title;
+      }
+
+      toast({
+        title: "Lỗi",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    } finally {
+      setIsEditing(false);
+    }
   };
 
-  const handleDeleteUser = () => {
+  const handleDeleteUser = async () => {
     if (!deletingUser) return;
+
     if (deletingUser.email === currentUser?.email) {
-      showError("USER002");
+      toast({
+        title: "Lỗi",
+        description: "Bạn không thể xóa tài khoản của chính mình!",
+        variant: "destructive",
+      });
       return;
     }
-    setDeletingUser(null);
-    showError("SUCCESS003");
+
+    if (!API_CONFIG.useApi) {
+      toast({
+        title: "API đã được tắt",
+        description:
+          "Vui lòng bật API trong file .env để sử dụng chức năng này.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsDeleting(true);
+
+    try {
+      const response = await UserApiService.softDeleteUser(deletingUser.id);
+
+      if (response.statusCode === 200) {
+        toast({
+          title: "Thành công",
+          description: `Đã xóa người dùng "${deletingUser.fullName}" thành công.`,
+          variant: "success",
+        });
+
+        // Refresh danh sách users
+        await loadUsers();
+
+        setDeletingUser(null);
+      } else {
+        throw new Error(response.message || "Xóa người dùng thất bại");
+      }
+    } catch (error: any) {
+      console.error("Error deleting user:", error);
+      toast({
+        title: "Lỗi",
+        description: error.message || "Đã xảy ra lỗi khi xóa người dùng.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   return (
@@ -373,21 +693,50 @@ export default function UsersPage() {
                 Quản lý tất cả tài khoản người dùng trong hệ thống.
               </CardDescription>
             </div>
-            <Button onClick={() => setIsAddingUser(true)}>
+            <Button
+              onClick={() => setIsAddingUser(true)}
+              disabled={!API_CONFIG.useApi}
+            >
               <PlusCircle className="mr-2 h-4 w-4" />
               Thêm người dùng
             </Button>
           </div>
         </CardHeader>
         <CardContent>
+          {/* Thông báo trạng thái API */}
+          {!API_CONFIG.useApi && (
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
+              <div className="flex items-center">
+                <AlertCircle className="h-5 w-5 text-yellow-600 mr-2" />
+                <div>
+                  <h3 className="text-sm font-medium text-yellow-800">
+                    Chế độ Mock Data
+                  </h3>
+                  <p className="text-sm text-yellow-700 mt-1">
+                    API đang bị tắt. Hiện tại đang sử dụng dữ liệu mô phỏng. Để
+                    sử dụng API thực tế, vui lòng cài đặt{" "}
+                    <code>NEXT_PUBLIC_USE_API=true</code> trong file .env
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="mb-4 flex items-center gap-2">
             <Search className="h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Tìm kiếm theo tên, email, vai trò hoặc phòng ban..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="max-w-sm"
-            />
+            <div className="relative max-w-sm">
+              <Input
+                placeholder="Tìm kiếm theo tên, email, vai trò hoặc phòng ban..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pr-8"
+              />
+              {isSearching && (
+                <div className="absolute right-2 top-1/2 -translate-y-1/2">
+                  <Spinner size="sm" />
+                </div>
+              )}
+            </div>
           </div>
           <div className="overflow-x-auto">
             <Table>
@@ -416,12 +765,12 @@ export default function UsersPage() {
                   <TableRow>
                     <TableCell colSpan={5}>{apiError}</TableCell>
                   </TableRow>
-                ) : filteredUsers.length === 0 ? (
+                ) : sortedUsers.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={5}>Không có người dùng nào.</TableCell>
                   </TableRow>
                 ) : (
-                  filteredUsers.map((user) => (
+                  sortedUsers.map((user) => (
                     <TableRow key={user.id}>
                       <TableCell className="font-medium">
                         <div className="flex items-center gap-2">
@@ -439,7 +788,7 @@ export default function UsersPage() {
                           <Badge variant={roleBadgeVariant[user.role]}>
                             {roleTranslations[user.role]}
                           </Badge>
-                          {user.level && user.role === "Trainee" && (
+                          {user.level && user.role === "HOCVIEN" && (
                             <Badge
                               variant="outline"
                               className={`ml-2 ${getLevelBadgeColor(
@@ -467,7 +816,7 @@ export default function UsersPage() {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            {user.role === "Trainee" && (
+                            {user.role === "HOCVIEN" && (
                               <DropdownMenuItem
                                 onClick={() => {
                                   setSelectedUser(user);
@@ -516,7 +865,7 @@ export default function UsersPage() {
             </DialogDescription>
           </DialogHeader>
 
-          {selectedUser && selectedUser.role === "Trainee" && (
+          {selectedUser && selectedUser.role === "HOCVIEN" && (
             <Tabs defaultValue="info" className="mt-4">
               <TabsList>
                 <TabsTrigger value="info">
@@ -659,28 +1008,65 @@ export default function UsersPage() {
 
       {/* Add User Dialog */}
       <Dialog open={isAddingUser} onOpenChange={setIsAddingUser}>
-        <DialogContent>
+        <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Thêm người dùng mới</DialogTitle>
             <DialogDescription>
-              Điền thông tin để tạo tài khoản người dùng mới. Các trường có dấu
-              * là bắt buộc.
+              Điền thông tin để tạo tài khoản mới cho người dùng.
             </DialogDescription>
           </DialogHeader>
+
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
-              <Label htmlFor="fullName">Họ và tên *</Label>
+              <Label htmlFor="fullName">Họ và tên</Label>
               <Input
                 id="fullName"
+                placeholder="Nguyễn Văn A"
                 value={newUser.fullName}
                 onChange={(e) =>
                   setNewUser({ ...newUser, fullName: e.target.value })
                 }
-                className={errors.fullName ? "border-destructive" : ""}
+                autoComplete="name"
               />
               {errors.fullName && (
-                <p className="text-sm text-destructive">{errors.fullName}</p>
+                <p className="text-xs text-red-500">{errors.fullName}</p>
               )}
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="role">Vai trò</Label>
+              <Select
+                value={newUser.role}
+                onValueChange={(value) =>
+                  setNewUser({ ...newUser, role: value as Role })
+                }
+              >
+                <SelectTrigger id="role">
+                  <SelectValue placeholder="Chọn vai trò" />
+                </SelectTrigger>
+                <SelectContent>
+                  {loadingRoles ? (
+                    <div className="flex items-center justify-center p-2">
+                      <Spinner size="sm" />{" "}
+                      <span className="ml-2">Đang tải...</span>
+                    </div>
+                  ) : roles.length > 0 ? (
+                    // Hiển thị danh sách roles từ API
+                    roles.map((role) => (
+                      <SelectItem key={role.id} value={role.name.toUpperCase()}>
+                        {role.name}
+                      </SelectItem>
+                    ))
+                  ) : (
+                    // Fallback khi không có dữ liệu từ API
+                    <>
+                      <SelectItem value="ADMIN">Quản trị viên</SelectItem>
+                      <SelectItem value="HR">Nhân sự</SelectItem>
+                      <SelectItem value="HOCVIEN">Học viên</SelectItem>
+                    </>
+                  )}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="grid gap-2">
@@ -695,32 +1081,6 @@ export default function UsersPage() {
               />
               {errors.idCard && (
                 <p className="text-sm text-destructive">{errors.idCard}</p>
-              )}
-            </div>
-
-            <div className="grid gap-2">
-              <Label htmlFor="role">Vai trò *</Label>
-              <Select
-                value={newUser.role}
-                onValueChange={(value: Role) =>
-                  setNewUser({ ...newUser, role: value })
-                }
-              >
-                <SelectTrigger
-                  className={errors.role ? "border-destructive" : ""}
-                >
-                  <SelectValue placeholder="Chọn vai trò" />
-                </SelectTrigger>
-                <SelectContent>
-                  {currentUser?.role === "Admin" && (
-                    <SelectItem value="Admin">Quản trị viên</SelectItem>
-                  )}
-                  <SelectItem value="HR">Nhân sự</SelectItem>
-                  <SelectItem value="Trainee">Học viên</SelectItem>
-                </SelectContent>
-              </Select>
-              {errors.role && (
-                <p className="text-sm text-destructive">{errors.role}</p>
               )}
             </div>
 
@@ -771,7 +1131,7 @@ export default function UsersPage() {
               />
             </div>
 
-            {newUser.role === "Trainee" && (
+            {newUser.role === "HOCVIEN" && (
               <>
                 <div className="grid gap-2">
                   <Label htmlFor="department">Phòng ban</Label>
@@ -904,10 +1264,16 @@ export default function UsersPage() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsAddingUser(false)}>
+            <Button
+              variant="outline"
+              onClick={() => setIsAddingUser(false)}
+              disabled={isSubmitting}
+            >
               Hủy
             </Button>
-            <Button onClick={handleAddUser}>Thêm người dùng</Button>
+            <Button onClick={handleAddUser} disabled={isSubmitting}>
+              {isSubmitting ? "Đang xử lý..." : "Thêm người dùng"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -962,16 +1328,16 @@ export default function UsersPage() {
                     <SelectValue placeholder="Chọn vai trò" />
                   </SelectTrigger>
                   <SelectContent>
-                    {currentUser?.role === "Admin" && (
-                      <SelectItem value="Admin">Quản trị viên</SelectItem>
+                    {currentUser?.role === "ADMIN" && (
+                      <SelectItem value="ADMIN">Quản trị viên</SelectItem>
                     )}
                     <SelectItem value="HR">Nhân sự</SelectItem>
-                    <SelectItem value="Trainee">Học viên</SelectItem>
+                    <SelectItem value="HOCVIEN">Học viên</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
-              {editingUser.role === "Trainee" && (
+              {editingUser.role === "HOCVIEN" && (
                 <>
                   <div className="grid gap-2">
                     <Label htmlFor="edit-employeeId">Mã nhân viên</Label>

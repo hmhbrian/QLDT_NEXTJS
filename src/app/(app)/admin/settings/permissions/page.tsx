@@ -1,10 +1,22 @@
+"use client";
 
-'use client';
-
-import { useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useState } from "react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/components/ui/use-toast";
 
@@ -13,9 +25,9 @@ interface Permission {
   name: string;
   description: string;
   roles: {
-    Admin: boolean;
+    ADMIN: boolean;
     HR: boolean;
-    Trainee: boolean;
+    HOCVIEN: boolean;
   };
 }
 
@@ -23,44 +35,50 @@ export default function PermissionsPage() {
   const { toast } = useToast();
   const [permissions, setPermissions] = useState<Permission[]>([
     {
-      id: '1',
-      name: 'Quản lý người dùng',
-      description: 'Tạo, chỉnh sửa và xóa tài khoản người dùng',
-      roles: { Admin: true, HR: true, Trainee: false }
+      id: "1",
+      name: "Quản lý người dùng",
+      description: "Tạo, chỉnh sửa và xóa tài khoản người dùng",
+      roles: { ADMIN: true, HR: true, HOCVIEN: false },
     },
     {
-      id: '2',
-      name: 'Quản lý khóa học',
-      description: 'Tạo, chỉnh sửa và xóa khóa học',
-      roles: { Admin: true, HR: true, Trainee: false }
+      id: "2",
+      name: "Quản lý khóa học",
+      description: "Tạo, chỉnh sửa và xóa khóa học",
+      roles: { ADMIN: true, HR: true, HOCVIEN: false },
     },
     {
-      id: '3',
-      name: 'Quản lý phòng ban',
-      description: 'Tạo, chỉnh sửa và xóa phòng ban',
-      roles: { Admin: true, HR: false, Trainee: false }
+      id: "3",
+      name: "Quản lý phòng ban",
+      description: "Tạo, chỉnh sửa và xóa phòng ban",
+      roles: { ADMIN: true, HR: false, HOCVIEN: false },
     },
     {
-      id: '4',
-      name: 'Xem báo cáo',
-      description: 'Xem các báo cáo và thống kê',
-      roles: { Admin: true, HR: true, Trainee: false }
-    }
+      id: "4",
+      name: "Xem báo cáo",
+      description: "Xem các báo cáo và thống kê",
+      roles: { ADMIN: true, HR: true, HOCVIEN: false },
+    },
   ]);
 
-  const handlePermissionChange = (permissionId: string, role: keyof Permission['roles'], value: boolean) => {
-    setPermissions(permissions.map(permission => {
-      if (permission.id === permissionId) {
-        return {
-          ...permission,
-          roles: {
-            ...permission.roles,
-            [role]: value
-          }
-        };
-      }
-      return permission;
-    }));
+  const handlePermissionChange = (
+    permissionId: string,
+    role: keyof Permission["roles"],
+    value: boolean
+  ) => {
+    setPermissions(
+      permissions.map((permission) => {
+        if (permission.id === permissionId) {
+          return {
+            ...permission,
+            roles: {
+              ...permission.roles,
+              [role]: value,
+            },
+          };
+        }
+        return permission;
+      })
+    );
   };
 
   const handleSave = () => {
@@ -102,25 +120,37 @@ export default function PermissionsPage() {
             <TableBody>
               {permissions.map((permission) => (
                 <TableRow key={permission.id}>
-                  <TableCell className="font-medium">{permission.name}</TableCell>
+                  <TableCell className="font-medium">
+                    {permission.name}
+                  </TableCell>
                   <TableCell>{permission.description}</TableCell>
                   <TableCell>
                     <Switch
                       checked={permission.roles.Admin}
-                      onCheckedChange={(checked) => handlePermissionChange(permission.id, 'Admin', checked)}
-                      disabled={permission.id === '1'} // Không cho phép tắt quyền admin cho chức năng quản lý user
+                      onCheckedChange={(checked) =>
+                        handlePermissionChange(permission.id, "ADMIN", checked)
+                      }
+                      disabled={permission.id === "1"} // Không cho phép tắt quyền admin cho chức năng quản lý user
                     />
                   </TableCell>
                   <TableCell>
                     <Switch
                       checked={permission.roles.HR}
-                      onCheckedChange={(checked) => handlePermissionChange(permission.id, 'HR', checked)}
+                      onCheckedChange={(checked) =>
+                        handlePermissionChange(permission.id, "HR", checked)
+                      }
                     />
                   </TableCell>
                   <TableCell>
                     <Switch
                       checked={permission.roles.Trainee}
-                      onCheckedChange={(checked) => handlePermissionChange(permission.id, 'Trainee', checked)}
+                      onCheckedChange={(checked) =>
+                        handlePermissionChange(
+                          permission.id,
+                          "HOCVIEN",
+                          checked
+                        )
+                      }
                     />
                   </TableCell>
                 </TableRow>

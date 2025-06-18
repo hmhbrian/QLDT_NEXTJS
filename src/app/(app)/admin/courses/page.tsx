@@ -1,28 +1,81 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { useState, useEffect } from "react";
+import dynamic from "next/dynamic";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { PlusCircle, MoreHorizontal, Search, Pencil, Trash2, Copy, Archive, AlertCircle, BookOpen, LayoutGrid, List, Loader2 } from "lucide-react";
-import { useAuth } from '@/hooks/useAuth';
-import { useError } from '@/hooks/use-error';
-import type { Course, TraineeLevel, Department } from '@/lib/types';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  PlusCircle,
+  MoreHorizontal,
+  Search,
+  Pencil,
+  Trash2,
+  Copy,
+  Archive,
+  AlertCircle,
+  BookOpen,
+  LayoutGrid,
+  List,
+  Loader2,
+} from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { useError } from "@/hooks/use-error";
+import type { Course, TraineeLevel, Department } from "@/lib/types";
 import {
   statusOptions,
   statusBadgeVariant,
   departmentOptions as globalDepartmentOptions,
   levelOptions as globalLevelOptions,
   traineeLevelLabels,
-} from '@/lib/constants';
-import NextImage from 'next/image';
-import { CourseFormDialog } from '@/components/courses/dialogs/CourseFormDialog';
-import { useCourseStore } from '@/stores/course-store';
+} from "@/lib/constants";
+import NextImage from "next/image";
+import { useCourseStore } from "@/stores/course-store";
+
+const CourseFormDialog = dynamic(
+  () =>
+    import("@/components/courses/dialogs/CourseFormDialog").then(
+      (mod) => mod.CourseFormDialog
+    ),
+  { ssr: false }
+);
 
 export default function CoursesPage() {
   const { user: currentUser } = useAuth();
@@ -39,27 +92,42 @@ export default function CoursesPage() {
     setIsLoading(false);
   }, []);
 
-  const [viewMode, setViewMode] = useState<'table' | 'card'>('table');
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<Course['status'] | 'all'>('all');
-  const [departmentFilter, setDepartmentFilter] = useState<Department | 'all'>('all');
-  const [levelFilter, setLevelFilter] = useState<TraineeLevel | 'all'>('all');
+  const [viewMode, setViewMode] = useState<"table" | "card">("table");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState<Course["status"] | "all">(
+    "all"
+  );
+  const [departmentFilter, setDepartmentFilter] = useState<Department | "all">(
+    "all"
+  );
+  const [levelFilter, setLevelFilter] = useState<TraineeLevel | "all">("all");
 
   const [isFormDialogOpen, setIsFormDialogOpen] = useState(false);
   const [editingCourse, setEditingCourse] = useState<Course | null>(null);
   const [deletingCourse, setDeletingCourse] = useState<Course | null>(null);
   const [archivingCourse, setArchivingCourse] = useState<Course | null>(null);
 
-  const canManageCourses = currentUser?.role === 'Admin' || currentUser?.role === 'HR';
+  const canManageCourses =
+    currentUser?.role === "ADMIN" || currentUser?.role === "HR";
 
-  const filteredCourses = courses.filter(course => {
+  const filteredCourses = courses.filter((course) => {
     const matchesSearch =
-      (course.title || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (course.description || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (course.instructor || '').toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || course.status === statusFilter;
-    const matchesDepartment = departmentFilter === 'all' || (course.department && course.department.includes(departmentFilter as Department));
-    const matchesLevel = levelFilter === 'all' || (course.level && course.level.includes(levelFilter as TraineeLevel));
+      (course.title || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (course.description || "")
+        .toLowerCase()
+        .includes(searchTerm.toLowerCase()) ||
+      (course.instructor || "")
+        .toLowerCase()
+        .includes(searchTerm.toLowerCase());
+    const matchesStatus =
+      statusFilter === "all" || course.status === statusFilter;
+    const matchesDepartment =
+      departmentFilter === "all" ||
+      (course.department &&
+        course.department.includes(departmentFilter as Department));
+    const matchesLevel =
+      levelFilter === "all" ||
+      (course.level && course.level.includes(levelFilter as TraineeLevel));
     return matchesSearch && matchesStatus && matchesDepartment && matchesLevel;
   });
 
@@ -69,39 +137,59 @@ export default function CoursesPage() {
   };
 
   const handleOpenEditDialog = (course: Course) => {
-     setEditingCourse({
+    setEditingCourse({
       ...course,
       lessons: course.lessons || [],
       tests: course.tests || [],
-      materials: (course.materials || []).map(m => ({ ...m, id: m.id || crypto.randomUUID() })),
+      materials: (course.materials || []).map((m) => ({
+        ...m,
+        id: m.id || crypto.randomUUID(),
+      })),
     });
     setIsFormDialogOpen(true);
   };
 
   const handleSaveCourse = (
-    courseData: Course | Omit<Course, 'id' | 'createdAt' | 'modifiedAt' | 'createdBy' | 'modifiedBy'>,
+    courseData:
+      | Course
+      | Omit<
+          Course,
+          "id" | "createdAt" | "modifiedAt" | "createdBy" | "modifiedBy"
+        >,
     isEditing: boolean
   ) => {
-    if (!canManageCourses || !currentUser) { showError('USER003'); return; }
+    if (!canManageCourses || !currentUser) {
+      showError("USER003");
+      return;
+    }
 
     const now = new Date().toISOString();
-    
+
     if (isEditing) {
       const courseToUpdate = courseData as Course;
-      if (courses.some(c => c.id !== courseToUpdate.id && c.courseCode === courseToUpdate.courseCode)) {
-        showError('COURSE001');
+      if (
+        courses.some(
+          (c) =>
+            c.id !== courseToUpdate.id &&
+            c.courseCode === courseToUpdate.courseCode
+        )
+      ) {
+        showError("COURSE001");
         return;
       }
       // Update using the store
       updateCourse(courseToUpdate.id, {
         ...courseToUpdate,
         modifiedAt: now,
-        modifiedBy: currentUser.id
+        modifiedBy: currentUser.id,
       });
     } else {
-      const newCourseData = courseData as Omit<Course, 'id' | 'createdAt' | 'modifiedAt' | 'createdBy' | 'modifiedBy'>;
-       if (courses.some(c => c.courseCode === newCourseData.courseCode)) {
-        showError('COURSE001');
+      const newCourseData = courseData as Omit<
+        Course,
+        "id" | "createdAt" | "modifiedAt" | "createdBy" | "modifiedBy"
+      >;
+      if (courses.some((c) => c.courseCode === newCourseData.courseCode)) {
+        showError("COURSE001");
         return;
       }
       const newId = crypto.randomUUID(); // Sử dụng UUID cho các khóa học mới
@@ -119,68 +207,98 @@ export default function CoursesPage() {
       // Add using the store
       addCourse(courseToAdd);
     }
-    
-    showError('SUCCESS006');
+
+    showError("SUCCESS006");
     setIsFormDialogOpen(false);
   };
 
   const handleDuplicateCourse = (course: Course) => {
-    if (!canManageCourses || !currentUser) { showError('USER003'); return; }
+    if (!canManageCourses || !currentUser) {
+      showError("USER003");
+      return;
+    }
     const newId = crypto.randomUUID();
     const now = new Date().toISOString();
     const duplicatedCourse: Course = {
       ...course,
       id: newId,
       title: `${course.title} (Bản sao)`,
-      courseCode: `${course.courseCode}-COPY${new Date().getTime().toString().slice(-4)}`,
-      status: 'draft',
+      courseCode: `${course.courseCode}-COPY${new Date()
+        .getTime()
+        .toString()
+        .slice(-4)}`,
+      status: "draft",
       isPublic: false,
-      createdAt: now, modifiedAt: now, createdBy: currentUser.id, modifiedBy: currentUser.id,
-      lessons: (course.lessons || []).map(l => ({ ...l, id: crypto.randomUUID() })),
-      tests: (course.tests || []).map(t => ({ ...t, id: crypto.randomUUID(), questions: t.questions.map(q => ({ ...q, id: crypto.randomUUID() })) })),
-      materials: (course.materials || []).map(m => ({ ...m, id: m.id || crypto.randomUUID() })),
+      createdAt: now,
+      modifiedAt: now,
+      createdBy: currentUser.id,
+      modifiedBy: currentUser.id,
+      lessons: (course.lessons || []).map((l) => ({
+        ...l,
+        id: crypto.randomUUID(),
+      })),
+      tests: (course.tests || []).map((t) => ({
+        ...t,
+        id: crypto.randomUUID(),
+        questions: t.questions.map((q) => ({ ...q, id: crypto.randomUUID() })),
+      })),
+      materials: (course.materials || []).map((m) => ({
+        ...m,
+        id: m.id || crypto.randomUUID(),
+      })),
     };
-    
+
     // Add the duplicated course using the store
     addCourse(duplicatedCourse);
-    
-    showError('SUCCESS006');
+
+    showError("SUCCESS006");
   };
 
   const handleArchiveCourse = () => {
-    if (!canManageCourses || !currentUser) { showError('USER003'); return; }
+    if (!canManageCourses || !currentUser) {
+      showError("USER003");
+      return;
+    }
     if (!archivingCourse) return;
     const now = new Date().toISOString();
-    
+
     // Update the course status using the store
     updateCourse(archivingCourse.id, {
-      status: 'archived' as const,
+      status: "archived" as const,
       isPublic: false,
       modifiedAt: now,
-      modifiedBy: currentUser.id
+      modifiedBy: currentUser.id,
     });
-    
+
     setArchivingCourse(null);
-    showError('SUCCESS006');
+    showError("SUCCESS006");
   };
 
   const handleDeleteCourse = () => {
-    if (!canManageCourses) { showError('USER003'); return; }
+    if (!canManageCourses) {
+      showError("USER003");
+      return;
+    }
     if (!deletingCourse) return;
-    if (deletingCourse.status === 'published') { showError('COURSE002'); return; }
-    
+    if (deletingCourse.status === "published") {
+      showError("COURSE002");
+      return;
+    }
+
     // Delete the course using the store
     deleteCourse(deletingCourse.id);
-    
+
     setDeletingCourse(null);
-    showError('SUCCESS006');
+    showError("SUCCESS006");
   };
 
   if (isLoading) {
     return (
       <div className="flex h-60 w-full items-center justify-center">
         <Loader2 className="h-10 w-10 animate-spin text-primary" />
-        <p className="ml-3 text-muted-foreground">Đang tải danh sách khóa học...</p>
+        <p className="ml-3 text-muted-foreground">
+          Đang tải danh sách khóa học...
+        </p>
       </div>
     );
   }
@@ -191,12 +309,28 @@ export default function CoursesPage() {
         <CardHeader>
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
             <div>
-              <CardTitle className="text-2xl font-headline">Quản lý Khóa học</CardTitle>
-              <CardDescription>Tạo, chỉnh sửa và quản lý tất cả khóa học nội bộ.</CardDescription>
+              <CardTitle className="text-2xl font-headline">
+                Quản lý Khóa học
+              </CardTitle>
+              <CardDescription>
+                Tạo, chỉnh sửa và quản lý tất cả khóa học nội bộ.
+              </CardDescription>
             </div>
             <div className="flex items-center gap-2">
-              <Button variant={viewMode === 'table' ? 'default' : 'outline'} size="icon" onClick={() => setViewMode('table')}><List className="h-4 w-4" /></Button>
-              <Button variant={viewMode === 'card' ? 'default' : 'outline'} size="icon" onClick={() => setViewMode('card')}><LayoutGrid className="h-4 w-4" /></Button>
+              <Button
+                variant={viewMode === "table" ? "default" : "outline"}
+                size="icon"
+                onClick={() => setViewMode("table")}
+              >
+                <List className="h-4 w-4" />
+              </Button>
+              <Button
+                variant={viewMode === "card" ? "default" : "outline"}
+                size="icon"
+                onClick={() => setViewMode("card")}
+              >
+                <LayoutGrid className="h-4 w-4" />
+              </Button>
               {canManageCourses && (
                 <Button onClick={handleOpenAddDialog} className="ml-2">
                   <PlusCircle className="mr-2 h-4 w-4" /> Thêm khóa học
@@ -210,33 +344,67 @@ export default function CoursesPage() {
             <div className="flex flex-col sm:flex-row gap-4">
               <div className="relative flex-grow">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input placeholder="Tìm kiếm khóa học..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-9" />
+                <Input
+                  placeholder="Tìm kiếm khóa học..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-9"
+                />
               </div>
-              <Select value={statusFilter} onValueChange={(v: typeof statusFilter) => setStatusFilter(v)}>
-                <SelectTrigger className="w-full sm:w-[180px]"><SelectValue placeholder="Trạng thái" /></SelectTrigger>
+              <Select
+                value={statusFilter}
+                onValueChange={(v: typeof statusFilter) => setStatusFilter(v)}
+              >
+                <SelectTrigger className="w-full sm:w-[180px]">
+                  <SelectValue placeholder="Trạng thái" />
+                </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Tất cả trạng thái</SelectItem>
-                  {statusOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                  {statusOptions.map((o) => (
+                    <SelectItem key={o.value} value={o.value}>
+                      {o.label}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
-              <Select value={departmentFilter} onValueChange={(v: typeof departmentFilter) => setDepartmentFilter(v)}>
-                <SelectTrigger className="w-full sm:w-[180px]"><SelectValue placeholder="Phòng ban" /></SelectTrigger>
+              <Select
+                value={departmentFilter}
+                onValueChange={(v: typeof departmentFilter) =>
+                  setDepartmentFilter(v)
+                }
+              >
+                <SelectTrigger className="w-full sm:w-[180px]">
+                  <SelectValue placeholder="Phòng ban" />
+                </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Tất cả phòng ban</SelectItem>
-                  {globalDepartmentOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                  {globalDepartmentOptions.map((o) => (
+                    <SelectItem key={o.value} value={o.value}>
+                      {o.label}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
-              <Select value={levelFilter} onValueChange={(v: typeof levelFilter) => setLevelFilter(v)}>
-                <SelectTrigger className="w-full sm:w-[180px]"><SelectValue placeholder="Cấp độ" /></SelectTrigger>
+              <Select
+                value={levelFilter}
+                onValueChange={(v: typeof levelFilter) => setLevelFilter(v)}
+              >
+                <SelectTrigger className="w-full sm:w-[180px]">
+                  <SelectValue placeholder="Cấp độ" />
+                </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Tất cả cấp độ</SelectItem>
-                  {globalLevelOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                  {globalLevelOptions.map((o) => (
+                    <SelectItem key={o.value} value={o.value}>
+                      {o.label}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
           </div>
 
-          {viewMode === 'table' ? (
+          {viewMode === "table" ? (
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
@@ -246,10 +414,20 @@ export default function CoursesPage() {
                     <TableHead>Loại Ghi danh</TableHead>
                     <TableHead>Trạng thái</TableHead>
                     <TableHead>Công khai</TableHead>
-                    <TableHead className="hidden md:table-cell">Phòng ban</TableHead>
-                    <TableHead className="hidden md:table-cell">Cấp độ</TableHead>
-                    <TableHead className="hidden lg:table-cell">Giảng viên</TableHead>
-                    {canManageCourses && <TableHead className="w-[100px] text-right">Thao tác</TableHead>}
+                    <TableHead className="hidden md:table-cell">
+                      Phòng ban
+                    </TableHead>
+                    <TableHead className="hidden md:table-cell">
+                      Cấp độ
+                    </TableHead>
+                    <TableHead className="hidden lg:table-cell">
+                      Giảng viên
+                    </TableHead>
+                    {canManageCourses && (
+                      <TableHead className="w-[100px] text-right">
+                        Thao tác
+                      </TableHead>
+                    )}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -258,25 +436,92 @@ export default function CoursesPage() {
                       <TableCell className="font-medium">
                         <div className="flex items-center gap-2">
                           <BookOpen className="h-4 w-4 text-primary flex-shrink-0" />
-                          <span className="truncate" title={course.title}>{course.title}</span>
+                          <span className="truncate" title={course.title}>
+                            {course.title}
+                          </span>
                         </div>
                       </TableCell>
                       <TableCell>{course.courseCode}</TableCell>
-                      <TableCell><Badge variant={course.enrollmentType === 'mandatory' ? 'default' : 'secondary'}>{course.enrollmentType === 'mandatory' ? 'Bắt buộc' : 'Tùy chọn'}</Badge></TableCell>
-                      <TableCell><Badge variant={statusBadgeVariant[course.status]}>{statusOptions.find(opt => opt.value === course.status)?.label}</Badge></TableCell>
-                      <TableCell><Badge variant={course.isPublic ? 'default' : 'outline'}>{course.isPublic ? 'Công khai' : 'Nội bộ'}</Badge></TableCell>
-                      <TableCell className="hidden md:table-cell">{course.department?.map(dept => globalDepartmentOptions.find(opt => opt.value === dept)?.label).join(', ') || 'N/A'}</TableCell>
-                      <TableCell className="hidden md:table-cell">{course.level?.map((lvl: TraineeLevel) => traineeLevelLabels[lvl]).join(', ') || 'N/A'}</TableCell>
-                      <TableCell className="hidden lg:table-cell">{course.instructor}</TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={
+                            course.enrollmentType === "mandatory"
+                              ? "default"
+                              : "secondary"
+                          }
+                        >
+                          {course.enrollmentType === "mandatory"
+                            ? "Bắt buộc"
+                            : "Tùy chọn"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={statusBadgeVariant[course.status]}>
+                          {
+                            statusOptions.find(
+                              (opt) => opt.value === course.status
+                            )?.label
+                          }
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={course.isPublic ? "default" : "outline"}
+                        >
+                          {course.isPublic ? "Công khai" : "Nội bộ"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell">
+                        {course.department
+                          ?.map(
+                            (dept) =>
+                              globalDepartmentOptions.find(
+                                (opt) => opt.value === dept
+                              )?.label
+                          )
+                          .join(", ") || "N/A"}
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell">
+                        {course.level
+                          ?.map((lvl: TraineeLevel) => traineeLevelLabels[lvl])
+                          .join(", ") || "N/A"}
+                      </TableCell>
+                      <TableCell className="hidden lg:table-cell">
+                        {course.instructor}
+                      </TableCell>
                       {canManageCourses && (
                         <TableCell className="text-right">
                           <DropdownMenu>
-                            <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /><span className="sr-only">Mở menu</span></Button></DropdownMenuTrigger>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon">
+                                <MoreHorizontal className="h-4 w-4" />
+                                <span className="sr-only">Mở menu</span>
+                              </Button>
+                            </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => handleOpenEditDialog(course)}><Pencil className="mr-2 h-4 w-4" /> Chỉnh sửa</DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleDuplicateCourse(course)}><Copy className="mr-2 h-4 w-4" /> Nhân bản</DropdownMenuItem>
-                              {course.status !== 'archived' && <DropdownMenuItem onClick={() => setArchivingCourse(course)}><Archive className="mr-2 h-4 w-4" /> Lưu trữ</DropdownMenuItem>}
-                              <DropdownMenuItem onClick={() => setDeletingCourse(course)} className="text-destructive focus:text-destructive"><Trash2 className="mr-2 h-4 w-4" /> Xóa</DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => handleOpenEditDialog(course)}
+                              >
+                                <Pencil className="mr-2 h-4 w-4" /> Chỉnh sửa
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => handleDuplicateCourse(course)}
+                              >
+                                <Copy className="mr-2 h-4 w-4" /> Nhân bản
+                              </DropdownMenuItem>
+                              {course.status !== "archived" && (
+                                <DropdownMenuItem
+                                  onClick={() => setArchivingCourse(course)}
+                                >
+                                  <Archive className="mr-2 h-4 w-4" /> Lưu trữ
+                                </DropdownMenuItem>
+                              )}
+                              <DropdownMenuItem
+                                onClick={() => setDeletingCourse(course)}
+                                className="text-destructive focus:text-destructive"
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" /> Xóa
+                              </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </TableCell>
@@ -288,47 +533,135 @@ export default function CoursesPage() {
             </div>
           ) : (
             <div className="grid gap-6 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {filteredCourses.map(course => (
-                <Card key={course.id} className="overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 flex flex-col">
+              {filteredCourses.map((course) => (
+                <Card
+                  key={course.id}
+                  className="overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 flex flex-col"
+                >
                   <div className="relative h-40 w-full">
-                    <NextImage src={course.image} alt={course.title} layout="fill" objectFit="cover" data-ai-hint="course image" />
+                    <NextImage
+                      src={course.image}
+                      alt={course.title}
+                      layout="fill"
+                      objectFit="cover"
+                      data-ai-hint="course image"
+                    />
                     <div className="absolute top-2 right-2">
                       {canManageCourses && (
                         <DropdownMenu>
-                          <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="bg-white/30 hover:bg-white/50 text-black"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="bg-white/30 hover:bg-white/50 text-black"
+                            >
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => handleOpenEditDialog(course)}><Pencil className="mr-2 h-4 w-4" /> Chỉnh sửa</DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleDuplicateCourse(course)}><Copy className="mr-2 h-4 w-4" /> Nhân bản</DropdownMenuItem>
-                            {course.status !== 'archived' && <DropdownMenuItem onClick={() => setArchivingCourse(course)}><Archive className="mr-2 h-4 w-4" /> Lưu trữ</DropdownMenuItem>}
-                            <DropdownMenuItem onClick={() => setDeletingCourse(course)} className="text-destructive focus:text-destructive"><Trash2 className="mr-2 h-4 w-4" /> Xóa</DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => handleOpenEditDialog(course)}
+                            >
+                              <Pencil className="mr-2 h-4 w-4" /> Chỉnh sửa
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => handleDuplicateCourse(course)}
+                            >
+                              <Copy className="mr-2 h-4 w-4" /> Nhân bản
+                            </DropdownMenuItem>
+                            {course.status !== "archived" && (
+                              <DropdownMenuItem
+                                onClick={() => setArchivingCourse(course)}
+                              >
+                                <Archive className="mr-2 h-4 w-4" /> Lưu trữ
+                              </DropdownMenuItem>
+                            )}
+                            <DropdownMenuItem
+                              onClick={() => setDeletingCourse(course)}
+                              className="text-destructive focus:text-destructive"
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" /> Xóa
+                            </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       )}
                     </div>
                   </div>
                   <CardHeader className="pb-2">
-                    <CardTitle className="font-headline text-lg truncate" title={course.title}>{course.title}</CardTitle>
-                    <CardDescription className="text-xs">{course.courseCode}</CardDescription>
+                    <CardTitle
+                      className="font-headline text-lg truncate"
+                      title={course.title}
+                    >
+                      {course.title}
+                    </CardTitle>
+                    <CardDescription className="text-xs">
+                      {course.courseCode}
+                    </CardDescription>
                   </CardHeader>
                   <CardContent className="flex-grow text-sm space-y-1.5">
                     <div className="flex items-center gap-2">
-                      <Badge variant={statusBadgeVariant[course.status]}>{statusOptions.find(opt => opt.value === course.status)?.label}</Badge>
-                      <Badge variant={course.isPublic ? 'default' : 'outline'}>{course.isPublic ? 'Công khai' : 'Nội bộ'}</Badge>
+                      <Badge variant={statusBadgeVariant[course.status]}>
+                        {
+                          statusOptions.find(
+                            (opt) => opt.value === course.status
+                          )?.label
+                        }
+                      </Badge>
+                      <Badge variant={course.isPublic ? "default" : "outline"}>
+                        {course.isPublic ? "Công khai" : "Nội bộ"}
+                      </Badge>
                     </div>
-                    <p className="text-muted-foreground line-clamp-2" title={course.description}>{course.description}</p>
-                    <p><span className="font-medium">Giảng viên:</span> {course.instructor}</p>
-                    <p><span className="font-medium">Phòng ban:</span> {course.department?.map(d => globalDepartmentOptions.find(opt => opt.value === d)?.label).join(', ') || 'N/A'}</p>
-                    <p><span className="font-medium">Cấp độ:</span> {course.level?.map(l => globalLevelOptions.find(opt => opt.value === l)?.label).join(', ') || 'N/A'}</p>
+                    <p
+                      className="text-muted-foreground line-clamp-2"
+                      title={course.description}
+                    >
+                      {course.description}
+                    </p>
+                    <p>
+                      <span className="font-medium">Giảng viên:</span>{" "}
+                      {course.instructor}
+                    </p>
+                    <p>
+                      <span className="font-medium">Phòng ban:</span>{" "}
+                      {course.department
+                        ?.map(
+                          (d) =>
+                            globalDepartmentOptions.find(
+                              (opt) => opt.value === d
+                            )?.label
+                        )
+                        .join(", ") || "N/A"}
+                    </p>
+                    <p>
+                      <span className="font-medium">Cấp độ:</span>{" "}
+                      {course.level
+                        ?.map(
+                          (l) =>
+                            globalLevelOptions.find((opt) => opt.value === l)
+                              ?.label
+                        )
+                        .join(", ") || "N/A"}
+                    </p>
                   </CardContent>
                   <CardFooter className="border-t pt-3">
-                    <Button variant="outline" className="w-full" onClick={() => handleOpenEditDialog(course)}>Xem & Chỉnh sửa chi tiết</Button>
+                    <Button
+                      variant="outline"
+                      className="w-full"
+                      onClick={() => handleOpenEditDialog(course)}
+                    >
+                      Xem & Chỉnh sửa chi tiết
+                    </Button>
                   </CardFooter>
                 </Card>
               ))}
             </div>
           )}
 
-          {filteredCourses.length === 0 && <p className="text-center text-muted-foreground mt-6">Không tìm thấy khóa học nào.</p>}
+          {filteredCourses.length === 0 && (
+            <p className="text-center text-muted-foreground mt-6">
+              Không tìm thấy khóa học nào.
+            </p>
+          )}
         </CardContent>
       </Card>
 
@@ -340,14 +673,25 @@ export default function CoursesPage() {
       />
 
       {archivingCourse && (
-        <Dialog open={!!archivingCourse} onOpenChange={() => setArchivingCourse(null)}>
+        <Dialog
+          open={!!archivingCourse}
+          onOpenChange={() => setArchivingCourse(null)}
+        >
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Xác nhận lưu trữ</DialogTitle>
-              <DialogDescription>Bạn có chắc chắn muốn lưu trữ khóa học &quot;{archivingCourse.title}&quot;?</DialogDescription>
+              <DialogDescription>
+                Bạn có chắc chắn muốn lưu trữ khóa học &quot;
+                {archivingCourse.title}&quot;?
+              </DialogDescription>
             </DialogHeader>
             <DialogFooter className="mt-4">
-              <Button variant="outline" onClick={() => setArchivingCourse(null)}>Hủy</Button>
+              <Button
+                variant="outline"
+                onClick={() => setArchivingCourse(null)}
+              >
+                Hủy
+              </Button>
               <Button onClick={handleArchiveCourse}>Xác nhận</Button>
             </DialogFooter>
           </DialogContent>
@@ -355,18 +699,35 @@ export default function CoursesPage() {
       )}
 
       {deletingCourse && (
-        <Dialog open={!!deletingCourse} onOpenChange={() => setDeletingCourse(null)}>
+        <Dialog
+          open={!!deletingCourse}
+          onOpenChange={() => setDeletingCourse(null)}
+        >
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Xác nhận xóa</DialogTitle>
               <DialogDescription>
-                Bạn có chắc chắn muốn xóa khóa học &quot;{deletingCourse.title}&quot;? Hành động này không thể hoàn tác.
-                {deletingCourse.status === 'published' && <div className="mt-2 flex items-center text-destructive"><AlertCircle className="h-4 w-4 mr-2" />Không thể xóa khóa học đã xuất bản.</div>}
+                Bạn có chắc chắn muốn xóa khóa học &quot;{deletingCourse.title}
+                &quot;? Hành động này không thể hoàn tác.
+                {deletingCourse.status === "published" && (
+                  <div className="mt-2 flex items-center text-destructive">
+                    <AlertCircle className="h-4 w-4 mr-2" />
+                    Không thể xóa khóa học đã xuất bản.
+                  </div>
+                )}
               </DialogDescription>
             </DialogHeader>
             <DialogFooter className="mt-4">
-              <Button variant="outline" onClick={() => setDeletingCourse(null)}>Hủy</Button>
-              <Button variant="destructive" onClick={handleDeleteCourse} disabled={deletingCourse.status === 'published'}>Xác nhận xóa</Button>
+              <Button variant="outline" onClick={() => setDeletingCourse(null)}>
+                Hủy
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={handleDeleteCourse}
+                disabled={deletingCourse.status === "published"}
+              >
+                Xác nhận xóa
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
