@@ -1,11 +1,11 @@
-'use client';
+"use client";
 
-import { useAuth } from '@/hooks/useAuth';
-import { AdminDashboard } from '@/components/dashboard/AdminDashboard';
-import { HrDashboard } from '@/components/dashboard/HrDashboard';
-import { TraineeDashboard } from '@/components/dashboard/TraineeDashboard';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { Skeleton } from '@/components/ui/skeleton';
+import { useAuth } from "@/hooks/useAuth";
+import { AdminDashboard } from "@/components/dashboard/AdminDashboard";
+import { HrDashboard } from "@/components/dashboard/HrDashboard";
+import { TraineeDashboard } from "@/components/dashboard/TraineeDashboard";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function DashboardPage() {
   const { user, loadingAuth } = useAuth();
@@ -32,10 +32,12 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl md:text-3xl font-headline font-semibold">Chào mừng, {user.fullName}!</h1>
-      {user.role === 'Admin' && <AdminDashboard />}
-      {user.role === 'HR' && <HrDashboard />}
-      {user.role === 'Trainee' && <TraineeDashboard />}
+      <h1 className="text-2xl md:text-3xl font-headline font-semibold">
+        Chào mừng, {user.fullName}!
+      </h1>
+      {user.role === "ADMIN" && <AdminDashboard />}
+      {user.role === "HR" && <HrDashboard />}
+      {user.role === "HOCVIEN" && <TraineeDashboard />}
     </div>
   );
 }

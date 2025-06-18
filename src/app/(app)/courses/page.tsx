@@ -1,23 +1,43 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { useState, useEffect } from "react";
+import {
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, CalendarClock, LayoutGrid, List, Loader2, BookOpen } from "lucide-react";
-import { useAuth } from '@/hooks/useAuth';
+import {
+  Search,
+  CalendarClock,
+  LayoutGrid,
+  List,
+  Loader2,
+  BookOpen,
+} from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 import NextImage from "next/image";
-import { useRouter } from 'next/navigation';
-import { Badge } from '@/components/ui/badge';
-import { useToast } from '@/components/ui/use-toast';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { useCookie } from '@/hooks/use-cookie';
-import { mockPublicCourses } from '@/lib/mock';
-import { categoryOptions } from '@/lib/constants';
-import { useCourseStore } from '@/stores/course-store';
-import type { PublicCourse } from '@/lib/types';
+import { useRouter } from "next/navigation";
+import { Badge } from "@/components/ui/badge";
+import { useToast } from "@/components/ui/use-toast";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { useCookie } from "@/hooks/use-cookie";
+import { mockPublicCourses } from "@/lib/mock";
+import { categoryOptions } from "@/lib/constants";
+import { useCourseStore } from "@/stores/course-store";
+import type { PublicCourse } from "@/lib/types";
 
-const PUBLIC_COURSES_COOKIE_KEY = 'becamex-public-courses-data';
+const PUBLIC_COURSES_COOKIE_KEY = "becamex-public-courses-data";
 
 export default function CoursesPage() {
   const { user: currentUser } = useAuth();
@@ -26,34 +46,35 @@ export default function CoursesPage() {
 
   // Get courses from the store
   const { courses: allCoursesFromStore } = useCourseStore();
-  
+
   // Keep using cookies for public courses display data
-  const [publicCoursesFromCookie, setPublicCoursesInCookie] = useCookie<PublicCourse[]>(
-    PUBLIC_COURSES_COOKIE_KEY,
-    mockPublicCourses
-  );
+  const [publicCoursesFromCookie, setPublicCoursesInCookie] = useCookie<
+    PublicCourse[]
+  >(PUBLIC_COURSES_COOKIE_KEY, mockPublicCourses);
 
   const [courses, setCourses] = useState<PublicCourse[]>([]);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [viewMode, setViewMode] = useState<'card' | 'table'>('card');
+  const [searchTerm, setSearchTerm] = useState("");
+  const [viewMode, setViewMode] = useState<"card" | "table">("card");
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     setIsLoading(true);
-    
+
     // Start with mock data for public courses
     const publicCourses = mockPublicCourses.length > 0 ? mockPublicCourses : [];
-    
+
     // Only use data from all courses if we have some courses
     if (allCoursesFromStore.length > 0) {
       // Filter for only public and published courses from the store
       const publicCoursesFromAll = allCoursesFromStore
-        .filter(course => course.isPublic && course.status === 'published')
-        .map(course => ({
+        .filter((course) => course.isPublic && course.status === "published")
+        .map((course) => ({
           id: course.id,
           title: course.title,
           description: course.description,
-          category: categoryOptions.find(c => c.value === course.category)?.label as PublicCourse['category'] || 'Lập trình',
+          category:
+            (categoryOptions.find((c) => c.value === course.category)
+              ?.label as PublicCourse["category"]) || "Lập trình",
           instructor: course.instructor,
           duration: `${course.duration.sessions} buổi (${course.duration.hoursPerSession}h/buổi)`,
           image: course.image,
@@ -63,11 +84,11 @@ export default function CoursesPage() {
           isPublic: course.isPublic,
           enrolledTrainees: course.enrolledTrainees,
         }));
-      
+
       // If we found public courses from the store, use those instead
       if (publicCoursesFromAll.length > 0) {
         setCourses(publicCoursesFromAll);
-        
+
         // Only update the cookie if it differs from current value to prevent loops
         const currentCookieValue = JSON.stringify(publicCoursesFromCookie);
         const newValue = JSON.stringify(publicCoursesFromAll);
@@ -77,7 +98,7 @@ export default function CoursesPage() {
       } else {
         // Otherwise use our mock data
         setCourses(publicCourses);
-        
+
         // Only update cookie if needed
         const currentCookieValue = JSON.stringify(publicCoursesFromCookie);
         const newValue = JSON.stringify(publicCourses);
@@ -88,7 +109,7 @@ export default function CoursesPage() {
     } else {
       // If we don't have any courses in the store, just use mock data
       setCourses(publicCourses);
-      
+
       // Only update cookie if needed
       const currentCookieValue = JSON.stringify(publicCoursesFromCookie);
       const newValue = JSON.stringify(publicCourses);
@@ -96,15 +117,17 @@ export default function CoursesPage() {
         setPublicCoursesInCookie(publicCourses);
       }
     }
-    
-    setIsLoading(false);
-  }, [allCoursesFromStore, publicCoursesFromCookie, setPublicCoursesInCookie]); 
 
-  const filteredCourses = courses.filter(course =>
-    course.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    course.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (course.category && course.category.toLowerCase().includes(searchTerm.toLowerCase())) ||
-    course.instructor.toLowerCase().includes(searchTerm.toLowerCase())
+    setIsLoading(false);
+  }, [allCoursesFromStore, publicCoursesFromCookie, setPublicCoursesInCookie]);
+
+  const filteredCourses = courses.filter(
+    (course) =>
+      course.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      course.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (course.category &&
+        course.category.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      course.instructor.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const handleEnroll = (courseId: string) => {
@@ -113,29 +136,29 @@ export default function CoursesPage() {
       toast({
         title: "Chưa đăng nhập",
         description: "Vui lòng đăng nhập để đăng ký khóa học.",
-        variant: "destructive"
+        variant: "destructive",
       });
-      router.push('/login');
+      router.push("/login");
       return;
     }
-    
-    const courseToEnroll = courses.find(c => c.id === courseId);
+
+    const courseToEnroll = courses.find((c) => c.id === courseId);
     if (!courseToEnroll) {
       toast({
         title: "Lỗi",
         description: "Không tìm thấy thông tin khóa học.",
-        variant: "destructive"
+        variant: "destructive",
       });
       return;
     }
-    
+
     // Get the course from store to update
-    const courseInStore = allCoursesFromStore.find(c => c.id === courseId);
+    const courseInStore = allCoursesFromStore.find((c) => c.id === courseId);
     if (!courseInStore) {
       toast({
         title: "Lỗi",
         description: "Không tìm thấy thông tin khóa học trong hệ thống.",
-        variant: "destructive"
+        variant: "destructive",
       });
       return;
     }
@@ -146,7 +169,7 @@ export default function CoursesPage() {
       toast({
         title: "Đã đăng ký",
         description: `Bạn đã đăng ký khóa học "${courseToEnroll.title}" trước đó.`,
-        variant: "default"
+        variant: "default",
       });
       router.push(`/courses/${courseId}`);
       return;
@@ -155,21 +178,21 @@ export default function CoursesPage() {
     // Add user to enrolledTrainees list
     const updatedEnrolledTrainees = [
       ...(courseInStore.enrolledTrainees || []),
-      currentUser.id
+      currentUser.id,
     ];
 
     // Update course in store
     useCourseStore.getState().updateCourse(courseId, {
-      enrolledTrainees: updatedEnrolledTrainees
+      enrolledTrainees: updatedEnrolledTrainees,
     });
 
     toast({
       title: "Đăng ký thành công",
       description: `Bạn đã đăng ký khóa học "${courseToEnroll.title}" thành công.`,
       duration: 3000,
-      variant: "success"
+      variant: "success",
     });
-    
+
     // Redirect to course detail page
     router.push(`/courses/${courseId}`);
   };
@@ -185,7 +208,9 @@ export default function CoursesPage() {
     return (
       <div className="flex h-60 w-full items-center justify-center">
         <Loader2 className="h-10 w-10 animate-spin text-primary" />
-        <p className="ml-3 text-muted-foreground">Đang tải danh sách khóa học...</p>
+        <p className="ml-3 text-muted-foreground">
+          Đang tải danh sách khóa học...
+        </p>
       </div>
     );
   }
@@ -193,7 +218,9 @@ export default function CoursesPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-        <h1 className="text-2xl md:text-3xl font-headline font-semibold">Khóa học Công khai</h1>
+        <h1 className="text-2xl md:text-3xl font-headline font-semibold">
+          Khóa học Công khai
+        </h1>
         <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
           <div className="relative flex-grow md:flex-grow-0">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
@@ -204,61 +231,101 @@ export default function CoursesPage() {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          <Button variant={viewMode === 'table' ? 'default' : 'outline'} size="icon" onClick={() => setViewMode('table')} aria-label="Table view">
+          <Button
+            variant={viewMode === "table" ? "default" : "outline"}
+            size="icon"
+            onClick={() => setViewMode("table")}
+            aria-label="Table view"
+          >
             <List className="h-5 w-5" />
           </Button>
-          <Button variant={viewMode === 'card' ? 'default' : 'outline'} size="icon" onClick={() => setViewMode('card')} aria-label="Card view">
+          <Button
+            variant={viewMode === "card" ? "default" : "outline"}
+            size="icon"
+            onClick={() => setViewMode("card")}
+            aria-label="Card view"
+          >
             <LayoutGrid className="h-5 w-5" />
           </Button>
         </div>
       </div>
 
       {filteredCourses.length > 0 ? (
-        viewMode === 'card' ? (
+        viewMode === "card" ? (
           <div className="grid gap-6 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {filteredCourses.map(course => (
-              <Card key={course.id} className="overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 flex flex-col">
+            {filteredCourses.map((course) => (
+              <Card
+                key={course.id}
+                className="overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 flex flex-col"
+              >
                 <div className="relative h-48 w-full">
-                  {course.image.endsWith('.pdf') ? (
+                  {course.image.endsWith(".pdf") ? (
                     <div className="h-full w-full flex items-center justify-center bg-gray-100">
                       <BookOpen className="h-12 w-12 text-gray-400" />
                       <span className="ml-2 text-gray-600">PDF Document</span>
                     </div>
                   ) : (
-                  <NextImage
-                    src={course.image}
-                    alt={course.title}
-                    layout="fill"
-                    objectFit="cover"
-                    data-ai-hint={course.dataAiHint || "course image"}
-                  />
+                    <NextImage
+                      src={course.image}
+                      alt={course.title}
+                      layout="fill"
+                      objectFit="cover"
+                      data-ai-hint={course.dataAiHint || "course image"}
+                    />
                   )}
                 </div>
                 <CardHeader>
-                  <CardTitle className="font-headline text-xl">{course.title}</CardTitle>
+                  <CardTitle className="font-headline text-xl">
+                    {course.title}
+                  </CardTitle>
                   <div className="flex items-center gap-2 mt-1">
-                    <Badge variant="outline" className="text-xs">{course.category}</Badge>
-                    <Badge variant={course.enrollmentType === 'mandatory' ? 'default' : 'secondary'} className="text-xs">
-                      {course.enrollmentType === 'mandatory' ? 'Bắt buộc' : 'Tùy chọn'}
+                    <Badge variant="outline" className="text-xs">
+                      {course.category}
+                    </Badge>
+                    <Badge
+                      variant={
+                        course.enrollmentType === "mandatory"
+                          ? "default"
+                          : "secondary"
+                      }
+                      className="text-xs"
+                    >
+                      {course.enrollmentType === "mandatory"
+                        ? "Bắt buộc"
+                        : "Tùy chọn"}
                     </Badge>
                   </div>
                 </CardHeader>
                 <CardContent className="flex-grow">
-                  <p className="text-sm text-muted-foreground mb-2 line-clamp-3">{course.description}</p>
-                  <p className="text-xs text-muted-foreground">Giảng viên: {course.instructor}</p>
-                  <p className="text-xs text-muted-foreground">Thời lượng: {course.duration}</p>
-                  {course.enrollmentType === 'optional' && course.registrationDeadline && (
-                    <p className="text-xs text-muted-foreground mt-1 flex items-center">
-                      <CalendarClock className="mr-1.5 h-3 w-3"/>
-                      Hạn đăng ký: {new Date(course.registrationDeadline).toLocaleDateString('vi-VN')}
-                      {!isRegistrationOpen(course.registrationDeadline) && <Badge variant="destructive" className="ml-2 text-xs">Hết hạn</Badge>}
-                    </p>
-                  )}
+                  <p className="text-sm text-muted-foreground mb-2 line-clamp-3">
+                    {course.description}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Giảng viên: {course.instructor}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Thời lượng: {course.duration}
+                  </p>
+                  {course.enrollmentType === "optional" &&
+                    course.registrationDeadline && (
+                      <p className="text-xs text-muted-foreground mt-1 flex items-center">
+                        <CalendarClock className="mr-1.5 h-3 w-3" />
+                        Hạn đăng ký:{" "}
+                        {new Date(
+                          course.registrationDeadline
+                        ).toLocaleDateString("vi-VN")}
+                        {!isRegistrationOpen(course.registrationDeadline) && (
+                          <Badge variant="destructive" className="ml-2 text-xs">
+                            Hết hạn
+                          </Badge>
+                        )}
+                      </p>
+                    )}
                 </CardContent>
                 <CardFooter className="border-t mt-auto pt-4 flex flex-col sm:flex-row gap-2">
-                  {currentUser?.role === 'Trainee' && 
-                   course.enrollmentType === 'optional' && 
-                   !course.enrolledTrainees?.includes(currentUser?.id || '') ? (
+                  {currentUser?.role === "HOCVIEN" &&
+                  course.enrollmentType === "optional" &&
+                  !course.enrolledTrainees?.includes(currentUser?.id || "") ? (
                     isRegistrationOpen(course.registrationDeadline) ? (
                       <Button
                         className="w-full"
@@ -284,7 +351,8 @@ export default function CoursesPage() {
               </Card>
             ))}
           </div>
-        ) : ( // Chế độ xem Bảng
+        ) : (
+          // Chế độ xem Bảng
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
@@ -298,21 +366,33 @@ export default function CoursesPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredCourses.map(course => (
+                {filteredCourses.map((course) => (
                   <TableRow key={course.id}>
-                    <TableCell className="font-medium">{course.title}</TableCell>
+                    <TableCell className="font-medium">
+                      {course.title}
+                    </TableCell>
                     <TableCell>{course.category}</TableCell>
                     <TableCell>{course.instructor}</TableCell>
                     <TableCell>{course.duration}</TableCell>
                     <TableCell>
-                      <Badge variant={course.enrollmentType === 'mandatory' ? 'default' : 'secondary'}>
-                        {course.enrollmentType === 'mandatory' ? 'Bắt buộc' : 'Tùy chọn'}
+                      <Badge
+                        variant={
+                          course.enrollmentType === "mandatory"
+                            ? "default"
+                            : "secondary"
+                        }
+                      >
+                        {course.enrollmentType === "mandatory"
+                          ? "Bắt buộc"
+                          : "Tùy chọn"}
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      {currentUser?.role === 'Trainee' && 
-                       course.enrollmentType === 'optional' && 
-                       !course.enrolledTrainees?.includes(currentUser?.id || '') ? (
+                      {currentUser?.role === "HOCVIEN" &&
+                      course.enrollmentType === "optional" &&
+                      !course.enrolledTrainees?.includes(
+                        currentUser?.id || ""
+                      ) ? (
                         isRegistrationOpen(course.registrationDeadline) ? (
                           <Button
                             size="sm"
@@ -326,9 +406,9 @@ export default function CoursesPage() {
                           </Button>
                         )
                       ) : (
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
+                        <Button
+                          variant="outline"
+                          size="sm"
                           onClick={() => router.push(`/courses/${course.id}`)}
                         >
                           Xem chi tiết
@@ -341,10 +421,12 @@ export default function CoursesPage() {
             </Table>
           </div>
         )
-        ) : (
+      ) : (
         <div className="text-center py-12">
           <BookOpen className="mx-auto h-12 w-12 text-muted-foreground" />
-          <h3 className="mt-2 text-xl font-semibold">Không có khóa học công khai nào</h3>
+          <h3 className="mt-2 text-xl font-semibold">
+            Không có khóa học công khai nào
+          </h3>
           <p className="mt-1 text-sm text-muted-foreground">
             Vui lòng kiểm tra lại sau.
           </p>
@@ -353,4 +435,3 @@ export default function CoursesPage() {
     </div>
   );
 }
-

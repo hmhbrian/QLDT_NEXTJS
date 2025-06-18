@@ -1,9 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
+import dynamic from "next/dynamic";
+
 import {
   Card,
   CardContent,
@@ -46,62 +48,147 @@ import {
   Info,
   Library,
   FileQuestion,
-  Check,
-  ShieldQuestion,
-  AlertTriangle,
-  MessageSquareQuote,
   Star,
+  MessageSquare,
+  AlertTriangle,
+  ShieldQuestion,
+  Check,
 } from "lucide-react";
-import { CourseViewer } from "@/components/courses/CourseViewer";
-import type {
-  Course,
-  CourseCategory,
-  CourseMaterial,
-  Lesson,
-  StudentCourseEvaluation,
-} from "@/lib/types";
-import {
-  mockEvaluations as initialMockEvaluationsFromLib,
-} from "@/lib/mock";
+
+import { useCookie } from "@/hooks/use-cookie";
 import {
   categoryOptions,
   statusOptions as courseStatusOptions,
+  EVALUATIONS_COOKIE_KEY,
 } from "@/lib/constants";
+import {
+  Course,
+  CourseCategory,
+  Lesson,
+  CourseMaterial,
+  StudentCourseEvaluation,
+} from "@/lib/types";
+import { mockEvaluations as initialMockEvaluationsFromLib } from "@/lib/mock";
 import { useAuth } from "@/hooks/useAuth";
-import { useToast } from "@/components/ui/use-toast";
-import { PdfLessonViewer } from "@/components/lessons/PdfLessonViewer";
-import { useCookie } from "@/hooks/use-cookie";
+import { useToast } from "@/hooks/use-toast";
 import { useUserStore } from "@/stores/user-store";
 import { useCourseStore } from "@/stores/course-store";
-import { StarRatingDisplay } from "@/components/courses/StarRatingDisplay";
-import { StarRatingInput } from "@/components/courses/StarRatingInput";
 
-// Just keep the evaluations in cookies for now
-const EVALUATIONS_COOKIE_KEY = "becamex-course-evaluations-data";
+// Dynamic imports với lazy loading để tối ưu performance
+const StarRatingDisplay = dynamic(
+  () => import("@/components/ui/StarRatingDisplay"),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex gap-1">
+        {Array(5)
+          .fill(0)
+          .map((_, i) => (
+            <div key={i} className="w-4 h-4 bg-gray-200 rounded" />
+          ))}
+      </div>
+    ),
+  }
+);
 
+const StarRatingInput = dynamic(
+  () => import("@/components/ui/StarRatingInput"),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex gap-1">
+        {Array(5)
+          .fill(0)
+          .map((_, i) => (
+            <div key={i} className="w-5 h-5 bg-gray-200 rounded" />
+          ))}
+      </div>
+    ),
+  }
+);
+
+const CourseViewer = dynamic(
+  () => import("@/components/courses/CourseViewer"),
+  {
+    ssr: false,
+    loading: () => <Skeleton className="w-full h-[500px]" />,
+  }
+);
+
+const PdfLessonViewer = dynamic(
+  () => import("@/components/courses/PdfLessonViewer"),
+  {
+    ssr: false,
+    loading: () => <Skeleton className="w-full h-full" />,
+  }
+);
+
+// Helper functions được extract ra để tái sử dụng
 const getCategoryLabel = (categoryValue?: CourseCategory) => {
   if (!categoryValue) return "Chưa xác định";
   const option = categoryOptions.find((opt) => opt.value === categoryValue);
   return option ? option.label : categoryValue;
 };
 
+const isRegistrationOpen = (deadline?: string | null): boolean => {
+  if (!deadline) return true;
+  const now = new Date();
+  const deadlineDate = new Date(deadline);
+  return now <= deadlineDate;
+};
+
+const renderLessonIcon = (contentType: Lesson["contentType"]) => {
+  const iconMap = {
+    video_url: <Video className="h-5 w-5 text-blue-500" />,
+    pdf_url: <FileText className="h-5 w-5 text-red-500" />,
+    slide_url: <FileText className="h-5 w-5 text-yellow-500" />,
+    text: <BookOpen className="h-5 w-5 text-green-500" />,
+    external_link: <LinkIcon className="h-5 w-5 text-gray-500" />,
+  };
+  return iconMap[contentType] || <FileText className="h-5 w-5 text-gray-500" />;
+};
+
+const renderMaterialIcon = (type: CourseMaterial["type"]) => {
+  const iconMap = {
+    document: <FileText className="h-5 w-5 text-blue-500" />,
+    video: <Video className="h-5 w-5 text-red-500" />,
+    link: <LinkIcon className="h-5 w-5 text-green-500" />,
+  };
+  return iconMap[type] || <FileText className="h-5 w-5 text-gray-500" />;
+};
+
+// Constants cho evaluation criteria
+const EVALUATION_CRITERIA_LABELS = {
+  contentRelevance: "Nội dung phù hợp và hữu ích",
+  clarity: "Nội dung rõ ràng, dễ hiểu",
+  structureLogic: "Cấu trúc khóa học logic, dễ theo dõi",
+  durationAppropriateness: "Thời lượng khóa học hợp lý",
+  materialsEffectiveness: "Tài liệu và công cụ học tập hỗ trợ hiệu quả",
+} as const;
+
 export default function CourseDetailPage() {
   const params = useParams();
   const router = useRouter();
   const courseIdFromParams = params.courseId as string;
+
+  // State management
   const [course, setCourse] = useState<Course | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isEvaluationDialogOpen, setIsEvaluationDialogOpen] = useState(false);
+  const [hasSubmittedEvaluation, setHasSubmittedEvaluation] = useState(false);
+
+  // Hooks
   const { user: currentUser } = useAuth();
   const { toast } = useToast();
   const allUsers = useUserStore((state) => state.users);
   const { courses: allCoursesFromStore } = useCourseStore();
 
-  // Get evaluations from cookie
+  // Cookie state cho evaluations
   const [allEvaluations, setAllEvaluations] = useCookie<
     StudentCourseEvaluation[]
   >(EVALUATIONS_COOKIE_KEY, initialMockEvaluationsFromLib);
 
-  const [isEvaluationDialogOpen, setIsEvaluationDialogOpen] = useState(false);
+  // Form state cho evaluation
   const [evaluationFormData, setEvaluationFormData] = useState<
     Partial<StudentCourseEvaluation["ratings"] & { suggestions: string }>
   >({
@@ -112,59 +199,90 @@ export default function CourseDetailPage() {
     materialsEffectiveness: 0,
     suggestions: "",
   });
-  const [hasSubmittedEvaluation, setHasSubmittedEvaluation] = useState(false);
 
+  // Memoized computed values để tránh re-computation không cần thiết
+  const showRegisterGate = useMemo(
+    () =>
+      currentUser?.role === "HOCVIEN" &&
+      course &&
+      !course.enrolledTrainees?.includes(currentUser.id) &&
+      course.enrollmentType === "optional",
+    [currentUser, course]
+  );
+
+  const getTraineeNameById = useCallback(
+    (traineeId: string) => {
+      const user = allUsers.find((u) => u.id === traineeId);
+      return user ? `${user.fullName || user.email}` : "Học viên ẩn danh";
+    },
+    [allUsers]
+  );
+
+  // Course fetching useEffect
   useEffect(() => {
     const fetchCourse = () => {
       setIsLoading(true);
       try {
-        // Find course in the store
-        const foundCourse = allCoursesFromStore.find(c => c.id === courseIdFromParams);
+        const foundCourse = allCoursesFromStore.find(
+          (c) => c.id === courseIdFromParams
+        );
 
         if (foundCourse) {
-          // Always show course basic information, but content access is controlled later
           const detailedCourseData: Course = {
             ...foundCourse,
             id: courseIdFromParams,
             maxParticipants: foundCourse.maxParticipants || 25,
-            prerequisites: foundCourse.prerequisites || ["Không có yêu cầu tiên quyết cụ thể."],
-            syllabus: foundCourse.syllabus || [{ title: "Chương trình học đang được cập nhật", content: "", duration: "" }],
-            slides: foundCourse.slides || [{ title: "Nội dung đang được cập nhật", url: "https://placehold.co/800x600.png?text=Updating...", type: "image" as "pdf" | "image" }],
+            prerequisites: foundCourse.prerequisites || [
+              "Không có yêu cầu tiên quyết cụ thể.",
+            ],
+            syllabus: foundCourse.syllabus || [
+              {
+                title: "Chương trình học đang được cập nhật",
+                content: "",
+                duration: "",
+              },
+            ],
+            slides: foundCourse.slides || [
+              {
+                title: "Nội dung đang được cập nhật",
+                url: "https://placehold.co/800x600.png?text=Updating...",
+                type: "image" as const,
+              },
+            ],
             lessons: foundCourse.lessons || [],
             tests: foundCourse.tests || [],
             materials: foundCourse.materials || [],
           };
-          
-          // Update state
+
           setCourse(detailedCourseData);
         } else {
-          // If not found in the store, show error message
           toast({
             title: "Không tìm thấy khóa học",
-            description: "Khóa học bạn đang tìm kiếm không tồn tại hoặc đã bị xóa.",
+            description:
+              "Khóa học bạn đang tìm kiếm không tồn tại hoặc đã bị xóa.",
             variant: "destructive",
           });
           setCourse(null);
-          // Redirect back to courses page after 2 seconds
-          setTimeout(() => {
-            router.push('/courses');
-          }, 2000);
+          setTimeout(() => router.push("/courses"), 2000);
         }
       } catch (error) {
         console.error("Lỗi khi tải dữ liệu khóa học:", error);
         toast({
           title: "Lỗi tải dữ liệu",
-          description: "Đã xảy ra lỗi khi tải thông tin khóa học. Vui lòng thử lại sau.",
+          description:
+            "Đã xảy ra lỗi khi tải thông tin khóa học. Vui lòng thử lại sau.",
           variant: "destructive",
         });
+        setCourse(null);
       } finally {
         setIsLoading(false);
       }
     };
 
-      fetchCourse();
-  }, [courseIdFromParams, allCoursesFromStore, currentUser, toast, router]);
+    fetchCourse();
+  }, [courseIdFromParams, allCoursesFromStore, toast, router]);
 
+  // Check if user has submitted evaluation
   useEffect(() => {
     if (currentUser && courseIdFromParams && allEvaluations.length > 0) {
       const existingEvaluation = allEvaluations.find(
@@ -173,63 +291,39 @@ export default function CourseDetailPage() {
       );
       setHasSubmittedEvaluation(!!existingEvaluation);
     } else {
-      setHasSubmittedEvaluation(false); // Đặt lại nếu không có user hoặc không có đánh giá
+      setHasSubmittedEvaluation(false);
     }
-  }, [currentUser, courseIdFromParams, allEvaluations]); // Phụ thuộc vào allEvaluations để cập nhật
+  }, [currentUser, courseIdFromParams, allEvaluations]);
 
-  // Check if user is enrolled to show content
-  const showRegisterGate = currentUser?.role === 'Trainee' && 
-    course && 
-    !course.enrolledTrainees?.includes(currentUser.id) &&
-    course.enrollmentType === 'optional';
-
-  const handleEnroll = () => {
-    if (!course) return;
-    
-    // Redirect to login if not logged in
-    if (!currentUser) {
-      router.push('/login');
+  // Optimized enrollment handler với error handling
+  const handleEnroll = useCallback(() => {
+    if (!course || !currentUser) {
+      if (!currentUser) {
+        router.push("/login");
+        return;
+      }
       return;
     }
-    
-    // User is already enrolled
+
+    // Check if already enrolled
     if (course.enrolledTrainees?.includes(currentUser.id)) {
-    toast({
+      toast({
         title: "Đã đăng ký",
         description: `Bạn đã đăng ký khóa học "${course.title}" trước đó.`,
-        variant: "default"
+        variant: "default",
       });
       return;
     }
-    
-    // Add user to enrolledTrainees list
+
+    // Update enrollment
     const updatedEnrolledTrainees = [
       ...(course.enrolledTrainees || []),
-      currentUser.id
+      currentUser.id,
     ];
 
-    // Update course in store
     useCourseStore.getState().updateCourse(course.id, {
-      enrolledTrainees: updatedEnrolledTrainees
+      enrolledTrainees: updatedEnrolledTrainees,
     });
-    
-    // Force re-fetch course from store after updating
-    const updatedCourse = useCourseStore.getState().courses.find(c => c.id === course.id);
-    
-    if (updatedCourse) {
-      // Update local course state with all details
-      setCourse({
-        ...updatedCourse,
-        id: course.id,
-        maxParticipants: updatedCourse.maxParticipants || course.maxParticipants || 25,
-        prerequisites: updatedCourse.prerequisites || course.prerequisites || ["Không có yêu cầu tiên quyết cụ thể."],
-        syllabus: updatedCourse.syllabus || course.syllabus || [{ title: "Chương trình học đang được cập nhật", content: "", duration: "" }],
-        slides: updatedCourse.slides || course.slides || [{ title: "Nội dung đang được cập nhật", url: "https://placehold.co/800x600.png?text=Updating...", type: "image" as "pdf" | "image" }],
-        lessons: updatedCourse.lessons || course.lessons || [],
-        tests: updatedCourse.tests || course.tests || [],
-        materials: updatedCourse.materials || course.materials || []
-      });
-    }
 
     toast({
       title: "Đăng ký thành công",
@@ -237,74 +331,35 @@ export default function CourseDetailPage() {
       duration: 3000,
       variant: "success",
     });
-    
-    // Force re-render after small delay to ensure UI updates
-    setTimeout(() => {
-      setCourse(prevCourse => {
-        if (!prevCourse) return null;
-        return {...prevCourse};
-      });
-    }, 100);
-  };
 
-  const isRegistrationOpen = (deadline?: string | null): boolean => {
-    if (!deadline) return true; // Nếu không có hạn chót, luôn mở
-    const now = new Date();
-    const deadlineDate = new Date(deadline);
-    return now <= deadlineDate;
-  };
+    // Update local state
+    setTimeout(() => setCourse((prev) => (prev ? { ...prev } : null)), 100);
+  }, [course, currentUser, router, toast]);
 
-  const renderLessonIcon = (contentType: Lesson["contentType"]) => {
-    switch (contentType) {
-      case "video_url":
-        return <Video className="h-5 w-5 text-blue-500" />;
-      case "pdf_url":
-        return <FileText className="h-5 w-5 text-red-500" />;
-      case "slide_url":
-        return <FileText className="h-5 w-5 text-yellow-500" />;
-      case "text":
-        return <BookOpen className="h-5 w-5 text-green-500" />;
-      case "external_link":
-        return <LinkIcon className="h-5 w-5 text-gray-500" />;
-      default:
-        return <BookOpen className="h-5 w-5" />; // Icon mặc định
-    }
-  };
+  // Evaluation handlers được tối ưu
+  const handleEvaluationRatingChange = useCallback(
+    (field: keyof StudentCourseEvaluation["ratings"], rating: number) => {
+      setEvaluationFormData((prev) => ({
+        ...prev,
+        [field]: rating,
+      }));
+    },
+    []
+  );
 
-  const renderMaterialIcon = (type: CourseMaterial["type"]) => {
-    switch (type) {
-      case "pdf":
-        return <FileText className="h-5 w-5 text-red-600" />;
-      case "slide":
-        return <FileText className="h-5 w-5 text-yellow-500" />;
-      case "video":
-        return <Video className="h-5 w-5 text-blue-600" />;
-      case "link":
-        return <LinkIcon className="h-5 w-5 text-gray-600" />;
-      default:
-        return <FileText className="h-5 w-5 text-muted-foreground" />;
-    }
-  };
+  const handleEvaluationSuggestionsChange = useCallback(
+    (suggestions: string) => {
+      setEvaluationFormData((prev) => ({
+        ...prev,
+        suggestions,
+      }));
+    },
+    []
+  );
 
-  const getTraineeNameById = (traineeId: string): string => {
-    const trainee = allUsers.find((u) => u.id === traineeId);
-    return trainee ? trainee.fullName : "Học viên ẩn danh";
-  };
-
-  const handleEvaluationRatingChange = (
-    field: keyof StudentCourseEvaluation["ratings"],
-    value: number
-  ) => {
-    setEvaluationFormData((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
-  };
-
-  const handleSubmitEvaluation = () => {
+  const handleSubmitEvaluation = useCallback(() => {
     if (!currentUser || !course) return;
 
-    const now = new Date().toISOString();
     const newEvaluation: StudentCourseEvaluation = {
       id: crypto.randomUUID(),
       courseId: course.id,
@@ -313,68 +368,61 @@ export default function CourseDetailPage() {
         contentRelevance: evaluationFormData.contentRelevance || 0,
         clarity: evaluationFormData.clarity || 0,
         structureLogic: evaluationFormData.structureLogic || 0,
-        durationAppropriateness: evaluationFormData.durationAppropriateness || 0,
+        durationAppropriateness:
+          evaluationFormData.durationAppropriateness || 0,
         materialsEffectiveness: evaluationFormData.materialsEffectiveness || 0,
       },
       suggestions: evaluationFormData.suggestions || "",
-      submissionDate: now,
+      submissionDate: new Date().toISOString(),
     };
 
-    // Cập nhật state và cookie
-    const updatedEvaluations = [...allEvaluations, newEvaluation];
-    setAllEvaluations(updatedEvaluations);
-    setIsEvaluationDialogOpen(false);
+    setAllEvaluations((prev) => [...prev, newEvaluation]);
     setHasSubmittedEvaluation(true);
+    setIsEvaluationDialogOpen(false);
 
     toast({
-      title: "Đánh giá đã được gửi",
-      description: "Cảm ơn bạn đã đánh giá khóa học!",
-      duration: 3000,
+      title: "Cảm ơn bạn!",
+      description: "Đánh giá của bạn đã được gửi thành công.",
       variant: "success",
     });
-  };
 
-  // Hiển thị thông báo nếu không tìm thấy khóa học
-  if (!isLoading && !course) {
+    // Reset form
+    setEvaluationFormData({
+      contentRelevance: 0,
+      clarity: 0,
+      structureLogic: 0,
+      durationAppropriateness: 0,
+      materialsEffectiveness: 0,
+      suggestions: "",
+    });
+  }, [currentUser, course, evaluationFormData, setAllEvaluations, toast]);
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="flex h-60 w-full items-center justify-center">
+        <Skeleton className="h-12 w-12 rounded-full" />
+      </div>
+    );
+  }
+
+  // Course not found state
+  if (!course) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-center">
         <div className="mb-6 text-red-500">
           <AlertTriangle className="mx-auto h-16 w-16" />
-          </div>
+        </div>
         <h1 className="mb-2 text-2xl font-bold">Không tìm thấy khóa học</h1>
         <p className="mb-6 text-muted-foreground">
           Khóa học bạn đang tìm kiếm không tồn tại hoặc đã bị xóa.
         </p>
         <Button asChild>
-          <Link href="/trainee/my-courses">Quay lại</Link>
+          <Link href="/courses">Quay lại danh sách khóa học</Link>
         </Button>
       </div>
     );
   }
-
-  if (isLoading) {
-    return (
-      <div className="flex h-60 w-full items-center justify-center">
-        <Skeleton className="h-12 w-12 rounded-full" />
-        <div className="ml-4 space-y-2">
-          <Skeleton className="h-6 w-40" />
-          <Skeleton className="h-4 w-60" />
-        </div>
-      </div>
-    );
-  }
-
-  // Định nghĩa labels cho các tiêu chí đánh giá, đảm bảo khớp với các keys trong StudentCourseEvaluation['ratings']
-  const evaluationCriteriaLabels: Record<
-    keyof StudentCourseEvaluation["ratings"],
-    string
-  > = {
-    contentRelevance: "Nội dung khóa học phù hợp với công việc thực tế",
-    clarity: "Kiến thức truyền đạt rõ ràng, dễ hiểu",
-    structureLogic: "Cấu trúc khóa học logic, dễ theo dõi",
-    durationAppropriateness: "Thời lượng khóa học hợp lý",
-    materialsEffectiveness: "Tài liệu và công cụ học tập hỗ trợ hiệu quả",
-  };
 
   return (
     <>
@@ -411,7 +459,7 @@ export default function CourseDetailPage() {
             </p>
           </div>
           <div className="flex flex-col sm:flex-row gap-2 mt-4 md:mt-0 w-full md:w-auto">
-            {currentUser?.role === "Trainee" &&
+            {currentUser?.role === "HOCVIEN" &&
               course.enrollmentType === "optional" &&
               !course.enrolledTrainees?.includes(currentUser.id) &&
               isRegistrationOpen(course.registrationDeadline) && (
@@ -423,7 +471,7 @@ export default function CourseDetailPage() {
                   <UserPlus className="mr-2 h-5 w-5" /> Đăng ký ngay
                 </Button>
               )}
-            {currentUser?.role === "Trainee" && 
+            {currentUser?.role === "HOCVIEN" &&
               course.enrollmentType === "optional" &&
               course.enrolledTrainees?.includes(currentUser.id) && (
                 <Button
@@ -435,10 +483,10 @@ export default function CourseDetailPage() {
                   <CheckCircle className="mr-2 h-5 w-5" /> Đã đăng ký
                 </Button>
               )}
-            {currentUser?.role === "Trainee" && ( // Chỉ hiển thị nút đánh giá cho Trainee
+            {currentUser?.role === "HOCVIEN" && (
               <Button
                 onClick={() => setIsEvaluationDialogOpen(true)}
-                disabled={hasSubmittedEvaluation} // Vô hiệu hóa nếu đã gửi
+                disabled={hasSubmittedEvaluation}
                 variant="outline"
                 size="lg"
                 className="w-full sm:w-auto"
@@ -460,6 +508,7 @@ export default function CourseDetailPage() {
               <div className="text-xl font-bold">{course.instructor}</div>
             </CardContent>
           </Card>
+
           <Card className="shadow-md hover:shadow-lg transition-shadow">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Thời lượng</CardTitle>
@@ -478,6 +527,7 @@ export default function CourseDetailPage() {
               )}
             </CardContent>
           </Card>
+
           <Card className="shadow-md hover:shadow-lg transition-shadow">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">
@@ -517,6 +567,7 @@ export default function CourseDetailPage() {
                 )}
             </CardContent>
           </Card>
+
           <Card className="shadow-md hover:shadow-lg transition-shadow">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Trạng thái</CardTitle>
@@ -565,7 +616,7 @@ export default function CourseDetailPage() {
             <TabsTrigger value="materials_tab" className="text-base">
               Tài liệu
             </TabsTrigger>
-            {(currentUser?.role === "Admin" || currentUser?.role === "HR") && (
+            {(currentUser?.role === "ADMIN" || currentUser?.role === "HR") && (
               <TabsTrigger value="evaluations_tab" className="text-base">
                 Phản hồi học viên
               </TabsTrigger>
@@ -575,25 +626,34 @@ export default function CourseDetailPage() {
           {showRegisterGate && (
             <div className="my-6 p-6 border-2 border-dashed rounded-lg bg-muted/30 text-center">
               <GraduationCap className="mx-auto h-16 w-16 text-primary/70 mb-4" />
-              <h3 className="text-xl font-semibold">Bạn cần đăng ký khóa học này để xem nội dung</h3>
+              <h3 className="text-xl font-semibold">
+                Bạn cần đăng ký khóa học này để xem nội dung
+              </h3>
               <p className="mt-2 text-muted-foreground mb-4">
-                Đăng ký khóa học để tiếp cận đầy đủ nội dung bài học, tài liệu và bài kiểm tra.
+                Đây là khóa học tùy chọn, vui lòng đăng ký để truy cập nội dung
+                chi tiết.
               </p>
               {isRegistrationOpen(course.registrationDeadline) ? (
                 <Button onClick={handleEnroll} size="lg">
-                  <UserPlus className="mr-2 h-5 w-5" /> Đăng ký ngay
+                  <UserPlus className="mr-2 h-5 w-5" />
+                  Đăng ký ngay
                 </Button>
               ) : (
-                <div className="bg-destructive/10 text-destructive p-3 rounded-md inline-flex items-center">
-                  <AlertTriangle className="h-5 w-5 mr-2" />
-                  Đã hết hạn đăng ký
+                <div className="space-y-2">
+                  <p className="text-sm text-destructive font-medium">
+                    Đã hết hạn đăng ký
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Hạn đăng ký:{" "}
+                    {new Date(course.registrationDeadline!).toLocaleDateString(
+                      "vi-VN"
+                    )}
+                  </p>
                 </div>
               )}
             </div>
           )}
 
-          {!showRegisterGate && (
-            <>
           <TabsContent value="content">
             {course.slides && course.slides.length > 0 ? (
               <CourseViewer course={course} />
@@ -620,16 +680,24 @@ export default function CourseDetailPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                {(course.objectives || "").split("\n").map(
-                  (objective, index) =>
-                    objective.trim() && (
-                      <div key={index} className="flex items-start mb-2">
-                        <CheckCircle className="h-5 w-5 text-green-500 mr-3 mt-1 flex-shrink-0" />
-                        <p className="text-muted-foreground">
-                          {objective.replace(/^- /, "")}
-                        </p>
-                      </div>
-                    )
+                {course.objectives ? (
+                  <div className="space-y-3">
+                    {(course.objectives || "").split("\n").map(
+                      (objective, index) =>
+                        objective.trim() && (
+                          <div key={index} className="flex items-start mb-2">
+                            <CheckCircle className="h-5 w-5 text-green-500 mr-3 mt-1 flex-shrink-0" />
+                            <p className="text-muted-foreground">
+                              {objective.replace(/^- /, "")}
+                            </p>
+                          </div>
+                        )
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-muted-foreground">
+                    Mục tiêu khóa học đang được cập nhật.
+                  </p>
                 )}
               </CardContent>
             </Card>
@@ -664,6 +732,13 @@ export default function CourseDetailPage() {
                               dangerouslySetInnerHTML={{
                                 __html: lesson.content.replace(/\n/g, "<br />"),
                               }}
+                            />
+                          ) : lesson.contentType === "video_url" ? (
+                            <iframe
+                              src={lesson.content}
+                              className="w-full h-64 rounded"
+                              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                              allowFullScreen
                             />
                           ) : lesson.contentType === "pdf_url" ? (
                             <PdfLessonViewer
@@ -725,7 +800,8 @@ export default function CourseDetailPage() {
                           <Badge>Cần đạt: {test.passingScorePercentage}%</Badge>
                         </div>
                         <p className="text-sm text-muted-foreground mt-1">
-                              Số lượng câu hỏi: {test.questions ? test.questions.length : 0}
+                          Số lượng câu hỏi:{" "}
+                          {test.questions ? test.questions.length : 0}
                         </p>
                         <Button
                           variant="outline"
@@ -734,6 +810,7 @@ export default function CourseDetailPage() {
                           asChild
                         >
                           <Link href={`/courses/${course.id}/tests/${test.id}`}>
+                            <Check className="mr-2 h-5 w-5" />
                             Làm bài kiểm tra
                           </Link>
                         </Button>
@@ -742,21 +819,9 @@ export default function CourseDetailPage() {
                   </div>
                 ) : (
                   <p className="text-muted-foreground">
-                    Chưa có bài kiểm tra nào được thêm cho khóa học này.
+                    Chưa có bài kiểm tra nào cho khóa học này.
                   </p>
                 )}
-
-                <div className="mt-6 p-4 border-l-4 border-green-500 bg-green-50 dark:bg-green-900/30">
-                  <h4 className="font-semibold text-green-700 dark:text-green-300 flex items-center">
-                    <Check className="mr-2 h-5 w-5" />
-                    Điều kiện Đạt Khóa Học
-                  </h4>
-                  <p className="text-sm text-green-600 dark:text-green-200 mt-1">
-                    Để hoàn thành khóa học, học viên cần hoàn thành tất cả các
-                    bài học và đạt ít nhất 70% số câu trả lời đúng trong mỗi bài
-                    kiểm tra.
-                  </p>
-                </div>
               </CardContent>
             </Card>
           </TabsContent>
@@ -858,7 +923,6 @@ export default function CourseDetailPage() {
                           {renderMaterialIcon(material.type)}
                           <div>
                             <h4 className="font-semibold">{material.title}</h4>
-                            {/* Tùy chọn: hiển thị URL hoặc mô tả tài liệu nếu có */}
                           </div>
                         </div>
                         <Button
@@ -891,13 +955,13 @@ export default function CourseDetailPage() {
             </Card>
           </TabsContent>
 
-          {(currentUser?.role === "Admin" || currentUser?.role === "HR") && (
+          {(currentUser?.role === "ADMIN" || currentUser?.role === "HR") && (
             <TabsContent value="evaluations_tab">
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center">
-                    <MessageSquareQuote className="mr-2 h-5 w-5 text-primary" />{" "}
-                    Phản hồi của Học viên
+                    <MessageSquare className="mr-2 h-5 w-5 text-primary" /> Phản
+                    hồi của Học viên
                   </CardTitle>
                   <CardDescription>
                     Tổng hợp các đánh giá và góp ý từ học viên đã tham gia khóa
@@ -937,13 +1001,16 @@ export default function CourseDetailPage() {
                                 >
                                   <p className="text-muted-foreground">
                                     {
-                                      evaluationCriteriaLabels[
-                                        key as keyof typeof evaluationCriteriaLabels
+                                      EVALUATION_CRITERIA_LABELS[
+                                        key as keyof typeof EVALUATION_CRITERIA_LABELS
                                       ]
                                     }
                                     :
                                   </p>
-                                  <StarRatingDisplay rating={Number(rating)} size={4} />
+                                  <StarRatingDisplay
+                                    rating={Number(rating)}
+                                    size={4}
+                                  />
                                 </div>
                               )
                             )}
@@ -952,8 +1019,8 @@ export default function CourseDetailPage() {
                                 <p className="font-medium text-foreground">
                                   Ý kiến đóng góp:
                                 </p>
-                                <p className="text-muted-foreground whitespace-pre-wrap bg-background p-2 rounded-md mt-1">
-                                  {evaluation.suggestions}
+                                <p className="text-muted-foreground mt-1">
+                                  "{evaluation.suggestions}"
                                 </p>
                               </div>
                             )}
@@ -961,77 +1028,81 @@ export default function CourseDetailPage() {
                         </Card>
                       ))
                   ) : (
-                    <p className="text-center text-muted-foreground py-8">
-                      Chưa có đánh giá nào cho khóa học này.
-                    </p>
+                    <div className="text-center py-8">
+                      <MessageSquare className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+                      <p className="text-muted-foreground">
+                        Chưa có đánh giá nào cho khóa học này.
+                      </p>
+                    </div>
                   )}
                 </CardContent>
               </Card>
             </TabsContent>
-              )}
-            </>
           )}
         </Tabs>
       </div>
 
-      {/* Dialog Đánh giá cho Học viên */}
+      {/* Evaluation Dialog */}
       <Dialog
         open={isEvaluationDialogOpen}
         onOpenChange={setIsEvaluationDialogOpen}
       >
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
-            <DialogTitle>Đánh giá khóa học: {course?.title}</DialogTitle>
+            <DialogTitle>Đánh giá khóa học: {course.title}</DialogTitle>
             <DialogDescription>
-              Cảm ơn bạn đã tham gia khóa học. Vui lòng chia sẻ ý kiến của bạn
-              để chúng tôi cải thiện hơn.
+              Vui lòng chia sẻ trải nghiệm của bạn với khóa học này để giúp
+              chúng tôi cải thiện chất lượng.
             </DialogDescription>
           </DialogHeader>
-          <div className="py-4 space-y-6 max-h-[60vh] overflow-y-auto pr-2">
-            {(
-              Object.keys(evaluationCriteriaLabels) as Array<
-                keyof StudentCourseEvaluation["ratings"]
-              >
-            ).map((key) => (
-              <div key={String(key)} className="space-y-2">
-                <Label htmlFor={`rating-${String(key)}`}>
-                  {evaluationCriteriaLabels[key]}
+          <div className="grid gap-4 py-4">
+            {Object.entries(EVALUATION_CRITERIA_LABELS).map(([key, label]) => (
+              <div key={key} className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor={key} className="text-right text-sm">
+                  {label}
                 </Label>
-                <StarRatingInput
-                  rating={evaluationFormData[key] || 0}
-                  setRating={(rating) =>
-                    handleEvaluationRatingChange(key, rating)
-                  }
-                  size={6}
-                />
+                <div className="col-span-3">
+                  <StarRatingInput
+                    rating={
+                      evaluationFormData[
+                        key as keyof StudentCourseEvaluation["ratings"]
+                      ] || 0
+                    }
+                    setRating={(rating) =>
+                      handleEvaluationRatingChange(
+                        key as keyof StudentCourseEvaluation["ratings"],
+                        rating
+                      )
+                    }
+                    size={6}
+                  />
+                </div>
               </div>
             ))}
             <div className="space-y-2">
-              <Label htmlFor="suggestions">
-                Điều anh/chị chưa hài lòng hoặc đề xuất cải tiến:
-              </Label>
+              <Label htmlFor="suggestions">Ý kiến đóng góp (tùy chọn)</Label>
               <Textarea
                 id="suggestions"
+                placeholder="Chia sẻ thêm ý kiến của bạn về khóa học..."
                 value={evaluationFormData.suggestions || ""}
                 onChange={(e) =>
-                  setEvaluationFormData((prev) => ({
-                    ...prev,
-                    suggestions: e.target.value,
-                  }))
+                  handleEvaluationSuggestionsChange(e.target.value)
                 }
-                placeholder="Ý kiến của bạn..."
                 rows={4}
               />
             </div>
           </div>
           <DialogFooter>
             <Button
+              type="button"
               variant="outline"
               onClick={() => setIsEvaluationDialogOpen(false)}
             >
               Hủy
             </Button>
-            <Button onClick={handleSubmitEvaluation}>Gửi đánh giá</Button>
+            <Button type="button" onClick={handleSubmitEvaluation}>
+              Gửi đánh giá
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
