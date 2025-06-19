@@ -1062,7 +1062,7 @@ export default function CourseDetailPage() {
                 }
                 placeholder="Ý kiến của bạn..."
                 rows={4}
-                className="resize-none border-gray-200 dark:border-gray-700 focus:border-gray-400 dark:focus:border-gray-500 focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0"
+                className="resize-none"
               />
             </div>
           </div>

@@ -64,11 +64,11 @@ export function LoginForm() {
             <FormItem>
               <FormLabel className="text-sm font-medium">Email</FormLabel>
               <FormControl>
-                <Input 
-                  type="email" 
-                  placeholder="abc@becamex.com" 
-                  className="h-12 rounded-lg border-border/50 bg-background/50 px-4 text-base transition-all  focus:ring-1 focus:ring-primary"
-                  {...field} 
+                <Input
+                  type="email"
+                  placeholder="abc@becamex.com"
+                  className="h-12 rounded-lg border-border/50 bg-background/50 px-4 text-base transition-all focus:ring-1 focus:ring-primary focus:z-50 relative"
+                  {...field}
                 />
               </FormControl>
               <FormMessage />
@@ -86,7 +86,7 @@ export function LoginForm() {
                   <Input
                     type={showPassword ? "text" : "password"}
                     placeholder="Mật khẩu"
-                    className="h-12 rounded-lg border-border/50 bg-background/50 px-4 pr-12 text-base transition-all  focus:ring-1 focus:ring-primary"
+                    className="h-12 rounded-lg border-border/50 bg-background/50 px-4 pr-12 text-base transition-all focus:ring-1 focus:ring-primary focus:z-50 relative"
                     {...field}
                   />
                   <Button

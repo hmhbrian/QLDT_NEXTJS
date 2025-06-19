@@ -1,11 +1,13 @@
 import apiClient from "../api-client";
 import { Position } from "../types/position";
+import { API_CONFIG } from "../api/config";
 
 class PositionApiService {
   async getPositions(): Promise<Position[]> {
     try {
-      const response = await apiClient.get("/api/Positions");
-      return response.data;
+      const response = await apiClient.get(API_CONFIG.endpoints.positions.base);
+      // API trả về { message, code, data: Position[] }
+      return response.data.data || [];
     } catch (error) {
       console.error("Error fetching positions:", error);
       throw error;
@@ -21,8 +23,9 @@ class PositionApiService {
       throw error;
     }
   }
-
-  async createPosition(positionData: Omit<Position, "id">): Promise<Position> {
+  async createPosition(
+    positionData: Omit<Position, "positionId">
+  ): Promise<Position> {
     try {
       const response = await apiClient.post("/api/Positions", positionData);
       return response.data;
@@ -34,7 +37,7 @@ class PositionApiService {
 
   async updatePosition(
     id: number,
-    positionData: Partial<Omit<Position, "id">>
+    positionData: Partial<Omit<Position, "positionId">>
   ): Promise<Position> {
     try {
       const response = await apiClient.put(

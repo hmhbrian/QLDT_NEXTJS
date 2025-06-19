@@ -1,5 +1,11 @@
 import type { LucideIcon } from "lucide-react";
 
+// --- Position Types ---
+export interface Position {
+  positionId: number;
+  positionName: string;
+}
+
 // --- API Query Parameters ---
 export interface BaseQueryParam {
   Page: number; // Must be >= 1
@@ -27,8 +33,8 @@ export interface User {
   // Trường dành riêng cho Trainee/Nhân viên (tùy chọn)
   employeeId?: string;
   department?: string | Department; // Mã hoặc tên phòng ban
-  position?: string;
-  level?: TraineeLevel;
+  position?: string | Position; // Có thể là string hoặc Position object
+  level?: string; // Cấp bậc - có thể là string từ Positions API
   status?: WorkStatus;
   manager?: string; // Tên hoặc ID quản lý
   joinDate?: string; // Chuỗi ngày ISO cho ngày vào làm, khác với startWork
@@ -67,20 +73,20 @@ export interface UserLoginDto {
 
 // Interface cho request tạo user phù hợp với backend
 export interface CreateUserRequest {
-  fullName: string;
-  idCard?: string;
-  code?: string;
-  positionId?: number;
-  roleId: string;
-  managerUId?: string;
-  departmentId?: number;
-  statusId?: number;
-  numberPhone?: string;
-  startWork?: string; // ISO string format
-  endWork?: string; // ISO string format
-  email: string;
-  password: string;
-  confirmPassword: string;
+  FullName: string;
+  IdCard?: string;
+  Code?: string;
+  PositionId?: number;
+  RoleId: string;
+  ManagerUId?: string;
+  DepartmentId?: number;
+  StatusId?: number;
+  NumberPhone?: string;
+  StartWork?: string; // ISO string format
+  EndWork?: string; // ISO string format
+  Email: string;
+  Password: string;
+  ConfirmPassword: string;
 }
 
 // Vai trò người dùng
@@ -258,8 +264,8 @@ export interface RegisterDTO {
   confirmPassword: string;
   // Các trường bổ sung cho Trainee
   department?: string;
-  position?: string;
-  level?: TraineeLevel;
+  position?: string; // Chức vụ - free text
+  level?: string; // Cấp bậc - positionId từ Positions API
   status?: WorkStatus;
   employeeId?: string;
 }

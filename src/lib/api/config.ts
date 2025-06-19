@@ -4,7 +4,8 @@
  */
 
 // API Environment configuration
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "/api"; // Sử dụng proxy Next.js thay vì gọi trực tiếp backend
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL || "http://localhost:5228/api"; // Trực tiếp đến backend
 const API_TIMEOUT = parseInt(process.env.NEXT_PUBLIC_API_TIMEOUT || "30000");
 const USE_API = process.env.NEXT_PUBLIC_USE_API === "true";
 
@@ -84,6 +85,13 @@ export const API_CONFIG = {
       create: "/courses/create",
       update: "/courses/{courseId}",
       delete: "/courses/{courseId}",
+    },
+    positions: {
+      base: "/Positions",
+      get: "/Positions/{positionId}",
+      create: "/Positions",
+      update: "/Positions/{positionId}",
+      delete: "/Positions/{positionId}",
     },
     analytics: {
       base: "/analytics",

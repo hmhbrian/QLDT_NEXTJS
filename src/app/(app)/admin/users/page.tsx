@@ -48,11 +48,11 @@ import {
 import { useAuth } from "@/hooks/useAuth";
 import { useError } from "@/hooks/use-error";
 import { useDepartments } from "@/hooks/use-departments";
+import { usePositions } from "@/hooks/use-positions";
 import { useDebounce } from "@/hooks/use-debounce";
 import type {
   User,
   Role,
-  TraineeLevel,
   WorkStatus,
   RegisterDTO,
   CreateUserRequest,
@@ -86,30 +86,18 @@ const roleTranslations: Record<Role, string> = {
   HOCVIEN: "Học viên",
 };
 
-// Danh sách cấp bậc
-const levelOptions = [
-  { value: "intern", label: "Thực tập" },
-  { value: "probation", label: "Thử việc" },
-  { value: "employee", label: "Nhân viên" },
-  { value: "middle_manager", label: "Quản lý cấp trung" },
-  { value: "senior_manager", label: "Quản lý cấp cao" },
-];
+// Danh sách cấp bậc được lấy từ Positions API thay vì hardcode
+// const levelOptions = [
+//   { value: "intern", label: "Thực tập" },
+//   { value: "probation", label: "Thử việc" },
+//   { value: "employee", label: "Nhân viên" },
+//   { value: "middle_manager", label: "Quản lý cấp trung" },
+//   { value: "senior_manager", label: "Quản lý cấp cao" },
+// ];
 
-const getLevelBadgeColor = (level: TraineeLevel) => {
-  switch (level) {
-    case "intern":
-      return "bg-blue-100 text-blue-800";
-    case "probation":
-      return "bg-yellow-100 text-yellow-800";
-    case "employee":
-      return "bg-green-100 text-green-800";
-    case "middle_manager":
-      return "bg-purple-100 text-purple-800";
-    case "senior_manager":
-      return "bg-red-100 text-red-800";
-    default:
-      return "bg-gray-100 text-gray-800";
-  }
+const getLevelBadgeColor = (level: string) => {
+  // Vì level giờ là string từ positions API, ta chỉ dùng color mặc định
+  return "bg-blue-100 text-blue-800";
 };
 
 const getStatusColor = (status: WorkStatus) => {
@@ -156,6 +144,7 @@ export default function UsersPage() {
   const { toast } = useToast();
   const { activeDepartments, isLoading: isDepartmentsLoading } =
     useDepartments();
+  const { positions, loading: isPositionsLoading } = usePositions();
   const [searchTerm, setSearchTerm] = useState("");
   const [isAddingUser, setIsAddingUser] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
@@ -174,8 +163,8 @@ export default function UsersPage() {
     password: "",
     confirmPassword: "",
     department: "",
-    position: "",
-    level: "intern",
+    position: "", // Chức vụ - free text
+    level: "", // Cấp bậc - sẽ chọn từ positions API (lưu positionId)
     status: "working",
   });
   const [errors, setErrors] = useState<
@@ -191,6 +180,21 @@ export default function UsersPage() {
 
   // Debounce search term để tránh gọi API quá nhiều
   const debouncedSearchTerm = useDebounce(searchTerm, 100); // Faster search debounce
+
+  // Helper function để lấy position name từ level (positionId)
+  const getPositionNameFromLevel = (level: string | undefined): string => {
+    if (!level || !positions) return "Chưa có cấp bậc";
+
+    // Nếu level là số (positionId), tìm position name
+    const positionId = parseInt(level);
+    if (!isNaN(positionId)) {
+      const position = positions.find((p) => p.positionId === positionId);
+      return position ? position.positionName : level;
+    }
+
+    // Nếu level là string, trả về như cũ
+    return level;
+  };
 
   const loadUsers = async () => {
     try {
@@ -454,27 +458,32 @@ export default function UsersPage() {
         return;
       }
 
+      // Tìm positionId từ level (cấp bậc) - level giờ đã là positionId string
+      const positionIdValue = newUser.level
+        ? parseInt(newUser.level)
+        : undefined;
+
       const createUserPayload: CreateUserRequest = {
-        fullName: newUser.fullName,
-        email: newUser.email,
-        password: newUser.password,
-        confirmPassword: newUser.confirmPassword,
-        idCard: newUser.idCard,
-        numberPhone: newUser.numberPhone,
-        roleId: roleIdValue,
-        startWork: newUser.startWork
-          ? new Date(newUser.startWork).toISOString()
-          : new Date().toISOString(),
-        // Thêm các thông tin bổ sung cho Trainee
-        departmentId: newUser.role === "HOCVIEN" ? 1 : undefined, // Default department
-        statusId: newUser.role === "HOCVIEN" ? 1 : undefined, // Default status (working)
-        positionId: newUser.role === "HOCVIEN" ? 1 : undefined, // Default position
-        code:
-          newUser.role === "HOCVIEN"
-            ? `EMP${Math.floor(Math.random() * 1000000000)
-                .toString()
-                .padStart(4, "0")}`
-            : undefined,
+        FullName: newUser.fullName,
+        Email: newUser.email,
+        Password: newUser.password,
+        ConfirmPassword: newUser.confirmPassword,
+        RoleId: roleIdValue,
+        // Optional fields - chỉ set nếu có giá trị
+        ...(newUser.idCard && { IdCard: newUser.idCard }),
+        ...(newUser.numberPhone && { NumberPhone: newUser.numberPhone }),
+        ...(newUser.startWork && {
+          StartWork: new Date(newUser.startWork).toISOString(),
+        }),
+        // Tạm thời bỏ foreign keys để tránh lỗi constraints
+        // DepartmentId: newUser.role === "HOCVIEN" ? 1 : undefined,
+        // StatusId: newUser.role === "HOCVIEN" ? 1 : undefined,
+        // PositionId: positionIdValue || (newUser.role === "HOCVIEN" ? 1 : undefined),
+        ...(newUser.role === "HOCVIEN" && {
+          Code: `EMP${Math.floor(Math.random() * 1000000000)
+            .toString()
+            .padStart(4, "0")}`,
+        }),
       };
 
       console.log("Final payload for user creation:", createUserPayload);
@@ -496,7 +505,7 @@ export default function UsersPage() {
           confirmPassword: "",
           department: "",
           position: "",
-          level: "intern",
+          level: "",
           status: "working",
         });
         setErrors({});
@@ -567,16 +576,16 @@ export default function UsersPage() {
     try {
       // Tạo payload update
       const updatePayload: Partial<CreateUserRequest> = {
-        fullName: editingUser.fullName,
-        email: editingUser.email,
-        idCard: editingUser.idCard,
-        numberPhone: editingUser.phoneNumber, // User có phoneNumber, API expect numberPhone
+        FullName: editingUser.fullName,
+        Email: editingUser.email,
+        IdCard: editingUser.idCard,
+        NumberPhone: editingUser.phoneNumber, // User có phoneNumber, API expect NumberPhone
       };
 
       // Chỉ thêm password nếu có thay đổi
       if (editingUser.password && editingUser.password.trim()) {
-        updatePayload.password = editingUser.password;
-        updatePayload.confirmPassword = confirmPassword;
+        updatePayload.Password = editingUser.password;
+        updatePayload.ConfirmPassword = confirmPassword;
       }
 
       // Thêm thông tin role nếu có thay đổi
@@ -585,7 +594,15 @@ export default function UsersPage() {
           (role) => role.name.toUpperCase() === editingUser.role
         );
         if (selectedRole) {
-          updatePayload.roleId = selectedRole.id;
+          updatePayload.RoleId = selectedRole.id;
+        }
+      }
+
+      // Thêm cấp bậc (level) nếu có - level giờ là positionId
+      if (editingUser.level) {
+        const positionIdValue = parseInt(editingUser.level);
+        if (!isNaN(positionIdValue)) {
+          updatePayload.PositionId = positionIdValue;
         }
       }
 
@@ -810,7 +827,7 @@ export default function UsersPage() {
                                 user.level
                               )}`}
                             >
-                              {user.level.replace("_", " ").toUpperCase()}
+                              {getPositionNameFromLevel(user.level)}
                             </Badge>
                           )}
                         </div>
@@ -844,7 +861,19 @@ export default function UsersPage() {
                             )}
                             <DropdownMenuItem
                               onClick={() => {
-                                setEditingUser(user);
+                                // Khi edit user, cần convert level từ position name thành positionId
+                                const userToEdit = { ...user };
+                                if (userToEdit.level && positions) {
+                                  // Tìm position có name trùng với level hiện tại
+                                  const matchingPosition = positions.find(
+                                    (p) => p.positionName === userToEdit.level
+                                  );
+                                  if (matchingPosition) {
+                                    userToEdit.level =
+                                      matchingPosition.positionId.toString();
+                                  }
+                                }
+                                setEditingUser(userToEdit);
                                 setConfirmPassword("");
                               }}
                             >
@@ -928,11 +957,15 @@ export default function UsersPage() {
                         <strong>Phòng ban:</strong> {selectedUser.department}
                       </p>
                       <p className="text-sm">
-                        <strong>Chức vụ:</strong> {selectedUser.position}
+                        <strong>Chức vụ:</strong>{" "}
+                        {typeof selectedUser.position === "string"
+                          ? selectedUser.position
+                          : selectedUser.position?.positionName ||
+                            "Chưa có chức vụ"}
                       </p>
                       <p className="text-sm">
                         <strong>Cấp bậc:</strong>{" "}
-                        {selectedUser.level?.replace("_", " ")}
+                        {getPositionNameFromLevel(selectedUser.level)}
                       </p>
                       <p className="text-sm">
                         <strong>Quản lý:</strong> {selectedUser.manager}
@@ -1160,7 +1193,7 @@ export default function UsersPage() {
                     </SelectTrigger>
                     <SelectContent>
                       {isDepartmentsLoading ? (
-                        <SelectItem value="" disabled>
+                        <SelectItem value="loading-departments" disabled>
                           <div className="flex items-center gap-2">
                             <Spinner size="sm" />
                             <span>Đang tải...</span>
@@ -1173,7 +1206,7 @@ export default function UsersPage() {
                           </SelectItem>
                         ))
                       ) : (
-                        <SelectItem value="" disabled>
+                        <SelectItem value="no-departments" disabled>
                           Không có phòng ban nào
                         </SelectItem>
                       )}
@@ -1196,7 +1229,8 @@ export default function UsersPage() {
                 <div className="grid gap-2">
                   <Label htmlFor="level">Cấp bậc</Label>
                   <Select
-                    onValueChange={(value: TraineeLevel) =>
+                    value={newUser.level || ""}
+                    onValueChange={(value) =>
                       setNewUser({ ...newUser, level: value })
                     }
                   >
@@ -1204,11 +1238,25 @@ export default function UsersPage() {
                       <SelectValue placeholder="Chọn cấp bậc" />
                     </SelectTrigger>
                     <SelectContent>
-                      {levelOptions.map((option) => (
-                        <SelectItem key={option.value} value={option.value}>
-                          {option.label}
+                      {isPositionsLoading ? (
+                        <div className="flex items-center justify-center p-2">
+                          <Spinner size="sm" />
+                          <span className="ml-2">Đang tải...</span>
+                        </div>
+                      ) : positions && positions.length > 0 ? (
+                        positions.map((position) => (
+                          <SelectItem
+                            key={position.positionId}
+                            value={position.positionId.toString()}
+                          >
+                            {position.positionName}
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <SelectItem value="no-positions" disabled>
+                          Không có cấp bậc nào
                         </SelectItem>
-                      ))}
+                      )}
                     </SelectContent>
                   </Select>
                 </div>
@@ -1398,7 +1446,7 @@ export default function UsersPage() {
                       </SelectTrigger>
                       <SelectContent>
                         {isDepartmentsLoading ? (
-                          <SelectItem value="" disabled>
+                          <SelectItem value="loading-edit-departments" disabled>
                             <div className="flex items-center gap-2">
                               <Spinner size="sm" />
                               <span>Đang tải...</span>
@@ -1411,7 +1459,7 @@ export default function UsersPage() {
                             </SelectItem>
                           ))
                         ) : (
-                          <SelectItem value="" disabled>
+                          <SelectItem value="no-edit-departments" disabled>
                             Không có phòng ban nào
                           </SelectItem>
                         )}
@@ -1424,7 +1472,11 @@ export default function UsersPage() {
                     <Input
                       id="edit-position"
                       placeholder="Nhập chức vụ"
-                      value={editingUser.position || ""}
+                      value={
+                        typeof editingUser.position === "string"
+                          ? editingUser.position || ""
+                          : editingUser.position?.positionName || ""
+                      }
                       onChange={(e) =>
                         setEditingUser({
                           ...editingUser,
@@ -1437,7 +1489,7 @@ export default function UsersPage() {
                     <Label htmlFor="edit-level">Cấp bậc</Label>
                     <Select
                       value={editingUser.level}
-                      onValueChange={(value: TraineeLevel) => {
+                      onValueChange={(value) => {
                         setEditingUser({ ...editingUser, level: value });
                       }}
                     >
@@ -1445,11 +1497,25 @@ export default function UsersPage() {
                         <SelectValue placeholder="Chọn cấp bậc" />
                       </SelectTrigger>
                       <SelectContent>
-                        {levelOptions.map((level) => (
-                          <SelectItem key={level.value} value={level.value}>
-                            {level.label}
+                        {isPositionsLoading ? (
+                          <div className="flex items-center justify-center p-2">
+                            <Spinner size="sm" />
+                            <span className="ml-2">Đang tải...</span>
+                          </div>
+                        ) : positions && positions.length > 0 ? (
+                          positions.map((position) => (
+                            <SelectItem
+                              key={position.positionId}
+                              value={position.positionId.toString()}
+                            >
+                              {position.positionName}
+                            </SelectItem>
+                          ))
+                        ) : (
+                          <SelectItem value="no-edit-levels" disabled>
+                            Không có cấp bậc nào
                           </SelectItem>
-                        ))}
+                        )}
                       </SelectContent>
                     </Select>
                   </div>
