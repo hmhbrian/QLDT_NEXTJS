@@ -958,14 +958,19 @@ export default function UsersPage() {
                       </p>
                       <p className="text-sm">
                         <strong>Chức vụ:</strong>{" "}
-                        {typeof selectedUser.position === "string"
-                          ? selectedUser.position
-                          : selectedUser.position?.positionName ||
-                            "Chưa có chức vụ"}
+                        {typeof selectedUser.level === "string"
+                          ? selectedUser.level
+                          : "Chưa có chức vụ"}
                       </p>
                       <p className="text-sm">
                         <strong>Cấp bậc:</strong>{" "}
-                        {getPositionNameFromLevel(selectedUser.level)}
+                        {typeof selectedUser.position === "string"
+                          ? selectedUser.position
+                          : selectedUser.position?.positionName ||
+                            getPositionNameFromLevel(
+                              selectedUser.position as any
+                            ) ||
+                            "Chưa có cấp bậc"}
                       </p>
                       <p className="text-sm">
                         <strong>Quản lý:</strong> {selectedUser.manager}
@@ -1219,9 +1224,9 @@ export default function UsersPage() {
                   <Input
                     id="position"
                     placeholder="Nhập chức vụ"
-                    value={newUser.position || ""}
+                    value={newUser.level || ""}
                     onChange={(e) =>
-                      setNewUser({ ...newUser, position: e.target.value })
+                      setNewUser({ ...newUser, level: e.target.value })
                     }
                   />
                 </div>
@@ -1229,9 +1234,9 @@ export default function UsersPage() {
                 <div className="grid gap-2">
                   <Label htmlFor="level">Cấp bậc</Label>
                   <Select
-                    value={newUser.level || ""}
+                    value={newUser.position || ""}
                     onValueChange={(value) =>
-                      setNewUser({ ...newUser, level: value })
+                      setNewUser({ ...newUser, position: value })
                     }
                   >
                     <SelectTrigger>
@@ -1472,15 +1477,11 @@ export default function UsersPage() {
                     <Input
                       id="edit-position"
                       placeholder="Nhập chức vụ"
-                      value={
-                        typeof editingUser.position === "string"
-                          ? editingUser.position || ""
-                          : editingUser.position?.positionName || ""
-                      }
+                      value={editingUser.level || ""}
                       onChange={(e) =>
                         setEditingUser({
                           ...editingUser,
-                          position: e.target.value,
+                          level: e.target.value,
                         })
                       }
                     />
@@ -1488,9 +1489,13 @@ export default function UsersPage() {
                   <div className="grid gap-2">
                     <Label htmlFor="edit-level">Cấp bậc</Label>
                     <Select
-                      value={editingUser.level}
+                      value={
+                        typeof editingUser.position === "string"
+                          ? editingUser.position
+                          : editingUser.position?.positionId?.toString() || ""
+                      }
                       onValueChange={(value) => {
-                        setEditingUser({ ...editingUser, level: value });
+                        setEditingUser({ ...editingUser, position: value });
                       }}
                     >
                       <SelectTrigger>
