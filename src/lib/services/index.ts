@@ -1,63 +1,19 @@
 /**
- * API Services Index
- * Central export point for all API services
+ * Modern Services Index
+ * Central export point for all modern API services using core architecture
  */
 
-// Export base service
-export * from "./base-api.service";
+// Export core services
+export * from "../core";
 
-// Export service instances
-export { authApiService } from "./auth-api.service";
-export { usersApiService } from "./users-api.service";
-export { rolesApiService } from "./roles-api.service";
-export { positionsApiService } from "./positions-api.service";
-export { departmentsApiService } from "./departments-api.service";
+// Export all modern services
+export * from "./modern";
 
-// Export types separately
-export type {
-  LoginCredentials,
-  LoginResponse,
-  RefreshTokenResponse,
-} from "./auth-api.service";
-export type {
-  UserQueryParams,
-  CreateUserPayload,
-  UpdateUserPayload,
-} from "./users-api.service";
-export type {
-  Role,
-  RoleQueryParams,
-  CreateRolePayload,
-  UpdateRolePayload,
-} from "./roles-api.service";
-export type {
-  CreateDepartmentRequest,
-  UpdateDepartmentRequest,
-  DepartmentQueryParams,
-} from "./departments-api.service";
+// Import core service factory
+import { createService } from "../core/service-factory";
 
-// Import service instances
-import authApiService from "./auth-api.service";
-import usersApiService from "./users-api.service";
-import rolesApiService from "./roles-api.service";
-import positionsApiService from "./positions-api.service";
-import departmentsApiService from "./departments-api.service";
+// Re-export core service factory for convenience
+export { createService };
 
-export {
-  authApiService as auth,
-  usersApiService as users,
-  rolesApiService as roles,
-  positionsApiService as positions,
-  departmentsApiService as departments,
-};
-
-// Default export as unified API object
-const apiServices = {
-  auth: authApiService,
-  users: usersApiService,
-  roles: rolesApiService,
-  positions: positionsApiService,
-  departments: departmentsApiService,
-};
-
-export default apiServices;
+// Default export for backward compatibility
+export default { createService };
