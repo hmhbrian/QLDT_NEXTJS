@@ -1,41 +1,42 @@
-import React from 'react';
-import { 
-  Button, 
-  Card, 
-  CardContent, 
-  CardHeader, 
+import React from "react";
+import {
+  Button,
+  Card,
+  CardContent,
+  CardHeader,
   CardTitle,
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
+  // Dialog,
+  // DialogContent,
+  // DialogHeader,
+  // DialogTitle,
   Input,
   Label,
   Tabs,
   TabsContent,
   TabsList,
-  TabsTrigger
-} from '@/components/ui';
+  TabsTrigger,
+} from "@/components/ui";
 
-import { services } from '@/lib/api';
-import { DepartmentInfo } from '@/lib/types/index';
+import apiServices from "@/lib/services";
+import { DepartmentInfo } from "@/lib/types/index";
 
 const ExampleComponent = () => {
   const [departments, setDepartments] = React.useState<DepartmentInfo[]>([]);
-  
+
   React.useEffect(() => {
     const fetchDepartments = async () => {
       try {
-        const departmentsTree = await services.departments.getDepartmentsTree();
+        const departmentsTree =
+          await apiServices.departments.getDepartmentsTree();
         setDepartments(departmentsTree);
       } catch (error) {
-        console.error('Failed to fetch departments', error);
+        console.error("Failed to fetch departments", error);
       }
     };
-    
+
     fetchDepartments();
   }, []);
-  
+
   return (
     <Card>
       <CardHeader>
@@ -47,29 +48,29 @@ const ExampleComponent = () => {
             <TabsTrigger value="departments">Departments</TabsTrigger>
             <TabsTrigger value="settings">Settings</TabsTrigger>
           </TabsList>
-          
+
           <TabsContent value="departments">
             <div className="space-y-4">
               <Label htmlFor="search">Search Departments</Label>
               <Input id="search" placeholder="Search..." />
-              
+
               <div className="mt-4">
-                {departments.map(dept => (
+                {departments.map((dept) => (
                   <div key={dept.id} className="p-2 border rounded mb-2">
                     {dept.name}
                   </div>
                 ))}
               </div>
-              
+
               <Button variant="default">Add Department</Button>
             </div>
           </TabsContent>
-          
+
           <TabsContent value="settings">
             <div className="space-y-4">
               <Label htmlFor="name">Settings Name</Label>
               <Input id="name" />
-              
+
               <Button variant="default">Save Settings</Button>
             </div>
           </TabsContent>
