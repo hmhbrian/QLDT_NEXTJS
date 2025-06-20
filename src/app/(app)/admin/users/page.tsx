@@ -2,7 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { fetchUsers } from "@/lib/api/users";
-import { fetchRoles, Role as ApiRole } from "@/lib/api/services/roles";
+import {
+  usersApiService,
+  rolesApiService,
+  type Role as ApiRole,
+} from "@/lib/services";
 import {
   Card,
   CardContent,
@@ -57,7 +61,6 @@ import type {
   RegisterDTO,
   CreateUserRequest,
 } from "@/lib/types";
-import UserApiService from "@/lib/services/user-api.service";
 import { useToast } from "@/components/ui/use-toast";
 import { API_CONFIG } from "@/lib/api/config";
 
@@ -231,11 +234,11 @@ export default function UsersPage() {
 
     try {
       setLoadingRoles(true);
-      const response = await fetchRoles();
+      const response = await rolesApiService.getRoles();
       console.log("Loaded roles data:", response); // Debug roles data
-      if (response && response.data) {
-        console.log("Available roles:", response.data); // Debug roles
-        setRoles(response.data);
+      if (response && Array.isArray(response)) {
+        console.log("Available roles:", response); // Debug roles
+        setRoles(response);
       }
     } catch (error) {
       console.error("Error loading roles:", error);
@@ -268,15 +271,13 @@ export default function UsersPage() {
         setApiError("");
 
         if (API_CONFIG.useApi) {
-          const response = await UserApiService.searchUsers(
+          const response = await usersApiService.searchUsers(
             debouncedSearchTerm
           );
 
           // Backend trả về: { data: { items: [...], pagination: {...} } }
-          if (response.data && response.data.items) {
-            setUsers(
-              Array.isArray(response.data.items) ? response.data.items : []
-            );
+          if (response && response.items) {
+            setUsers(Array.isArray(response.items) ? response.items : []);
           } else {
             setUsers([]);
           }
@@ -488,36 +489,32 @@ export default function UsersPage() {
 
       console.log("Final payload for user creation:", createUserPayload);
 
-      const response = await UserApiService.createUser(createUserPayload);
+      const response = await usersApiService.createUser(createUserPayload);
 
-      if (response.statusCode === 200 || response.statusCode === 201) {
-        // Refresh danh sách users
-        await loadUsers();
+      // Refresh danh sách users
+      await loadUsers();
 
-        setIsAddingUser(false);
-        setNewUser({
-          fullName: "",
-          idCard: "",
-          role: "HOCVIEN",
-          numberPhone: "",
-          email: "",
-          password: "",
-          confirmPassword: "",
-          department: "",
-          position: "",
-          level: "",
-          status: "working",
-        });
-        setErrors({});
+      setIsAddingUser(false);
+      setNewUser({
+        fullName: "",
+        idCard: "",
+        role: "HOCVIEN",
+        numberPhone: "",
+        email: "",
+        password: "",
+        confirmPassword: "",
+        department: "",
+        position: "",
+        level: "",
+        status: "working",
+      });
+      setErrors({});
 
-        toast({
-          title: "Thành công",
-          description: "Đã thêm người dùng mới thành công.",
-          variant: "success",
-        });
-      } else {
-        throw new Error(response.message || "Failed to create user");
-      }
+      toast({
+        title: "Thành công",
+        description: "Đã thêm người dùng mới thành công.",
+        variant: "success",
+      });
     } catch (error: any) {
       console.error("Error creating user:", error);
 
@@ -609,26 +606,22 @@ export default function UsersPage() {
       console.log("Update payload:", updatePayload);
       console.log("EditingUser:", editingUser);
 
-      const response = await UserApiService.updateUserByAdmin(
+      const response = await usersApiService.updateUserByAdmin(
         editingUser.id,
         updatePayload
       );
 
-      if (response.statusCode === 200) {
-        toast({
-          title: "Thành công",
-          description: "Thông tin người dùng đã được cập nhật.",
-          variant: "success",
-        });
+      toast({
+        title: "Thành công",
+        description: "Thông tin người dùng đã được cập nhật.",
+        variant: "success",
+      });
 
-        // Refresh danh sách users
-        await loadUsers();
+      // Refresh danh sách users
+      await loadUsers();
 
-        setEditingUser(null);
-        setConfirmPassword("");
-      } else {
-        throw new Error(response.message || "Cập nhật thất bại");
-      }
+      setEditingUser(null);
+      setConfirmPassword("");
     } catch (error: any) {
       console.error("Error updating user:", error);
 
@@ -686,22 +679,18 @@ export default function UsersPage() {
     setIsDeleting(true);
 
     try {
-      const response = await UserApiService.softDeleteUser(deletingUser.id);
+      await usersApiService.softDeleteUser(deletingUser.id);
 
-      if (response.statusCode === 200) {
-        toast({
-          title: "Thành công",
-          description: `Đã xóa người dùng "${deletingUser.fullName}" thành công.`,
-          variant: "success",
-        });
+      toast({
+        title: "Thành công",
+        description: `Đã xóa người dùng "${deletingUser.fullName}" thành công.`,
+        variant: "success",
+      });
 
-        // Refresh danh sách users
-        await loadUsers();
+      // Refresh danh sách users
+      await loadUsers();
 
-        setDeletingUser(null);
-      } else {
-        throw new Error(response.message || "Xóa người dùng thất bại");
-      }
+      setDeletingUser(null);
     } catch (error: any) {
       console.error("Error deleting user:", error);
       toast({

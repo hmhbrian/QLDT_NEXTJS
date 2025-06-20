@@ -190,20 +190,20 @@ export default function HOCVIENsPage() {
     try {
       // Tạo payload phù hợp với API backend
       const createUserPayload: CreateUserRequest = {
-        fullName: newTraineesData.fullName,
-        email: newTraineesData.email,
-        password: newTraineesData.password || "123456",
-        confirmPassword: newTraineesData.password || "123456",
-        idCard: newTraineesData.idCard,
-        code: newTraineesData.employeeId,
-        numberPhone: newTraineesData.phoneNumber,
-        roleId: "HOCVIEN",
-        startWork: newTraineesData.joinDate
+        FullName: newTraineesData.fullName,
+        Email: newTraineesData.email,
+        Password: newTraineesData.password || "123456",
+        ConfirmPassword: newTraineesData.password || "123456",
+        IdCard: newTraineesData.idCard,
+        Code: newTraineesData.employeeId,
+        NumberPhone: newTraineesData.phoneNumber,
+        RoleId: "HOCVIEN",
+        StartWork: newTraineesData.joinDate
           ? new Date(newTraineesData.joinDate).toISOString()
           : new Date().toISOString(),
-        departmentId: 1, // Default department ID
-        statusId: 1, // Default status ID (working)
-        positionId: 1, // Default position ID
+        DepartmentId: 1, // Default department ID
+        StatusId: 1, // Default status ID (working)
+        PositionId: 1, // Default position ID
       };
 
       await addUserViaApi(createUserPayload);
@@ -468,7 +468,9 @@ export default function HOCVIENsPage() {
                       {HOCVIEN.level && (
                         <Badge
                           variant="outline"
-                          className={getLevelBadgeColor(HOCVIEN.level)}
+                          className={getLevelBadgeColor(
+                            HOCVIEN.level as TraineeLevel
+                          )}
                         >
                           {HOCVIEN.level.replace("_", " ").toUpperCase()}
                         </Badge>
@@ -803,7 +805,10 @@ export default function HOCVIENsPage() {
                         <strong>Phòng ban:</strong> {selectedHOCVIEN.department}
                       </p>
                       <p className="text-sm">
-                        <strong>Chức vụ:</strong> {selectedHOCVIEN.position}
+                        <strong>Chức vụ:</strong>{" "}
+                        {typeof selectedHOCVIEN.position === "string"
+                          ? selectedHOCVIEN.position
+                          : selectedHOCVIEN.position?.positionName || "N/A"}
                       </p>
                       <p className="text-sm">
                         <strong>Cấp bậc:</strong> {selectedHOCVIEN.level}

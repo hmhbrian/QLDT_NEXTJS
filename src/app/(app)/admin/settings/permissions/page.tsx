@@ -126,7 +126,7 @@ export default function PermissionsPage() {
                   <TableCell>{permission.description}</TableCell>
                   <TableCell>
                     <Switch
-                      checked={permission.roles.Admin}
+                      checked={permission.roles.ADMIN}
                       onCheckedChange={(checked) =>
                         handlePermissionChange(permission.id, "ADMIN", checked)
                       }
@@ -143,7 +143,7 @@ export default function PermissionsPage() {
                   </TableCell>
                   <TableCell>
                     <Switch
-                      checked={permission.roles.Trainee}
+                      checked={permission.roles.HOCVIEN}
                       onCheckedChange={(checked) =>
                         handlePermissionChange(
                           permission.id,

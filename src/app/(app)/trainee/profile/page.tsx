@@ -342,7 +342,9 @@ export default function UserProfilePage() {
                       </p>
                       <p className="text-sm">
                         <strong>Chức vụ:</strong>{" "}
-                        {profileData.position || "N/A"}
+                        {typeof profileData.position === "string"
+                          ? profileData.position
+                          : profileData.position?.positionName || "N/A"}
                       </p>
                       <p className="text-sm">
                         <strong>Cấp bậc:</strong>{" "}
