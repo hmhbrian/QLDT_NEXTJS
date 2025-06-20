@@ -1,5 +1,5 @@
-import { API_CONFIG } from "@/lib/api/config";
-import { usersApiService } from "@/lib/services";
+import { API_CONFIG } from "@/lib/legacy-api/config";
+import { usersService } from "@/lib/services";
 
 /**
  * Test API connection và hiển thị thông tin debug
@@ -22,8 +22,8 @@ export async function testApiConnection() {
 
   try {
     console.log("🚀 Testing API connection through Next.js proxy...");
-    const result = await usersApiService.getUsers();
-    const users = result.items || [];
+    const result = await usersService.getUsers();
+    const users = result || [];
     console.log("✅ API connection successful!", { userCount: users.length });
     return true;
   } catch (error: any) {

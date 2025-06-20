@@ -3,7 +3,7 @@ import {
   HttpResponse,
   HttpRequestConfig,
 } from "./http-client";
-import { API_CONFIG } from "./api/config";
+import { API_CONFIG } from "./legacy-api/config";
 
 // Create custom HTTP client instance
 const httpClient = new CustomHttpClient({
