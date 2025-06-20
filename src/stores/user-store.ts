@@ -3,7 +3,7 @@ import { persist, createJSONStorage, StateStorage } from "zustand/middleware";
 import type { User, CreateUserRequest } from "@/lib/types";
 import { mockUsers } from "@/lib/mock";
 import Cookies from "js-cookie";
-import { usersApiService } from "@/lib/services";
+import { usersService } from "@/lib/services";
 
 interface UserStore {
   users: User[];
@@ -64,10 +64,9 @@ export const useUserStore = create<UserStore>()(
       })),
       _hasHydrated: false, // Flag để theo dõi trạng thái hydration
       setHasHydrated: (hydrated) => set({ _hasHydrated: hydrated }),
-      fetchUsers: async () => {
-        try {
-          const result = await usersApiService.getUsers();
-          set({ users: deserializeDates(result.items || []) });
+      fetchUsers: async () => {        try {
+          const result = await usersService.getUsers();
+          set({ users: deserializeDates(result || []) });
         } catch (error: any) {
           console.error("Error fetching users:", error);
           throw error; // Throw error để component có thể xử lý
@@ -90,13 +89,24 @@ export const useUserStore = create<UserStore>()(
           };
           return { users: [...state.users, newUserWithDate] };
         });
-      },
-      addUserViaApi: async (userData) => {
+      },      addUserViaApi: async (userData) => {
         try {
-          const newUser = await usersApiService.createUser(userData);
-          // Refresh users list after successful creation
-          const result = await usersApiService.getUsers();
-          set({ users: deserializeDates(result.items || []) });
+          // Convert CreateUserRequest to CreateUserPayload
+          const payload = {
+            email: userData.Email || '',
+            password: userData.Password || '',
+            firstName: userData.FullName?.split(' ')[0] || '',
+            lastName: userData.FullName?.split(' ').slice(1).join(' ') || '',
+            role: userData.RoleId || 'HOCVIEN',
+            departmentId: userData.DepartmentId?.toString(),
+            idCard: userData.IdCard,
+            numberPhone: userData.NumberPhone,
+            confirmPassword: userData.ConfirmPassword || userData.Password || '',
+          };
+          
+          const newUser = await usersService.createUser(payload);// Refresh users list after successful creation
+          const result = await usersService.getUsers();
+          set({ users: deserializeDates(result || []) });
         } catch (error) {
           console.error("Error creating user:", error);
           throw error;
@@ -124,10 +134,9 @@ export const useUserStore = create<UserStore>()(
       },
       updateUserViaApi: async (userId, userData) => {
         try {
-          const updatedUser = await usersApiService.updateUserProfile(userData);
-          // Refresh users list after successful update
-          const result = await usersApiService.getUsers();
-          set({ users: deserializeDates(result.items || []) });
+          const updatedUser = await usersService.updateProfile(userData);          // Refresh users list after successful update
+          const result = await usersService.getUsers();
+          set({ users: deserializeDates(result || []) });
         } catch (error) {
           console.error("Error updating user:", error);
           throw error;
@@ -140,10 +149,9 @@ export const useUserStore = create<UserStore>()(
       },
       deleteUserViaApi: async (userId) => {
         try {
-          await usersApiService.softDeleteUser(userId);
-          // Refresh users list after successful deletion
-          const result = await usersApiService.getUsers();
-          set({ users: deserializeDates(result.items || []) });
+          await usersService.deleteUser(userId);          // Refresh users list after successful deletion
+          const result = await usersService.getUsers();
+          set({ users: deserializeDates(result || []) });
         } catch (error) {
           console.error("Error deleting user:", error);
           throw error;

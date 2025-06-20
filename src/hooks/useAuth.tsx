@@ -11,8 +11,12 @@ import React, {
 import { useRouter } from "next/navigation";
 import { useError } from "./use-error";
 import { useUserStore } from "@/stores/user-store";
-import { loginApi, logout as apiLogout, validateToken } from "@/lib/api/auth";
-import { API_CONFIG } from "@/lib/api/config";
+import {
+  loginApi,
+  logout as apiLogout,
+  validateToken,
+} from "@/lib/legacy-api/auth";
+import { API_CONFIG } from "@/lib/legacy-api/config";
 
 interface AuthContextType {
   user: User | null;

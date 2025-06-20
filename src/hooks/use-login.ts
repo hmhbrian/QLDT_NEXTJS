@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "./useAuth";
-import { authApiService } from "@/lib/services";
+import { authService } from "@/lib/services";
 
 export function useLogin() {
   const [isLoading, setIsLoading] = useState(false);
@@ -15,14 +15,14 @@ export function useLogin() {
   const login = async (email: string, password: string) => {
     try {
       setIsLoading(true);
-      const response = await authApiService.login({ email, password });
+      const response = await authService.login({ email, password });
 
-      if (response.success && response.user) {
+      if (response.statusCode === 200 && response.data) {
         const userWithMissingProps = {
-          ...response.user,
-          idCard: response.user.idCard || "",
-          phoneNumber: response.user.phoneNumber || "",
-          role: response.user.role as "ADMIN" | "HR" | "HOCVIEN",
+          ...response.data,
+          idCard: response.data.idCard || "",
+          phoneNumber: response.data.phoneNumber || "",
+          role: response.data.role as "ADMIN" | "HR" | "HOCVIEN",
         };
         setUser(userWithMissingProps);
         toast({
