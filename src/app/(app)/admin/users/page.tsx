@@ -1,12 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { fetchUsers } from "@/lib/api/users";
-import {
-  usersApiService,
-  rolesApiService,
-  type Role as ApiRole,
-} from "@/lib/services";
+import { fetchUsers } from "@/lib/legacy-api/users";
+import { usersService, rolesService } from "@/lib/services";
+import type { Role as ServiceRole } from "@/lib/services/modern/roles.service";
 import {
   Card,
   CardContent,
@@ -62,7 +59,7 @@ import type {
   CreateUserRequest,
 } from "@/lib/types";
 import { useToast } from "@/components/ui/use-toast";
-import { API_CONFIG } from "@/lib/api/config";
+import { API_CONFIG } from "@/lib/legacy-api/config";
 
 import {
   PlusCircle,
@@ -155,7 +152,7 @@ export default function UsersPage() {
   const [deletingUser, setDeletingUser] = useState<User | null>(null);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [isViewingUser, setIsViewingUser] = useState(false);
-  const [roles, setRoles] = useState<ApiRole[]>([]);
+  const [roles, setRoles] = useState<ServiceRole[]>([]);
   const [loadingRoles, setLoadingRoles] = useState(false);
   const [newUser, setNewUser] = useState<RegisterDTO>({
     fullName: "",
@@ -234,7 +231,7 @@ export default function UsersPage() {
 
     try {
       setLoadingRoles(true);
-      const response = await rolesApiService.getRoles();
+      const response = await rolesService.getRoles();
       console.log("Loaded roles data:", response); // Debug roles data
       if (response && Array.isArray(response)) {
         console.log("Available roles:", response); // Debug roles
@@ -271,13 +268,9 @@ export default function UsersPage() {
         setApiError("");
 
         if (API_CONFIG.useApi) {
-          const response = await usersApiService.searchUsers(
-            debouncedSearchTerm
-          );
-
-          // Backend trả về: { data: { items: [...], pagination: {...} } }
-          if (response && response.items) {
-            setUsers(Array.isArray(response.items) ? response.items : []);
+          const response = await usersService.searchUsers(debouncedSearchTerm); // Modern service trả về User[] trực tiếp
+          if (response && Array.isArray(response)) {
+            setUsers(response);
           } else {
             setUsers([]);
           }
@@ -462,34 +455,23 @@ export default function UsersPage() {
       // Tìm positionId từ level (cấp bậc) - level giờ đã là positionId string
       const positionIdValue = newUser.level
         ? parseInt(newUser.level)
-        : undefined;
-
-      const createUserPayload: CreateUserRequest = {
-        FullName: newUser.fullName,
-        Email: newUser.email,
-        Password: newUser.password,
-        ConfirmPassword: newUser.confirmPassword,
-        RoleId: roleIdValue,
-        // Optional fields - chỉ set nếu có giá trị
-        ...(newUser.idCard && { IdCard: newUser.idCard }),
-        ...(newUser.numberPhone && { NumberPhone: newUser.numberPhone }),
-        ...(newUser.startWork && {
-          StartWork: new Date(newUser.startWork).toISOString(),
-        }),
-        // Tạm thời bỏ foreign keys để tránh lỗi constraints
-        // DepartmentId: newUser.role === "HOCVIEN" ? 1 : undefined,
-        // StatusId: newUser.role === "HOCVIEN" ? 1 : undefined,
-        // PositionId: positionIdValue || (newUser.role === "HOCVIEN" ? 1 : undefined),
-        ...(newUser.role === "HOCVIEN" && {
-          Code: `EMP${Math.floor(Math.random() * 1000000000)
-            .toString()
-            .padStart(4, "0")}`,
-        }),
+        : undefined; // Tạo payload phù hợp với modern service
+      const createUserPayload = {
+        email: newUser.email,
+        password: newUser.password,
+        firstName: newUser.fullName.split(" ")[0] || newUser.fullName,
+        lastName: newUser.fullName.split(" ").slice(1).join(" ") || "",
+        role: newUser.role,
+        departmentId: newUser.department || undefined,
+        // Additional fields
+        idCard: newUser.idCard,
+        numberPhone: newUser.numberPhone,
+        confirmPassword: newUser.confirmPassword,
       };
 
       console.log("Final payload for user creation:", createUserPayload);
 
-      const response = await usersApiService.createUser(createUserPayload);
+      const response = await usersService.createUser(createUserPayload);
 
       // Refresh danh sách users
       await loadUsers();
@@ -605,8 +587,7 @@ export default function UsersPage() {
 
       console.log("Update payload:", updatePayload);
       console.log("EditingUser:", editingUser);
-
-      const response = await usersApiService.updateUserByAdmin(
+      const response = await usersService.updateUser(
         editingUser.id,
         updatePayload
       );
@@ -679,7 +660,7 @@ export default function UsersPage() {
     setIsDeleting(true);
 
     try {
-      await usersApiService.softDeleteUser(deletingUser.id);
+      await usersService.deleteUser(deletingUser.id);
 
       toast({
         title: "Thành công",

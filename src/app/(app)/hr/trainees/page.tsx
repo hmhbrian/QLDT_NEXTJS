@@ -68,7 +68,7 @@ import type {
 import { useToast } from "@/components/ui/use-toast";
 import { useUserStore } from "@/stores/user-store";
 import { useError } from "@/hooks/use-error";
-import { API_CONFIG } from "@/lib/api/config";
+import { API_CONFIG } from "@/lib/legacy-api/config";
 import "@/lib/utils/api-test"; // Auto-test API connection
 
 const initialNewTraineeState = {

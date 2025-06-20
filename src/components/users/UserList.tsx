@@ -1,4 +1,4 @@
-import { fetchUsers } from "@/lib/api/users";
+import { fetchUsers } from "@/lib/legacy-api/users";
 import { useAuth } from "@/hooks/useAuth";
 import { useEffect, useState } from "react";
 

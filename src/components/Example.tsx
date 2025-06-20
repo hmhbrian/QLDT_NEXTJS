@@ -17,8 +17,8 @@ import {
   TabsTrigger,
 } from "@/components/ui";
 
-import apiServices from "@/lib/services";
-import { DepartmentInfo } from "@/lib/types/index";
+import apiServices, { departmentsService } from "@/lib/services";
+import { DepartmentInfo } from "@/lib/types";
 
 const ExampleComponent = () => {
   const [departments, setDepartments] = React.useState<DepartmentInfo[]>([]);
@@ -27,7 +27,7 @@ const ExampleComponent = () => {
     const fetchDepartments = async () => {
       try {
         const departmentsTree =
-          await apiServices.departments.getDepartmentsTree();
+          await departmentsService.getDepartmentsTree();
         setDepartments(departmentsTree);
       } catch (error) {
         console.error("Failed to fetch departments", error);
