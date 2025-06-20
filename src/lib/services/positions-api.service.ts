@@ -1,13 +1,19 @@
-import apiClient from "../api-client";
+/**
+ * Positions API Service
+ * Handles all position-related API operations
+ */
+import { BaseApiService, ApiResponse } from "./base-api.service";
 import { Position } from "../types/position";
-import { API_CONFIG } from "../api/config";
 
-class PositionApiService {
+class PositionsApiService extends BaseApiService {
+  constructor() {
+    super("/Positions");
+  }
+
   async getPositions(): Promise<Position[]> {
     try {
-      const response = await apiClient.get(API_CONFIG.endpoints.positions.base);
-      // API trả về { message, code, data: Position[] }
-      return response.data.data || [];
+      const response = await this.get<ApiResponse<Position[]>>("/Positions");
+      return response.data || [];
     } catch (error) {
       console.error("Error fetching positions:", error);
       throw error;
@@ -16,19 +22,25 @@ class PositionApiService {
 
   async getPositionById(id: number): Promise<Position> {
     try {
-      const response = await apiClient.get(`/api/Positions/${id}`);
-      return response.data;
+      const response = await this.get<ApiResponse<Position>>(
+        `/Positions/${id}`
+      );
+      return response.data!;
     } catch (error) {
       console.error(`Error fetching position with id ${id}:`, error);
       throw error;
     }
   }
+
   async createPosition(
     positionData: Omit<Position, "positionId">
   ): Promise<Position> {
     try {
-      const response = await apiClient.post("/api/Positions", positionData);
-      return response.data;
+      const response = await this.post<ApiResponse<Position>>(
+        "/Positions",
+        positionData
+      );
+      return response.data!;
     } catch (error) {
       console.error("Error creating position:", error);
       throw error;
@@ -40,11 +52,11 @@ class PositionApiService {
     positionData: Partial<Omit<Position, "positionId">>
   ): Promise<Position> {
     try {
-      const response = await apiClient.put(
-        `/api/Positions/${id}`,
+      const response = await this.put<ApiResponse<Position>>(
+        `/Positions/${id}`,
         positionData
       );
-      return response.data;
+      return response.data!;
     } catch (error) {
       console.error(`Error updating position with id ${id}:`, error);
       throw error;
@@ -53,7 +65,7 @@ class PositionApiService {
 
   async deletePosition(id: number): Promise<void> {
     try {
-      await apiClient.delete(`/api/Positions/${id}`);
+      await this.delete<ApiResponse<void>>(`/Positions/${id}`);
     } catch (error) {
       console.error(`Error deleting position with id ${id}:`, error);
       throw error;
@@ -61,4 +73,6 @@ class PositionApiService {
   }
 }
 
-export const positionApiService = new PositionApiService();
+// Export singleton instance
+export const positionsApiService = new PositionsApiService();
+export default positionsApiService;

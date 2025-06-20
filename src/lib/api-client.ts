@@ -1,67 +1,104 @@
-import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from "axios";
+import {
+  CustomHttpClient,
+  HttpResponse,
+  HttpRequestConfig,
+} from "./http-client";
 import { API_CONFIG } from "./api/config";
 
-// Create axios instance with base configuration
-const axiosInstance: AxiosInstance = axios.create({
+// Create custom HTTP client instance
+const httpClient = new CustomHttpClient({
   baseURL: API_CONFIG.baseURL,
   headers: API_CONFIG.defaultHeaders,
   timeout: API_CONFIG.timeout,
-  withCredentials: false, // Tắt credentials cho CORS
 });
 
-// Request interceptor to include auth token
-axiosInstance.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem(API_CONFIG.storage.token);
+// Request wrapper to add auth token and logging
+const makeRequest = async <T>(
+  method: "get" | "post" | "put" | "patch" | "delete" | "options" | "head",
+  url: string,
+  data?: any,
+  config?: HttpRequestConfig
+): Promise<HttpResponse<T>> => {
+  const token = localStorage.getItem(API_CONFIG.storage.token);
 
-    // Skip adding token for login endpoint
-    const isLoginEndpoint = config.url?.includes("/login");
+  // Skip adding token for login endpoint
+  const isLoginEndpoint = url.includes("/login");
 
-    // Add auth header if token exists and not login endpoint
-    if (token && !isLoginEndpoint) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
+  // Prepare headers
+  const headers = {
+    ...config?.headers,
+  };
 
-    // Log requests in development
-    if (process.env.NODE_ENV === "development") {
-      console.log("API Request:", {
-        method: config.method?.toUpperCase(),
-        url: config.url,
-        baseURL: config.baseURL || API_CONFIG.baseURL,
-        params: config.params,
-        hasTokenInStorage: !!token,
-        isLoginEndpoint,
-        willSendToken: !!token && !isLoginEndpoint,
-      });
-    }
-
-    return config;
-  },
-  (error) => {
-    console.error("Request interceptor error:", error);
-    return Promise.reject(error);
+  // Add auth header if token exists and not login endpoint
+  if (token && !isLoginEndpoint) {
+    headers.Authorization = `Bearer ${token}`;
   }
-);
 
-// Response interceptor to handle common errors
-axiosInstance.interceptors.response.use(
-  (response) => {
+  // Log requests in development
+  if (process.env.NODE_ENV === "development") {
+    console.log("API Request:", {
+      method: method.toUpperCase(),
+      url,
+      baseURL: API_CONFIG.baseURL,
+      params: config?.params,
+      hasTokenInStorage: !!token,
+      isLoginEndpoint,
+      willSendToken: !!token && !isLoginEndpoint,
+    });
+  }
+
+  try {
+    let response: HttpResponse<T>;
+
+    const requestConfig = {
+      ...config,
+      headers,
+    };
+
+    switch (method) {
+      case "get":
+        response = await httpClient.get<T>(url, requestConfig);
+        break;
+      case "post":
+        response = await httpClient.post<T>(url, data, requestConfig);
+        break;
+      case "put":
+        response = await httpClient.put<T>(url, data, requestConfig);
+        break;
+      case "patch":
+        response = await httpClient.patch<T>(url, data, requestConfig);
+        break;
+      case "delete":
+        response = await httpClient.delete<T>(url, requestConfig);
+        break;
+      case "options":
+        response = await httpClient.options<T>(url, requestConfig);
+        break;
+      case "head":
+        response = await httpClient.head<T>(url, requestConfig);
+        break;
+      default:
+        throw new Error(`Unsupported HTTP method: ${method}`);
+    }
+
     // Log successful responses in development
     if (process.env.NODE_ENV === "development") {
       console.log("API Response:", {
-        method: response.config.method?.toUpperCase(),
-        url: response.config.url,
+        method: method.toUpperCase(),
+        url,
         status: response.status,
-        dataKeys: Object.keys(response.data || {}),
+        dataKeys:
+          typeof response.data === "object"
+            ? Object.keys(response.data || {})
+            : "non-object",
       });
     }
 
     return response;
-  },
-  (error) => {
+  } catch (error: any) {
     const errorInfo = {
-      method: error.config?.method?.toUpperCase(),
-      url: error.config?.url,
+      method: method.toUpperCase(),
+      url,
       status: error.response?.status,
       statusText: error.response?.statusText,
       message: error.message,
@@ -99,73 +136,73 @@ axiosInstance.interceptors.response.use(
         break;
     }
 
-    return Promise.reject(error);
+    throw error;
   }
-);
+};
 
 // Enhanced API client with typed methods
 const apiClient = {
   // GET request
   get: <T = any>(
     url: string,
-    config?: AxiosRequestConfig
-  ): Promise<AxiosResponse<T>> => {
-    return axiosInstance.get<T>(url, config);
+    config?: HttpRequestConfig
+  ): Promise<HttpResponse<T>> => {
+    return makeRequest<T>("get", url, undefined, config);
   },
 
   // POST request
   post: <T = any>(
     url: string,
     data?: any,
-    config?: AxiosRequestConfig
-  ): Promise<AxiosResponse<T>> => {
-    return axiosInstance.post<T>(url, data, config);
+    config?: HttpRequestConfig
+  ): Promise<HttpResponse<T>> => {
+    return makeRequest<T>("post", url, data, config);
   },
 
   // PUT request
   put: <T = any>(
     url: string,
     data?: any,
-    config?: AxiosRequestConfig
-  ): Promise<AxiosResponse<T>> => {
-    return axiosInstance.put<T>(url, data, config);
+    config?: HttpRequestConfig
+  ): Promise<HttpResponse<T>> => {
+    return makeRequest<T>("put", url, data, config);
   },
 
   // PATCH request
   patch: <T = any>(
     url: string,
     data?: any,
-    config?: AxiosRequestConfig
-  ): Promise<AxiosResponse<T>> => {
-    return axiosInstance.patch<T>(url, data, config);
+    config?: HttpRequestConfig
+  ): Promise<HttpResponse<T>> => {
+    return makeRequest<T>("patch", url, data, config);
   },
 
   // DELETE request
   delete: <T = any>(
     url: string,
-    config?: AxiosRequestConfig
-  ): Promise<AxiosResponse<T>> => {
-    return axiosInstance.delete<T>(url, config);
+    config?: HttpRequestConfig
+  ): Promise<HttpResponse<T>> => {
+    return makeRequest<T>("delete", url, config);
   },
 
   // OPTIONS request
   options: <T = any>(
     url: string,
-    config?: AxiosRequestConfig
-  ): Promise<AxiosResponse<T>> => {
-    return axiosInstance.options<T>(url, config);
+    config?: HttpRequestConfig
+  ): Promise<HttpResponse<T>> => {
+    return makeRequest<T>("options", url, config);
   },
 
   // HEAD request
   head: <T = any>(
     url: string,
-    config?: AxiosRequestConfig
-  ): Promise<AxiosResponse<T>> => {
-    return axiosInstance.head<T>(url, config);
+    config?: HttpRequestConfig
+  ): Promise<HttpResponse<T>> => {
+    return makeRequest<T>("head", url, config);
   },
 
-  // Raw instance for advanced use cases
-  instance: axiosInstance as AxiosInstance,
+  // Raw HTTP client for advanced use cases
+  instance: httpClient,
 };
 
 export default apiClient;
