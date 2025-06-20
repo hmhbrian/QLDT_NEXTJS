@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "./useAuth";
-import { authService } from "@/lib/api";
+import { authApiService } from "@/lib/services";
 
 export function useLogin() {
   const [isLoading, setIsLoading] = useState(false);
@@ -15,7 +15,7 @@ export function useLogin() {
   const login = async (email: string, password: string) => {
     try {
       setIsLoading(true);
-      const response = await authService.login({ email, password });
+      const response = await authApiService.login({ email, password });
 
       if (response.success && response.user) {
         const userWithMissingProps = {

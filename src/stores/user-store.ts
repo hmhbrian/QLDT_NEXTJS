@@ -3,7 +3,7 @@ import { persist, createJSONStorage, StateStorage } from "zustand/middleware";
 import type { User, CreateUserRequest } from "@/lib/types";
 import { mockUsers } from "@/lib/mock";
 import Cookies from "js-cookie";
-import UserApiService from "@/lib/services/user-api.service";
+import { usersApiService } from "@/lib/services";
 
 interface UserStore {
   users: User[];
@@ -66,12 +66,8 @@ export const useUserStore = create<UserStore>()(
       setHasHydrated: (hydrated) => set({ _hasHydrated: hydrated }),
       fetchUsers: async () => {
         try {
-          if (!UserApiService.shouldUseApi()) {
-            // Nếu API bị tắt, sử dụng mock data
-            return;
-          }
-          const users = await UserApiService.getUsers();
-          set({ users: deserializeDates(users) });
+          const result = await usersApiService.getUsers();
+          set({ users: deserializeDates(result.items || []) });
         } catch (error: any) {
           console.error("Error fetching users:", error);
           throw error; // Throw error để component có thể xử lý
@@ -97,23 +93,10 @@ export const useUserStore = create<UserStore>()(
       },
       addUserViaApi: async (userData) => {
         try {
-          if (!UserApiService.shouldUseApi()) {
-            throw {
-              message:
-                "API đã được tắt. Vui lòng bật API trong file .env để sử dụng chức năng này.",
-              statusCode: 503,
-              code: "API_DISABLED",
-            };
-          }
-
-          const response = await UserApiService.createUser(userData);
-          if (response.statusCode === 200 || response.statusCode === 201) {
-            // Refresh users list after successful creation
-            const users = await UserApiService.getUsers();
-            set({ users: deserializeDates(users) });
-          } else {
-            throw new Error(response.message || "Failed to create user");
-          }
+          const newUser = await usersApiService.createUser(userData);
+          // Refresh users list after successful creation
+          const result = await usersApiService.getUsers();
+          set({ users: deserializeDates(result.items || []) });
         } catch (error) {
           console.error("Error creating user:", error);
           throw error;
@@ -141,14 +124,10 @@ export const useUserStore = create<UserStore>()(
       },
       updateUserViaApi: async (userId, userData) => {
         try {
-          const response = await UserApiService.updateUser(userId, userData);
-          if (response.statusCode === 200) {
-            // Refresh users list after successful update
-            const users = await UserApiService.getUsers();
-            set({ users: deserializeDates(users) });
-          } else {
-            throw new Error(response.message || "Failed to update user");
-          }
+          const updatedUser = await usersApiService.updateUserProfile(userData);
+          // Refresh users list after successful update
+          const result = await usersApiService.getUsers();
+          set({ users: deserializeDates(result.items || []) });
         } catch (error) {
           console.error("Error updating user:", error);
           throw error;
@@ -161,14 +140,10 @@ export const useUserStore = create<UserStore>()(
       },
       deleteUserViaApi: async (userId) => {
         try {
-          const response = await UserApiService.deleteUser(userId);
-          if (response.statusCode === 200) {
-            // Refresh users list after successful deletion
-            const users = await UserApiService.getUsers();
-            set({ users: deserializeDates(users) });
-          } else {
-            throw new Error(response.message || "Failed to delete user");
-          }
+          await usersApiService.softDeleteUser(userId);
+          // Refresh users list after successful deletion
+          const result = await usersApiService.getUsers();
+          set({ users: deserializeDates(result.items || []) });
         } catch (error) {
           console.error("Error deleting user:", error);
           throw error;

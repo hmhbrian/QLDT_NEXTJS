@@ -1,7 +1,7 @@
 import useSWR from "swr";
-import { positionApiService } from "../lib/services/position-api.service";
+import { positionsApiService } from "@/lib/services";
 
-const fetcher = () => positionApiService.getPositions();
+const fetcher = () => positionsApiService.getPositions();
 
 export const usePositions = () => {
   const { data, error, isLoading } = useSWR("api/positions", fetcher);
