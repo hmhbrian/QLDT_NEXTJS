@@ -1,46 +1,42 @@
+
 import { create } from "zustand";
 import { persist, createJSONStorage, StateStorage } from "zustand/middleware";
 import type { User, CreateUserRequest } from "@/lib/types";
 import { mockUsers } from "@/lib/mock";
 import Cookies from "js-cookie";
 import { usersService } from "@/lib/services";
+import { API_CONFIG } from "@/lib/legacy-api/config";
+
+// This store is now primarily for holding the logged-in user's state
+// and providing simple state management across components.
+// Page-specific data like lists of users should be handled by TanStack Query in the components themselves.
 
 interface UserStore {
-  users: User[];
+  users: User[]; // This can be used as a simple cache or for non-paged scenarios
+  isLoading: boolean;
+  error: string | null;
   setUsers: (users: User[]) => void;
-  addUser: (user: User) => Promise<void>;
-  addUserViaApi: (userData: CreateUserRequest) => Promise<void>;
+  // fetchUsers is removed to prevent component-agnostic fetching. Fetching is now done in components.
+  addUser: (user: User) => void;
   updateUser: (userId: string, userData: Partial<User>) => void;
-  updateUserViaApi: (
-    userId: string,
-    userData: Partial<CreateUserRequest>
-  ) => Promise<void>;
   deleteUser: (userId: string) => void;
-  deleteUserViaApi: (userId: string) => Promise<void>;
-  fetchUsers: () => Promise<void>;
   _hasHydrated: boolean;
   setHasHydrated: (hydrated: boolean) => void;
 }
 
-// Custom storage object sử dụng js-cookie
 const cookieStorage: StateStorage = {
   getItem: (name: string): string | null => {
     const value = Cookies.get(name);
     return value === undefined ? null : value;
   },
   setItem: (name: string, value: string): void => {
-    Cookies.set(name, value, {
-      expires: 7, // Cookie hết hạn sau 7 ngày
-      sameSite: "strict", // Chính sách SameSite
-      secure: process.env.NODE_ENV === "production", // Chỉ gửi qua HTTPS ở môi trường production
-    });
+    Cookies.set(name, value, { expires: 7, sameSite: "strict" });
   },
   removeItem: (name: string): void => {
     Cookies.remove(name);
   },
 };
 
-// Hàm chuyển đổi các trường date từ string sang Date object khi tải từ cookie
 const deserializeDates = (users: User[]): User[] => {
   return users.map((user) => ({
     ...user,
@@ -53,131 +49,47 @@ const deserializeDates = (users: User[]): User[] => {
 
 export const useUserStore = create<UserStore>()(
   persist(
-    // Sử dụng middleware persist của Zustand
-    (set) => ({
-      users: mockUsers.map((user) => ({
-        ...user,
-        startWork: user.startWork ? new Date(user.startWork) : undefined,
-        endWork: user.endWork ? new Date(user.endWork) : undefined,
-        createdAt: user.createdAt ? new Date(user.createdAt) : new Date(),
-        modifiedAt: user.modifiedAt ? new Date(user.modifiedAt) : new Date(),
-      })),
-      _hasHydrated: false, // Flag để theo dõi trạng thái hydration
+    (set, get) => ({
+      users: mockUsers, // Initialize with mock data as a fallback
+      isLoading: false, // Default to false, components will manage their own loading state
+      error: null,
+      _hasHydrated: false,
       setHasHydrated: (hydrated) => set({ _hasHydrated: hydrated }),
-      fetchUsers: async () => {        try {
-          const result = await usersService.getUsers();
-          set({ users: deserializeDates(result || []) });
-        } catch (error: any) {
-          console.error("Error fetching users:", error);
-          throw error; // Throw error để component có thể xử lý
-        }
+      setUsers: (users) => set({ users: deserializeDates(users) }),
+
+      addUser: (user) => {
+         set((state) => ({ users: [...state.users, user] }));
       },
-      setUsers: (users) => {
-        set({ users: deserializeDates(users) }); // Chuyển đổi date khi set
-      },
-      addUser: async (user) => {
-        set((state) => {
-          const newUserWithDate = {
-            // Đảm bảo user mới cũng có date object
-            ...user,
-            createdAt: user.createdAt ? new Date(user.createdAt) : new Date(),
-            modifiedAt: user.modifiedAt
-              ? new Date(user.modifiedAt)
-              : new Date(),
-            startWork: user.startWork ? new Date(user.startWork) : undefined,
-            endWork: user.endWork ? new Date(user.endWork) : undefined,
-          };
-          return { users: [...state.users, newUserWithDate] };
-        });
-      },      addUserViaApi: async (userData) => {
-        try {
-          // Convert CreateUserRequest to CreateUserPayload
-          const payload = {
-            email: userData.Email || '',
-            password: userData.Password || '',
-            firstName: userData.FullName?.split(' ')[0] || '',
-            lastName: userData.FullName?.split(' ').slice(1).join(' ') || '',
-            role: userData.RoleId || 'HOCVIEN',
-            departmentId: userData.DepartmentId?.toString(),
-            idCard: userData.IdCard,
-            numberPhone: userData.NumberPhone,
-            confirmPassword: userData.ConfirmPassword || userData.Password || '',
-          };
-          
-          const newUser = await usersService.createUser(payload);// Refresh users list after successful creation
-          const result = await usersService.getUsers();
-          set({ users: deserializeDates(result || []) });
-        } catch (error) {
-          console.error("Error creating user:", error);
-          throw error;
-        }
-      },
+
       updateUser: (userId, userData) => {
         set((state) => ({
           users: state.users.map((user) =>
             user.id === userId
-              ? {
-                  ...user,
-                  ...userData,
-                  modifiedAt: new Date(),
-                  // Đảm bảo các ngày trong userData cũng được chuyển đổi nếu chúng là chuỗi
-                  startWork: userData.startWork
-                    ? new Date(userData.startWork)
-                    : user.startWork,
-                  endWork: userData.endWork
-                    ? new Date(userData.endWork)
-                    : user.endWork,
-                }
+              ? deserializeDates([{ ...user, ...userData }])[0]
               : user
           ),
         }));
       },
-      updateUserViaApi: async (userId, userData) => {
-        try {
-          const updatedUser = await usersService.updateProfile(userData);          // Refresh users list after successful update
-          const result = await usersService.getUsers();
-          set({ users: deserializeDates(result || []) });
-        } catch (error) {
-          console.error("Error updating user:", error);
-          throw error;
-        }
-      },
-      deleteUser: (userId) => {
+
+      deleteUser: (userId: string) => {
         set((state) => ({
           users: state.users.filter((user) => user.id !== userId),
         }));
       },
-      deleteUserViaApi: async (userId) => {
-        try {
-          await usersService.deleteUser(userId);          // Refresh users list after successful deletion
-          const result = await usersService.getUsers();
-          set({ users: deserializeDates(result || []) });
-        } catch (error) {
-          console.error("Error deleting user:", error);
-          throw error;
-        }
-      },
     }),
     {
-      name: "becamex-user-list-storage", // Tên cookie
-      storage: createJSONStorage(() => cookieStorage), // Sử dụng cookieStorage tùy chỉnh
-      onRehydrateStorage: () => (state, error) => {
-        // Callback khi tải lại từ storage
-        if (error) {
-          console.error("Lỗi khi tải dữ liệu người dùng từ cookie:", error);
-        } else if (state) {
-          state.users = deserializeDates(state.users); // Chuyển đổi date
-          state.setHasHydrated(true); // Đánh dấu đã hydrate
+      name: "becamex-user-list-storage",
+      storage: createJSONStorage(() => cookieStorage),
+      onRehydrateStorage: () => (state) => {
+        if (state) {
+          state.setHasHydrated(true);
         }
       },
-      // Partialize để chỉ lưu trữ mảng users
       partialize: (state) => ({ users: state.users }),
     }
   )
 );
 
-// Để đảm bảo _hasHydrated được đặt sau khi tải ban đầu từ cookie:
 if (typeof window !== "undefined") {
-  // Chỉ chạy ở client
-  useUserStore.persist.rehydrate(); // Kích hoạt rehydration
+  useUserStore.persist.rehydrate();
 }
