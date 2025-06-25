@@ -1,4 +1,3 @@
-
 "use client";
 
 import { ColumnDef } from "@tanstack/react-table";
@@ -27,8 +26,8 @@ import {
   traineeLevelLabels,
 } from "@/lib/constants";
 
-// This type is used to define the shape of our data.
-// You can use a Zod schema here if you want.
+// Kiểu này được sử dụng để định nghĩa hình dạng dữ liệu của chúng ta.
+// Bạn có thể sử dụng Zod schema ở đây nếu muốn.
 
 export const getColumns = (
   handleOpenEditDialog: (course: Course) => void,

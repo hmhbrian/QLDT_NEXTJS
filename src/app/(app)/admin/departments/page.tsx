@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import {
   Dialog,
   DialogContent,
@@ -21,12 +22,22 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Building2,
   PlusCircle,
   Pencil,
   Trash2,
   AlertCircle,
   Loader2,
+  Search,
+  List,
+  TreePine,
 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import type {
@@ -49,12 +60,14 @@ import { validateDepartmentTree } from "@/lib/utils/department-tree";
 import { LoadingButton } from "@/components/ui/loading";
 import { extractErrorMessage } from "@/lib/core";
 import { Label } from "@/components/ui/label";
+import { DataTable } from "@/components/ui/data-table";
+import { getColumns } from "./columns";
 
 export default function DepartmentsPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Data fetching
+  // Lấy dữ liệu
   const {
     data: departments = [],
     isLoading: isDepartmentsLoading,
@@ -81,17 +94,17 @@ export default function DepartmentsPage() {
   });
 
   const managers = useMemo(() => {
-    // Wait until both users and positions data are available
+    // Chờ cho đến khi cả dữ liệu users và positions đều có sẵn
     if (isUsersLoading || isPositionsLoading || !users || !positions) {
       return [];
     }
 
-    // Find the position object for "Quản lý cấp trung" to get its ID.
+    // Tìm object position cho "Quản lý cấp trung" để lấy ID của nó.
     const managerPosition = positions.find(
       (p) => p.positionName === "Quản lý cấp trung"
     );
 
-    // If the base manager level isn't found, we cannot reliably determine managers.
+    // Nếu không tìm thấy cấp quản lý cơ sở, chúng ta không thể xác định đáng tin cậy các quản lý.
     if (!managerPosition) {
       console.warn(
         "Could not find 'Quản lý cấp trung' position to identify managers."
@@ -101,9 +114,9 @@ export default function DepartmentsPage() {
 
     const managerBaseLevelId = managerPosition.positionId;
 
-    // Filter users who have a positionId at or above the base manager level.
+    // Lọc users có positionId ở cấp quản lý cơ sở trở lên.
     return users.filter((user) => {
-      // Check if the user has a position object and a positionId
+      // Kiểm tra xem user có object position và positionId không
       if (
         user.position &&
         typeof user.position === "object" &&
@@ -116,7 +129,7 @@ export default function DepartmentsPage() {
     });
   }, [users, positions, isUsersLoading, isPositionsLoading]);
 
-  // Component State
+  // Trạng thái Component
   const [selectedDepartment, setSelectedDepartment] =
     useState<DepartmentInfo | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -124,6 +137,13 @@ export default function DepartmentsPage() {
     useState<DepartmentInfo | null>(null);
   const [deletingDepartment, setDeletingDepartment] =
     useState<DepartmentInfo | null>(null);
+
+  // Trạng thái cho tab và tìm kiếm
+  const [activeTab, setActiveTab] = useState<"tree" | "table">("tree");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState<
+    "all" | "active" | "inactive"
+  >("all");
 
   // Mutations
   const createDeptMutation = useMutation({
@@ -200,8 +220,30 @@ export default function DepartmentsPage() {
     [departments]
   );
 
+  // Lọc dữ liệu phòng ban cho table view
+  const filteredDepartments = useMemo(() => {
+    return departments.filter((dept) => {
+      const matchesSearch =
+        dept.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        dept.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (dept.description || "")
+          .toLowerCase()
+          .includes(searchTerm.toLowerCase()) ||
+        (dept.managerName || "")
+          .toLowerCase()
+          .includes(searchTerm.toLowerCase());
+
+      const matchesStatus =
+        statusFilter === "all" ||
+        (statusFilter === "active" && dept.status === "active") ||
+        (statusFilter === "inactive" && dept.status !== "active");
+
+      return matchesSearch && matchesStatus;
+    });
+  }, [departments, searchTerm, statusFilter]);
+
   useEffect(() => {
-    // If the selected department is deleted, unselect it
+    // Nếu phòng ban được chọn bị xóa, bỏ chọn nó
     if (
       selectedDepartment &&
       !departments.some(
@@ -221,6 +263,12 @@ export default function DepartmentsPage() {
     setEditingDepartment(dept);
     setIsFormOpen(true);
   };
+
+  // Columns cho DataTable - Khai báo sau khi đã có handleOpenEditDialog
+  const columns = useMemo(
+    () => getColumns(handleOpenEditDialog, setDeletingDepartment, departments),
+    [departments]
+  );
 
   const handleSaveDepartment = (
     payload: CreateDepartmentPayload | UpdateDepartmentPayload,
@@ -253,8 +301,8 @@ export default function DepartmentsPage() {
         updateDeptMutation.mutate({
           id: dept.departmentId,
           payload: {
-            name: originalDept.name, // Include required fields
-            code: originalDept.code, // Include required fields
+            name: originalDept.name, // Bao gồm các trường bắt buộc
+            code: originalDept.code, // Bao gồm các trường bắt buộc
             description: originalDept.description,
             status: originalDept.status,
             managerId: originalDept.managerId,
@@ -413,15 +461,6 @@ export default function DepartmentsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center">
-        <h1 className="text-2xl md:text-3xl font-headline font-semibold">
-          Quản lý Phòng ban
-        </h1>
-        <Button onClick={() => handleOpenAddDialog()}>
-          <PlusCircle className="mr-2 h-4 w-4" /> Thêm phòng ban
-        </Button>
-      </div>
-
       {!validation.valid && validation.issues && (
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
@@ -436,21 +475,101 @@ export default function DepartmentsPage() {
         </Alert>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
-        <Card className="shadow-lg">
-          <CardHeader>
-            <CardTitle>Cấu trúc</CardTitle>
-            <CardDescription>Kéo-thả để sắp xếp.</CardDescription>
-          </CardHeader>
-          <CardContent className="min-h-[400px]">
-            {renderLeftPanelContent()}
-          </CardContent>
-        </Card>
+      <Card>
+        <CardHeader>
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+            <div>
+              <CardTitle className="text-2xl font-headline">
+                Quản lý Phòng ban
+              </CardTitle>
+              <CardDescription>
+                Tạo, chỉnh sửa và quản lý tất cả phòng ban trong tổ chức.
+              </CardDescription>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant={activeTab === "tree" ? "default" : "outline"}
+                size="icon"
+                onClick={() => setActiveTab("tree")}
+              >
+                <TreePine className="h-4 w-4" />
+              </Button>
+              <Button
+                variant={activeTab === "table" ? "default" : "outline"}
+                size="icon"
+                onClick={() => setActiveTab("table")}
+              >
+                <List className="h-4 w-4" />
+              </Button>
+              <Button onClick={() => handleOpenAddDialog()} className="ml-2">
+                <PlusCircle className="mr-2 h-4 w-4" /> Thêm phòng ban
+              </Button>
+            </div>
+          </div>
+        </CardHeader>
 
-        <Card className="shadow-lg min-h-[580px]">
-          {renderRightPanelContent()}
-        </Card>
-      </div>
+        <CardContent>
+          {activeTab === "tree" ? (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+              <Card className="shadow-sm">
+                <CardHeader>
+                  <CardTitle>Cấu trúc</CardTitle>
+                  <CardDescription>Kéo-thả để sắp xếp.</CardDescription>
+                </CardHeader>
+                <CardContent className="min-h-[400px]">
+                  {renderLeftPanelContent()}
+                </CardContent>
+              </Card>
+
+              <Card className="shadow-sm min-h-[580px]">
+                {renderRightPanelContent()}
+              </Card>
+            </div>
+          ) : (
+            <>
+              <div className="mb-6 space-y-4">
+                <div className="flex flex-col sm:flex-row gap-4">
+                  <div className="relative flex-grow">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10" />
+                    <Input
+                      placeholder="Tìm kiếm phòng ban..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="pl-9"
+                    />
+                  </div>
+                  <Select
+                    value={statusFilter}
+                    onValueChange={(v: typeof statusFilter) =>
+                      setStatusFilter(v)
+                    }
+                  >
+                    <SelectTrigger className="w-full sm:w-[180px]">
+                      <SelectValue placeholder="Trạng thái" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Tất cả trạng thái</SelectItem>
+                      <SelectItem value="active">Đang hoạt động</SelectItem>
+                      <SelectItem value="inactive">Không hoạt động</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {isDepartmentsLoading ? (
+                <div className="flex h-60 w-full items-center justify-center">
+                  <Loader2 className="h-10 w-10 animate-spin text-primary" />
+                  <p className="ml-3 text-muted-foreground">
+                    Đang tải danh sách phòng ban...
+                  </p>
+                </div>
+              ) : (
+                <DataTable columns={columns} data={filteredDepartments} />
+              )}
+            </>
+          )}
+        </CardContent>
+      </Card>
 
       <DepartmentFormDialog
         isOpen={isFormOpen}

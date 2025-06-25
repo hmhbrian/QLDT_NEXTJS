@@ -1,7 +1,6 @@
-
 "use client";
 
-import React, { useState, useMemo, useCallback } from "react";
+import React, { useState, useMemo, useCallback, useEffect } from "react";
 import { Building2, ChevronRight, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { DepartmentInfo } from "@/lib/types";
@@ -36,6 +35,7 @@ export function DraggableDepartmentTree({
     isRoot: boolean;
   } | null>(null);
 
+  // Buộc tạo lại departmentTree và departmentMap khi departments thay đổi
   const departmentTree = useMemo(
     () => buildDepartmentTree(departments),
     [departments]
@@ -44,6 +44,12 @@ export function DraggableDepartmentTree({
     const map = new Map<string, DepartmentInfo>();
     departments.forEach((dept) => map.set(dept.departmentId, dept));
     return map;
+  }, [departments]);
+
+  // Reset trạng thái kéo thả khi departments thay đổi để tránh tham chiếu cũ
+  useEffect(() => {
+    setDraggedDeptId(null);
+    setDropTarget(null);
   }, [departments]);
 
   const toggleExpand = useCallback((id: string) => {
@@ -93,16 +99,16 @@ export function DraggableDepartmentTree({
 
     const sourceDept = departmentMap.get(draggedId);
     if (!sourceDept) return;
-    if (sourceDept.parentId === targetId) return; // Dropping on its own parent
+    if (sourceDept.parentId === targetId) return; // Thả vào chính parent của nó
 
-    // Check for circular reference
+    // Kiểm tra tham chiếu vòng tròn
     if (targetId !== null) {
       const childIds = getAllChildDepartments(draggedId, departments).map(
         (d) => d.departmentId
       );
       if (childIds.includes(targetId)) {
         console.error(
-          "Circular drop detected: cannot move a department into its own child."
+          "Phát hiện thả vòng tròn: không thể di chuyển phòng ban vào phòng ban con của chính nó."
         );
         return;
       }
@@ -151,63 +157,87 @@ export function DraggableDepartmentTree({
     onUpdateDepartments(Array.from(updatedDepartmentsMap.values()));
   };
 
-  const renderDepartmentNode = (dept: DepartmentInfo, level: number) => {
-    const hasChildren = departments.some((d) => d.parentId === dept.departmentId);
-    const isExpanded = expandedNodes.has(dept.departmentId);
+  const renderDepartmentNode = useCallback(
+    (dept: DepartmentInfo, level: number) => {
+      const hasChildren = departments.some(
+        (d) => d.parentId === dept.departmentId
+      );
+      const isExpanded = expandedNodes.has(dept.departmentId);
 
-    return (
-      <React.Fragment key={dept.departmentId}>
-        <Tooltip delayDuration={300}>
-          <TooltipTrigger asChild>
-            <div
-              className={cn(
-                "flex items-center py-1.5 px-2 rounded-md cursor-pointer transition-colors",
-                "hover:bg-muted",
-                dropTarget?.id === dept.departmentId &&
-                  "bg-accent outline-dashed outline-1 outline-primary",
-                draggedDeptId === dept.departmentId && "opacity-40"
+      // Lấy thông tin mới nhất từ departmentMap để đảm bảo tooltip hiển thị đúng
+      const currentDept = departmentMap.get(dept.departmentId) || dept;
+
+      return (
+        <React.Fragment
+          key={`${dept.departmentId}-${currentDept.name}-${currentDept.code}`}
+        >
+          <Tooltip
+            delayDuration={300}
+            key={`tooltip-${dept.departmentId}-${currentDept.name}`}
+          >
+            <TooltipTrigger asChild>
+              <div
+                className={cn(
+                  "flex items-center py-1.5 px-2 rounded-md cursor-pointer transition-colors",
+                  "hover:bg-muted",
+                  dropTarget?.id === dept.departmentId &&
+                    "bg-accent outline-dashed outline-1 outline-primary",
+                  draggedDeptId === dept.departmentId && "opacity-40"
+                )}
+                style={{ paddingLeft: `${level * 20 + 8}px` }}
+                draggable
+                onDragStart={(e) => handleDragStart(e, dept.departmentId)}
+                onDragEnd={handleDragEnd}
+                onDragOver={(e) => handleDragOver(e, dept.departmentId, false)}
+                onDrop={(e) => handleDrop(e, dept.departmentId)}
+                onClick={() => onSelectDepartment(currentDept)}
+              >
+                {hasChildren ? (
+                  <div
+                    className="w-4 h-4 mr-1 flex items-center justify-center"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleExpand(dept.departmentId);
+                    }}
+                  >
+                    {isExpanded ? (
+                      <ChevronDown size={16} />
+                    ) : (
+                      <ChevronRight size={16} />
+                    )}
+                  </div>
+                ) : (
+                  <div className="w-4 h-4 mr-1"></div>
+                )}
+                <Building2 className="h-4 w-4 mr-2 flex-shrink-0" />
+                <span className="truncate">{currentDept.name}</span>
+              </div>
+            </TooltipTrigger>
+            <TooltipContent side="right" align="start">
+              <p className="font-semibold">{currentDept.name}</p>
+              <p className="text-xs text-muted-foreground">
+                {currentDept.code}
+              </p>
+            </TooltipContent>
+          </Tooltip>
+          {isExpanded &&
+            departmentTree
+              .find((d) => d.departmentId === dept.departmentId)
+              ?.children?.map((child) =>
+                renderDepartmentNode(child, level + 1)
               )}
-              style={{ paddingLeft: `${level * 20 + 8}px` }}
-              draggable
-              onDragStart={(e) => handleDragStart(e, dept.departmentId)}
-              onDragEnd={handleDragEnd}
-              onDragOver={(e) => handleDragOver(e, dept.departmentId, false)}
-              onDrop={(e) => handleDrop(e, dept.departmentId)}
-              onClick={() => onSelectDepartment(dept)}
-            >
-              {hasChildren ? (
-                <div
-                  className="w-4 h-4 mr-1 flex items-center justify-center"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    toggleExpand(dept.departmentId);
-                  }}
-                >
-                  {isExpanded ? (
-                    <ChevronDown size={16} />
-                  ) : (
-                    <ChevronRight size={16} />
-                  )}
-                </div>
-              ) : (
-                <div className="w-4 h-4 mr-1"></div>
-              )}
-              <Building2 className="h-4 w-4 mr-2 flex-shrink-0" />
-              <span className="truncate">{dept.name}</span>
-            </div>
-          </TooltipTrigger>
-          <TooltipContent side="right" align="start">
-            <p className="font-semibold">{dept.name}</p>
-            <p className="text-xs text-muted-foreground">{dept.code}</p>
-          </TooltipContent>
-        </Tooltip>
-        {isExpanded &&
-          departmentTree
-            .find((d) => d.departmentId === dept.departmentId)
-            ?.children?.map((child) => renderDepartmentNode(child, level + 1))}
-      </React.Fragment>
-    );
-  };
+        </React.Fragment>
+      );
+    },
+    [
+      departments,
+      departmentMap,
+      expandedNodes,
+      dropTarget?.id,
+      draggedDeptId,
+      onSelectDepartment,
+    ]
+  );
 
   return (
     <div

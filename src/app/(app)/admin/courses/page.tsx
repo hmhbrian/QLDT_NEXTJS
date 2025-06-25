@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
@@ -106,7 +105,7 @@ export default function CoursesPage() {
   const [archivingCourse, setArchivingCourse] = useState<Course | null>(null);
   const [isDuplicating, setIsDuplicating] = useState(false);
 
-  // Pagination state for card view
+  // Trạng thái phân trang cho chế độ xem card
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(8);
 
@@ -142,25 +141,25 @@ export default function CoursesPage() {
     [courses, searchTerm, statusFilter, departmentFilter, levelFilter]
   );
 
-  // Reset page to 1 when filters change
+  // Reset trang về 1 khi bộ lọc thay đổi
   useEffect(() => {
     setCurrentPage(1);
   }, [searchTerm, statusFilter, departmentFilter, levelFilter, viewMode]);
 
-  // Paginate courses for card view
+  // Phân trang khóa học cho chế độ xem card
   const paginatedCourses = useMemo(() => {
     if (viewMode === "card") {
       const startIndex = (currentPage - 1) * itemsPerPage;
       return filteredCourses.slice(startIndex, startIndex + itemsPerPage);
     }
-    return []; // Not used for table view
+    return []; // Không sử dụng cho chế độ xem bảng
   }, [filteredCourses, currentPage, itemsPerPage, viewMode]);
 
   const totalPages = Math.ceil(filteredCourses.length / itemsPerPage);
 
   const handleFormDialogOpenChange = (isOpen: boolean) => {
     if (!isOpen) {
-      setIsDuplicating(false); // Reset flag on any close action
+      setIsDuplicating(false); // Reset cờ khi đóng dialog
     }
     setIsFormDialogOpen(isOpen);
   };
@@ -259,7 +258,9 @@ export default function CoursesPage() {
     const duplicatedCourseForForm: Course = {
       ...course,
       title: `${course.title} (Bản sao)`,
-      courseCode: `${course.courseCode}-COPY-${Date.now().toString().slice(-4)}`,
+      courseCode: `${course.courseCode}-COPY-${Date.now()
+        .toString()
+        .slice(-4)}`,
       status: "draft",
       isPublic: false,
       enrolledTrainees: [],
