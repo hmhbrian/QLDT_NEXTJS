@@ -720,13 +720,16 @@ export default function CoursesPage() {
             <DialogHeader>
               <DialogTitle>Xác nhận xóa</DialogTitle>
               <DialogDescription>
-                Bạn có chắc chắn muốn xóa khóa học &quot;{deletingCourse.title}
-                &quot;? Hành động này không thể hoàn tác.
+                <span>
+                  Bạn có chắc chắn muốn xóa khóa học &quot;
+                  {deletingCourse.title}
+                  &quot;? Hành động này không thể hoàn tác.
+                </span>
                 {deletingCourse.status === "published" && (
-                  <div className="mt-2 flex items-center text-destructive">
+                  <span className="mt-2 flex items-center text-destructive">
                     <AlertCircle className="h-4 w-4 mr-2" />
                     Không thể xóa khóa học đã xuất bản.
-                  </div>
+                  </span>
                 )}
               </DialogDescription>
             </DialogHeader>

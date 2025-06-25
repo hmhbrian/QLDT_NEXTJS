@@ -32,6 +32,8 @@ import {
   Trash2,
   Paperclip,
   ListChecks,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import NextImage from "next/image";
 import { DatePicker } from "@/components/ui/datepicker";
@@ -181,6 +183,10 @@ export function CourseFormDialog({
   >(null);
   const [questionFormData, setQuestionFormData] =
     useState<Omit<Question, "id">>(initialQuestionState);
+
+  // State cho pagination câu hỏi
+  const [questionsPage, setQuestionsPage] = useState(1);
+  const questionsPerPage = 5;
 
   useEffect(() => {
     if (isOpen) {
@@ -491,6 +497,7 @@ export function CourseFormDialog({
   const handleOpenAddTest = () => {
     setCurrentEditingTest(null);
     setTestFormData(initialTestState);
+    setQuestionsPage(1); // Reset pagination
     setIsTestDialogOpen(true);
   }; // Mở dialog thêm bài kiểm tra
   const handleOpenEditTest = (test: Test) => {
@@ -500,6 +507,7 @@ export function CourseFormDialog({
       questions: test.questions || [],
       passingScorePercentage: test.passingScorePercentage,
     });
+    setQuestionsPage(1); // Reset pagination
     setIsTestDialogOpen(true);
   };
 
@@ -653,6 +661,12 @@ export function CourseFormDialog({
           ...prev,
           questions: [...prev.questions, ...questions],
         }));
+
+        // Reset trang về cuối để hiển thị câu hỏi mới import
+        const totalQuestions = testFormData.questions.length + questions.length;
+        const lastPage = Math.ceil(totalQuestions / questionsPerPage);
+        setQuestionsPage(lastPage);
+
         showError("SUCCESS006"); // Thông báo thành công
       } catch (error) {
         console.error("Lỗi khi import file Excel:", error);
@@ -765,17 +779,30 @@ export function CourseFormDialog({
       if (test.id === testId) {
         return {
           ...test,
-          questions: (test.questions || []).filter((q) => q.id !== questionId),
+          questions: (test.questions || []).filter((q, index) => {
+            // Ưu tiên xóa theo id nếu có
+            if (q.id && q.id !== questionId) {
+              return true;
+            }
+            // Fallback: xóa theo index nếu id là temp hoặc không có
+            if (questionId.startsWith("temp-")) {
+              const tempIndex = parseInt(questionId.replace("temp-", ""));
+              return index !== tempIndex;
+            }
+            // Nếu không có id, xóa theo id truyền vào
+            return q.id !== questionId;
+          }),
         };
       }
       return test;
     });
+
     handleInputChange("tests", updatedTests);
+
+    // Cập nhật testFormData nếu bài kiểm tra hiện tại đang được chỉnh sửa
     if (currentEditingTest && currentEditingTest.id === testId) {
-      // Cập nhật testFormData nếu bài kiểm tra hiện tại đang được chỉnh sửa
-      const targetTest = updatedTests.find((t) => t.id === testId); // Tìm bài kiểm tra mục tiêu
+      const targetTest = updatedTests.find((t) => t.id === testId);
       if (targetTest) {
-        // Nếu tìm thấy
         setTestFormData((prev) => ({
           ...prev,
           questions: targetTest.questions,
@@ -848,9 +875,7 @@ export function CourseFormDialog({
                 />
               </div>
               <div>
-                <Label htmlFor="courseCode">
-                  Mã khóa học
-                </Label>
+                <Label htmlFor="courseCode">Mã khóa học</Label>
                 <div className="flex gap-2">
                   <Input
                     id="courseCode"
@@ -1705,7 +1730,7 @@ export function CourseFormDialog({
           if (!isOpen) setIsTestDialogOpen(false);
         }}
       >
-        <DialogContent className="sm:max-w-2xl">
+        <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto resize">
           <DialogHeader>
             <DialogTitle>
               {currentEditingTest
@@ -1716,124 +1741,220 @@ export function CourseFormDialog({
               Quản lý thông tin và câu hỏi cho bài kiểm tra.
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-6 py-4 max-h-[70vh] overflow-y-auto pr-2">
-            <div className="space-y-2">
-              <Label htmlFor="testTitle">
-                Tiêu đề <span className="text-destructive">*</span>
-              </Label>
-              <Input
-                id="testTitle"
-                value={testFormData.title}
-                onChange={(e) =>
-                  setTestFormData((p) => ({ ...p, title: e.target.value }))
-                }
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="testPassingScore">
-                Điểm đạt (%) <span className="text-destructive">*</span>
-              </Label>
-              <Input
-                id="testPassingScore"
-                type="number"
-                min={0}
-                max={100}
-                value={testFormData.passingScorePercentage}
-                onChange={(e) =>
-                  setTestFormData((p) => ({
-                    ...p,
-                    passingScorePercentage: parseInt(e.target.value) || 70,
-                  }))
-                }
-              />
-            </div>
-
-            {/* Phần Quản lý Câu hỏi */}
-            <div className="space-y-3 border-t pt-4">
-              <div className="flex items-center justify-between">
-                <Label className="text-base font-semibold flex items-center">
-                  <ListChecks className="mr-2 h-5 w-5 text-primary" /> Danh sách
-                  Câu hỏi
+          
+          <div className="flex-1 overflow-hidden">
+            <div className="grid gap-6 py-4 h-full overflow-y-auto pr-2">
+              <div className="space-y-2">
+                <Label htmlFor="testTitle">
+                  Tiêu đề <span className="text-destructive">*</span>
                 </Label>
-                <div className="flex gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => testExcelImportInputRef.current?.click()}
-                  >
-                    <Upload className="mr-2 h-4 w-4" /> Import Excel
-                  </Button>
-                  <input
-                    type="file"
-                    ref={testExcelImportInputRef}
-                    className="hidden"
-                    accept=".xlsx, .xls"
-                    onChange={handleExcelFileImport}
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() =>
-                      handleOpenAddQuestion(currentEditingTest?.id || "")
-                    }
-                    disabled={!currentEditingTest && !isTestDialogOpen}
-                  >
-                    <PlusCircle className="mr-2 h-4 w-4" /> Thêm câu hỏi
-                  </Button>
-                </div>
+                <Input
+                  id="testTitle"
+                  value={testFormData.title}
+                  onChange={(e) =>
+                    setTestFormData((p) => ({ ...p, title: e.target.value }))
+                  }
+                />
               </div>
-              {(testFormData.questions || []).length > 0 ? (
-                <div className="space-y-2">
-                  {(testFormData.questions || []).map((q, index) => (
-                    <div
-                      key={q.id || index}
-                      className="flex items-center justify-between p-2 border rounded-md bg-muted/20"
+              <div className="space-y-2">
+                <Label htmlFor="testPassingScore">
+                  Điểm đạt (%) <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id="testPassingScore"
+                  type="number"
+                  min={0}
+                  max={100}
+                  value={testFormData.passingScorePercentage}
+                  onChange={(e) =>
+                    setTestFormData((p) => ({
+                      ...p,
+                      passingScorePercentage: parseInt(e.target.value) || 70,
+                    }))
+                  }
+                />
+              </div>
+
+              {/* Phần Quản lý Câu hỏi */}
+              <div className="space-y-3 border-t pt-4">
+                <div className="flex items-center justify-between">
+                  <Label className="text-base font-semibold flex items-center">
+                    <ListChecks className="mr-2 h-5 w-5 text-primary" /> Danh
+                    sách Câu hỏi
+                  </Label>
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => testExcelImportInputRef.current?.click()}
                     >
-                      <div className="text-sm truncate max-w-[calc(100%-80px)]">
-                        <span className="font-medium">
-                          {q.questionCode || `Q${index + 1}`}:
-                        </span>{" "}
-                        {q.text}
-                      </div>
-                      <div className="space-x-1">
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          onClick={() =>
-                            handleOpenEditQuestion(
-                              q,
-                              currentEditingTest?.id || ""
-                            )
-                          }
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="text-destructive hover:text-destructive"
-                          onClick={() =>
-                            handleDeleteQuestionFromTest(
-                              q.id,
-                              currentEditingTest?.id || ""
-                            )
-                          }
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
+                      <Upload className="mr-2 h-4 w-4" /> Import Excel
+                    </Button>
+                    <input
+                      type="file"
+                      ref={testExcelImportInputRef}
+                      className="hidden"
+                      accept=".xlsx, .xls"
+                      onChange={handleExcelFileImport}
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        handleOpenAddQuestion(currentEditingTest?.id || "")
+                      }
+                      disabled={!currentEditingTest && !isTestDialogOpen}
+                    >
+                      <PlusCircle className="mr-2 h-4 w-4" /> Thêm câu hỏi
+                    </Button>
+                  </div>
                 </div>
-              ) : (
-                <p className="text-sm text-muted-foreground italic">
-                  Chưa có câu hỏi nào. Hãy thêm thủ công hoặc import từ Excel.
-                </p>
-              )}
+                {(testFormData.questions || []).length > 0 ? (
+                  <>
+                    <div className="space-y-2">
+                      {(testFormData.questions || [])
+                        .slice(
+                          (questionsPage - 1) * questionsPerPage,
+                          questionsPage * questionsPerPage
+                        )
+                        .map((q, index) => {
+                          const actualIndex =
+                            (questionsPage - 1) * questionsPerPage + index;
+                          return (
+                            <div
+                              key={q.id || actualIndex}
+                              className="flex items-start justify-between p-3 border rounded-md bg-muted/20 hover:bg-muted/30 transition-colors"
+                            >
+                                <div className="text-sm flex-1 pr-3">
+                                  <div className="font-medium mb-1">
+                                    {q.questionCode || `Q${actualIndex + 1}`}
+                                  </div>
+                                  <div className="text-muted-foreground mb-2">
+                                    {q.text}
+                                  </div>
+                                  <div className="flex flex-wrap gap-1">
+                                    {q.options.map((option, optIndex) => (
+                                      <span
+                                        key={optIndex}
+                                        className={`text-xs px-2 py-1 rounded ${
+                                          optIndex === q.correctAnswerIndex
+                                            ? "bg-green-100 text-green-700 font-medium"
+                                            : "bg-gray-100 text-gray-600"
+                                        }`}
+                                      >
+                                        {String.fromCharCode(65 + optIndex)}:{" "}
+                                        {option}
+                                      </span>
+                                    ))}
+                                  </div>
+                                </div>
+                                <div className="flex gap-1 flex-shrink-0">
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() =>
+                                      handleOpenEditQuestion(
+                                        q,
+                                        currentEditingTest?.id || ""
+                                      )
+                                    }
+                                  >
+                                    <Edit className="h-4 w-4" />
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    className="text-destructive hover:text-destructive"
+                                    onClick={() =>
+                                      handleDeleteQuestionFromTest(
+                                        q.id || `temp-${actualIndex}`,
+                                        currentEditingTest?.id || ""
+                                      )
+                                    }
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              </div>
+                            );
+                          })}
+                    </div>
+
+                    {/* Pagination cho câu hỏi */}
+                    {(testFormData.questions || []).length >
+                      questionsPerPage && (
+                      <div className="flex items-center justify-between px-2">
+                        <div className="text-sm text-muted-foreground">
+                          Hiển thị{" "}
+                          {Math.min(
+                            (questionsPage - 1) * questionsPerPage + 1,
+                            testFormData.questions.length
+                          )}{" "}
+                          -{" "}
+                          {Math.min(
+                            questionsPage * questionsPerPage,
+                            testFormData.questions.length
+                          )}{" "}
+                          trong tổng số {testFormData.questions.length} câu hỏi
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() =>
+                              setQuestionsPage((p) => Math.max(1, p - 1))
+                            }
+                            disabled={questionsPage === 1}
+                          >
+                            <ChevronLeft className="h-4 w-4 mr-1" />
+                            Trước
+                          </Button>
+                          <span className="text-sm">
+                            Trang {questionsPage} /{" "}
+                            {Math.ceil(
+                              testFormData.questions.length / questionsPerPage
+                            )}
+                          </span>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() =>
+                              setQuestionsPage((p) =>
+                                Math.min(
+                                  Math.ceil(
+                                    testFormData.questions.length /
+                                      questionsPerPage
+                                  ),
+                                  p + 1
+                                )
+                              )
+                            }
+                            disabled={
+                              questionsPage ===
+                              Math.ceil(
+                                testFormData.questions.length / questionsPerPage
+                              )
+                            }
+                          >
+                            Sau
+                            <ChevronRight className="h-4 w-4 ml-1" />
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <p className="text-sm text-muted-foreground italic">
+                    Chưa có câu hỏi nào. Hãy thêm thủ công hoặc import từ Excel.
+                  </p>
+                )}
+              </div>
             </div>
           </div>
           <DialogFooter>
