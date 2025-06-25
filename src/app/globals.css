@@ -35,15 +35,16 @@
 
     --radius: 0.5rem;
 
-    /* Sidebar specific theme for light mode */
-    --sidebar-background: 240 5% 15%; /* Dark Slate Blue/Gray */
-    --sidebar-foreground: 0 0% 95%; /* Light Gray */
-    --sidebar-primary: 16 93% 60%; /* Brighter Orange for active items */
+    /* Sidebar specific theme for light mode - now dark */
+    --sidebar-background: 0 0% 6%; /* Very Dark Gray / Near Black */
+    --sidebar-foreground: 0 0% 90%; /* Light Gray */
+    --sidebar-primary: 16 93% 51%; /* Main Orange for active items */
     --sidebar-primary-foreground: 0 0% 100%; /* White */
-    --sidebar-accent: 240 5% 25%; /* Darker hover/accent for sidebar */
-    --sidebar-accent-foreground: 0 0% 95%; /* Light Gray */
-    --sidebar-border: 240 5% 20%;
+    --sidebar-accent: 217.2 32.6% 17.5%; /* Dark Gray Blue (muted) */
+    --sidebar-accent-foreground: 0 0% 98%; /* Light Gray */
+    --sidebar-border: 217.2 32.6% 17.5%; /* Dark Gray Blue */
     --sidebar-ring: 16 93% 51%; /* Orange */
+
 
     --chart-1: 16 93% 51%; /* Orange */
     --chart-2: 25 85% 60%; /* Lighter Orange */
@@ -83,14 +84,14 @@
     --ring: 16 93% 51%; /* Orange */
 
     /* Sidebar specific theme for dark mode */
-    --sidebar-background: 0 0% 2%; /* Near Black */
+    --sidebar-background: 0 0% 6%; /* Same as main dark background */
     --sidebar-foreground: 0 0% 90%; /* Light Gray */
-    --sidebar-primary: 16 93% 60%; /* Brighter Orange */
+    --sidebar-primary: 16 93% 51%; /* Main Orange for active items */
     --sidebar-primary-foreground: 0 0% 100%; /* White */
-    --sidebar-accent: 0 0% 10%; /* Dark hover */
-    --sidebar-accent-foreground: 0 0% 95%; /* Light Gray */
-    --sidebar-border: 0 0% 8%;
-    --sidebar-ring: 16 93% 51%;
+    --sidebar-accent: 217.2 32.6% 17.5%; /* Dark Gray Blue (muted) */
+    --sidebar-accent-foreground: 0 0% 98%; /* Light Gray */
+    --sidebar-border: 217.2 32.6% 17.5%; /* Dark Gray Blue */
+    --sidebar-ring: 16 93% 51%; /* Orange */
 
     --chart-1: 16 80% 55%;
     --chart-2: 25 85% 60%;
@@ -98,9 +99,7 @@
     --chart-4: 10 75% 50%;
     --chart-5: 20 70% 45%;
   }
-}
 
-@layer base {
   * {
     @apply border-border;
   }
@@ -122,6 +121,24 @@
   .dark select:focus-visible {
     --tw-ring-color: rgb(107 114 128); /* gray-500 */
     border-color: rgb(107 114 128);
+  }
+
+  /* Custom Scrollbar Styles */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background-color: hsl(var(--border));
+    border-radius: 10px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: hsl(var(--muted-foreground) / 0.5);
   }
 }
 

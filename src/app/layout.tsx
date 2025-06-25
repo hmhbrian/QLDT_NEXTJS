@@ -6,6 +6,7 @@ import { Inter } from "next/font/google";
 import { ToastProvider } from "@/providers/toast-provider";
 import { CustomThemeProvider } from "@/providers/theme-provider";
 import { LoadingProvider } from "@/providers/loading-provider";
+import { QueryProvider } from "@/providers/query-provider";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -40,11 +41,13 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <AuthProvider>
-            <LoadingProvider>
-              <ToastProvider>{children}</ToastProvider>
-            </LoadingProvider>
-          </AuthProvider>
+          <QueryProvider>
+            <AuthProvider>
+              <LoadingProvider>
+                <ToastProvider>{children}</ToastProvider>
+              </LoadingProvider>
+            </AuthProvider>
+          </QueryProvider>
         </CustomThemeProvider>
       </body>
     </html>
