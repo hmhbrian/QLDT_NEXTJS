@@ -47,9 +47,21 @@ export function DraggableDepartmentTree({
   }, [departments]);
 
   // Reset trạng thái kéo thả khi departments thay đổi để tránh tham chiếu cũ
+  // Và tự động mở rộng các phòng ban có con để hiển thị đầy đủ cấu trúc
   useEffect(() => {
     setDraggedDeptId(null);
     setDropTarget(null);
+
+    // Tự động mở rộng tất cả phòng ban có con để hiển thị toàn bộ cấu trúc
+    const departmentsWithChildren = departments.filter((dept) =>
+      departments.some((d) => d.parentId === dept.departmentId)
+    );
+
+    if (departmentsWithChildren.length > 0) {
+      setExpandedNodes(
+        new Set(departmentsWithChildren.map((d) => d.departmentId))
+      );
+    }
   }, [departments]);
 
   const toggleExpand = useCallback((id: string) => {
@@ -157,6 +169,26 @@ export function DraggableDepartmentTree({
     onUpdateDepartments(Array.from(updatedDepartmentsMap.values()));
   };
 
+  // Helper function to find department in tree recursively
+  const findDepartmentInTree = useCallback(
+    (
+      tree: (DepartmentInfo & { children?: DepartmentInfo[] })[],
+      targetId: string
+    ): (DepartmentInfo & { children?: DepartmentInfo[] }) | null => {
+      for (const node of tree) {
+        if (node.departmentId === targetId) {
+          return node;
+        }
+        if (node.children) {
+          const found = findDepartmentInTree(node.children, targetId);
+          if (found) return found;
+        }
+      }
+      return null;
+    },
+    []
+  );
+
   const renderDepartmentNode = useCallback(
     (dept: DepartmentInfo, level: number) => {
       const hasChildren = departments.some(
@@ -221,11 +253,10 @@ export function DraggableDepartmentTree({
             </TooltipContent>
           </Tooltip>
           {isExpanded &&
-            departmentTree
-              .find((d) => d.departmentId === dept.departmentId)
-              ?.children?.map((child) =>
-                renderDepartmentNode(child, level + 1)
-              )}
+            findDepartmentInTree(
+              departmentTree,
+              dept.departmentId
+            )?.children?.map((child) => renderDepartmentNode(child, level + 1))}
         </React.Fragment>
       );
     },
@@ -236,6 +267,8 @@ export function DraggableDepartmentTree({
       dropTarget?.id,
       draggedDeptId,
       onSelectDepartment,
+      departmentTree,
+      findDepartmentInTree,
     ]
   );
 
