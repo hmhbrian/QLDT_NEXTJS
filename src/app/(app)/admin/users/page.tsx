@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useMemo } from "react";
@@ -205,7 +204,7 @@ export default function UsersPage() {
   );
 
   const getPositionName = (user: User): string => {
-    if (user.position && typeof user.position === 'object') {
+    if (user.position && typeof user.position === "object") {
       return user.position.positionName;
     }
     return "Chưa có cấp bậc";
@@ -405,7 +404,8 @@ export default function UsersPage() {
   ) => {
     if (!department) return "Chưa có phòng ban";
     if (typeof department === "string") return department;
-    return department.name;
+    // Handle both departmentName and name properties
+    return department.departmentName || department.name || "Không xác định";
   };
 
   const getEmployeeCode = (user: any): string => {
@@ -522,8 +522,7 @@ export default function UsersPage() {
                         {renderDepartment(selectedUser.department)}
                       </p>
                       <p className="text-sm">
-                        <strong>Chức vụ:</strong>{" "}
-                        Chưa có
+                        <strong>Chức vụ:</strong> Chưa có
                       </p>
                       <p className="text-sm">
                         <strong>Cấp bậc:</strong>{" "}
@@ -620,7 +619,7 @@ export default function UsersPage() {
                   onChange={(e) =>
                     setNewUser({ ...newUser, employeeId: e.target.value })
                   }
-                  placeholder="VD: NV001 (để trống để hệ thống tự động tạo)"
+                  placeholder="VD: EMP001 (để trống để hệ thống tự động tạo)"
                 />
                 <Button
                   type="button"

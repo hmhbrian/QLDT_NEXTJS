@@ -304,7 +304,7 @@ export default function DepartmentsPage() {
             name: originalDept.name, // Bao gồm các trường bắt buộc
             code: originalDept.code, // Bao gồm các trường bắt buộc
             description: originalDept.description,
-            status: originalDept.status,
+            status: originalDept.status as "active" | "inactive",
             managerId: originalDept.managerId,
             parentId: dept.parentId || null,
           },
