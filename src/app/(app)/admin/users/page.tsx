@@ -45,6 +45,7 @@ import { DataTable } from "@/components/ui/data-table";
 import { getColumns } from "./columns";
 import { cn } from "@/lib/utils";
 import { extractErrorMessage } from "@/lib/core";
+import { generateEmployeeId } from "@/lib/utils/code-generator";
 import {
   usersService,
   rolesService,
@@ -208,15 +209,6 @@ export default function UsersPage() {
       return user.position.positionName;
     }
     return "Chưa có cấp bậc";
-  };
-
-  const generateEmployeeId = (): string => {
-    const prefix = "EMP";
-    const timestamp = Date.now().toString().slice(-6); // Lấy 6 chữ số cuối của timestamp
-    const random = Math.floor(Math.random() * 100)
-      .toString()
-      .padStart(2, "0"); // 2 chữ số ngẫu nhiên
-    return `${prefix}${timestamp}${random}`;
   };
 
   const handleOpenAddDialog = () => {
@@ -619,7 +611,7 @@ export default function UsersPage() {
                   onChange={(e) =>
                     setNewUser({ ...newUser, employeeId: e.target.value })
                   }
-                  placeholder="VD: EMP001 (để trống để hệ thống tự động tạo)"
+                  placeholder="VD: EMP001"
                 />
                 <Button
                   type="button"

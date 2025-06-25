@@ -46,6 +46,7 @@ import type {
   Question,
   LessonContentType,
 } from "@/lib/types";
+import { generateCourseCode } from "@/lib/utils/code-generator";
 import {
   categoryOptions,
   departmentOptions,
@@ -786,7 +787,6 @@ export function CourseFormDialog({
   const handleSubmit = () => {
     if (
       !formData.title ||
-      !formData.courseCode ||
       !formData.description ||
       !formData.instructor ||
       !formData.category
@@ -794,13 +794,15 @@ export function CourseFormDialog({
       showError("FORM001");
       return;
     }
-    onSave(
-      {
-        ...formData,
-        image: courseImagePreview || formData.image, // Đảm bảo image được cập nhật từ preview nếu có
-      },
-      !!courseToEdit
-    ); // Truyền isEditing flag
+
+    // Tự động tạo mã khóa học nếu chưa có
+    const finalFormData = {
+      ...formData,
+      courseCode: formData.courseCode || generateCourseCode(),
+      image: courseImagePreview || formData.image, // Đảm bảo image được cập nhật từ preview nếu có
+    };
+
+    onSave(finalFormData, !!courseToEdit); // Truyền isEditing flag
     onOpenChange(false); // Đóng dialog
   };
 
@@ -847,15 +849,32 @@ export function CourseFormDialog({
               </div>
               <div>
                 <Label htmlFor="courseCode">
-                  Mã khóa học <span className="text-destructive">*</span>
+                  Mã khóa học
                 </Label>
-                <Input
-                  id="courseCode"
-                  value={formData.courseCode}
-                  onChange={(e) =>
-                    handleInputChange("courseCode", e.target.value)
-                  }
-                />
+                <div className="flex gap-2">
+                  <Input
+                    id="courseCode"
+                    value={formData.courseCode}
+                    onChange={(e) =>
+                      handleInputChange("courseCode", e.target.value)
+                    }
+                    placeholder="VD: CRSE001"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() =>
+                      handleInputChange("courseCode", generateCourseCode())
+                    }
+                    className="whitespace-nowrap"
+                  >
+                    Tạo tự động
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Nếu để trống, hệ thống sẽ tự động tạo mã khóa học
+                </p>
               </div>
               <div>
                 <Label htmlFor="category">

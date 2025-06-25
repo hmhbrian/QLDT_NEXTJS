@@ -29,6 +29,7 @@ import type {
   UpdateDepartmentPayload,
 } from "@/lib/types";
 import { NO_DEPARTMENT_VALUE } from "@/lib/constants";
+import { generateDepartmentCode } from "@/lib/utils/code-generator";
 
 interface DepartmentFormDialogProps {
   isOpen: boolean;
@@ -84,15 +85,22 @@ export function DepartmentFormDialog({
   }, [departmentToEdit, isOpen]);
 
   const handleSubmit = () => {
-    if (!formData.name || !formData.code) {
+    if (!formData.name) {
       toast({
         title: "Lỗi",
-        description: "Vui lòng điền đầy đủ Tên và Mã phòng ban.",
+        description: "Vui lòng điền đầy đủ Tên phòng ban.",
         variant: "destructive",
       });
       return;
     }
-    onSave(formData, !!departmentToEdit, departmentToEdit?.departmentId);
+
+    // Tự động tạo mã phòng ban nếu chưa có
+    const finalFormData = {
+      ...formData,
+      code: formData.code || generateDepartmentCode(),
+    };
+
+    onSave(finalFormData, !!departmentToEdit, departmentToEdit?.departmentId);
   };
 
   return (
@@ -120,14 +128,31 @@ export function DepartmentFormDialog({
             />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="code">Mã phòng ban *</Label>
-            <Input
-              id="code"
-              value={formData.code}
-              onChange={(e) =>
-                setFormData({ ...formData, code: e.target.value })
-              }
-            />
+            <Label htmlFor="code">Mã phòng ban</Label>
+            <div className="flex gap-2">
+              <Input
+                id="code"
+                value={formData.code}
+                onChange={(e) =>
+                  setFormData({ ...formData, code: e.target.value })
+                }
+                placeholder="VD: DEPT001"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() =>
+                  setFormData({ ...formData, code: generateDepartmentCode() })
+                }
+                className="whitespace-nowrap"
+              >
+                Tạo tự động
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Nếu để trống, hệ thống sẽ tự động tạo mã phòng ban
+            </p>
           </div>
           <div className="grid gap-2">
             <Label htmlFor="description">Mô tả</Label>
