@@ -1,4 +1,3 @@
-
 "use client";
 
 import { ColumnDef } from "@tanstack/react-table";
@@ -8,7 +7,7 @@ import {
   Pencil,
   Trash2,
   UserCircle2,
-  BookOpen
+  BookOpen,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -22,7 +21,11 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Checkbox } from "@/components/ui/checkbox";
 import type { User, TraineeLevel } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { getLevelBadgeColor, getStatusColor, getStatusText } from "@/lib/helpers";
+import {
+  getLevelBadgeColor,
+  getStatusColor,
+  getStatusText,
+} from "@/lib/helpers";
 
 export const getColumns = (
   handleViewDetails: (trainee: User) => void,
@@ -69,14 +72,23 @@ export const getColumns = (
     cell: ({ row }) => (
       <div className="flex items-center gap-3">
         <Avatar>
-          <AvatarImage src={row.original.urlAvatar} alt={row.original.fullName || 'User Avatar'} />
+          <AvatarImage
+            src={row.original.urlAvatar}
+            alt={row.original.fullName || "User Avatar"}
+          />
           <AvatarFallback>
-            {(row.original.fullName || '').split(" ").map((n) => n[0]).join("").toUpperCase()}
+            {(row.original.fullName || "")
+              .split(" ")
+              .map((n) => n[0])
+              .join("")
+              .toUpperCase()}
           </AvatarFallback>
         </Avatar>
         <div>
           <div className="font-medium">{row.original.fullName}</div>
-          <div className="text-xs text-muted-foreground">{row.original.employeeId}</div>
+          <div className="text-xs text-muted-foreground">
+            {row.original.employeeId}
+          </div>
         </div>
       </div>
     ),
@@ -87,7 +99,9 @@ export const getColumns = (
     cell: ({ row }) => (
       <div>
         <div className="text-sm">{row.original.email}</div>
-        <div className="text-xs text-muted-foreground">{row.original.phoneNumber}</div>
+        <div className="text-xs text-muted-foreground">
+          {row.original.phoneNumber}
+        </div>
       </div>
     ),
   },
@@ -95,10 +109,12 @@ export const getColumns = (
     accessorKey: "department",
     header: "Phòng ban",
     cell: ({ row }) => {
-        const department = row.original.department;
-        if (!department) return "N/A";
-        return typeof department === 'string' ? department : department.name;
-    }
+      const department = row.original.department;
+      if (!department) return "N/A";
+      if (typeof department === "string") return department;
+      // Handle both departmentName and name properties
+      return department.departmentName || department.name || "Không xác định";
+    },
   },
   {
     accessorKey: "level",
@@ -117,7 +133,10 @@ export const getColumns = (
     accessorKey: "status",
     header: "Trạng thái",
     cell: ({ row }) => (
-      <Badge variant="outline" className={cn(getStatusColor(row.original.status ?? "working"))}>
+      <Badge
+        variant="outline"
+        className={cn(getStatusColor(row.original.status ?? "working"))}
+      >
         {getStatusText(row.original.status ?? "working")}
       </Badge>
     ),
@@ -128,31 +147,31 @@ export const getColumns = (
       const trainee = row.original;
       return (
         <div className="text-right">
-            <DropdownMenu>
+          <DropdownMenu>
             <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="h-8 w-8 p-0">
+              <Button variant="ghost" className="h-8 w-8 p-0">
                 <span className="sr-only">Mở menu</span>
                 <MoreHorizontal className="h-4 w-4" />
-                </Button>
+              </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => handleViewDetails(trainee)}>
+              <DropdownMenuItem onClick={() => handleViewDetails(trainee)}>
                 <UserCircle2 className="mr-2 h-4 w-4" /> Xem Chi tiết
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleEdit(trainee)}>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleEdit(trainee)}>
                 <Pencil className="mr-2 h-4 w-4" /> Sửa Thông tin
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleManageCourses(trainee)}>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleManageCourses(trainee)}>
                 <BookOpen className="mr-2 h-4 w-4" /> Quản lý Khóa học
-                </DropdownMenuItem>
-                <DropdownMenuItem
+              </DropdownMenuItem>
+              <DropdownMenuItem
                 className="text-destructive focus:text-destructive"
                 onClick={() => handleDelete(trainee)}
-                >
+              >
                 <Trash2 className="mr-2 h-4 w-4" /> Xóa Học viên
-                </DropdownMenuItem>
+              </DropdownMenuItem>
             </DropdownMenuContent>
-            </DropdownMenu>
+          </DropdownMenu>
         </div>
       );
     },

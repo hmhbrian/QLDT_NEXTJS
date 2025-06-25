@@ -1,4 +1,3 @@
-
 "use client";
 
 import {
@@ -287,7 +286,8 @@ export default function TraineesPage() {
       );
       return foundDept ? foundDept.name : "Không xác định";
     }
-    return department.name;
+    // Handle both departmentName and name properties
+    return department.departmentName || department.name || "Không xác định";
   };
 
   const getPositionName = (user: User): string => {
