@@ -63,7 +63,7 @@ class CustomHttpClient implements HttpClient {
   }) {
     this.baseURL = config.baseURL;
     this.defaultHeaders = config.headers || {};
-    this.timeout = config.timeout || 30000; // Increased timeout to 30s
+    this.timeout = config.timeout || 30000; // Tăng timeout lên 30s
   }
 
   private async request<T>(
@@ -74,19 +74,19 @@ class CustomHttpClient implements HttpClient {
   ): Promise<HttpResponse<T>> {
     const fullUrl = url.startsWith("http") ? url : `${this.baseURL}${url}`;
 
-    // Merge headers
+    // Gộp headers
     const headers = {
       "Content-Type": "application/json",
       ...this.defaultHeaders,
       ...config?.headers,
     };
 
-    // Add query params
+    // Thêm query params
     const finalUrl = config?.params
       ? `${fullUrl}?${new URLSearchParams(config.params).toString()}`
       : fullUrl;
 
-    // Create AbortController for timeout
+    // Tạo AbortController cho timeout
     const controller = new AbortController();
     const timeoutId = setTimeout(
       () => controller.abort(),
@@ -104,7 +104,7 @@ class CustomHttpClient implements HttpClient {
 
       clearTimeout(timeoutId);
 
-      // Convert headers to plain object
+      // Chuyển đổi headers thành object thuần
       const responseHeaders: Record<string, string> = {};
       response.headers.forEach((value, key) => {
         responseHeaders[key] = value;

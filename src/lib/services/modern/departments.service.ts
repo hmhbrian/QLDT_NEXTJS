@@ -6,7 +6,7 @@ import {
   UpdateDepartmentPayload,
 } from "@/lib/types";
 
-// The raw type from the backend API
+// Kiểu dữ liệu thô từ backend API
 interface RawDepartment {
   departmentId: number;
   departmentName: string;
@@ -16,7 +16,7 @@ interface RawDepartment {
   parentName?: string | null;
   managerId?: string | null;
   managerName?: string | null;
-  status: string; // The API sends a string like "1", "2"
+  status: string; // API gửi chuỗi như "1", "2"
   level: number;
   path: string[];
   createdAt: string;
@@ -47,8 +47,8 @@ export class DepartmentsService extends BaseService<
       parentName: raw.parentName,
       managerId: raw.managerId,
       managerName: raw.managerName,
-      // Based on sample response, status "2" seems to be the active one.
-      // Making a flexible assumption here.
+      // Dựa trên phản hồi mẫu, status "2" có vẻ là trạng thái hoạt động.
+      // Đưa ra giả định linh hoạt ở đây.
       status:
         raw.status === "2" || raw.status?.toLowerCase() === "active"
           ? "active"
@@ -64,16 +64,16 @@ export class DepartmentsService extends BaseService<
   private mapPayloadToApi(
     payload: CreateDepartmentPayload | UpdateDepartmentPayload
   ) {
-    // Maps the frontend-friendly payload to what the API expects.
+    // Ánh xạ payload thân thiện với frontend thành những gì API mong đợi.
     return {
       departmentName: payload.name,
       departmentCode: payload.code,
       description: payload.description,
-      // The API spec shows `status: "string"`.
-      // Based on the sample response, we'll send "2" for active. This might need adjustment.
+      // Đặc tả API hiển thị `status: "string"`.
+      // Dựa trên phản hồi mẫu, chúng ta sẽ gửi "2" cho hoạt động. Có thể cần điều chỉnh.
       status: payload.status === "active" ? "2" : "1",
       managerId: payload.managerId,
-      // API expects parentId as a number or null.
+      // API mong đợi parentId là số hoặc null.
       ParentId: payload.parentId ? parseInt(payload.parentId, 10) : null,
     };
   }
