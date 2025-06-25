@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState, useMemo, useCallback } from "react";
@@ -58,13 +59,11 @@ import {
 import { useCookie } from "@/hooks/use-cookie";
 import { cn } from "@/lib/utils";
 import {
-  categoryOptions,
-  statusOptions as courseStatusOptions,
+  statusOptions,
   EVALUATIONS_COOKIE_KEY,
 } from "@/lib/constants";
 import {
   Course,
-  CourseCategory,
   Lesson,
   CourseMaterial,
   StudentCourseEvaluation,
@@ -75,7 +74,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useUserStore } from "@/stores/user-store";
 import { useCourseStore } from "@/stores/course-store";
 import { StarRatingInput } from "@/components/courses/StarRatingInput";
-import { StarRatingDisplay } from "@/components/courses/StarRatingDisplay";
+import StarRatingDisplay from "@/components/ui/StarRatingDisplay";
+import { getCategoryLabel, isRegistrationOpen } from "@/lib/helpers";
 
 // Dynamic imports với lazy loading để tối ưu performance
 const CourseViewer = dynamic(
@@ -93,20 +93,6 @@ const PdfLessonViewer = dynamic(
     loading: () => <Skeleton className="w-full h-full" />,
   }
 );
-
-// Helper functions được extract ra để tái sử dụng
-const getCategoryLabel = (categoryValue?: CourseCategory) => {
-  if (!categoryValue) return "Chưa xác định";
-  const option = categoryOptions.find((opt) => opt.value === categoryValue);
-  return option ? option.label : categoryValue;
-};
-
-const isRegistrationOpen = (deadline?: string | null): boolean => {
-  if (!deadline) return true;
-  const now = new Date();
-  const deadlineDate = new Date(deadline);
-  return now <= deadlineDate;
-};
 
 const renderLessonIcon = (contentType: Lesson["contentType"]) => {
   const iconMap = {
@@ -549,17 +535,17 @@ export default function CourseDetailPage() {
             <CardContent>
               <Badge
                 variant={
-                  courseStatusOptions.find((s) => s.value === course.status)
+                  statusOptions.find((s) => s.value === course.status)
                     ?.value === "published"
                     ? "default"
-                    : courseStatusOptions.find((s) => s.value === course.status)
+                    : statusOptions.find((s) => s.value === course.status)
                         ?.value === "draft"
                     ? "secondary"
                     : "destructive"
                 }
                 className="text-base"
               >
-                {courseStatusOptions.find((s) => s.value === course.status)
+                {statusOptions.find((s) => s.value === course.status)
                   ?.label || course.status}
               </Badge>
             </CardContent>

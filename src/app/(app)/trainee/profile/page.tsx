@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
@@ -39,7 +40,9 @@ import { useToast } from "@/components/ui/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { useError } from "@/hooks/use-error";
 import { mockUsers } from "@/lib/mock";
-import type { User } from "@/lib/types";
+import type { User, DepartmentInfo, Position } from "@/lib/types";
+import { Checkbox } from "@/components/ui/checkbox";
+import { getLevelBadgeColor, getStatusColor, getStatusText } from "@/lib/helpers";
 
 export default function UserProfilePage() {
   const { user, updateAvatar, changePassword } = useAuth();
@@ -58,6 +61,7 @@ export default function UserProfilePage() {
   );
   const avatarInputRef = useRef<HTMLInputElement>(null);
 
+  const [showPasswordChange, setShowPasswordChange] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmNewPassword, setConfirmNewPassword] = useState("");
@@ -103,6 +107,13 @@ export default function UserProfilePage() {
       <p className="text-center text-muted-foreground">Đang tải hồ sơ...</p>
     );
   }
+  
+  const getPositionName = (user: User): string => {
+    if (user.position && typeof user.position === 'object') {
+      return user.position.positionName;
+    }
+    return "Chưa có";
+  };
 
   const getInitials = (name?: string) => {
     if (!name) return user.email ? user.email[0].toUpperCase() : "?";
@@ -146,7 +157,16 @@ export default function UserProfilePage() {
         avatarUpdated = true;
       }
 
-      if (newPassword) {
+      if (showPasswordChange) {
+        if (!currentPassword || !newPassword || !confirmNewPassword) {
+          toast({
+            title: "Lỗi",
+            description: "Vui lòng điền đầy đủ các trường mật khẩu.",
+            variant: "destructive",
+          });
+          setIsSubmitting(false);
+          return;
+        }
         if (newPassword !== confirmNewPassword) {
           showError("PASSWORD003");
           setIsSubmitting(false);
@@ -154,9 +174,6 @@ export default function UserProfilePage() {
         }
         await changePassword(currentPassword, newPassword);
         passwordChanged = true;
-        setCurrentPassword("");
-        setNewPassword("");
-        setConfirmNewPassword("");
       }
 
       if (avatarUpdated || passwordChanged) {
@@ -167,7 +184,7 @@ export default function UserProfilePage() {
         });
       } else if (
         !avatarFile &&
-        !newPassword &&
+        !showPasswordChange &&
         (dialogFullName !== user.fullName ||
           dialogEmail !== user.email ||
           dialogPhone !== user.phoneNumber)
@@ -203,52 +220,10 @@ export default function UserProfilePage() {
     }
   };
 
-  const getLevelBadgeColor = (level?: string) => {
-    if (!level) return "bg-gray-100 text-gray-800";
-    const colors: Record<string, string> = {
-      beginner: "bg-blue-100 text-blue-800",
-      intermediate: "bg-yellow-100 text-yellow-800",
-      advanced: "bg-green-100 text-green-800",
-      expert: "bg-purple-100 text-purple-800",
-      intern: "bg-blue-100 text-blue-800", // Thực tập sinh
-      probation: "bg-yellow-100 text-yellow-800", // Thử việc
-      employee: "bg-green-100 text-green-800", // Nhân viên
-      middle_manager: "bg-purple-100 text-purple-800", // Quản lý cấp trung
-      senior_manager: "bg-red-100 text-red-800", // Quản lý cấp cao
-    };
-    return colors[level.toLowerCase()] || "bg-gray-100 text-gray-800";
-  };
-
-  const getStatusColor = (status?: string) => {
-    if (!status) return "bg-gray-100 text-gray-800";
-    const colors: Record<string, string> = {
-      working: "bg-green-100 text-green-800",
-      resigned: "bg-red-100 text-red-800",
-      suspended: "bg-yellow-100 text-yellow-800",
-      maternity_leave: "bg-purple-100 text-purple-800",
-      sick_leave: "bg-orange-100 text-orange-800",
-      sabbatical: "bg-blue-100 text-blue-800",
-      terminated: "bg-destructive text-destructive-foreground",
-      active: "bg-green-100 text-green-800", // Hoạt động
-      inactive: "bg-gray-100 text-gray-800", // Không hoạt động
-    };
-    return colors[status.toLowerCase()] || "bg-gray-100 text-gray-800";
-  };
-
-  const getStatusText = (status?: string) => {
-    if (!status) return "Không xác định";
-    const texts: Record<string, string> = {
-      working: "Đang làm việc",
-      resigned: "Đã nghỉ việc",
-      suspended: "Tạm ngưng",
-      maternity_leave: "Nghỉ thai sản",
-      sick_leave: "Nghỉ bệnh",
-      sabbatical: "Nghỉ phép dài hạn",
-      terminated: "Đã cho thôi việc",
-      active: "Đang hoạt động", // Hoạt động
-      inactive: "Không hoạt động", // Không hoạt động
-    };
-    return texts[status.toLowerCase()] || status;
+  const renderDepartment = (department: string | DepartmentInfo | undefined) => {
+    if (!department) return "N/A";
+    if (typeof department === 'string') return department;
+    return department.name;
   };
 
   return (
@@ -295,12 +270,12 @@ export default function UserProfilePage() {
               </CardTitle>
               <CardDescription className="space-x-2">
                 <span>{profileData.email}</span>
-                {profileData.role === "HOCVIEN" && profileData.level && (
+                {profileData.role === "HOCVIEN" && profileData.position && (
                   <Badge
                     variant="outline"
-                    className={getLevelBadgeColor(profileData.level)}
+                    className={getLevelBadgeColor((profileData.position as Position).positionName as any)}
                   >
-                    {profileData.level.replace("_", " ").toUpperCase()}
+                    {getPositionName(profileData)}
                   </Badge>
                 )}
                 <Badge variant="secondary">{profileData.role}</Badge>
@@ -338,17 +313,14 @@ export default function UserProfilePage() {
                       </p>
                       <p className="text-sm">
                         <strong>Phòng ban:</strong>{" "}
-                        {profileData.department || "N/A"}
+                        {renderDepartment(profileData.department)}
                       </p>
-                      <p className="text-sm">
-                        <strong>Chức vụ:</strong>{" "}
-                        {typeof profileData.position === "string"
-                          ? profileData.position
-                          : profileData.position?.positionName || "N/A"}
+                       <p className="text-sm">
+                        <strong>Chức vụ:</strong> Chưa có
                       </p>
                       <p className="text-sm">
                         <strong>Cấp bậc:</strong>{" "}
-                        {profileData.level?.replace("_", " ") || "N/A"}
+                        {getPositionName(profileData)}
                       </p>
                       <p className="text-sm">
                         <strong>Ngày vào công ty:</strong>{" "}
@@ -579,12 +551,12 @@ export default function UserProfilePage() {
           setIsEditing(open);
           if (!open) {
             setAvatarFile(null);
-            // Đặt lại xem trước avatar về cái từ profileData hoặc ngữ cảnh người dùng
             setAvatarPreview(profileData?.urlAvatar || user.urlAvatar || null);
             if (avatarInputRef.current) avatarInputRef.current.value = "";
             setCurrentPassword("");
             setNewPassword("");
             setConfirmNewPassword("");
+            setShowPasswordChange(false);
           }
         }}
       >
@@ -635,42 +607,73 @@ export default function UserProfilePage() {
               </p>
             </div>
             <hr />
-            <h4 className="text-md font-medium flex items-center">
-              <KeyRound className="mr-2 h-4 w-4 text-muted-foreground" /> Thay
-              đổi mật khẩu
-            </h4>
-            <div className="space-y-2">
-              <Label htmlFor="currentPassword">
-                Mật khẩu hiện tại (Để trống nếu không đổi)
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="change-password-checkbox"
+                checked={showPasswordChange}
+                onCheckedChange={(checked) => {
+                  setShowPasswordChange(checked as boolean);
+                  if (!checked) {
+                    setCurrentPassword("");
+                    setNewPassword("");
+                    setConfirmNewPassword("");
+                  }
+                }}
+              />
+              <Label
+                htmlFor="change-password-checkbox"
+                className="flex items-center cursor-pointer font-medium"
+              >
+                <KeyRound className="mr-2 h-4 w-4 text-muted-foreground" />
+                Thay đổi mật khẩu
               </Label>
-              <Input
-                id="currentPassword"
-                type="password"
-                value={currentPassword}
-                onChange={(e) => setCurrentPassword(e.target.value)}
-                placeholder="Nhập mật khẩu hiện tại"
-              />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="newPassword">Mật khẩu mới</Label>
-              <Input
-                id="newPassword"
-                type="password"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                placeholder="Nhập mật khẩu mới (ít nhất 6 ký tự)"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="confirmNewPassword">Xác nhận mật khẩu mới</Label>
-              <Input
-                id="confirmNewPassword"
-                type="password"
-                value={confirmNewPassword}
-                onChange={(e) => setConfirmNewPassword(e.target.value)}
-                placeholder="Nhập lại mật khẩu mới"
-              />
-            </div>
+
+            {showPasswordChange && (
+              <div className="grid gap-4 pl-6 border-l ml-3 animate-accordion-down">
+                <div className="space-y-2">
+                  <Label htmlFor="currentPassword">
+                    Mật khẩu hiện tại{" "}
+                    <span className="text-destructive">*</span>
+                  </Label>
+                  <Input
+                    id="currentPassword"
+                    type="password"
+                    value={currentPassword}
+                    onChange={(e) => setCurrentPassword(e.target.value)}
+                    placeholder="Nhập mật khẩu hiện tại"
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="newPassword">
+                    Mật khẩu mới <span className="text-destructive">*</span>
+                  </Label>
+                  <Input
+                    id="newPassword"
+                    type="password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="Nhập mật khẩu mới (ít nhất 6 ký tự)"
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="confirmNewPassword">
+                    Xác nhận mật khẩu mới{" "}
+                    <span className="text-destructive">*</span>
+                  </Label>
+                  <Input
+                    id="confirmNewPassword"
+                    type="password"
+                    value={confirmNewPassword}
+                    onChange={(e) => setConfirmNewPassword(e.target.value)}
+                    placeholder="Nhập lại mật khẩu mới"
+                    required
+                  />
+                </div>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button

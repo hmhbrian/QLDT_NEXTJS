@@ -1,0 +1,105 @@
+
+"use client";
+
+import { ColumnDef } from "@tanstack/react-table";
+import { ArrowUpDown } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import type { PublicCourse } from "@/lib/types";
+import { isRegistrationOpen } from "@/lib/helpers";
+
+export const getColumns = (
+  currentUserId: string | undefined,
+  handleEnroll: (courseId: string) => void,
+  handleViewDetails: (courseId: string) => void
+): ColumnDef<PublicCourse>[] => [
+  {
+    id: "select",
+    header: ({ table }) => (
+      <Checkbox
+        checked={
+          table.getIsAllPageRowsSelected()
+            ? true
+            : table.getIsSomePageRowsSelected()
+            ? "indeterminate"
+            : false
+        }
+        onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+        aria-label="Select all"
+      />
+    ),
+    cell: ({ row }) => (
+      <Checkbox
+        checked={row.getIsSelected()}
+        onCheckedChange={(value) => row.toggleSelected(!!value)}
+        aria-label="Select row"
+      />
+    ),
+    enableSorting: false,
+    enableHiding: false,
+  },
+  {
+    accessorKey: "title",
+    header: ({ column }) => (
+      <Button
+        variant="ghost"
+        onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+      >
+        Tên khóa học
+        <ArrowUpDown className="ml-2 h-4 w-4" />
+      </Button>
+    ),
+    cell: ({ row }) => <div className="font-medium">{row.original.title}</div>,
+  },
+  {
+    accessorKey: "category",
+    header: "Danh mục",
+  },
+  {
+    accessorKey: "instructor",
+    header: "Giảng viên",
+  },
+  {
+    accessorKey: "duration",
+    header: "Thời lượng",
+  },
+  {
+    accessorKey: "enrollmentType",
+    header: "Loại",
+    cell: ({ row }) => (
+      <Badge
+        variant={
+          row.original.enrollmentType === "mandatory" ? "default" : "secondary"
+        }
+      >
+        {row.original.enrollmentType === "mandatory" ? "Bắt buộc" : "Tùy chọn"}
+      </Badge>
+    ),
+  },
+  {
+    id: "actions",
+    header: "Hành động",
+    cell: ({ row }) => {
+      const course = row.original;
+      const canEnroll =
+        currentUserId &&
+        course.enrollmentType === "optional" &&
+        !course.enrolledTrainees?.includes(currentUserId);
+
+      return canEnroll && isRegistrationOpen(course.registrationDeadline) ? (
+        <Button size="sm" onClick={() => handleEnroll(course.id)}>
+          Đăng ký
+        </Button>
+      ) : (
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => handleViewDetails(course.id)}
+        >
+          Xem chi tiết
+        </Button>
+      );
+    },
+  },
+];
