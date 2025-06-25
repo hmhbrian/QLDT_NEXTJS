@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 export function middleware(request: NextRequest) {
-  // Handle CORS preflight requests
+  // Xử lý các yêu cầu preflight CORS
   if (request.method === "OPTIONS") {
     const response = new NextResponse(null, { status: 200 });
 
@@ -20,7 +20,7 @@ export function middleware(request: NextRequest) {
     return response;
   }
 
-  // Add CORS headers to all API responses
+  // Thêm headers CORS cho tất cả phản hồi API
   if (request.nextUrl.pathname.startsWith("/api")) {
     const response = NextResponse.next();
 
