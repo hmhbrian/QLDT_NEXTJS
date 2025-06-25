@@ -961,16 +961,50 @@ export function CourseFormDialog({
               <div>
                 <Label htmlFor="startDate">Ngày bắt đầu</Label>
                 <DatePicker
-                  date={formData.startDate ? new Date(formData.startDate) : undefined}
-                  setDate={(date) => handleInputChange("startDate", date ? date.toISOString().split('T')[0] : null)}
+                  date={
+                    formData.startDate
+                      ? new Date(formData.startDate)
+                      : undefined
+                  }
+                  setDate={(date) => {
+                    if (date) {
+                      // Sử dụng local date thay vì UTC để tránh lỗi múi giờ
+                      const year = date.getFullYear();
+                      const month = String(date.getMonth() + 1).padStart(
+                        2,
+                        "0"
+                      );
+                      const day = String(date.getDate()).padStart(2, "0");
+                      const localDateString = `${year}-${month}-${day}`;
+                      handleInputChange("startDate", localDateString);
+                    } else {
+                      handleInputChange("startDate", null);
+                    }
+                  }}
                   placeholder="Chọn ngày bắt đầu"
                 />
               </div>
               <div>
                 <Label htmlFor="endDate">Ngày kết thúc</Label>
                 <DatePicker
-                  date={formData.endDate ? new Date(formData.endDate) : undefined}
-                  setDate={(date) => handleInputChange("endDate", date ? date.toISOString().split('T')[0] : null)}
+                  date={
+                    formData.endDate ? new Date(formData.endDate) : undefined
+                  }
+                  setDate={(date) => {
+                    if (date) {
+                      // Sử dụng local date thay vì UTC để tránh lỗi múi giờ
+                      const year = date.getFullYear();
+                      const month = String(date.getMonth() + 1).padStart(
+                        2,
+                        "0"
+                      );
+                      const day = String(date.getDate()).padStart(2, "0");
+                      const localDateString = `${year}-${month}-${day}`;
+                      handleInputChange("endDate", localDateString);
+                    } else {
+                      handleInputChange("endDate", null);
+                    }
+                  }}
                   placeholder="Chọn ngày kết thúc"
                 />
               </div>
@@ -1139,13 +1173,29 @@ export function CourseFormDialog({
                       Hạn chót đăng ký
                     </Label>
                     <DatePicker
-                      date={formData.registrationDeadline ? new Date(formData.registrationDeadline) : undefined}
-                      setDate={(date) =>
-                        handleInputChange(
-                          "registrationDeadline",
-                          date ? date.toISOString().split("T")[0] : null
-                        )
+                      date={
+                        formData.registrationDeadline
+                          ? new Date(formData.registrationDeadline)
+                          : undefined
                       }
+                      setDate={(date) => {
+                        if (date) {
+                          // Sử dụng local date thay vì UTC để tránh lỗi múi giờ
+                          const year = date.getFullYear();
+                          const month = String(date.getMonth() + 1).padStart(
+                            2,
+                            "0"
+                          );
+                          const day = String(date.getDate()).padStart(2, "0");
+                          const localDateString = `${year}-${month}-${day}`;
+                          handleInputChange(
+                            "registrationDeadline",
+                            localDateString
+                          );
+                        } else {
+                          handleInputChange("registrationDeadline", null);
+                        }
+                      }}
                       placeholder="Chọn hạn đăng ký"
                     />
                   </div>
