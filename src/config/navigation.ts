@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 
 export const navigationItems: NavItem[] = [
-  // General items visible to all roles
+  // Các mục chung hiển thị cho tất cả vai trò
   {
     label: "Bảng điều khiển",
     href: "/dashboard",
@@ -28,7 +28,7 @@ export const navigationItems: NavItem[] = [
     roles: ["ADMIN", "HR", "HOCVIEN"],
   },
 
-  // Trainee-specific items
+  // Các mục dành riêng cho học viên
   {
     label: "Khóa học của tôi",
     href: "/trainee/my-courses",
@@ -36,7 +36,7 @@ export const navigationItems: NavItem[] = [
     roles: ["HOCVIEN"],
   },
 
-  // Management group for Admin and HR
+  // Nhóm quản lý cho Admin và HR
   {
     label: "Quản lý",
     icon: Settings,
@@ -68,8 +68,8 @@ export const navigationItems: NavItem[] = [
       },
     ],
   },
-  
-  // Reports group for Admin and HR
+
+  // Nhóm báo cáo cho Admin và HR
   {
     label: "Báo cáo & Thống kê",
     icon: AreaChart,
@@ -89,8 +89,8 @@ export const navigationItems: NavItem[] = [
       },
     ],
   },
-  
-  // Disabled item
+
+  // Mục bị vô hiệu hóa
   {
     label: "Kế hoạch Đào tạo",
     href: "/training-plans",
