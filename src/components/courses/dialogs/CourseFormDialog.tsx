@@ -34,6 +34,7 @@ import {
   ListChecks,
 } from "lucide-react";
 import NextImage from "next/image";
+import { DatePicker } from "@/components/ui/datepicker";
 import type {
   Course,
   TraineeLevel,
@@ -959,24 +960,18 @@ export function CourseFormDialog({
               </div>
               <div>
                 <Label htmlFor="startDate">Ngày bắt đầu</Label>
-                <Input
-                  id="startDate"
-                  type="date"
-                  value={formData.startDate || ""}
-                  onChange={(e) =>
-                    handleInputChange("startDate", e.target.value || null)
-                  }
+                <DatePicker
+                  date={formData.startDate ? new Date(formData.startDate) : undefined}
+                  setDate={(date) => handleInputChange("startDate", date ? date.toISOString().split('T')[0] : null)}
+                  placeholder="Chọn ngày bắt đầu"
                 />
               </div>
               <div>
                 <Label htmlFor="endDate">Ngày kết thúc</Label>
-                <Input
-                  id="endDate"
-                  type="date"
-                  value={formData.endDate || ""}
-                  onChange={(e) =>
-                    handleInputChange("endDate", e.target.value || null)
-                  }
+                <DatePicker
+                  date={formData.endDate ? new Date(formData.endDate) : undefined}
+                  setDate={(date) => handleInputChange("endDate", date ? date.toISOString().split('T')[0] : null)}
+                  placeholder="Chọn ngày kết thúc"
                 />
               </div>
               <div className="md:col-span-2">
@@ -1143,16 +1138,15 @@ export function CourseFormDialog({
                     <Label htmlFor="registrationDeadline">
                       Hạn chót đăng ký
                     </Label>
-                    <Input
-                      id="registrationDeadline"
-                      type="date"
-                      value={formData.registrationDeadline || ""}
-                      onChange={(e) =>
+                    <DatePicker
+                      date={formData.registrationDeadline ? new Date(formData.registrationDeadline) : undefined}
+                      setDate={(date) =>
                         handleInputChange(
                           "registrationDeadline",
-                          e.target.value || null
+                          date ? date.toISOString().split("T")[0] : null
                         )
                       }
+                      placeholder="Chọn hạn đăng ký"
                     />
                   </div>
                 )}

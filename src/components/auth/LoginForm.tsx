@@ -1,10 +1,11 @@
+
 "use client";
 
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Eye, EyeOff, Loader2 } from "lucide-react";
+import { Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -36,8 +37,8 @@ export function LoginForm() {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      email: "admin@becamex.com",
-      password: "123123",
+      email: "",
+      password: "",
     },
   });
 
@@ -46,7 +47,7 @@ export function LoginForm() {
 
     try {
       setIsLoading(true);
-      await login(values.email, values.password);
+      await login({ email: values.email, password: values.password }); // Pass the whole values object
     } catch (error) {
       showError("AUTH001");
     } finally {

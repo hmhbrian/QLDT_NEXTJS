@@ -17,18 +17,17 @@ import {
   TabsTrigger,
 } from "@/components/ui";
 
-import apiServices, { departmentsService } from "@/lib/services";
-import { DepartmentInfo } from "@/lib/types";
+import { services, departmentsService, type ServiceDepartment } from "@/lib";
 
 const ExampleComponent = () => {
-  const [departments, setDepartments] = React.useState<DepartmentInfo[]>([]);
+  const [departments, setDepartments] = React.useState<ServiceDepartment[]>([]);
+  const [loading, setLoading] = React.useState(false);
 
   React.useEffect(() => {
     const fetchDepartments = async () => {
       try {
-        const departmentsTree =
-          await departmentsService.getDepartmentsTree();
-        setDepartments(departmentsTree);
+        const departmentsData = await departmentsService.getDepartments();
+        setDepartments(departmentsData);
       } catch (error) {
         console.error("Failed to fetch departments", error);
       }
@@ -56,7 +55,10 @@ const ExampleComponent = () => {
 
               <div className="mt-4">
                 {departments.map((dept) => (
-                  <div key={dept.id} className="p-2 border rounded mb-2">
+                  <div
+                    key={dept.departmentId}
+                    className="p-2 border rounded mb-2"
+                  >
                     {dept.name}
                   </div>
                 ))}
