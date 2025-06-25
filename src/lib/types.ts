@@ -220,16 +220,18 @@ export interface Evaluation {
 // Frontend model for a department
 export interface DepartmentInfo {
   departmentId: string;
-  name: string;
-  code: string;
+  name?: string; // Keep for backward compatibility
+  departmentName?: string; // Actual field from API
+  code?: string;
+  departmentCode?: string; // Actual field from API
   description?: string;
   parentId?: string | null;
   parentName?: string | null;
   managerId?: string | null;
   managerName?: string | null;
-  status: "active" | "inactive";
+  status: string; // Changed to string to match API response
   level: number;
-  path: string[];
+  path?: string[] | null;
   createdAt: string;
   updatedAt: string;
   children?: DepartmentInfo[];
@@ -245,7 +247,6 @@ export interface CreateDepartmentPayload {
 }
 
 export type UpdateDepartmentPayload = Partial<CreateDepartmentPayload>;
-
 
 // Alias for service-specific types for consistency
 export type ServiceDepartment = DepartmentInfo;

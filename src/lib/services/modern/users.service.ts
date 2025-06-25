@@ -24,11 +24,18 @@ export class UsersService extends BaseService<
   }
 
   async getUsers(params?: QueryParams): Promise<User[]> {
+    // If there's a search term, use the search endpoint
+    if (params?.search) {
+      const searchResult = await this.searchUsers(params.search);
+      return Array.isArray(searchResult) ? searchResult : [];
+    }
+
     const response = await this.get<ApiResponse<PaginatedResponse<User>>>(
       this.endpoint,
       { params }
     );
-    return this.extractItems(response) || [];
+    const items = this.extractItems(response);
+    return Array.isArray(items) ? items : [];
   }
 
   async getUserById(id: string): Promise<User> {
@@ -89,9 +96,13 @@ export class UsersService extends BaseService<
   }
 
   async searchUsers(keyword: string): Promise<User[]> {
-    const url = API_CONFIG.endpoints.users.search.replace("{keyword}", keyword);
-    const response = await this.get<ApiResponse<User[]>>(url);
-    return this.extractData(response);
+    const url = API_CONFIG.endpoints.users.search;
+    const response = await this.get<ApiResponse<PaginatedResponse<User>>>(url, {
+      params: { keyword },
+    });
+    const items = this.extractItems(response);
+    // Ensure we always return an array
+    return Array.isArray(items) ? items : [];
   }
 }
 

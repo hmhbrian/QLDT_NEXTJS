@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect } from "react";
@@ -76,7 +75,7 @@ export function DepartmentFormDialog({
         code: departmentToEdit.code,
         description: departmentToEdit.description,
         managerId: departmentToEdit.managerId || "",
-        status: departmentToEdit.status,
+        status: departmentToEdit.status as "active" | "inactive",
         parentId: departmentToEdit.parentId,
       });
     } else {
@@ -115,7 +114,9 @@ export function DepartmentFormDialog({
             <Input
               id="name"
               value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, name: e.target.value })
+              }
             />
           </div>
           <div className="grid gap-2">
@@ -123,7 +124,9 @@ export function DepartmentFormDialog({
             <Input
               id="code"
               value={formData.code}
-              onChange={(e) => setFormData({ ...formData, code: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, code: e.target.value })
+              }
             />
           </div>
           <div className="grid gap-2">
@@ -141,7 +144,10 @@ export function DepartmentFormDialog({
             <Select
               value={formData.managerId || ""}
               onValueChange={(value) =>
-                setFormData({ ...formData, managerId: value === "none" ? "" : value })
+                setFormData({
+                  ...formData,
+                  managerId: value === "none" ? "" : value,
+                })
               }
             >
               <SelectTrigger>
@@ -150,7 +156,9 @@ export function DepartmentFormDialog({
               <SelectContent>
                 <SelectItem value="none">-- Không có --</SelectItem>
                 {isLoadingManagers ? (
-                  <SelectItem value="loading" disabled>Đang tải...</SelectItem>
+                  <SelectItem value="loading" disabled>
+                    Đang tải...
+                  </SelectItem>
                 ) : managers.length > 0 ? (
                   managers.map((manager) => (
                     <SelectItem key={manager.id} value={manager.id}>
@@ -158,7 +166,9 @@ export function DepartmentFormDialog({
                     </SelectItem>
                   ))
                 ) : (
-                  <SelectItem value="no_data" disabled>Không có dữ liệu</SelectItem>
+                  <SelectItem value="no_data" disabled>
+                    Không có dữ liệu
+                  </SelectItem>
                 )}
               </SelectContent>
             </Select>
@@ -168,18 +178,28 @@ export function DepartmentFormDialog({
             <Select
               value={formData.parentId || NO_DEPARTMENT_VALUE}
               onValueChange={(value) =>
-                setFormData({ ...formData, parentId: value === NO_DEPARTMENT_VALUE ? null : value })
+                setFormData({
+                  ...formData,
+                  parentId: value === NO_DEPARTMENT_VALUE ? null : value,
+                })
               }
             >
               <SelectTrigger>
                 <SelectValue placeholder="Chọn phòng ban cha" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value={NO_DEPARTMENT_VALUE}>Không có (Cấp cao nhất)</SelectItem>
+                <SelectItem value={NO_DEPARTMENT_VALUE}>
+                  Không có (Cấp cao nhất)
+                </SelectItem>
                 {existingDepartments
-                  .filter((d) => d.departmentId !== departmentToEdit?.departmentId)
+                  .filter(
+                    (d) => d.departmentId !== departmentToEdit?.departmentId
+                  )
                   .map((dept) => (
-                    <SelectItem key={dept.departmentId} value={dept.departmentId}>
+                    <SelectItem
+                      key={dept.departmentId}
+                      value={dept.departmentId}
+                    >
                       {dept.name}
                     </SelectItem>
                   ))}
