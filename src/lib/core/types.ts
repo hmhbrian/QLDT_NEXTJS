@@ -1,15 +1,17 @@
+
 /**
  * Core API Types
  * Shared types across all API services
  */
 
-// Base API Response structure
+// Base API Response structure from your backend
 export interface ApiResponse<T = unknown> {
   message: string;
-  code: string;
-  data?: T;
+  code?: string; // Optional code from backend
+  data: T;
   statusCode: number;
   errors?: string[];
+  accessToken?: string; // For login response
 }
 
 // Pagination Types
@@ -41,9 +43,7 @@ export interface PaginationParams {
   sortOrder?: "asc" | "desc";
 }
 
-export interface QueryParams extends PaginationParams, FilterParams {
-  [key: string]: unknown;
-}
+export type QueryParams = PaginationParams & FilterParams & { [key: string]: unknown };
 
 // HTTP Request Configuration
 export interface RequestConfig {
@@ -73,7 +73,3 @@ export interface ApiError {
 export type EntityId = string | number;
 
 export type Optional<T, K extends keyof T> = Omit<T, K> & Partial<Pick<T, K>>;
-
-export type CreatePayload<T> = Omit<T, "id" | "createdAt" | "updatedAt">;
-
-export type UpdatePayload<T> = Partial<CreatePayload<T>>;

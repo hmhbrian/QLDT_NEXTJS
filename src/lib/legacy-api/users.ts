@@ -1,3 +1,4 @@
+
 import apiClient from "../api-client";
 import { API_CONFIG } from "./config";
 import type { BaseQueryParam, User, UserCreateDto } from "../types";
@@ -97,7 +98,7 @@ export const fetchUsers = async (
  * @param userId ID của người dùng cần lấy thông tin
  */
 export const getUserById = async (userId: string): Promise<User> => {
-  const url = API_CONFIG.endpoints.users.get.replace("{userId}", userId);
+  const url = `${API_CONFIG.endpoints.users.base}/${userId}`;
   const response = await apiClient.get<UserResponse>(url);
   return response.data.data;
 };

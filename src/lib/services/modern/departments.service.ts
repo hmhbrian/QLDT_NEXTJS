@@ -1,139 +1,132 @@
-/**
- * Modern Departments Service
- * Uses core architecture for clean and consistent API operations
- */
+import { BaseService, ApiResponse, QueryParams } from "../../core";
+import { API_CONFIG } from "@/lib/legacy-api/config";
+import {
+  DepartmentInfo,
+  CreateDepartmentPayload,
+  UpdateDepartmentPayload,
+} from "@/lib/types";
 
-import { 
-  BaseService, 
-  ApiResponse, 
-  PaginatedResponse, 
-  QueryParams,
-  BaseCreatePayload,
-  BaseUpdatePayload
-} from '../../core';
-import type { DepartmentInfo } from '../../types';
+// The raw type from the backend API
+interface RawDepartment {
+  departmentId: number;
+  departmentName: string;
+  departmentCode: string;
+  description?: string;
+  parentId?: number | null;
+  parentName?: string | null;
+  managerId?: string | null;
+  managerName?: string | null;
+  status: string; // The API sends a string like "1", "2"
+  level: number;
+  path: string[];
+  createdAt: string;
+  updatedAt: string;
+  children?: RawDepartment[];
+}
 
-// Specific query params for departments
 export interface DepartmentQueryParams extends QueryParams {
-  parentId?: string | null;
-  hasChildren?: boolean;
-  name?: string;
+  status?: string;
 }
 
-// Create/Update payload types
-export interface CreateDepartmentPayload extends BaseCreatePayload {
-  Name: string;
-  Description?: string;
-  ParentId?: string | null;
-}
-
-export interface UpdateDepartmentPayload extends BaseUpdatePayload {
-  Name?: string;
-  Description?: string;
-  ParentId?: string | null;
-}
-
-// Helper function to convert to backend format
-function toDepartmentQueryParams(params: DepartmentQueryParams): Record<string, any> {
-  return {
-    ...params,
-    ParentId: params.parentId,
-    HasChildren: params.hasChildren,
-    Name: params.name,
-    // Remove frontend properties
-    parentId: undefined,
-    hasChildren: undefined,
-    name: undefined,
-  };
-}
-
-/**
- * Modern Departments Service
- * Provides clean, typed API for departments operations
- */
-export class DepartmentsService extends BaseService<DepartmentInfo> {
+export class DepartmentsService extends BaseService<
+  DepartmentInfo,
+  CreateDepartmentPayload,
+  UpdateDepartmentPayload
+> {
   constructor() {
-    super('/departments');
-  }  /**
-   * Get all departments with optional filtering
-   */
-  async getDepartments(params?: DepartmentQueryParams): Promise<PaginatedResponse<DepartmentInfo>> {
-    const queryParams = params ? toDepartmentQueryParams(params) : undefined;
-    const response = await this.getAll(queryParams);
-    return response.data;
+    super(API_CONFIG.endpoints.departments.base);
   }
 
-  /**
-   * Get department by ID
-   */
+  private mapRawToDepartmentInfo(raw: RawDepartment): DepartmentInfo {
+    return {
+      departmentId: String(raw.departmentId),
+      name: raw.departmentName,
+      code: raw.departmentCode,
+      description: raw.description,
+      parentId: raw.parentId ? String(raw.parentId) : null,
+      parentName: raw.parentName,
+      managerId: raw.managerId,
+      managerName: raw.managerName,
+      // Based on sample response, status "2" seems to be the active one.
+      // Making a flexible assumption here.
+      status:
+        raw.status === "2" || raw.status?.toLowerCase() === "active"
+          ? "active"
+          : "inactive",
+      level: raw.level,
+      path: raw.path,
+      createdAt: raw.createdAt,
+      updatedAt: raw.updatedAt,
+      children: raw.children?.map(this.mapRawToDepartmentInfo.bind(this)),
+    };
+  }
+
+  private mapPayloadToApi(
+    payload: CreateDepartmentPayload | UpdateDepartmentPayload
+  ) {
+    // Maps the frontend-friendly payload to what the API expects.
+    return {
+      departmentName: payload.name,
+      departmentCode: payload.code,
+      description: payload.description,
+      // The API spec shows `status: "string"`.
+      // Based on the sample response, we'll send "2" for active. This might need adjustment.
+      status: payload.status === "active" ? "2" : "1",
+      managerId: payload.managerId,
+      // API expects parentId as a number or null.
+      ParentId: payload.parentId ? parseInt(payload.parentId, 10) : null,
+    };
+  }
+
+  async getDepartments(
+    params?: DepartmentQueryParams
+  ): Promise<DepartmentInfo[]> {
+    const response = await this.get<ApiResponse<RawDepartment[]>>(
+      this.endpoint,
+      { params }
+    );
+    const rawData = this.extractData(response) || [];
+    return rawData.map(this.mapRawToDepartmentInfo.bind(this));
+  }
+
   async getDepartmentById(id: string): Promise<DepartmentInfo> {
-    const response = await this.getById(id);
-    return response.data;
-  }
-
-  /**
-   * Create new department
-   */
-  async createDepartment(payload: CreateDepartmentPayload): Promise<DepartmentInfo> {
-    const response = await this.create(payload);
-    return response.data;
-  }
-
-  /**
-   * Update department
-   */
-  async updateDepartment(id: string, payload: UpdateDepartmentPayload): Promise<DepartmentInfo> {
-    const response = await this.update(id, payload);
-    return response.data;
-  }
-
-  /**
-   * Delete department
-   */
-  async deleteDepartment(id: string): Promise<void> {
-    await this.delete(id);
-  }
-
-  /**
-   * Move a department (change parent)
-   */
-  async moveDepartment(id: string, newParentId: string | null): Promise<DepartmentInfo> {
-    const response = await this.patch<ApiResponse<DepartmentInfo>>(`${id}/move`, {
-      ParentId: newParentId,
-    });
-    return response.data;
-  }
-
-  /**
-   * Check if a department name is available
-   */
-  async checkNameAvailability(name: string, excludeId?: string): Promise<boolean> {
-    const params = new URLSearchParams({ name });
-    if (excludeId) {
-      params.append('excludeId', excludeId);
+    const response = await this.get<ApiResponse<RawDepartment>>(
+      `${this.endpoint}/${id}`
+    );
+    const rawData = this.extractData(response);
+    if (!rawData) {
+      throw new Error(`Department with ID ${id} not found.`);
     }
-    const response = await this.get<ApiResponse<{ available: boolean }>>(`/check-name?${params.toString()}`);
-    return response.data.available;
+    return this.mapRawToDepartmentInfo(rawData);
   }
 
-  /**
-   * Get departments structure as a tree
-   */
-  async getDepartmentsTree(): Promise<DepartmentInfo[]> {
-    const response = await this.get<ApiResponse<DepartmentInfo[]>>('/tree');
-    return response.data;
+  async createDepartment(
+    payload: CreateDepartmentPayload
+  ): Promise<DepartmentInfo> {
+    const apiPayload = this.mapPayloadToApi(payload);
+    const response = await this.post<ApiResponse<RawDepartment>>(
+      this.endpoint,
+      apiPayload
+    );
+    return this.mapRawToDepartmentInfo(this.extractData(response));
   }
 
-  /**
-   * Get department's children
-   */
-  async getDepartmentChildren(id: string, recursive: boolean = false): Promise<DepartmentInfo[]> {
-    const params = new URLSearchParams({ recursive: recursive.toString() });
-    const response = await this.get<ApiResponse<DepartmentInfo[]>>(`${id}/children?${params.toString()}`);
-    return response.data;
+  async updateDepartment(
+    id: string,
+    payload: UpdateDepartmentPayload
+  ): Promise<DepartmentInfo> {
+    const apiPayload = this.mapPayloadToApi(payload);
+    const response = await this.put<ApiResponse<RawDepartment>>(
+      `${this.endpoint}/${id}`,
+      apiPayload
+    );
+    return this.mapRawToDepartmentInfo(this.extractData(response));
+  }
+
+  async deleteDepartment(id: string): Promise<void> {
+    await this.remove(id);
   }
 }
 
-// Export singleton instance
 export const departmentsService = new DepartmentsService();
 export default departmentsService;

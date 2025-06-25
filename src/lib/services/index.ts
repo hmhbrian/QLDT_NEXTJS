@@ -1,19 +1,31 @@
+
 /**
  * Modern Services Index
  * Central export point for all modern API services using core architecture
  */
 
-// Export core services
-export * from "../core";
+// Export all modern services individually
+export * from './modern/auth.service';
+export * from './modern/departments.service';
+export * from './modern/positions.service';
+export * from './modern/roles.service';
+export * from './modern/users.service';
 
-// Export all modern services
-export * from "./modern";
+// Import services to create a single `services` object
+import { authService } from './modern/auth.service';
+import { departmentsService } from './modern/departments.service';
+import { positionsService } from './modern/positions.service';
+import { rolesService } from './modern/roles.service';
+import { usersService } from './modern/users.service';
 
-// Import core service factory
-import { createService } from "../core/service-factory";
+// Export a single object containing all services for convenience
+export const services = {
+    auth: authService,
+    departments: departmentsService,
+    positions: positionsService,
+    roles: rolesService,
+    users: usersService,
+};
 
-// Re-export core service factory for convenience
-export { createService };
-
-// Default export for backward compatibility
-export default { createService };
+// Default export for backward compatibility or alternative import style
+export default services;

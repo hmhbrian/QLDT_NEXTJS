@@ -1,3 +1,4 @@
+
 /**
  * Core Library Index
  * Central export point for all core functionality
@@ -23,6 +24,4 @@ export type {
   FilterParams,
   PaginationParams,
   EntityId,
-  CreatePayload,
-  UpdatePayload,
 } from "./types";

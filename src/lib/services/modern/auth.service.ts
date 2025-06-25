@@ -1,95 +1,48 @@
-/**
- * Modern Auth Service
- * Uses core architecture for clean and consistent authentication operations
- */
+import { BaseService, ApiResponse, BaseCreatePayload } from "../../core";
+import type { User, LoginDTO } from "../../types";
+import { API_CONFIG } from "@/lib/legacy-api/config";
 
-import { 
-  BaseService, 
-  ApiResponse,
-  BaseCreatePayload,
-  BaseUpdatePayload
-} from '../../core';
-import type { User } from '../../types';
-
-// Auth specific types
-export interface LoginCredentials {
-  email: string;
-  password: string;
-}
-
-export interface LoginResponse {
-  message: string;
-  statusCode: number;
-  code: string;
-  data: User;
-  accessToken: string;
-}
+export interface LoginResponse extends ApiResponse<User> {}
 
 export interface ChangePasswordPayload extends BaseCreatePayload {
-  currentPassword: string;
+  oldPassword: string;
   newPassword: string;
-  confirmPassword: string;
+  confirmNewPassword: string;
 }
 
-export interface RefreshTokenResponse {
-  accessToken: string;
-  user: User;
-}
-
-/**
- * Modern Auth Service
- * Provides clean, typed API for authentication operations
- */
 export class AuthService extends BaseService<User> {
   constructor() {
-    super('/auth');
+    super(API_CONFIG.endpoints.auth.login); // Endpoint isn't really used for this service
   }
 
-  /**
-   * Login user
-   */
-  async login(credentials: LoginCredentials): Promise<LoginResponse> {
-    const response = await this.post<LoginResponse>('/Users/login', credentials);
+  async login(credentials: LoginDTO): Promise<LoginResponse> {
+    const response = await this.post<LoginResponse>(
+      API_CONFIG.endpoints.auth.login,
+      credentials
+    );
     return response;
   }
 
-  /**
-   * Logout user
-   */
   async logout(): Promise<void> {
-    await this.post<void>('/Account/logout');
-    localStorage.clear();
+    // Optional: Call logout endpoint if it exists
+    // await this.post<void>('/Account/logout');
   }
 
-  /**
-   * Change password
-   */
   async changePassword(payload: ChangePasswordPayload): Promise<void> {
-    await this.post<void>('/Users/change-password', payload);
+    // For change password, we don't need to extract data, just ensure the request succeeds
+    await this.post<any>(API_CONFIG.endpoints.auth.changePassword, payload);
   }
 
-  /**
-   * Refresh token
-   */
-  async refreshToken(): Promise<RefreshTokenResponse> {
-    const response = await this.post<RefreshTokenResponse>('/Account/refresh');
-    return response;
-  }
-
-  /**
-   * Get current user profile
-   */
   async getCurrentUser(): Promise<User> {
-    const response = await this.get<ApiResponse<User>>('/Account/me');
-    return response.data;
+    const response = await this.get<ApiResponse<User>>(
+      API_CONFIG.endpoints.auth.me
+    );
+    return this.extractData(response);
   }
 
-  /**
-   * Validate token
-   */
   async validateToken(): Promise<boolean> {
     try {
-      await this.get<void>('/Account/validate');
+      await this.get<void>(API_CONFIG.endpoints.auth.validate);
       return true;
     } catch {
       return false;
@@ -97,6 +50,5 @@ export class AuthService extends BaseService<User> {
   }
 }
 
-// Export singleton instance
 export const authService = new AuthService();
 export default authService;

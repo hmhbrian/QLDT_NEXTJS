@@ -1,97 +1,62 @@
-/**
- * Modern Positions Service
- * Uses core architecture for clean and consistent API operations
- */
 
-import { 
-  BaseService, 
-  ApiResponse, 
-  PaginatedResponse, 
-  QueryParams,
-  BaseCreatePayload,
-  BaseUpdatePayload
-} from '../../core';
+import { BaseService, ApiResponse, QueryParams } from "../../core";
+import { API_CONFIG } from "@/lib/legacy-api/config";
+import type { Position } from "@/lib/types";
 
-// Position entity type (import from main types)
-export interface Position {
-  positionId: number;
+export interface CreatePositionPayload {
   positionName: string;
 }
 
-// Specific query params for positions
+export interface UpdatePositionPayload {
+  positionName?: string;
+}
+
 export interface PositionQueryParams extends QueryParams {
   name?: string;
 }
 
-// Create/Update payload types
-export interface CreatePositionPayload extends BaseCreatePayload {
-  positionName: string;
-}
-
-export interface UpdatePositionPayload extends BaseUpdatePayload {
-  positionName?: string;
-}
-
-// Helper function to convert to backend format
-function toPositionQueryParams(params: PositionQueryParams): Record<string, any> {
-  return {
-    ...params,
-    PositionName: params.name,
-    // Remove frontend properties
-    name: undefined,
-  };
-}
-
-/**
- * Modern Positions Service
- * Provides clean, typed API for positions operations
- */
-export class PositionsService extends BaseService<Position> {
+export class PositionsService extends BaseService<
+  Position,
+  CreatePositionPayload,
+  UpdatePositionPayload
+> {
   constructor() {
-    super('/Positions');
+    super(API_CONFIG.endpoints.positions.base);
   }
 
-  /**
-   * Get all positions
-   */
   async getPositions(params?: PositionQueryParams): Promise<Position[]> {
-    const queryParams = params ? toPositionQueryParams(params) : undefined;
-    const response = await this.get<ApiResponse<Position[]>>(this.endpoint + (queryParams ? this.buildQueryString(queryParams) : ''));
-    return response.data;
+    const response = await this.get<ApiResponse<Position[]>>(this.endpoint, {
+      params,
+    });
+    return this.extractData(response) || [];
   }
 
-  /**
-   * Get position by ID
-   */
-  async getPositionById(id: number): Promise<Position> {
-    const response = await this.get<ApiResponse<Position>>(`${this.endpoint}/${id}`);
-    return response.data;
+  async getPositionById(id: string | number): Promise<Position> {
+    const response = await super.getById(String(id));
+    const data = this.extractData(response);
+    if (!data) {
+      throw new Error(`Position with ID ${id} not found.`);
+    }
+    return data;
   }
 
-  /**
-   * Create new position
-   */
   async createPosition(payload: CreatePositionPayload): Promise<Position> {
     const response = await this.create(payload);
-    return response.data;
+    return this.extractData(response);
   }
 
-  /**
-   * Update position
-   */
-  async updatePosition(id: number, payload: UpdatePositionPayload): Promise<Position> {
-    const response = await this.patch<ApiResponse<Position>>(`${this.endpoint}/${id}`, payload);
-    return response.data;
+  async updatePosition(
+    id: string | number,
+    payload: UpdatePositionPayload
+  ): Promise<Position> {
+    const response = await this.update(String(id), payload);
+    return this.extractData(response);
   }
 
-  /**
-   * Delete position
-   */
-  async deletePosition(id: number): Promise<void> {
-    await this.delete(`${this.endpoint}/${id}`);
+  async deletePosition(id: string | number): Promise<void> {
+    await this.remove(String(id));
   }
 }
 
-// Export singleton instance
 export const positionsService = new PositionsService();
 export default positionsService;

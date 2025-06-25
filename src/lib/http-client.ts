@@ -63,7 +63,7 @@ class CustomHttpClient implements HttpClient {
   }) {
     this.baseURL = config.baseURL;
     this.defaultHeaders = config.headers || {};
-    this.timeout = config.timeout || 5000;
+    this.timeout = config.timeout || 30000; // Increased timeout to 30s
   }
 
   private async request<T>(

@@ -1,25 +1,13 @@
-/**
- * Service Factory
- * Centralized service creation and management
- */
+
 import { BaseService } from "./base-service";
-import {
-  CreatePayload,
-  UpdatePayload,
-  BaseCreatePayload,
-  BaseUpdatePayload,
-} from "./types";
+import { BaseCreatePayload, BaseUpdatePayload } from "./types";
 
-// Service Registry
-const serviceRegistry = new Map<string, BaseService>();
+const serviceRegistry = new Map<string, BaseService<any, any, any>>();
 
-/**
- * Create or get existing service instance
- */
 export function createService<
   TEntity = unknown,
-  TCreatePayload extends BaseCreatePayload = CreatePayload<TEntity>,
-  TUpdatePayload extends BaseUpdatePayload = UpdatePayload<TEntity>
+  TCreatePayload extends BaseCreatePayload = any,
+  TUpdatePayload extends BaseUpdatePayload = any
 >(
   serviceName: string,
   endpoint: string,
@@ -29,7 +17,6 @@ export function createService<
     TUpdatePayload
   >
 ): BaseService<TEntity, TCreatePayload, TUpdatePayload> {
-  // Check if service already exists
   if (serviceRegistry.has(serviceName)) {
     return serviceRegistry.get(serviceName) as BaseService<
       TEntity,
@@ -38,7 +25,6 @@ export function createService<
     >;
   }
 
-  // Create new service instance
   const service = ServiceClass
     ? new ServiceClass(endpoint)
     : new (class extends BaseService<
@@ -47,31 +33,20 @@ export function createService<
         TUpdatePayload
       > {})(endpoint);
 
-  // Register service
   serviceRegistry.set(serviceName, service);
-
   return service;
 }
 
-/**
- * Get existing service
- */
-export function getService<T extends BaseService>(
+export function getService<T extends BaseService<any, any, any>>(
   serviceName: string
 ): T | undefined {
-  return serviceRegistry.get(serviceName) as T;
+  return serviceRegistry.get(serviceName) as T | undefined;
 }
 
-/**
- * List all registered services
- */
 export function listServices(): string[] {
   return Array.from(serviceRegistry.keys());
 }
 
-/**
- * Clear service registry (useful for testing)
- */
 export function clearServiceRegistry(): void {
   serviceRegistry.clear();
 }

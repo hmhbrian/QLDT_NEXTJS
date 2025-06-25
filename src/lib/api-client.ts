@@ -1,3 +1,4 @@
+
 import {
   CustomHttpClient,
   HttpResponse,
@@ -19,7 +20,10 @@ const makeRequest = async <T>(
   data?: any,
   config?: HttpRequestConfig
 ): Promise<HttpResponse<T>> => {
-  const token = localStorage.getItem(API_CONFIG.storage.token);
+  const token =
+    typeof window !== "undefined"
+      ? localStorage.getItem(API_CONFIG.storage.token)
+      : null;
 
   // Skip adding token for login endpoint
   const isLoginEndpoint = url.includes("/login");
@@ -38,8 +42,7 @@ const makeRequest = async <T>(
   if (process.env.NODE_ENV === "development") {
     console.log("API Request:", {
       method: method.toUpperCase(),
-      url,
-      baseURL: API_CONFIG.baseURL,
+      url: `${API_CONFIG.baseURL}${url}`,
       params: config?.params,
       hasTokenInStorage: !!token,
       isLoginEndpoint,
@@ -85,7 +88,7 @@ const makeRequest = async <T>(
     if (process.env.NODE_ENV === "development") {
       console.log("API Response:", {
         method: method.toUpperCase(),
-        url,
+        url: `${API_CONFIG.baseURL}${url}`,
         status: response.status,
         dataKeys:
           typeof response.data === "object"
@@ -98,42 +101,26 @@ const makeRequest = async <T>(
   } catch (error: any) {
     const errorInfo = {
       method: method.toUpperCase(),
-      url,
+      url: `${API_CONFIG.baseURL}${url}`,
       status: error.response?.status,
       statusText: error.response?.statusText,
       message: error.message,
+      responseData: error.response?.data,
     };
 
     console.error("API Error:", errorInfo);
 
     // Handle specific error cases
-    switch (error.response?.status) {
-      case 401:
-        // Unauthorized - clear storage and redirect to login
-        localStorage.removeItem(API_CONFIG.storage.token);
-        localStorage.removeItem(API_CONFIG.storage.user);
-        if (
-          typeof window !== "undefined" &&
-          !window.location.pathname.includes("/login")
-        ) {
-          window.location.href = "/login";
-        }
-        break;
-
-      case 403:
-        // Forbidden - show access denied message
-        console.warn("Access denied to resource");
-        break;
-
-      case 404:
-        // Not found - resource doesn't exist
-        console.warn("Resource not found");
-        break;
-
-      case 500:
-        // Server error
-        console.error("Internal server error");
-        break;
+    if (error.response?.status === 401) {
+      // Unauthorized - clear storage and redirect to login
+      localStorage.removeItem(API_CONFIG.storage.token);
+      localStorage.removeItem(API_CONFIG.storage.user);
+      if (
+        typeof window !== "undefined" &&
+        !window.location.pathname.includes("/login")
+      ) {
+        window.location.href = "/login";
+      }
     }
 
     throw error;
@@ -142,15 +129,12 @@ const makeRequest = async <T>(
 
 // Enhanced API client with typed methods
 const apiClient = {
-  // GET request
   get: <T = any>(
     url: string,
     config?: HttpRequestConfig
   ): Promise<HttpResponse<T>> => {
     return makeRequest<T>("get", url, undefined, config);
   },
-
-  // POST request
   post: <T = any>(
     url: string,
     data?: any,
@@ -158,8 +142,6 @@ const apiClient = {
   ): Promise<HttpResponse<T>> => {
     return makeRequest<T>("post", url, data, config);
   },
-
-  // PUT request
   put: <T = any>(
     url: string,
     data?: any,
@@ -167,8 +149,6 @@ const apiClient = {
   ): Promise<HttpResponse<T>> => {
     return makeRequest<T>("put", url, data, config);
   },
-
-  // PATCH request
   patch: <T = any>(
     url: string,
     data?: any,
@@ -176,32 +156,24 @@ const apiClient = {
   ): Promise<HttpResponse<T>> => {
     return makeRequest<T>("patch", url, data, config);
   },
-
-  // DELETE request
   delete: <T = any>(
     url: string,
     config?: HttpRequestConfig
   ): Promise<HttpResponse<T>> => {
-    return makeRequest<T>("delete", url, config);
+    return makeRequest<T>("delete", url, undefined, config);
   },
-
-  // OPTIONS request
   options: <T = any>(
     url: string,
     config?: HttpRequestConfig
   ): Promise<HttpResponse<T>> => {
-    return makeRequest<T>("options", url, config);
+    return makeRequest<T>("options", url, undefined, config);
   },
-
-  // HEAD request
   head: <T = any>(
     url: string,
     config?: HttpRequestConfig
   ): Promise<HttpResponse<T>> => {
-    return makeRequest<T>("head", url, config);
+    return makeRequest<T>("head", url, undefined, config);
   },
-
-  // Raw HTTP client for advanced use cases
   instance: httpClient,
 };
 
