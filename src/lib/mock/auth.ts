@@ -1,90 +1,28 @@
-// Mock Login Credentials
-export const mockLoginCredentials = {
-  ADMIN: {
-    email: "Admin@becamex.com",
-    password: "123123",
-  },
-  hr: {
-    email: "hr@becamex.com",
-    password: "123123",
-  },
-  HOCVIEN: {
-    email: "HOCVIEN@becamex.com",
-    password: "123123",
-  },
-};
+import type { User } from "../types";
+import { getUserByEmailAndPassword } from "./users";
 
-// Mock Login Response
-export interface LoginResponse {
+export interface MockLoginResponse {
   success: boolean;
   message: string;
-  user?: {
-    id: string;
-    fullName: string;
-    email: string;
-    role: string;
-  };
+  user?: User;
 }
 
-// Mock Login API Function
-export const mockLoginAPI = async (
+export const mockLogin = async (
   email: string,
   password: string
-): Promise<LoginResponse> => {
-  // NO DELAY - Instant response for fast login
-  // await new Promise((resolve) => setTimeout(resolve, 50)); // Removed delay
+): Promise<MockLoginResponse> => {
+  const user = getUserByEmailAndPassword(email, password);
 
-  // Check credentials
-  if (
-    email === mockLoginCredentials.ADMIN.email &&
-    password === mockLoginCredentials.ADMIN.password
-  ) {
+  if (user) {
     return {
       success: true,
-      message: "Đăng nhập thành công",
-      user: {
-        id: "1",
-        fullName: "Quản trị viên",
-        email: mockLoginCredentials.ADMIN.email,
-        role: "ADMIN",
-      },
-    };
-  }
-
-  if (
-    email === mockLoginCredentials.hr.email &&
-    password === mockLoginCredentials.hr.password
-  ) {
-    return {
-      success: true,
-      message: "Đăng nhập thành công",
-      user: {
-        id: "2",
-        fullName: "Quản lý nhân sự",
-        email: mockLoginCredentials.hr.email,
-        role: "HR",
-      },
-    };
-  }
-
-  if (
-    email === mockLoginCredentials.HOCVIEN.email &&
-    password === mockLoginCredentials.HOCVIEN.password
-  ) {
-    return {
-      success: true,
-      message: "Đăng nhập thành công",
-      user: {
-        id: "3",
-        fullName: "Nguyễn Văn A",
-        email: mockLoginCredentials.HOCVIEN.email,
-        role: "HOCVIEN",
-      },
+      message: "Đăng nhập thành công (chế độ offline)",
+      user: user,
     };
   }
 
   return {
     success: false,
-    message: "Email hoặc mật khẩu không chính xác",
+    message: "Email hoặc mật khẩu không chính xác (chế độ offline)",
   };
 };

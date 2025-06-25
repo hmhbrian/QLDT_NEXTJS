@@ -32,7 +32,7 @@ export interface User {
 
   // Trường dành riêng cho Trainee/Nhân viên (tùy chọn)
   employeeId?: string;
-  department?: string | Department; // Mã hoặc tên phòng ban
+  department?: string | DepartmentInfo; // Mã hoặc tên phòng ban
   position?: string | Position; // Có thể là string hoặc Position object
   level?: string; // Cấp bậc - có thể là string từ Positions API
   status?: WorkStatus;
@@ -49,7 +49,7 @@ export interface UserCreateDto {
   email: string;
   fullName: string;
   role: Role;
-  department?: string | Department;
+  department?: string | DepartmentInfo;
   password: string;
   idCard?: string;
   phoneNumber?: string;
@@ -60,7 +60,7 @@ export interface UserUpdateDto {
   email?: string;
   fullName?: string;
   role?: Role;
-  department?: string | Department;
+  department?: string | DepartmentInfo;
   idCard?: string;
   phoneNumber?: string;
   urlAvatar?: string;
@@ -91,6 +91,12 @@ export interface CreateUserRequest {
 
 // Vai trò người dùng
 export type Role = "ADMIN" | "HR" | "HOCVIEN";
+
+export interface ServiceRole {
+  id: string;
+  name: string;
+  description?: string;
+}
 
 // Trạng thái làm việc
 export type WorkStatus =
@@ -211,21 +217,39 @@ export interface Evaluation {
   status: "draft" | "submitted" | "reviewed" | "approved";
 }
 
-// Cấu trúc phòng ban - dùng cho quản lý phòng ban chi tiết
+// Frontend model for a department
 export interface DepartmentInfo {
-  id: string;
+  departmentId: string;
   name: string;
-  code: string; // Trùng với kiểu 'Department' để đơn giản nếu dùng làm khóa ngoại
+  code: string;
   description?: string;
-  parentId?: string;
-  managerId?: string; // ID của trưởng phòng (User ID)
-  managerName?: string; // Tên trưởng phòng (hiển thị)
-  level: number; // Cấp bậc trong hệ thống
-  path: string[]; // Đường dẫn từ gốc, vd: ['Phòng cha', 'Phòng con']
+  parentId?: string | null;
+  parentName?: string | null;
+  managerId?: string | null;
+  managerName?: string | null;
   status: "active" | "inactive";
-  createdAt: string; // Chuỗi ngày ISO
-  updatedAt: string; // Chuỗi ngày ISO
+  level: number;
+  path: string[];
+  createdAt: string;
+  updatedAt: string;
+  children?: DepartmentInfo[];
 }
+
+export interface CreateDepartmentPayload {
+  name: string;
+  code: string;
+  description?: string;
+  status: "active" | "inactive";
+  managerId?: string;
+  parentId?: string | null;
+}
+
+export type UpdateDepartmentPayload = Partial<CreateDepartmentPayload>;
+
+
+// Alias for service-specific types for consistency
+export type ServiceDepartment = DepartmentInfo;
+export type ServicePosition = Position;
 
 // Thông tin học viên đầy đủ
 export interface Trainee {
@@ -280,10 +304,11 @@ export interface LoginDTO {
 // Interface cho navigation
 export interface NavItem {
   label: string;
-  href: string;
+  href?: string; // Optional for group headers
   icon: LucideIcon;
   roles: Role[];
   disabled?: boolean;
+  children?: NavItem[]; // For nested sub-menus
 }
 
 export interface CourseMaterial {

@@ -170,13 +170,12 @@ export const mockHOCVIEN: Trainee = {
 };
 
 export const getUserByEmailAndPassword = (
-  _email: string,
-  _password: string
+  email: string,
+  password: string
 ): User | null => {
-  // Implementation of the function
-  // Tìm user có email và password khớp
+  // Tìm user có email và password khớp, không phân biệt chữ hoa/thường cho email
   const user = mockUsers.find(
-    (user) => user.email === _email && user.password === _password
+    (u) => u.email.toLowerCase() === email.toLowerCase() && u.password === password
   );
   return user || null;
 };

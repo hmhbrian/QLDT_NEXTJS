@@ -1,3 +1,4 @@
+
 import type { Course, TraineeLevel } from "./types";
 
 // Các tùy chọn trạng thái khóa học

@@ -1,17 +1,21 @@
+
+/**
+ * Main Library Index
+ * Central export point for the entire library.
+ */
+
 // Export core API modules
-export * from './core';
+export * from "./core";
 
-// Export modern services 
-export * from './services';
+// Export modern services (all individual services and the 'services' object)
+export * from "./services";
 
-// Export API client
-export { default as apiClient } from './api-client';
+// Export all types
+export * from "./types";
 
-// Export types
-export * from './types';
+// Export general utilities
+export * from "./utils";
+export * from "./helpers";
 
-// Export utils
-export * from './utils';
-
-// Legacy API (for backward compatibility)
-export * from './legacy-api'; 
+// Export legacy API for backward compatibility
+export * from "./legacy-api";
