@@ -9,8 +9,8 @@ export function QueryProvider({ children }: { children: React.ReactNode }) {
       new QueryClient({
         defaultOptions: {
           queries: {
-            // With SSR, we usually want to set some default staleTime
-            // above 0 to avoid refetching immediately on the client
+            // Với SSR, chúng ta thường muốn đặt staleTime mặc định
+            // trên 0 để tránh refetch ngay lập tức trên client
             staleTime: 60 * 1000,
           },
         },
