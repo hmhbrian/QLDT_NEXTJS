@@ -107,56 +107,58 @@ export default function PermissionsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-[300px]">Chức năng</TableHead>
-                <TableHead>Mô tả</TableHead>
-                <TableHead className="w-[100px]">Admin</TableHead>
-                <TableHead className="w-[100px]">HR</TableHead>
-                <TableHead className="w-[100px]">Trainee</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {permissions.map((permission) => (
-                <TableRow key={permission.id}>
-                  <TableCell className="font-medium">
-                    {permission.name}
-                  </TableCell>
-                  <TableCell>{permission.description}</TableCell>
-                  <TableCell>
-                    <Switch
-                      checked={permission.roles.ADMIN}
-                      onCheckedChange={(checked) =>
-                        handlePermissionChange(permission.id, "ADMIN", checked)
-                      }
-                      disabled={permission.id === "1"} // Không cho phép tắt quyền admin cho chức năng quản lý user
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <Switch
-                      checked={permission.roles.HR}
-                      onCheckedChange={(checked) =>
-                        handlePermissionChange(permission.id, "HR", checked)
-                      }
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <Switch
-                      checked={permission.roles.HOCVIEN}
-                      onCheckedChange={(checked) =>
-                        handlePermissionChange(
-                          permission.id,
-                          "HOCVIEN",
-                          checked
-                        )
-                      }
-                    />
-                  </TableCell>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[300px]">Chức năng</TableHead>
+                  <TableHead>Mô tả</TableHead>
+                  <TableHead className="w-[100px]">Admin</TableHead>
+                  <TableHead className="w-[100px]">HR</TableHead>
+                  <TableHead className="w-[100px]">Trainee</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {permissions.map((permission) => (
+                  <TableRow key={permission.id}>
+                    <TableCell className="font-medium whitespace-nowrap">
+                      {permission.name}
+                    </TableCell>
+                    <TableCell>{permission.description}</TableCell>
+                    <TableCell>
+                      <Switch
+                        checked={permission.roles.ADMIN}
+                        onCheckedChange={(checked) =>
+                          handlePermissionChange(permission.id, "ADMIN", checked)
+                        }
+                        disabled={permission.id === "1"} // Không cho phép tắt quyền admin cho chức năng quản lý user
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <Switch
+                        checked={permission.roles.HR}
+                        onCheckedChange={(checked) =>
+                          handlePermissionChange(permission.id, "HR", checked)
+                        }
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <Switch
+                        checked={permission.roles.HOCVIEN}
+                        onCheckedChange={(checked) =>
+                          handlePermissionChange(
+                            permission.id,
+                            "HOCVIEN",
+                            checked
+                          )
+                        }
+                      />
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
 
           <div className="mt-6 flex justify-end">
             <Button onClick={handleSave}>Lưu thay đổi</Button>

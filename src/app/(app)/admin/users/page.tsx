@@ -1,9 +1,8 @@
+
 "use client";
 
-import { useEffect, useState } from "react";
-import { fetchUsers } from "@/lib/legacy-api/users";
-import { usersService, rolesService } from "@/lib/services";
-import type { Role as ServiceRole } from "@/lib/services/modern/roles.service";
+import { useState, useMemo } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Card,
   CardContent,
@@ -13,16 +12,7 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Loading, LoadingButton, Spinner } from "@/components/ui/loading";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
+import { LoadingButton, Spinner } from "@/components/ui/loading";
 import {
   Dialog,
   DialogContent,
@@ -40,121 +30,57 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/hooks/useAuth";
 import { useError } from "@/hooks/use-error";
-import { useDepartments } from "@/hooks/use-departments";
-import { usePositions } from "@/hooks/use-positions";
 import { useDebounce } from "@/hooks/use-debounce";
 import type {
   User,
   Role,
-  WorkStatus,
-  RegisterDTO,
   CreateUserRequest,
+  DepartmentInfo,
+  Position,
+  RegisterDTO,
 } from "@/lib/types";
 import { useToast } from "@/components/ui/use-toast";
-import { API_CONFIG } from "@/lib/legacy-api/config";
-
+import { DataTable } from "@/components/ui/data-table";
+import { getColumns } from "./columns";
+import { cn } from "@/lib/utils";
+import { extractErrorMessage } from "@/lib/core";
+import {
+  usersService,
+  rolesService,
+  departmentsService,
+  positionsService,
+} from "@/lib/services";
 import {
   PlusCircle,
   Search,
-  MoreHorizontal,
   UserCircle2,
-  Pencil,
-  Trash2,
-  Building2,
   Calendar,
   Award,
-  AlertCircle,
+  Eye,
+  EyeOff,
 } from "lucide-react";
-
-const roleBadgeVariant: Record<Role, "default" | "secondary" | "outline"> = {
-  ADMIN: "default",
-  HR: "secondary",
-  HOCVIEN: "outline",
-};
-
-const roleTranslations: Record<Role, string> = {
-  ADMIN: "Quản trị viên",
-  HR: "Nhân sự",
-  HOCVIEN: "Học viên",
-};
-
-// Danh sách cấp bậc được lấy từ Positions API thay vì hardcode
-// const levelOptions = [
-//   { value: "intern", label: "Thực tập" },
-//   { value: "probation", label: "Thử việc" },
-//   { value: "employee", label: "Nhân viên" },
-//   { value: "middle_manager", label: "Quản lý cấp trung" },
-//   { value: "senior_manager", label: "Quản lý cấp cao" },
-// ];
-
-const getLevelBadgeColor = (level: string) => {
-  // Vì level giờ là string từ positions API, ta chỉ dùng color mặc định
-  return "bg-blue-100 text-blue-800";
-};
-
-const getStatusColor = (status: WorkStatus) => {
-  switch (status) {
-    case "working":
-      return "bg-green-100 text-green-800 hover:bg-green-50 transition-colors";
-    case "resigned":
-      return "bg-red-100 text-red-800";
-    case "suspended":
-      return "bg-yellow-100 text-yellow-800";
-    case "maternity_leave":
-      return "bg-purple-100 text-purple-800";
-    case "sick_leave":
-      return "bg-orange-100 text-orange-800";
-    case "sabbatical":
-      return "bg-blue-100 text-blue-800";
-    case "terminated":
-      return "bg-destructive text-destructive-foreground";
-  }
-};
-
-const getStatusText = (status: WorkStatus) => {
-  switch (status) {
-    case "working":
-      return "Đang làm việc";
-    case "resigned":
-      return "Đã nghỉ việc";
-    case "suspended":
-      return "Tạm nghỉ";
-    case "maternity_leave":
-      return "Nghỉ thai sản";
-    case "sick_leave":
-      return "Nghỉ bệnh dài hạn";
-    case "sabbatical":
-      return "Nghỉ phép dài hạn";
-    case "terminated":
-      return "Đã sa thải";
-  }
-};
+import { NO_DEPARTMENT_VALUE } from "@/lib/constants";
 
 export default function UsersPage() {
   const { user: currentUser } = useAuth();
   const { showError } = useError();
   const { toast } = useToast();
-  const { activeDepartments, isLoading: isDepartmentsLoading } =
-    useDepartments();
-  const { positions, loading: isPositionsLoading } = usePositions();
+  const queryClient = useQueryClient();
+
+  // UI State
   const [searchTerm, setSearchTerm] = useState("");
-  const [isAddingUser, setIsAddingUser] = useState(false);
+  const debouncedSearchTerm = useDebounce(searchTerm, 300);
+  const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
-  const [confirmPassword, setConfirmPassword] = useState(""); // Add separate state for confirm password
   const [deletingUser, setDeletingUser] = useState<User | null>(null);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [isViewingUser, setIsViewingUser] = useState(false);
-  const [roles, setRoles] = useState<ServiceRole[]>([]);
-  const [loadingRoles, setLoadingRoles] = useState(false);
-  const [newUser, setNewUser] = useState<RegisterDTO>({
+  const [showPassword, setShowPassword] = useState(false);
+
+  // Form State
+  const initialNewUserState: RegisterDTO = {
     fullName: "",
     idCard: "",
     role: "HOCVIEN",
@@ -163,481 +89,292 @@ export default function UsersPage() {
     password: "",
     confirmPassword: "",
     department: "",
-    position: "", // Chức vụ - free text
-    level: "", // Cấp bậc - sẽ chọn từ positions API (lưu positionId)
+    position: "",
+    level: "",
     status: "working",
-  });
+    employeeId: "", // Thêm field mã nhân viên
+  };
+  const [newUser, setNewUser] = useState<RegisterDTO>(initialNewUserState);
   const [errors, setErrors] = useState<
     Partial<Record<keyof RegisterDTO, string>>
   >({});
-  const [users, setUsers] = useState<User[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [apiError, setApiError] = useState("");
-  const [isSearching, setIsSearching] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
 
-  // Debounce search term để tránh gọi API quá nhiều
-  const debouncedSearchTerm = useDebounce(searchTerm, 100); // Faster search debounce
-
-  // Helper function để lấy position name từ level (positionId)
-  const getPositionNameFromLevel = (level: string | undefined): string => {
-    if (!level || !positions) return "Chưa có cấp bậc";
-
-    // Nếu level là số (positionId), tìm position name
-    const positionId = parseInt(level);
-    if (!isNaN(positionId)) {
-      const position = positions.find((p) => p.positionId === positionId);
-      return position ? position.positionName : level;
-    }
-
-    // Nếu level là string, trả về như cũ
-    return level;
-  };
-
-  const loadUsers = async () => {
-    try {
-      setLoading(true);
-      setApiError("");
-      const res = await fetchUsers({
-        Page: 1,
-        Limit: 20, // Backend chỉ cho phép 1-24
-        SortField: "created.at",
-        SortType: "desc",
-      });
-
-      console.log("API response:", res);
-      // Xử lý response dựa trên cấu trúc backend trả về
-      if (res && res.data && res.data.items) {
-        // Backend trả về: { data: { items: [...], pagination: {...} } }
-        setUsers(Array.isArray(res.data.items) ? res.data.items : []);
-      } else {
-        setUsers([]);
-        setApiError("Không tìm thấy dữ liệu người dùng");
-      }
-    } catch (err: any) {
-      console.error("Error loading users:", err);
-      setApiError(
-        err.message || "Lỗi kết nối đến máy chủ. Vui lòng thử lại sau."
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const loadRoles = async () => {
-    if (!API_CONFIG.useApi) return;
-
-    try {
-      setLoadingRoles(true);
-      const response = await rolesService.getRoles();
-      console.log("Loaded roles data:", response); // Debug roles data
-      if (response && Array.isArray(response)) {
-        console.log("Available roles:", response); // Debug roles
-        setRoles(response);
-      }
-    } catch (error) {
-      console.error("Error loading roles:", error);
-      toast({
-        title: "Lỗi",
-        description: "Không thể tải danh sách vai trò từ server.",
-        variant: "destructive",
-      });
-    } finally {
-      setLoadingRoles(false);
-    }
-  };
-
-  useEffect(() => {
-    loadUsers();
-    loadRoles();
-  }, []);
-
-  // Effect để handle search
-  useEffect(() => {
-    const handleSearch = async () => {
-      if (!debouncedSearchTerm.trim()) {
-        // Nếu không có search term, load lại toàn bộ users
-        loadUsers();
-        return;
-      }
-
-      try {
-        setIsSearching(true);
-        setApiError("");
-
-        if (API_CONFIG.useApi) {
-          const response = await usersService.searchUsers(debouncedSearchTerm); // Modern service trả về User[] trực tiếp
-          if (response && Array.isArray(response)) {
-            setUsers(response);
-          } else {
-            setUsers([]);
-          }
-        } else {
-          // Fallback to client-side filtering khi API tắt
-          const allUsers = await fetchUsers({
-            Page: 1,
-            Limit: 20,
-            SortField: "created.at",
-            SortType: "desc",
-          });
-
-          if (allUsers?.data?.items) {
-            const filtered = allUsers.data.items.filter(
-              (user: User) =>
-                (user.fullName || "")
-                  .toLowerCase()
-                  .includes(debouncedSearchTerm.toLowerCase()) ||
-                (user.email || "")
-                  .toLowerCase()
-                  .includes(debouncedSearchTerm.toLowerCase()) ||
-                (user.employeeId || "")
-                  .toLowerCase()
-                  .includes(debouncedSearchTerm.toLowerCase())
-            );
-            setUsers(filtered);
-          }
-        }
-      } catch (error: any) {
-        console.error("Error searching users:", error);
-        setApiError(error.message || "Lỗi khi tìm kiếm người dùng");
-      } finally {
-        setIsSearching(false);
-      }
-    };
-
-    handleSearch();
-  }, [debouncedSearchTerm]);
-
-  // Sắp xếp users với user hiện tại lên đầu (không mutate original array)
-  const sortedUsers = [...users].sort((a, b) => {
-    // Đưa user hiện tại lên đầu danh sách
-    if (a.email === currentUser?.email) return -1;
-    if (b.email === currentUser?.email) return 1;
-    // Sắp xếp theo tên cho các user khác
-    return (a.fullName || "").localeCompare(b.fullName || "");
+  // Data Fetching with TanStack Query
+  const {
+    data: users = [],
+    isLoading: isUsersLoading,
+    isError: isUsersError,
+    error: usersError,
+  } = useQuery<User[], Error>({
+    queryKey: ["users", debouncedSearchTerm],
+    queryFn: () =>
+      usersService.getUsers({ search: debouncedSearchTerm, limit: 24 }),
   });
 
-  const validateForm = () => {
+  const { data: roles = [], isLoading: isRolesLoading } = useQuery<
+    any[],
+    Error
+  >({
+    queryKey: ["roles"],
+    queryFn: () => rolesService.getRoles(),
+  });
+
+  const { data: activeDepartments = [], isLoading: isDepartmentsLoading } =
+    useQuery<DepartmentInfo[], Error>({
+      queryKey: ["departments", { status: "active" }],
+      queryFn: () => departmentsService.getDepartments({ status: "active" }),
+    });
+
+  const { data: positions = [], isLoading: isPositionsLoading } = useQuery<
+    Position[],
+    Error
+  >({
+    queryKey: ["positions"],
+    queryFn: () => positionsService.getPositions(),
+  });
+
+  // Mutations
+  const createUserMutation = useMutation({
+    mutationFn: (payload: CreateUserRequest) =>
+      usersService.createUser(payload),
+    onSuccess: (response: any) => {
+      toast({
+        title: "Thành công",
+        description:
+          (response as any)?.message || "Đã thêm người dùng mới thành công.",
+        variant: "success",
+      });
+      queryClient.invalidateQueries({ queryKey: ["users"] });
+      setIsFormOpen(false);
+    },
+    onError: (error) =>
+      toast({
+        title: "Lỗi",
+        description: extractErrorMessage(error),
+        variant: "destructive",
+      }),
+  });
+
+  const updateUserMutation = useMutation({
+    mutationFn: ({
+      id,
+      payload,
+    }: {
+      id: string;
+      payload: Partial<CreateUserRequest>;
+    }) => usersService.updateUserByAdmin(id, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["users"] });
+    },
+    onError: (error) =>
+      toast({
+        title: "Lỗi",
+        description: extractErrorMessage(error),
+        variant: "destructive",
+      }),
+  });
+
+  const deleteUserMutation = useMutation({
+    mutationFn: (userId: string) => usersService.deleteUser(userId),
+    onSuccess: (response: any) => {
+      toast({
+        title: "Thành công",
+        description:
+          (response as any)?.message || "Đã xóa người dùng thành công.",
+        variant: "success",
+      });
+      queryClient.invalidateQueries({ queryKey: ["users"] });
+      setDeletingUser(null);
+    },
+    onError: (error) =>
+      toast({
+        title: "Lỗi",
+        description: extractErrorMessage(error),
+        variant: "destructive",
+      }),
+  });
+
+  const sortedUsers = useMemo(
+    () =>
+      [...(users || [])].sort((a, b) => {
+        if (a.email === currentUser?.email) return -1;
+        if (b.email === currentUser?.email) return 1;
+        return (a.fullName || "").localeCompare(b.fullName || "");
+      }),
+    [users, currentUser]
+  );
+
+  const getPositionName = (user: User): string => {
+    if (user.position && typeof user.position === 'object') {
+      return user.position.positionName;
+    }
+    return "Chưa có cấp bậc";
+  };
+
+  const generateEmployeeId = (): string => {
+    const prefix = "EMP";
+    const timestamp = Date.now().toString().slice(-6); // Lấy 6 chữ số cuối của timestamp
+    const random = Math.floor(Math.random() * 100)
+      .toString()
+      .padStart(2, "0"); // 2 chữ số ngẫu nhiên
+    return `${prefix}${timestamp}${random}`;
+  };
+
+  const handleOpenAddDialog = () => {
+    setEditingUser(null);
+    setNewUser(initialNewUserState);
+    setErrors({});
+    setIsFormOpen(true);
+  };
+
+  const handleOpenEditDialog = (userToEdit: User) => {
+    setEditingUser(userToEdit);
+
+    let departmentValue = "";
+    if (userToEdit.department) {
+      if (typeof userToEdit.department === "object") {
+        departmentValue = String(userToEdit.department.departmentId);
+      } else {
+        departmentValue = userToEdit.department;
+      }
+    }
+
+    setNewUser({
+      fullName: userToEdit.fullName || "",
+      idCard: userToEdit.idCard || "",
+      role: userToEdit.role || "HOCVIEN",
+      numberPhone: userToEdit.phoneNumber || "",
+      email: userToEdit.email || "",
+      password: "",
+      confirmPassword: "",
+      department: departmentValue,
+      position:
+        userToEdit.position && typeof userToEdit.position === "object"
+          ? String((userToEdit.position as Position).positionId)
+          : "",
+      level: userToEdit.level || "",
+      status: userToEdit.status || "working",
+      employeeId: userToEdit.employeeId || (userToEdit as any).code || "",
+    });
+    setErrors({});
+    setIsFormOpen(true);
+  };
+
+  const validateForm = (isEdit: boolean) => {
+    const data = newUser;
     const newErrors: Partial<Record<keyof RegisterDTO, string>> = {};
 
-    // Validate fullName
-    if (!newUser.fullName) {
-      newErrors.fullName = "FULLNAME IS REQUIRE!";
-    } else if (newUser.fullName.length > 50) {
-      newErrors.fullName = "FULLNAME cannot exceed 50 characters.";
+    if (!data.fullName) newErrors.fullName = "Họ và tên là bắt buộc!";
+    if (!data.idCard) newErrors.idCard = "CMND/CCCD là bắt buộc!";
+    if (!data.email) newErrors.email = "Email là bắt buộc!";
+    else if (!/^[a-zA-Z0-9._%+-]+@becamex\.com$/.test(data.email)) {
+      newErrors.email = "Email phải có domain @becamex.com.";
     }
 
-    // Validate idCard
-    if (!newUser.idCard) {
-      newErrors.idCard = "IDCard IS REQUIRE!";
-    } else if (newUser.idCard.length < 10) {
-      newErrors.idCard = "IDCard must be at least 10 characters.";
-    } else if (newUser.idCard.length > 50) {
-      newErrors.idCard = "IDCard cannot exceed 50 characters.";
-    }
-
-    // Validate role
-    if (!newUser.role) {
-      newErrors.role = "Role IS REQUIRE!";
-    }
-
-    // Validate numberPhone
-    if (!newUser.numberPhone) {
-      newErrors.numberPhone = "NUMBER PHONE IS REQUIRE!";
-    } else if (newUser.numberPhone.length < 10) {
-      newErrors.numberPhone = "PHONE number must be at least 10 characters.";
-    } else if (newUser.numberPhone.length > 50) {
-      newErrors.numberPhone = "PHONE number cannot exceed 50 characters.";
-    }
-
-    // Validate email
-    if (!newUser.email) {
-      newErrors.email = "EMAIL IS REQUIRE!";
-    } else if (!/^[a-zA-Z0-9._%+-]+@becamex\.com$/.test(newUser.email)) {
-      newErrors.email = "Email must be from @becamex.com domain.";
-    } else if (newUser.email.length > 100) {
-      newErrors.email = "EMAIL cannot exceed 100 characters.";
-    }
-
-    // Validate password
-    if (!newUser.password) {
-      newErrors.password = "PASSWORD IS REQUIRE!";
-    } else if (newUser.password.length < 6 || newUser.password.length > 100) {
-      newErrors.password =
-        "The password must be at least 6 and at max 100 characters long.";
-    }
-
-    // Validate confirmPassword
-    if (!newUser.confirmPassword) {
-      newErrors.confirmPassword = "CONFIRM PASSWORD IS REQUIRE!";
-    } else if (newUser.confirmPassword !== newUser.password) {
-      newErrors.confirmPassword =
-        "The password and confirmation password do not match.";
+    if (!isEdit) {
+      if (!data.password) newErrors.password = "Mật khẩu là bắt buộc!";
+      else if (data.password.length < 6)
+        newErrors.password = "Mật khẩu phải có ít nhất 6 ký tự.";
+      if (data.confirmPassword !== data.password)
+        newErrors.confirmPassword = "Mật khẩu xác nhận không khớp.";
+    } else if (data.password && data.password.trim()) {
+      if (data.password.length < 6)
+        newErrors.password = "Mật khẩu phải có ít nhất 6 ký tự.";
+      if (data.confirmPassword !== data.password)
+        newErrors.confirmPassword = "Mật khẩu xác nhận không khớp.";
     }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleAddUser = async () => {
-    if (!validateForm()) {
+  const handleSaveUser = async () => {
+    const isEdit = !!editingUser;
+    if (!validateForm(isEdit)) {
       showError("FORM001");
       return;
     }
 
-    // Kiểm tra API có được bật không
-    if (!API_CONFIG.useApi) {
-      toast({
-        title: "API đã được tắt",
-        description:
-          "Vui lòng bật API trong file .env để sử dụng chức năng này.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setIsSubmitting(true);
-
-    try {
-      // Tạo payload phù hợp với API backend
-
-      // Tìm roleId từ danh sách roles theo tên vai trò
-      let roleIdValue: string | undefined;
-
-      console.log("Current role selection:", newUser.role);
-      console.log("Available roles:", roles);
-
-      if (roles.length > 0) {
-        // Tìm role từ danh sách đã tải từ API
-        const selectedRole = roles.find(
-          (role) => role.name && role.name.toUpperCase() === newUser.role
-        );
-
-        console.log("Selected role:", selectedRole);
-
-        if (selectedRole) {
-          roleIdValue = selectedRole.id;
-        } else {
-          // Không tìm thấy role - hiển thị lỗi
-          toast({
-            title: "Lỗi",
-            description: `Không tìm thấy vai trò ${newUser.role} trong hệ thống.`,
-            variant: "destructive",
-          });
-          setIsSubmitting(false);
-          return;
-        }
-      } else {
-        // Không có dữ liệu roles - hiển thị lỗi
-        toast({
-          title: "Lỗi",
-          description: "Không thể tải danh sách vai trò từ server.",
-          variant: "destructive",
-        });
-        setIsSubmitting(false);
-        return;
-      }
-
-      // Kiểm tra xem đã có roleId chưa
-      if (!roleIdValue) {
-        toast({
-          title: "Lỗi",
-          description:
-            "Không thể xác định vai trò người dùng. Vui lòng thử lại.",
-          variant: "destructive",
-        });
-        setIsSubmitting(false);
-        return;
-      }
-
-      // Tìm positionId từ level (cấp bậc) - level giờ đã là positionId string
-      const positionIdValue = newUser.level
-        ? parseInt(newUser.level)
-        : undefined; // Tạo payload phù hợp với modern service
-      const createUserPayload = {
-        email: newUser.email,
-        password: newUser.password,
-        firstName: newUser.fullName.split(" ")[0] || newUser.fullName,
-        lastName: newUser.fullName.split(" ").slice(1).join(" ") || "",
-        role: newUser.role,
-        departmentId: newUser.department || undefined,
-        // Additional fields
-        idCard: newUser.idCard,
-        numberPhone: newUser.numberPhone,
-        confirmPassword: newUser.confirmPassword,
-      };
-
-      console.log("Final payload for user creation:", createUserPayload);
-
-      const response = await usersService.createUser(createUserPayload);
-
-      // Refresh danh sách users
-      await loadUsers();
-
-      setIsAddingUser(false);
-      setNewUser({
-        fullName: "",
-        idCard: "",
-        role: "HOCVIEN",
-        numberPhone: "",
-        email: "",
-        password: "",
-        confirmPassword: "",
-        department: "",
-        position: "",
-        level: "",
-        status: "working",
-      });
-      setErrors({});
-
-      toast({
-        title: "Thành công",
-        description: "Đã thêm người dùng mới thành công.",
-        variant: "success",
-      });
-    } catch (error: any) {
-      console.error("Error creating user:", error);
-
-      let errorTitle = "Lỗi";
-      let errorMessage = "Đã xảy ra lỗi khi thêm người dùng.";
-
-      // Xử lý validation errors từ .NET backend
-      if (
-        error.code === "VALIDATION_ERROR" &&
-        error.errors &&
-        Array.isArray(error.errors)
-      ) {
-        errorTitle = "Dữ liệu không hợp lệ";
-        errorMessage =
-          error.errors.slice(0, 3).join(".\n") +
-          (error.errors.length > 3 ? "..." : "");
-      } else if (error.message) {
-        errorMessage = error.message;
-      }
-
-      toast({
-        title: errorTitle,
-        description: errorMessage,
-        variant: "destructive",
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleEditUser = async () => {
-    if (!editingUser) return;
-
-    // Check if password field is filled and if so, confirm it matches
-    if (editingUser.password && editingUser.password !== confirmPassword) {
+    const selectedRole = roles.find(
+      (role) => role.name.toUpperCase() === newUser.role
+    );
+    if (!selectedRole) {
       toast({
         title: "Lỗi",
-        description: "Mật khẩu và xác nhận mật khẩu không khớp!",
+        description: `Không tìm thấy vai trò ${newUser.role}.`,
         variant: "destructive",
       });
       return;
     }
 
-    if (!API_CONFIG.useApi) {
-      toast({
-        title: "API đã được tắt",
-        description:
-          "Vui lòng bật API trong file .env để sử dụng chức năng này.",
-        variant: "destructive",
-      });
-      return;
-    }
+    if (isEdit && editingUser) {
+      try {
+        const updatePayload: Partial<CreateUserRequest> = {
+          FullName: newUser.fullName,
+          Email: newUser.email,
+          IdCard: newUser.idCard,
+          NumberPhone: newUser.numberPhone,
+          DepartmentId: newUser.department
+            ? parseInt(newUser.department)
+            : undefined,
+          RoleId: selectedRole.id,
+          PositionId: newUser.position ? parseInt(newUser.position) : undefined,
+          Code: newUser.employeeId || undefined,
+        };
 
-    setIsEditing(true);
+        await updateUserMutation.mutateAsync({
+          id: editingUser.id,
+          payload: updatePayload,
+        });
 
-    try {
-      // Tạo payload update
-      const updatePayload: Partial<CreateUserRequest> = {
-        FullName: editingUser.fullName,
-        Email: editingUser.email,
-        IdCard: editingUser.idCard,
-        NumberPhone: editingUser.phoneNumber, // User có phoneNumber, API expect NumberPhone
-      };
-
-      // Chỉ thêm password nếu có thay đổi
-      if (editingUser.password && editingUser.password.trim()) {
-        updatePayload.Password = editingUser.password;
-        updatePayload.ConfirmPassword = confirmPassword;
-      }
-
-      // Thêm thông tin role nếu có thay đổi
-      if (editingUser.role) {
-        const selectedRole = roles.find(
-          (role) => role.name.toUpperCase() === editingUser.role
-        );
-        if (selectedRole) {
-          updatePayload.RoleId = selectedRole.id;
-        }
-      }
-
-      // Thêm cấp bậc (level) nếu có - level giờ là positionId
-      if (editingUser.level) {
-        const positionIdValue = parseInt(editingUser.level);
-        if (!isNaN(positionIdValue)) {
-          updatePayload.PositionId = positionIdValue;
-        }
-      }
-
-      console.log("Update payload:", updatePayload);
-      console.log("EditingUser:", editingUser);
-      const response = await usersService.updateUser(
-        editingUser.id,
-        updatePayload
-      );
-
-      toast({
-        title: "Thành công",
-        description: "Thông tin người dùng đã được cập nhật.",
-        variant: "success",
-      });
-
-      // Refresh danh sách users
-      await loadUsers();
-
-      setEditingUser(null);
-      setConfirmPassword("");
-    } catch (error: any) {
-      console.error("Error updating user:", error);
-
-      let errorMessage = "Đã xảy ra lỗi khi cập nhật người dùng.";
-
-      // Xử lý lỗi validation từ backend
-      if (error.errors && typeof error.errors === "object") {
-        const validationErrors = Object.entries(error.errors)
-          .map(([field, messages]: [string, any]) => {
-            if (Array.isArray(messages)) {
-              return `${field}: ${messages.join(", ")}`;
+        let successMessage = "Thông tin người dùng đã được cập nhật.";
+        if (newUser.password && newUser.password.trim()) {
+          const resetResponse = await usersService.resetPassword(
+            editingUser.id,
+            {
+              newPassword: newUser.password,
+              confirmNewPassword: newUser.confirmPassword,
             }
-            return `${field}: ${messages}`;
-          })
-          .join("\n");
-        errorMessage = `Lỗi validation:\n${validationErrors}`;
-      } else if (error.message) {
-        errorMessage = error.message;
-      } else if (error.title) {
-        errorMessage = error.title;
-      }
+          );
+          if ((resetResponse as any)?.message) {
+            successMessage = (resetResponse as any).message;
+          }
+        }
 
-      toast({
-        title: "Lỗi",
-        description: errorMessage,
-        variant: "destructive",
-      });
-    } finally {
-      setIsEditing(false);
+        toast({
+          title: "Thành công",
+          description: successMessage,
+          variant: "success",
+        });
+        setIsFormOpen(false);
+      } catch (error) {
+        toast({
+          title: "Lỗi",
+          description: extractErrorMessage(error),
+          variant: "destructive",
+        });
+      }
+    } else {
+      const createUserPayload: CreateUserRequest = {
+        FullName: newUser.fullName,
+        Email: newUser.email,
+        Password: newUser.password,
+        ConfirmPassword: newUser.confirmPassword,
+        RoleId: selectedRole.id,
+        IdCard: newUser.idCard,
+        NumberPhone: newUser.numberPhone,
+        PositionId: newUser.position ? parseInt(newUser.position) : undefined,
+        DepartmentId: newUser.department
+          ? parseInt(newUser.department)
+          : undefined,
+        Code: newUser.employeeId || undefined,
+      };
+      createUserMutation.mutate(createUserPayload);
     }
   };
 
-  const handleDeleteUser = async () => {
+  const handleDeleteUser = () => {
     if (!deletingUser) return;
-
     if (deletingUser.email === currentUser?.email) {
       toast({
         title: "Lỗi",
@@ -646,42 +383,41 @@ export default function UsersPage() {
       });
       return;
     }
+    deleteUserMutation.mutate(deletingUser.id);
+  };
 
-    if (!API_CONFIG.useApi) {
-      toast({
-        title: "API đã được tắt",
-        description:
-          "Vui lòng bật API trong file .env để sử dụng chức năng này.",
-        variant: "destructive",
-      });
-      return;
+  const columns = useMemo(
+    () =>
+      getColumns(
+        currentUser,
+        (user) => {
+          setSelectedUser(user);
+          setIsViewingUser(true);
+        },
+        handleOpenEditDialog,
+        (user) => setDeletingUser(user)
+      ),
+    [currentUser]
+  );
+
+  const renderDepartment = (
+    department: string | DepartmentInfo | undefined
+  ) => {
+    if (!department) return "Chưa có phòng ban";
+    if (typeof department === "string") return department;
+    return department.name;
+  };
+
+  const getEmployeeCode = (user: any): string => {
+    if (user.employeeId) return user.employeeId;
+    if (user.code) return user.code;
+    if (user.Code) return user.Code;
+    if (typeof user.userData === "object" && user.userData) {
+      if (user.userData.employeeId) return user.userData.employeeId;
+      if (user.userData.code) return user.userData.code;
+      if (user.userData.Code) return user.userData.Code;
     }
-
-    setIsDeleting(true);
-
-    try {
-      await usersService.deleteUser(deletingUser.id);
-
-      toast({
-        title: "Thành công",
-        description: `Đã xóa người dùng "${deletingUser.fullName}" thành công.`,
-        variant: "success",
-      });
-
-      // Refresh danh sách users
-      await loadUsers();
-
-      setDeletingUser(null);
-    } catch (error: any) {
-      console.error("Error deleting user:", error);
-      toast({
-        title: "Lỗi",
-        description: error.message || "Đã xảy ra lỗi khi xóa người dùng.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsDeleting(false);
-    }
+    return "N/A";
   };
 
   return (
@@ -695,181 +431,44 @@ export default function UsersPage() {
                 Quản lý tất cả tài khoản người dùng trong hệ thống.
               </CardDescription>
             </div>
-            <Button
-              onClick={() => setIsAddingUser(true)}
-              disabled={!API_CONFIG.useApi}
-            >
-              <PlusCircle className="mr-2 h-4 w-4" />
-              Thêm người dùng
+            <Button onClick={handleOpenAddDialog}>
+              <PlusCircle className="mr-2 h-4 w-4" /> Thêm người dùng
             </Button>
           </div>
         </CardHeader>
         <CardContent>
-          {/* Thông báo trạng thái API */}
-          {!API_CONFIG.useApi && (
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
-              <div className="flex items-center">
-                <AlertCircle className="h-5 w-5 text-yellow-600 mr-2" />
-                <div>
-                  <h3 className="text-sm font-medium text-yellow-800">
-                    Chế độ Mock Data
-                  </h3>
-                  <p className="text-sm text-yellow-700 mt-1">
-                    API đang bị tắt. Hiện tại đang sử dụng dữ liệu mô phỏng. Để
-                    sử dụng API thực tế, vui lòng cài đặt{" "}
-                    <code>NEXT_PUBLIC_USE_API=true</code> trong file .env
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
-
           <div className="mb-4 flex items-center gap-2">
-            <Search className="h-4 w-4 text-muted-foreground" />
-            <div className="relative max-w-sm">
+            <div className="relative w-full max-w-sm">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10" />
               <Input
-                placeholder="Tìm kiếm theo tên, email, vai trò hoặc phòng ban..."
+                placeholder="Tìm kiếm theo tên, email..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pr-8"
+                className={cn("pl-10", isUsersLoading && "pr-10")}
               />
-              {isSearching && (
-                <div className="absolute right-2 top-1/2 -translate-y-1/2">
-                  <Spinner size="sm" />
-                </div>
+              {isUsersLoading && (
+                <Spinner
+                  className="absolute right-3 top-1/2 -translate-y-1/2"
+                  size="sm"
+                />
               )}
             </div>
           </div>
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Tên</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Vai trò</TableHead>
-                  <TableHead>Trạng thái</TableHead>
-                  <TableHead className="w-[100px]">Hành động</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {loading ? (
-                  <TableRow>
-                    <TableCell colSpan={5} className="text-center py-10">
-                      <div className="flex flex-col items-center justify-center gap-2">
-                        <Spinner size="lg" />
-                        <span className="text-sm text-muted-foreground">
-                          Đang tải dữ liệu...
-                        </span>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ) : apiError ? (
-                  <TableRow>
-                    <TableCell colSpan={5}>{apiError}</TableCell>
-                  </TableRow>
-                ) : sortedUsers.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={5}>Không có người dùng nào.</TableCell>
-                  </TableRow>
-                ) : (
-                  sortedUsers.map((user) => (
-                    <TableRow key={user.id}>
-                      <TableCell className="font-medium">
-                        <div className="flex items-center gap-2">
-                          {user.fullName}
-                          {user.email === currentUser?.email && (
-                            <Badge variant="outline" className="ml-2">
-                              Bạn
-                            </Badge>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>{user.email}</TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Badge variant={roleBadgeVariant[user.role]}>
-                            {roleTranslations[user.role]}
-                          </Badge>
-                          {user.level && user.role === "HOCVIEN" && (
-                            <Badge
-                              variant="outline"
-                              className={`ml-2 ${getLevelBadgeColor(
-                                user.level
-                              )}`}
-                            >
-                              {getPositionNameFromLevel(user.level)}
-                            </Badge>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          className={getStatusColor(user.status || "working")}
-                        >
-                          {getStatusText(user.status || "working")}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon">
-                              <MoreHorizontal className="h-4 w-4" />
-                              <span className="sr-only">Mở menu</span>
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            {user.role === "HOCVIEN" && (
-                              <DropdownMenuItem
-                                onClick={() => {
-                                  setSelectedUser(user);
-                                  setIsViewingUser(true);
-                                }}
-                              >
-                                <UserCircle2 className="mr-2 h-4 w-4" />
-                                Xem chi tiết
-                              </DropdownMenuItem>
-                            )}
-                            <DropdownMenuItem
-                              onClick={() => {
-                                // Khi edit user, cần convert level từ position name thành positionId
-                                const userToEdit = { ...user };
-                                if (userToEdit.level && positions) {
-                                  // Tìm position có name trùng với level hiện tại
-                                  const matchingPosition = positions.find(
-                                    (p) => p.positionName === userToEdit.level
-                                  );
-                                  if (matchingPosition) {
-                                    userToEdit.level =
-                                      matchingPosition.positionId.toString();
-                                  }
-                                }
-                                setEditingUser(userToEdit);
-                                setConfirmPassword("");
-                              }}
-                            >
-                              <Pencil className="mr-2 h-4 w-4" />
-                              Chỉnh sửa
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => setDeletingUser(user)}
-                              className="text-destructive focus:text-destructive"
-                            >
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              Xóa
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
+
+          {isUsersLoading ? (
+            <div className="flex items-center justify-center py-10">
+              <Spinner size="lg" />
+            </div>
+          ) : isUsersError ? (
+            <p className="text-destructive text-center py-10">
+              {extractErrorMessage(usersError)}
+            </p>
+          ) : (
+            <DataTable columns={columns} data={sortedUsers} />
+          )}
         </CardContent>
       </Card>
 
-      {/* View User Dialog */}
       <Dialog open={isViewingUser} onOpenChange={setIsViewingUser}>
         <DialogContent className="sm:max-w-[800px]">
           <DialogHeader>
@@ -878,17 +477,12 @@ export default function UsersPage() {
               Thông tin chi tiết và lịch sử học tập của học viên
             </DialogDescription>
           </DialogHeader>
-
-          {selectedUser && selectedUser.role === "HOCVIEN" && (
+          {selectedUser && (
             <Tabs defaultValue="info" className="mt-4">
               <TabsList>
                 <TabsTrigger value="info">
                   <UserCircle2 className="h-4 w-4 mr-2" />
                   Thông tin cơ bản
-                </TabsTrigger>
-                <TabsTrigger value="department">
-                  <Building2 className="h-4 w-4 mr-2" />
-                  Phòng ban
                 </TabsTrigger>
                 <TabsTrigger value="courses">
                   <Calendar className="h-4 w-4 mr-2" />
@@ -899,8 +493,7 @@ export default function UsersPage() {
                   Chứng chỉ
                 </TabsTrigger>
               </TabsList>
-
-              <TabsContent value="info" className="space-y-4">
+              <TabsContent value="info" className="space-y-4 pt-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <h4 className="font-medium mb-2">Thông tin cá nhân</h4>
@@ -909,14 +502,15 @@ export default function UsersPage() {
                         <strong>Họ và tên:</strong> {selectedUser.fullName}
                       </p>
                       <p className="text-sm">
-                        <strong>Mã nhân viên:</strong> {selectedUser.employeeId}
+                        <strong>Mã nhân viên:</strong>{" "}
+                        {getEmployeeCode(selectedUser)}
                       </p>
                       <p className="text-sm">
                         <strong>Email:</strong> {selectedUser.email}
                       </p>
                       <p className="text-sm">
                         <strong>Số điện thoại:</strong>{" "}
-                        {selectedUser.phoneNumber}
+                        {selectedUser.phoneNumber || "N/A"}
                       </p>
                     </div>
                   </div>
@@ -924,49 +518,29 @@ export default function UsersPage() {
                     <h4 className="font-medium mb-2">Thông tin công việc</h4>
                     <div className="space-y-1">
                       <p className="text-sm">
-                        <strong>Phòng ban:</strong> {selectedUser.department}
+                        <strong>Phòng ban:</strong>{" "}
+                        {renderDepartment(selectedUser.department)}
                       </p>
                       <p className="text-sm">
                         <strong>Chức vụ:</strong>{" "}
-                        {typeof selectedUser.level === "string"
-                          ? selectedUser.level
-                          : "Chưa có chức vụ"}
+                        Chưa có
                       </p>
                       <p className="text-sm">
                         <strong>Cấp bậc:</strong>{" "}
-                        {typeof selectedUser.position === "string"
-                          ? selectedUser.position
-                          : selectedUser.position?.positionName ||
-                            getPositionNameFromLevel(
-                              selectedUser.position as any
-                            ) ||
-                            "Chưa có cấp bậc"}
+                        {getPositionName(selectedUser)}
                       </p>
                       <p className="text-sm">
-                        <strong>Quản lý:</strong> {selectedUser.manager}
+                        <strong>Quản lý:</strong>{" "}
+                        {selectedUser.manager || "N/A"}
                       </p>
                     </div>
                   </div>
                 </div>
               </TabsContent>
-
-              <TabsContent value="department">
-                <div className="space-y-4">
-                  <div>
-                    <h4 className="font-medium mb-2">Cơ cấu phòng ban</h4>
-                    <div className="p-4 border rounded-lg">
-                      <p className="text-sm text-muted-foreground">
-                        Hiển thị cơ cấu phòng ban và vị trí của học viên trong
-                        tổ chức
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </TabsContent>
-
               <TabsContent value="courses">
-                <div className="space-y-4">
-                  {selectedUser.completedCourses?.length ? (
+                <div className="space-y-4 pt-4">
+                  {selectedUser.completedCourses &&
+                  selectedUser.completedCourses.length > 0 ? (
                     selectedUser.completedCourses.map((course) => (
                       <div
                         key={course.courseId}
@@ -996,102 +570,33 @@ export default function UsersPage() {
                   )}
                 </div>
               </TabsContent>
-
-              <TabsContent value="certificates">
-                <div className="space-y-4">
-                  {selectedUser.certificates?.length ? (
-                    selectedUser.certificates.map((cert) => (
-                      <div key={cert.id} className="p-4 border rounded-lg">
-                        <h4 className="font-medium">{cert.name}</h4>
-                        <p className="text-sm text-muted-foreground mt-1">
-                          Cấp bởi: {cert.issuingOrganization}
-                        </p>
-                        <p className="text-sm mt-2">
-                          <strong>Ngày cấp:</strong>{" "}
-                          {new Date(cert.issueDate).toLocaleDateString("vi-VN")}
-                        </p>
-                        {cert.credentialId && (
-                          <p className="text-sm mt-1">
-                            <strong>Mã chứng chỉ:</strong> {cert.credentialId}
-                          </p>
-                        )}
-                      </div>
-                    ))
-                  ) : (
-                    <p className="text-center text-muted-foreground py-4">
-                      Chưa có chứng chỉ nào được cấp
-                    </p>
-                  )}
-                </div>
-              </TabsContent>
             </Tabs>
           )}
         </DialogContent>
       </Dialog>
 
-      {/* Add User Dialog */}
-      <Dialog open={isAddingUser} onOpenChange={setIsAddingUser}>
-        <DialogContent className="max-w-md">
+      <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+        <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
-            <DialogTitle>Thêm người dùng mới</DialogTitle>
-            <DialogDescription>
-              Điền thông tin để tạo tài khoản mới cho người dùng.
-            </DialogDescription>
+            <DialogTitle>
+              {editingUser ? "Chỉnh sửa Người dùng" : "Thêm người dùng mới"}
+            </DialogTitle>
           </DialogHeader>
-
-          <div className="grid gap-4 py-4">
+          <div className="grid gap-4 py-4 max-h-[70vh] overflow-y-auto pr-2">
             <div className="grid gap-2">
-              <Label htmlFor="fullName">Họ và tên</Label>
+              <Label htmlFor="fullName">Họ và tên *</Label>
               <Input
                 id="fullName"
-                placeholder="Nguyễn Văn A"
                 value={newUser.fullName}
                 onChange={(e) =>
                   setNewUser({ ...newUser, fullName: e.target.value })
                 }
-                autoComplete="name"
+                className={errors.fullName ? "border-destructive" : ""}
               />
               {errors.fullName && (
-                <p className="text-xs text-red-500">{errors.fullName}</p>
+                <p className="text-sm text-destructive">{errors.fullName}</p>
               )}
             </div>
-
-            <div className="grid gap-2">
-              <Label htmlFor="role">Vai trò</Label>
-              <Select
-                value={newUser.role}
-                onValueChange={(value) =>
-                  setNewUser({ ...newUser, role: value as Role })
-                }
-              >
-                <SelectTrigger id="role">
-                  <SelectValue placeholder="Chọn vai trò" />
-                </SelectTrigger>
-                <SelectContent>
-                  {loadingRoles ? (
-                    <div className="flex items-center justify-center p-2">
-                      <Spinner size="sm" />{" "}
-                      <span className="ml-2">Đang tải...</span>
-                    </div>
-                  ) : roles.length > 0 ? (
-                    // Hiển thị danh sách roles từ API
-                    roles.map((role) => (
-                      <SelectItem key={role.id} value={role.name.toUpperCase()}>
-                        {role.name}
-                      </SelectItem>
-                    ))
-                  ) : (
-                    // Fallback khi không có dữ liệu từ API
-                    <>
-                      <SelectItem value="ADMIN">Quản trị viên</SelectItem>
-                      <SelectItem value="HR">Nhân sự</SelectItem>
-                      <SelectItem value="HOCVIEN">Học viên</SelectItem>
-                    </>
-                  )}
-                </SelectContent>
-              </Select>
-            </div>
-
             <div className="grid gap-2">
               <Label htmlFor="idCard">CMND/CCCD *</Label>
               <Input
@@ -1106,25 +611,35 @@ export default function UsersPage() {
                 <p className="text-sm text-destructive">{errors.idCard}</p>
               )}
             </div>
-
             <div className="grid gap-2">
-              <Label htmlFor="numberPhone">Số điện thoại *</Label>
-              <Input
-                id="numberPhone"
-                type="tel"
-                value={newUser.numberPhone}
-                onChange={(e) =>
-                  setNewUser({ ...newUser, numberPhone: e.target.value })
-                }
-                className={errors.numberPhone ? "border-destructive" : ""}
-              />
-              {errors.numberPhone && (
-                <p className="text-sm text-destructive">{errors.numberPhone}</p>
-              )}
+              <Label htmlFor="employeeId">Mã nhân viên</Label>
+              <div className="flex gap-2">
+                <Input
+                  id="employeeId"
+                  value={newUser.employeeId}
+                  onChange={(e) =>
+                    setNewUser({ ...newUser, employeeId: e.target.value })
+                  }
+                  placeholder="VD: NV001 (để trống để hệ thống tự động tạo)"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
+                    setNewUser({ ...newUser, employeeId: generateEmployeeId() })
+                  }
+                  className="whitespace-nowrap"
+                >
+                  Tạo tự động
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Nếu để trống, hệ thống sẽ tự động tạo mã nhân viên
+              </p>
             </div>
-
             <div className="grid gap-2">
-              <Label htmlFor="email">Email công ty *</Label>
+              <Label htmlFor="email">Email *</Label>
               <Input
                 id="email"
                 type="email"
@@ -1138,162 +653,177 @@ export default function UsersPage() {
                 <p className="text-sm text-destructive">{errors.email}</p>
               )}
             </div>
-
             <div className="grid gap-2">
-              <Label htmlFor="startWork">Ngày bắt đầu làm việc</Label>
+              <Label htmlFor="numberPhone">Số điện thoại</Label>
               <Input
-                id="startWork"
-                type="date"
-                value={newUser.startWork?.toISOString().split("T")[0] || ""}
+                id="numberPhone"
+                value={newUser.numberPhone}
                 onChange={(e) =>
-                  setNewUser({
-                    ...newUser,
-                    startWork: new Date(e.target.value),
-                  })
+                  setNewUser({ ...newUser, numberPhone: e.target.value })
                 }
               />
             </div>
-
-            {newUser.role === "HOCVIEN" && (
-              <>
-                <div className="grid gap-2">
-                  <Label htmlFor="department">Phòng ban</Label>
-                  <Select
-                    onValueChange={(value) =>
-                      setNewUser({ ...newUser, department: value })
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Chọn phòng ban" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {isDepartmentsLoading ? (
-                        <SelectItem value="loading-departments" disabled>
-                          <div className="flex items-center gap-2">
-                            <Spinner size="sm" />
-                            <span>Đang tải...</span>
-                          </div>
-                        </SelectItem>
-                      ) : activeDepartments.length > 0 ? (
-                        activeDepartments.map((dept) => (
-                          <SelectItem key={dept.id} value={dept.id}>
-                            {dept.name}
-                          </SelectItem>
-                        ))
-                      ) : (
-                        <SelectItem value="no-departments" disabled>
-                          Không có phòng ban nào
-                        </SelectItem>
-                      )}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="grid gap-2">
-                  <Label htmlFor="position">Chức vụ</Label>
-                  <Input
-                    id="position"
-                    placeholder="Nhập chức vụ"
-                    value={newUser.level || ""}
-                    onChange={(e) =>
-                      setNewUser({ ...newUser, level: e.target.value })
-                    }
-                  />
-                </div>
-
-                <div className="grid gap-2">
-                  <Label htmlFor="level">Cấp bậc</Label>
-                  <Select
-                    value={newUser.position || ""}
-                    onValueChange={(value) =>
-                      setNewUser({ ...newUser, position: value })
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Chọn cấp bậc" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {isPositionsLoading ? (
-                        <div className="flex items-center justify-center p-2">
-                          <Spinner size="sm" />
-                          <span className="ml-2">Đang tải...</span>
-                        </div>
-                      ) : positions && positions.length > 0 ? (
-                        positions.map((position) => (
-                          <SelectItem
-                            key={position.positionId}
-                            value={position.positionId.toString()}
-                          >
-                            {position.positionName}
-                          </SelectItem>
-                        ))
-                      ) : (
-                        <SelectItem value="no-positions" disabled>
-                          Không có cấp bậc nào
-                        </SelectItem>
-                      )}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="grid gap-2">
-                  <Label htmlFor="status">Trạng thái</Label>
-                  <Select
-                    defaultValue="working"
-                    onValueChange={(value: WorkStatus) =>
-                      setNewUser({ ...newUser, status: value })
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Chọn trạng thái" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="working">Đang làm việc</SelectItem>
-                      <SelectItem value="resigned">Đã nghỉ việc</SelectItem>
-                      <SelectItem value="suspended">Tạm nghỉ</SelectItem>
-                      <SelectItem value="maternity_leave">
-                        Nghỉ thai sản
+            <div className="grid gap-2">
+              <Label htmlFor="department">Phòng ban</Label>
+              <Select
+                value={newUser.department || NO_DEPARTMENT_VALUE}
+                onValueChange={(value) =>
+                  setNewUser({
+                    ...newUser,
+                    department: value === NO_DEPARTMENT_VALUE ? "" : value,
+                  })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Chọn phòng ban" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NO_DEPARTMENT_VALUE}>
+                    -- Không chọn --
+                  </SelectItem>
+                  {isDepartmentsLoading ? (
+                    <SelectItem value="loading" disabled>
+                      Đang tải...
+                    </SelectItem>
+                  ) : activeDepartments.length > 0 ? (
+                    activeDepartments.map((dept) => (
+                      <SelectItem
+                        key={dept.departmentId}
+                        value={dept.departmentId}
+                      >
+                        {dept.name}
                       </SelectItem>
-                      <SelectItem value="sick_leave">
-                        Nghỉ bệnh dài hạn
+                    ))
+                  ) : (
+                    <SelectItem value="none" disabled>
+                      Không có dữ liệu
+                    </SelectItem>
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="position">Cấp bậc</Label>
+              <Select
+                value={newUser.position}
+                onValueChange={(value: string) =>
+                  setNewUser({ ...newUser, position: value })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Chọn cấp bậc" />
+                </SelectTrigger>
+                <SelectContent>
+                  {isPositionsLoading ? (
+                    <SelectItem value="loading_pos" disabled>
+                      Đang tải...
+                    </SelectItem>
+                  ) : positions.length > 0 ? (
+                    positions.map((pos) => (
+                      <SelectItem
+                        key={pos.positionId}
+                        value={String(pos.positionId)}
+                      >
+                        {pos.positionName}
                       </SelectItem>
-                      <SelectItem value="sabbatical">
-                        Nghỉ phép dài hạn
+                    ))
+                  ) : (
+                    <SelectItem value="no_pos" disabled>
+                      Không có dữ liệu
+                    </SelectItem>
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="role">Vai trò</Label>
+              <Select
+                value={newUser.role}
+                onValueChange={(value) =>
+                  setNewUser({ ...newUser, role: value as Role })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Chọn vai trò" />
+                </SelectTrigger>
+                <SelectContent>
+                  {isRolesLoading ? (
+                    <SelectItem value="loading_roles" disabled>
+                      Đang tải...
+                    </SelectItem>
+                  ) : roles.length > 0 ? (
+                    roles.map((role) => (
+                      <SelectItem
+                        key={role.id}
+                        value={role.name.toUpperCase() as Role}
+                      >
+                        {role.name}
                       </SelectItem>
-                      <SelectItem value="terminated">Đã sa thải</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </>
-            )}
-
+                    ))
+                  ) : (
+                    <SelectItem value="no_roles" disabled>
+                      Không có dữ liệu
+                    </SelectItem>
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
             <div className="grid gap-2">
               <Label htmlFor="password">Mật khẩu *</Label>
-              <Input
-                id="password"
-                type="password"
-                value={newUser.password}
-                onChange={(e) =>
-                  setNewUser({ ...newUser, password: e.target.value })
-                }
-                className={errors.password ? "border-destructive" : ""}
-              />
+              <div className="relative">
+                <Input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  value={newUser.password}
+                  onChange={(e) =>
+                    setNewUser({ ...newUser, password: e.target.value })
+                  }
+                  className={errors.password ? "border-destructive" : ""}
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="absolute right-2 top-1/2 h-8 w-8 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  onClick={() => setShowPassword(!showPassword)}
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
               {errors.password && (
                 <p className="text-sm text-destructive">{errors.password}</p>
               )}
             </div>
-
             <div className="grid gap-2">
               <Label htmlFor="confirmPassword">Xác nhận mật khẩu *</Label>
-              <Input
-                id="confirmPassword"
-                type="password"
-                value={newUser.confirmPassword}
-                onChange={(e) =>
-                  setNewUser({ ...newUser, confirmPassword: e.target.value })
-                }
-                className={errors.confirmPassword ? "border-destructive" : ""}
-              />
+              <div className="relative">
+                <Input
+                  id="confirmPassword"
+                  type={showPassword ? "text" : "password"}
+                  value={newUser.confirmPassword}
+                  onChange={(e) =>
+                    setNewUser({ ...newUser, confirmPassword: e.target.value })
+                  }
+                  className={errors.confirmPassword ? "border-destructive" : ""}
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="absolute right-2 top-1/2 h-8 w-8 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  onClick={() => setShowPassword(!showPassword)}
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
               {errors.confirmPassword && (
                 <p className="text-sm text-destructive">
                   {errors.confirmPassword}
@@ -1304,302 +834,52 @@ export default function UsersPage() {
           <DialogFooter>
             <Button
               variant="outline"
-              onClick={() => setIsAddingUser(false)}
-              disabled={isSubmitting}
+              onClick={() => setIsFormOpen(false)}
+              disabled={
+                createUserMutation.isPending || updateUserMutation.isPending
+              }
             >
               Hủy
             </Button>
             <LoadingButton
-              onClick={handleAddUser}
-              isLoading={isSubmitting}
-              disabled={isSubmitting}
+              onClick={handleSaveUser}
+              isLoading={
+                createUserMutation.isPending || updateUserMutation.isPending
+              }
             >
-              Thêm người dùng
+              {editingUser ? "Lưu thay đổi" : "Thêm người dùng"}
             </LoadingButton>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Edit User Dialog */}
       <Dialog
-        open={!!editingUser}
-        onOpenChange={() => {
-          setEditingUser(null);
-          setConfirmPassword("");
-        }}
+        open={!!deletingUser}
+        onOpenChange={(isOpen) => !isOpen && setDeletingUser(null)}
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Chỉnh sửa người dùng</DialogTitle>
+            <DialogTitle>Xác nhận xóa</DialogTitle>
             <DialogDescription>
-              Cập nhật thông tin người dùng. Các trường có dấu * là bắt buộc.
+              Bạn có chắc muốn xóa người dùng "{deletingUser?.fullName}"? Hành
+              động này không thể hoàn tác.
             </DialogDescription>
           </DialogHeader>
-          {editingUser && (
-            <div className="grid gap-4 py-4">
-              <div className="grid gap-2">
-                <Label htmlFor="edit-fullName">Họ và tên</Label>
-                <Input
-                  id="edit-fullName"
-                  value={editingUser.fullName}
-                  onChange={(e) =>
-                    setEditingUser({ ...editingUser, fullName: e.target.value })
-                  }
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="edit-email">Email</Label>
-                <Input
-                  id="edit-email"
-                  type="email"
-                  value={editingUser.email}
-                  onChange={(e) =>
-                    setEditingUser({ ...editingUser, email: e.target.value })
-                  }
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="edit-role">Vai trò</Label>
-                <Select
-                  value={editingUser.role}
-                  onValueChange={(value: Role) =>
-                    setEditingUser({ ...editingUser, role: value })
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Chọn vai trò" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {currentUser?.role === "ADMIN" && (
-                      <SelectItem value="ADMIN">Quản trị viên</SelectItem>
-                    )}
-                    <SelectItem value="HR">Nhân sự</SelectItem>
-                    <SelectItem value="HOCVIEN">Học viên</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {editingUser.role === "HOCVIEN" && (
-                <>
-                  <div className="grid gap-2">
-                    <Label htmlFor="edit-employeeId">Mã nhân viên</Label>
-                    <Input
-                      id="edit-employeeId"
-                      value={editingUser.employeeId}
-                      onChange={(e) =>
-                        setEditingUser({
-                          ...editingUser,
-                          employeeId: e.target.value,
-                        })
-                      }
-                    />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="edit-phone">Số điện thoại</Label>
-                    <Input
-                      id="edit-phone"
-                      type="tel"
-                      value={editingUser.phoneNumber}
-                      onChange={(e) =>
-                        setEditingUser({
-                          ...editingUser,
-                          phoneNumber: e.target.value,
-                        })
-                      }
-                    />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="edit-department">Phòng ban</Label>
-                    <Select
-                      value={editingUser.department}
-                      onValueChange={(value) =>
-                        setEditingUser({ ...editingUser, department: value })
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Chọn phòng ban" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {isDepartmentsLoading ? (
-                          <SelectItem value="loading-edit-departments" disabled>
-                            <div className="flex items-center gap-2">
-                              <Spinner size="sm" />
-                              <span>Đang tải...</span>
-                            </div>
-                          </SelectItem>
-                        ) : activeDepartments.length > 0 ? (
-                          activeDepartments.map((dept) => (
-                            <SelectItem key={dept.id} value={dept.id}>
-                              {dept.name}
-                            </SelectItem>
-                          ))
-                        ) : (
-                          <SelectItem value="no-edit-departments" disabled>
-                            Không có phòng ban nào
-                          </SelectItem>
-                        )}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="grid gap-2">
-                    <Label htmlFor="edit-position">Chức vụ</Label>
-                    <Input
-                      id="edit-position"
-                      placeholder="Nhập chức vụ"
-                      value={editingUser.level || ""}
-                      onChange={(e) =>
-                        setEditingUser({
-                          ...editingUser,
-                          level: e.target.value,
-                        })
-                      }
-                    />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="edit-level">Cấp bậc</Label>
-                    <Select
-                      value={
-                        typeof editingUser.position === "string"
-                          ? editingUser.position
-                          : editingUser.position?.positionId?.toString() || ""
-                      }
-                      onValueChange={(value) => {
-                        setEditingUser({ ...editingUser, position: value });
-                      }}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Chọn cấp bậc" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {isPositionsLoading ? (
-                          <div className="flex items-center justify-center p-2">
-                            <Spinner size="sm" />
-                            <span className="ml-2">Đang tải...</span>
-                          </div>
-                        ) : positions && positions.length > 0 ? (
-                          positions.map((position) => (
-                            <SelectItem
-                              key={position.positionId}
-                              value={position.positionId.toString()}
-                            >
-                              {position.positionName}
-                            </SelectItem>
-                          ))
-                        ) : (
-                          <SelectItem value="no-edit-levels" disabled>
-                            Không có cấp bậc nào
-                          </SelectItem>
-                        )}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="edit-status">Trạng thái</Label>
-                    <Select
-                      value={editingUser.status}
-                      onValueChange={(value: WorkStatus) => {
-                        setEditingUser({ ...editingUser, status: value });
-                      }}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Chọn trạng thái" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="working">Đang làm việc</SelectItem>
-                        <SelectItem value="resigned">Đã nghỉ việc</SelectItem>
-                        <SelectItem value="suspended">Tạm nghỉ</SelectItem>
-                        <SelectItem value="maternity_leave">
-                          Nghỉ thai sản
-                        </SelectItem>
-                        <SelectItem value="sick_leave">
-                          Nghỉ bệnh dài hạn
-                        </SelectItem>
-                        <SelectItem value="sabbatical">
-                          Nghỉ phép dài hạn
-                        </SelectItem>
-                        <SelectItem value="terminated">Đã sa thải</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </>
-              )}
-
-              <div className="grid gap-2">
-                <Label htmlFor="edit-password">Mật khẩu mới</Label>
-                <Input
-                  id="edit-password"
-                  type="password"
-                  placeholder="Nhập mật khẩu mới (ít nhất 6 ký tự)"
-                  value={editingUser.password}
-                  onChange={(e) =>
-                    setEditingUser({ ...editingUser, password: e.target.value })
-                  }
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="edit-confirmPassword">
-                  Xác nhận mật khẩu mới
-                </Label>
-                <Input
-                  id="edit-confirmPassword"
-                  type="password"
-                  placeholder="Nhập lại mật khẩu mới"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                />
-              </div>
-            </div>
-          )}
           <DialogFooter>
             <Button
               variant="outline"
-              onClick={() => {
-                setEditingUser(null);
-                setConfirmPassword("");
-              }}
+              onClick={() => setDeletingUser(null)}
+              disabled={deleteUserMutation.isPending}
             >
               Hủy
             </Button>
             <LoadingButton
-              onClick={handleEditUser}
-              isLoading={isEditing}
-              disabled={isEditing}
+              variant="destructive"
+              onClick={handleDeleteUser}
+              isLoading={deleteUserMutation.isPending}
             >
-              Lưu thay đổi
+              Xóa
             </LoadingButton>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Delete User Confirmation Dialog */}
-      <Dialog open={!!deletingUser} onOpenChange={() => setDeletingUser(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Xác nhận xóa người dùng</DialogTitle>
-            <DialogDescription>
-              Bạn có chắc chắn muốn xóa người dùng này? Hành động này không thể
-              hoàn tác.
-            </DialogDescription>
-          </DialogHeader>
-          {deletingUser && (
-            <div className="flex items-center gap-4 py-4">
-              <AlertCircle className="h-12 w-12 text-destructive" />
-              <div>
-                <p className="font-medium">{deletingUser.fullName}</p>
-                <p className="text-sm text-muted-foreground">
-                  {deletingUser.email}
-                </p>
-              </div>
-            </div>
-          )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDeletingUser(null)}>
-              Hủy
-            </Button>
-            <Button variant="destructive" onClick={handleDeleteUser}>
-              Xóa người dùng
-            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

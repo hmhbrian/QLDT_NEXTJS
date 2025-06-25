@@ -23,7 +23,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { StarRatingDisplay } from "@/components/courses/StarRatingDisplay";
+import { StarRatingDisplay } from "@/components/ui/StarRatingDisplay";
 import {
   BookText as BookTextIcon,
   FileText,
@@ -610,7 +610,7 @@ export default function TrainingOverviewReportPage() {
                     {criteriaOrder.map((key) => (
                       <TableHead
                         key={key}
-                        className="min-w-[180px] text-center"
+                        className="min-w-[180px] text-center whitespace-nowrap"
                       >
                         {evaluationCriteriaLabels[key]}
                       </TableHead>
@@ -679,16 +679,16 @@ export default function TrainingOverviewReportPage() {
                     <th className="text-left p-3 font-medium text-muted-foreground w-10">
                       #
                     </th>
-                    <th className="text-left p-3 font-medium text-muted-foreground">
+                    <th className="text-left p-3 font-medium text-muted-foreground whitespace-nowrap">
                       Tên Phòng Ban
                     </th>
-                    <th className="text-right p-3 font-medium text-muted-foreground">
+                    <th className="text-right p-3 font-medium text-muted-foreground whitespace-nowrap">
                       Số Khóa Tham Gia
                     </th>
-                    <th className="text-right p-3 font-medium text-muted-foreground">
+                    <th className="text-right p-3 font-medium text-muted-foreground whitespace-nowrap">
                       Số Học Viên
                     </th>
-                    <th className="text-right p-3 font-medium text-muted-foreground">
+                    <th className="text-right p-3 font-medium text-muted-foreground whitespace-nowrap">
                       Điểm Hoạt Động
                     </th>
                   </tr>
