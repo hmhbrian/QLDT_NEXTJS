@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
@@ -40,9 +39,14 @@ import { useToast } from "@/components/ui/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { useError } from "@/hooks/use-error";
 import { mockUsers } from "@/lib/mock";
-import type { User, DepartmentInfo, Position } from "@/lib/types";
+import type { User, Position } from "@/lib/types/user.types";
+import type { DepartmentInfo } from "@/lib/types/department.types";
 import { Checkbox } from "@/components/ui/checkbox";
-import { getLevelBadgeColor, getStatusColor, getStatusText } from "@/lib/helpers";
+import {
+  getLevelBadgeColor,
+  getStatusColor,
+  getStatusText,
+} from "@/lib/helpers";
 
 export default function UserProfilePage() {
   const { user, updateAvatar, changePassword } = useAuth();
@@ -107,9 +111,9 @@ export default function UserProfilePage() {
       <p className="text-center text-muted-foreground">Đang tải hồ sơ...</p>
     );
   }
-  
+
   const getPositionName = (user: User): string => {
-    if (user.position && typeof user.position === 'object') {
+    if (user.position && typeof user.position === "object") {
       return user.position.positionName;
     }
     return "Chưa có";
@@ -220,9 +224,11 @@ export default function UserProfilePage() {
     }
   };
 
-  const renderDepartment = (department: string | DepartmentInfo | undefined) => {
+  const renderDepartment = (
+    department: string | DepartmentInfo | undefined
+  ) => {
     if (!department) return "N/A";
-    if (typeof department === 'string') return department;
+    if (typeof department === "string") return department;
     return department.name;
   };
 
@@ -273,7 +279,9 @@ export default function UserProfilePage() {
                 {profileData.role === "HOCVIEN" && profileData.position && (
                   <Badge
                     variant="outline"
-                    className={getLevelBadgeColor((profileData.position as Position).positionName as any)}
+                    className={getLevelBadgeColor(
+                      (profileData.position as Position).positionName as any
+                    )}
                   >
                     {getPositionName(profileData)}
                   </Badge>
@@ -315,12 +323,11 @@ export default function UserProfilePage() {
                         <strong>Phòng ban:</strong>{" "}
                         {renderDepartment(profileData.department)}
                       </p>
-                       <p className="text-sm">
+                      <p className="text-sm">
                         <strong>Chức vụ:</strong> Chưa có
                       </p>
                       <p className="text-sm">
-                        <strong>Cấp bậc:</strong>{" "}
-                        {getPositionName(profileData)}
+                        <strong>Cấp bậc:</strong> {getPositionName(profileData)}
                       </p>
                       <p className="text-sm">
                         <strong>Ngày vào công ty:</strong>{" "}
