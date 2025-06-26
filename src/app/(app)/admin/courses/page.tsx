@@ -51,7 +51,11 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/components/ui/use-toast";
-import type { Course, TraineeLevel, Department } from "@/lib/types";
+import type {
+  Course,
+  TraineeLevel,
+  Department,
+} from "@/lib/types/course.types";
 import {
   statusOptions,
   statusBadgeVariant,
@@ -60,7 +64,12 @@ import {
 } from "@/lib/constants";
 import NextImage from "next/image";
 import { useCourseStore } from "@/stores/course-store";
-import { useCourses, useCreateCourse, useUpdateCourse, useDeleteCourses } from "@/hooks/use-courses";
+import {
+  useCourses,
+  useCreateCourse,
+  useUpdateCourse,
+  useDeleteCourses,
+} from "@/hooks/use-courses";
 import { DataTable } from "@/components/ui/data-table";
 import { getColumns } from "./columns";
 import { extractErrorMessage } from "@/lib/core";
@@ -228,7 +237,7 @@ export default function CoursesPage() {
       } else {
         // Update existing course
         const courseToUpdate = courseData as Course;
-        
+
         if (updateCourseMutation) {
           const apiPayload = {
             code: courseToUpdate.courseCode,
@@ -245,9 +254,9 @@ export default function CoursesPage() {
             location: courseToUpdate.location,
             statusId: courseToUpdate.status === "published" ? 2 : 1,
           };
-          await updateCourseMutation.mutateAsync({ 
-            courseId: courseToUpdate.id, 
-            payload: apiPayload 
+          await updateCourseMutation.mutateAsync({
+            courseId: courseToUpdate.id,
+            payload: apiPayload,
           });
         } else {
           await updateCourse(courseToUpdate.id, {
@@ -257,7 +266,7 @@ export default function CoursesPage() {
           });
         }
       }
-      
+
       setIsFormDialogOpen(false);
       setIsDuplicating(false);
     } catch (error) {

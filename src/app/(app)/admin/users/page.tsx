@@ -36,10 +36,10 @@ import type {
   User,
   Role,
   CreateUserRequest,
-  DepartmentInfo,
-  Position,
   RegisterDTO,
-} from "@/lib/types";
+} from "@/lib/types/user.types";
+import type { DepartmentInfo } from "@/lib/types/department.types";
+import type { Position } from "@/lib/types/user.types";
 import { useToast } from "@/components/ui/use-toast";
 import { DataTable } from "@/components/ui/data-table";
 import { getColumns } from "./columns";

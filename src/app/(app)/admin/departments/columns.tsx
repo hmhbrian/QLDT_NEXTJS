@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import type { DepartmentInfo } from "@/lib/types";
+import type { DepartmentInfo } from "@/lib/types/department.types";
 import {
   TooltipProvider,
   Tooltip,

@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import type { Course, TraineeLevel } from "@/lib/types";
+import type { Course, TraineeLevel } from "@/lib/types/course.types";
 import {
   statusOptions,
   statusBadgeVariant,

@@ -37,7 +37,11 @@ import {
 import { useState, useMemo } from "react";
 import { useCookie } from "@/hooks/use-cookie";
 import { useUserStore } from "@/stores/user-store";
-import type { Course, StudentCourseEvaluation, Department } from "@/lib/types";
+import type {
+  Course,
+  StudentCourseEvaluation,
+  Department,
+} from "@/lib/types/course.types";
 import {
   mockCourses as initialMockCourses,
   mockEvaluations as initialMockEvaluations,

@@ -1,4 +1,3 @@
-
 "use client";
 
 import { ColumnDef } from "@tanstack/react-table";
@@ -18,7 +17,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import type { User, Role } from "@/lib/types";
+import type { User, Role } from "@/lib/types/user.types";
 import { cn } from "@/lib/utils";
 import { getStatusColor, getStatusText } from "@/lib/helpers";
 
@@ -104,7 +103,9 @@ export const getColumns = (
     cell: ({ row }) => {
       const status = row.original.status || "working";
       return (
-        <Badge className={cn(getStatusColor(status))}>{getStatusText(status)}</Badge>
+        <Badge className={cn(getStatusColor(status))}>
+          {getStatusText(status)}
+        </Badge>
       );
     },
   },

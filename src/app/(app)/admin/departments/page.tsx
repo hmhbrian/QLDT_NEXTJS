@@ -44,9 +44,8 @@ import type {
   DepartmentInfo,
   CreateDepartmentPayload,
   UpdateDepartmentPayload,
-  User,
-  Position,
-} from "@/lib/types";
+} from "@/lib/types/department.types";
+import type { User, Position } from "@/lib/types/user.types";
 import {
   departmentsService,
   usersService,
