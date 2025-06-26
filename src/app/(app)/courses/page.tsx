@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useMemo, useCallback } from "react";
@@ -28,7 +27,7 @@ import { useCookie } from "@/hooks/use-cookie";
 import { mockPublicCourses } from "@/lib/mock";
 import { categoryOptions } from "@/lib/constants";
 import { useCourseStore } from "@/stores/course-store";
-import type { PublicCourse } from "@/lib/types";
+import type { PublicCourse } from "@/lib/types/course.types";
 import { DataTable } from "@/components/ui/data-table";
 import { getColumns } from "./columns";
 import { isRegistrationOpen } from "@/lib/helpers";

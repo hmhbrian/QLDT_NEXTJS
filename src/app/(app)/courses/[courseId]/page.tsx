@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState, useMemo, useCallback } from "react";
@@ -58,19 +57,16 @@ import {
 
 import { useCookie } from "@/hooks/use-cookie";
 import { cn } from "@/lib/utils";
-import {
-  statusOptions,
-  EVALUATIONS_COOKIE_KEY,
-} from "@/lib/constants";
+import { statusOptions, EVALUATIONS_COOKIE_KEY } from "@/lib/constants";
 import {
   Course,
   Lesson,
   CourseMaterial,
   StudentCourseEvaluation,
-} from "@/lib/types";
+} from "@/lib/types/course.types";
 import { mockEvaluations as initialMockEvaluationsFromLib } from "@/lib/mock";
 import { useAuth } from "@/hooks/useAuth";
-import { useToast } from "@/hooks/use-toast";
+import { useToast } from "@/components/ui/use-toast";
 import { useUserStore } from "@/stores/user-store";
 import { useCourseStore } from "@/stores/course-store";
 import { StarRatingInput } from "@/components/courses/StarRatingInput";
@@ -545,8 +541,8 @@ export default function CourseDetailPage() {
                 }
                 className="text-base"
               >
-                {statusOptions.find((s) => s.value === course.status)
-                  ?.label || course.status}
+                {statusOptions.find((s) => s.value === course.status)?.label ||
+                  course.status}
               </Badge>
             </CardContent>
           </Card>
