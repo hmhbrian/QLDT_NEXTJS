@@ -13,6 +13,7 @@ import {
   SoftDeleteCoursesRequest,
 } from "@/lib/types";
 import { API_CONFIG } from "@/lib/legacy-api/config";
+import { buildFormData, getApiToken } from "@/lib/utils/form";
 
 export class CoursesService extends BaseService<
   CourseApiResponse,
@@ -51,183 +52,32 @@ export class CoursesService extends BaseService<
   async createCourse(payload: CreateCourseRequest): Promise<CourseApiResponse> {
     console.log("🔥 Creating course with payload (native fetch):", payload);
 
-    const formData = new FormData();
-    // Add ALL required fields - KHÔNG được để trống hoặc undefined
-    const requiredCode = payload.code?.trim();
-    const requiredName = payload.name?.trim();
-    const requiredDescription = payload.description?.trim();
-    const requiredObjectives = payload.objectives?.trim();
-
-    if (!requiredCode) {
-      throw new Error("Code là trường bắt buộc và không được để trống");
-    }
-    if (!requiredName) {
-      throw new Error("Name là trường bắt buộc và không được để trống");
-    }
-    if (!requiredDescription) {
-      throw new Error("Description là trường bắt buộc và không được để trống");
-    }
-    if (!requiredObjectives) {
-      throw new Error("Objectives là trường bắt buộc và không được để trống");
-    }
-
-    // Add required fields với giá trị đã validate
-    formData.append("Code", requiredCode);
-    formData.append("Name", requiredName);
-    formData.append("Description", requiredDescription);
-    formData.append("Objectives", requiredObjectives);
-
-    // Add ONLY the fields that work in test script - match exactly
-    if (payload.sessions !== undefined && payload.sessions !== null) {
-      formData.append("Sessions", payload.sessions.toString());
-    }
-    if (
-      payload.hoursPerSessions !== undefined &&
-      payload.hoursPerSessions !== null
-    ) {
-      formData.append("HoursPerSessions", payload.hoursPerSessions.toString());
-    }
-    if (
-      payload.maxParticipant !== undefined &&
-      payload.maxParticipant !== null
-    ) {
-      formData.append("MaxParticipant", payload.maxParticipant.toString());
-    }
-    if (payload.location?.trim()) {
-      formData.append("Location", payload.location.trim());
-    }
-    if (payload.statusId !== undefined && payload.statusId !== null) {
-      formData.append("StatusId", payload.statusId.toString());
-    }
-
-    // Add dates exactly like test script - must be ISO format
-    if (payload.startDate?.trim()) {
-      formData.append("StartDate", payload.startDate.trim());
-    }
-    if (payload.endDate?.trim()) {
-      formData.append("EndDate", payload.endDate.trim());
-    }
-    if (payload.registrationStartDate?.trim()) {
-      formData.append(
-        "RegistrationStartDate",
-        payload.registrationStartDate.trim()
-      );
-    }
-    if (payload.registrationClosingDate?.trim()) {
-      formData.append(
-        "RegistrationClosingDate",
-        payload.registrationClosingDate.trim()
-      );
-    }
-
-    // Add arrays - backend expects multiple fields with same name for arrays
-    // CHỈ GỬI nếu có giá trị và hợp lệ để tránh lỗi business validation
-    if (
-      payload.departmentIds &&
-      Array.isArray(payload.departmentIds) &&
-      payload.departmentIds.length > 0
-    ) {
-      console.log("🏢 Adding DepartmentIds:", payload.departmentIds);
-      payload.departmentIds.forEach((id) => {
-        if (id !== undefined && id !== null && id > 0) {
-          formData.append("DepartmentIds", id.toString());
-        }
-      });
-    } else {
-      console.log(
-        "⚠️ Skipping DepartmentIds - empty or invalid",
-        payload.departmentIds
-      );
-    }
-
-    if (
-      payload.positionIds &&
-      Array.isArray(payload.positionIds) &&
-      payload.positionIds.length > 0
-    ) {
-      console.log("👤 Adding PositionIds:", payload.positionIds);
-      payload.positionIds.forEach((id) => {
-        if (id !== undefined && id !== null && id > 0) {
-          formData.append("PositionIds", id.toString());
-        }
-      });
-    } else {
-      console.log(
-        "⚠️ Skipping PositionIds - empty or invalid",
-        payload.positionIds
-      );
-    }
-
-    // Debug: Check FormData contents
-    console.log("📋 FormData contents:");
-    const formDataEntries: Array<[string, string]> = [];
-    for (let [key, value] of formData.entries()) {
-      const entry: [string, string] = [key, value as string];
-      formDataEntries.push(entry);
-      console.log(`  ${key}: "${value}" (type: ${typeof value})`);
-    }
-
-    console.log("🔍 Total FormData entries:", formDataEntries.length);
-
-    // Test script comparison with exact values
-    console.log("📝 Test script vs UI comparison:");
-    const testScriptData = {
-      Code: "COURSE001",
-      Name: "Test Course Name",
-      Description: "Test Course Description",
-      Objectives: "Test Course Objectives",
-      Sessions: "10",
-      HoursPerSessions: "4",
-      MaxParticipant: "30",
-      Location: "Room 101",
-      StatusId: "1",
-      StartDate: "2025-07-06T05:23:45.957Z",
-      EndDate: "2025-07-16T05:23:45.959Z",
-      RegistrationStartDate: "2025-06-27T05:23:45.959Z",
-      RegistrationClosingDate: "2025-07-01T05:23:45.959Z",
+    // Build object đúng contract backend
+    const obj: Record<string, any> = {
+      Code: payload.code?.trim(),
+      Name: payload.name?.trim(),
+      Description: payload.description?.trim(),
+      Objectives: payload.objectives?.trim(),
+      Sessions: payload.sessions,
+      HoursPerSessions: payload.hoursPerSessions,
+      MaxParticipant: payload.maxParticipant,
+      StartDate: payload.startDate,
+      EndDate: payload.endDate,
+      RegistrationStartDate: payload.registrationStartDate,
+      RegistrationClosingDate: payload.registrationClosingDate,
+      Location: payload.location,
+      StatusId: payload.statusId,
+      DepartmentIds: payload.departmentIds,
+      PositionIds: payload.positionIds,
     };
-
-    console.log("📊 Exact field comparison:");
-    Object.keys(testScriptData).forEach((key) => {
-      const testValue = testScriptData[key as keyof typeof testScriptData];
-      const uiValue = formData.get(key);
-      const matches = uiValue === testValue;
-      console.log(
-        `${key}: UI="${uiValue}" vs Test="${testValue}" | Match: ${matches}`
-      );
-      if (!matches && key.includes("Date")) {
-        console.log(
-          `  Date comparison - UI type: ${typeof uiValue}, Test type: ${typeof testValue}`
-        );
-      }
-    });
-
-    console.log("🎯 This should match test script FormData structure");
-
-    // Log request details for comparison with test script
-    const requestUrl = `${API_CONFIG.baseURL}${API_CONFIG.endpoints.courses.create}`;
-    console.log("🌐 Request URL:", requestUrl);
-    console.log(
-      "🌐 Full endpoint URL for comparison with test script:",
-      requestUrl
-    );
-
-    // Lấy token nếu có
-    let token = "";
-    if (typeof window !== "undefined") {
-      token =
-        localStorage.getItem("becamex-token") ||
-        localStorage.getItem("accessToken") ||
-        "";
-    }
-
-    // Dùng native fetch để gửi FormData
+    const formData = buildFormData(obj);
+    const token = getApiToken();
     const response = await fetch(
       `${API_CONFIG.baseURL}${API_CONFIG.endpoints.courses.create}`,
       {
         method: "POST",
         headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-        body: formData, // KHÔNG set Content-Type
+        body: formData,
       }
     );
 
@@ -421,95 +271,41 @@ export class CoursesService extends BaseService<
   ): Promise<CourseApiResponse> {
     console.log("[updateCourse] Input payload:", payload);
 
-    // Backend yêu cầu FormData cho PUT, không phải JSON
-    const formData = new FormData();
-
-    // Required fields: LUÔN phải có giá trị
-    formData.append("Code", payload.code?.trim() || "DEFAULT_CODE");
-    formData.append("Name", payload.name?.trim() || "DEFAULT_NAME");
-    formData.append(
-      "Description",
-      payload.description?.trim() || "DEFAULT_DESCRIPTION"
-    );
-    formData.append(
-      "Objectives",
-      payload.objectives?.trim() || "DEFAULT_OBJECTIVES"
-    );
-
-    // Optional fields: chỉ thêm nếu có giá trị
-    if (payload.sessions !== undefined)
-      formData.append("Sessions", payload.sessions.toString());
-    if (payload.hoursPerSessions !== undefined)
-      formData.append("HoursPerSessions", payload.hoursPerSessions.toString());
-    if (payload.maxParticipant !== undefined)
-      formData.append("MaxParticipant", payload.maxParticipant.toString());
-    if (payload.startDate) formData.append("StartDate", payload.startDate);
-    if (payload.endDate) formData.append("EndDate", payload.endDate);
-    if (payload.registrationStartDate)
-      formData.append("RegistrationStartDate", payload.registrationStartDate);
-    if (payload.registrationClosingDate)
-      formData.append(
-        "RegistrationClosingDate",
-        payload.registrationClosingDate
-      );
-    if (payload.location) formData.append("Location", payload.location);
-    if (payload.statusId !== undefined)
-      formData.append("StatusId", payload.statusId.toString());
-
-    // Arrays: gửi nhiều field cùng tên
-    if (payload.departmentIds && Array.isArray(payload.departmentIds)) {
-      payload.departmentIds.forEach((id) => {
-        if (id !== undefined && id !== null && id > 0) {
-          formData.append("DepartmentIds", id.toString());
-        }
-      });
-    }
-    if (payload.positionIds && Array.isArray(payload.positionIds)) {
-      payload.positionIds.forEach((id) => {
-        if (id !== undefined && id !== null && id > 0) {
-          formData.append("PositionIds", id.toString());
-        }
-      });
-    }
-
-    // Log FormData contents
-    console.log("[updateCourse] FormData contents:");
-    for (const [key, value] of formData.entries()) {
-      console.log(`  ${key}: "${value}"`);
-    }
-
-    // Sử dụng native fetch với FormData
-    let token = "";
-    if (typeof window !== "undefined") {
-      token =
-        localStorage.getItem("becamex-token") ||
-        localStorage.getItem("accessToken") ||
-        "";
-    }
-
+    const obj: Record<string, any> = {
+      Code: payload.code?.trim(),
+      Name: payload.name?.trim(),
+      Description: payload.description?.trim(),
+      Objectives: payload.objectives?.trim(),
+      Sessions: payload.sessions,
+      HoursPerSessions: payload.hoursPerSessions,
+      MaxParticipant: payload.maxParticipant,
+      StartDate: payload.startDate,
+      EndDate: payload.endDate,
+      RegistrationStartDate: payload.registrationStartDate,
+      RegistrationClosingDate: payload.registrationClosingDate,
+      Location: payload.location,
+      StatusId: payload.statusId,
+      DepartmentIds: payload.departmentIds,
+      PositionIds: payload.positionIds,
+    };
+    const formData = buildFormData(obj);
+    const token = getApiToken();
     const url = `${API_CONFIG.baseURL}${API_CONFIG.endpoints.courses.update(
       courseId
     )}`;
-    console.log("[updateCourse] URL:", url);
-
     const response = await fetch(url, {
       method: "PUT",
       headers: token ? { Authorization: `Bearer ${token}` } : {},
-      body: formData, // Không set Content-Type, để browser tự set boundary
+      body: formData,
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("[updateCourse] Error response:", errorText);
       throw new Error(errorText);
     }
 
     const data = await response.json();
-    console.log("[updateCourse] Success response:", data);
-
-    // Backend trả về {success: true, message: "courseId"} thay vì course object
     if (data.success) {
-      // Lấy lại course từ API để trả về course object đầy đủ
       const courseId = data.message;
       return await this.getCourseById(courseId);
     } else {
