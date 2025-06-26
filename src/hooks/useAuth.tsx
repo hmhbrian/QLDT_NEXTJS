@@ -1,6 +1,6 @@
 "use client";
 
-import { User, LoginDTO } from "@/lib/types";
+import { User, LoginDTO } from "@/lib/types/user.types";
 import React, {
   createContext,
   useContext,
@@ -11,7 +11,7 @@ import React, {
 } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useError } from "./use-error";
-import { API_CONFIG } from "@/lib/legacy-api/config";
+import { API_CONFIG } from "@/lib/config";
 import { authService } from "@/lib/services";
 import { mockUsers } from "@/lib/mock";
 

@@ -1,7 +1,6 @@
-
 import { useQuery } from "@tanstack/react-query";
 import { positionsService } from "@/lib/services";
-import type { Position } from "@/lib/types";
+import type { Position } from "@/lib/types/user.types";
 
 export const POSITIONS_QUERY_KEY = "positions";
 
@@ -19,5 +18,3 @@ export const usePositions = () => {
     error,
   };
 };
-
-    

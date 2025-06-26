@@ -3,14 +3,14 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 // Import trực tiếp để tránh lỗi module resolution
 import { coursesService } from "@/lib/services/modern/courses.service";
-import { useToast } from "@/hooks/use-toast";
+import { useToast } from "@/components/ui/use-toast";
 import type {
   Course,
   CourseApiResponse,
   CreateCourseRequest,
   UpdateCourseRequest,
   CourseSearchParams,
-} from "@/lib/types";
+} from "@/lib/types/course.types";
 import type { QueryParams } from "@/lib/core";
 
 export const COURSES_QUERY_KEY = "courses";

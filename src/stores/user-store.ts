@@ -1,10 +1,10 @@
 import { create } from "zustand";
 import { persist, createJSONStorage, StateStorage } from "zustand/middleware";
-import type { User, CreateUserRequest } from "@/lib/types";
+import type { User, CreateUserRequest } from "@/lib/types/user.types";
 import { mockUsers } from "@/lib/mock";
 import Cookies from "js-cookie";
 import { usersService } from "@/lib/services";
-import { API_CONFIG } from "@/lib/legacy-api/config";
+import { API_CONFIG } from "@/lib/config";
 
 // Store này hiện tại chủ yếu để giữ trạng thái của user đã đăng nhập
 // và cung cấp quản lý trạng thái đơn giản qua các component.

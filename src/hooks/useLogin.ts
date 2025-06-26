@@ -2,15 +2,16 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "./useAuth";
 import { authService } from "@/lib/services";
+import { useError } from "./use-error";
+import { toast } from "@/components/ui/use-toast";
 
 export function useLogin() {
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
-  const { toast } = useToast();
   const { setUser } = useAuth();
+  const { handleError } = useError();
 
   const login = async (email: string, password: string) => {
     try {
@@ -25,24 +26,18 @@ export function useLogin() {
           role: response.data.role as "ADMIN" | "HR" | "HOCVIEN",
         };
         setUser(userWithMissingProps);
+
         toast({
           title: "Thành công",
           description: response.message,
         });
+
         router.push("/dashboard");
       } else {
-        toast({
-          variant: "destructive",
-          title: "Lỗi",
-          description: response.message,
-        });
+        throw new Error(response.message || "Đăng nhập thất bại");
       }
     } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Lỗi",
-        description: "Đã có lỗi xảy ra khi đăng nhập",
-      });
+      handleError(error);
     } finally {
       setIsLoading(false);
     }

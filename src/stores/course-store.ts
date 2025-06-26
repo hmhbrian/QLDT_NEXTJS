@@ -1,10 +1,10 @@
 import { create } from "zustand";
 import { persist, createJSONStorage, StateStorage } from "zustand/middleware";
 import { devtools } from "zustand/middleware";
-import type { Course } from "@/lib/types";
+import type { Course } from "@/lib/types/course.types";
 import { mockCourses } from "@/lib/mock";
 import Cookies from "js-cookie";
-import { API_CONFIG } from "@/lib/legacy-api/config";
+import { API_CONFIG } from "@/lib/config";
 import { coursesService } from "@/lib/services/modern/courses.service";
 
 // Enhanced error types for better error handling
