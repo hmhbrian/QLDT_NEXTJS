@@ -1,4 +1,4 @@
-import type { NavItem } from "@/lib/types";
+import type { NavItem } from "@/lib/types/ui.types";
 import {
   LayoutDashboard,
   BookOpen,
