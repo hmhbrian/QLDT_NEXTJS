@@ -1,4 +1,5 @@
-import type { User, Trainee, WorkStatus, TraineeLevel } from "../types";
+import type { User, Trainee, WorkStatus } from "../types/user.types";
+import type { TraineeLevel } from "../types/course.types";
 
 // Mock Users Data
 export const mockUsers: User[] = [
@@ -175,7 +176,8 @@ export const getUserByEmailAndPassword = (
 ): User | null => {
   // Tìm user có email và password khớp, không phân biệt chữ hoa/thường cho email
   const user = mockUsers.find(
-    (u) => u.email.toLowerCase() === email.toLowerCase() && u.password === password
+    (u) =>
+      u.email.toLowerCase() === email.toLowerCase() && u.password === password
   );
   return user || null;
 };

@@ -1,4 +1,4 @@
-import { API_CONFIG } from "@/lib/legacy-api/config";
+import { API_CONFIG } from "@/lib/config";
 import { usersService } from "@/lib/services";
 
 /**

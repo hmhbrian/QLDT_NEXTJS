@@ -1,24 +1,19 @@
+/**
+ * Legacy Constants (Deprecated)
+ * @deprecated Import from @/lib/config/constants instead
+ * This file exists for backward compatibility only
+ */
 
-import type { Course, TraineeLevel } from "./types";
+import type { Course, TraineeLevel } from "./types/course.types";
+import {
+  COURSE_STATUS_OPTIONS as statusOptions,
+  COURSE_STATUS_BADGE_VARIANT as statusBadgeVariant,
+  STORAGE_KEYS,
+} from "./config/constants";
 
-// Các tùy chọn trạng thái khóa học
-export const statusOptions = [
-  { value: "draft", label: "Lưu nháp" },
-  { value: "published", label: "Đã xuất bản" },
-  { value: "archived", label: "Đã lưu trữ" },
-] as const;
-
-// Các biến thể badge cho từng trạng thái
-export const statusBadgeVariant: Record<
-  string,
-  "default" | "destructive" | "outline" | "secondary"
-> = {
-  draft: "secondary",
-  published: "default",
-  archived: "destructive",
-};
-
-export const EVALUATIONS_COOKIE_KEY = "student_course_evaluations";
+// Re-export for backward compatibility
+export { statusOptions, statusBadgeVariant };
+export const EVALUATIONS_COOKIE_KEY = STORAGE_KEYS.EVALUATIONS;
 
 // Các tùy chọn phòng ban
 export const departmentOptions = [

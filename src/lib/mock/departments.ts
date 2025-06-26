@@ -1,4 +1,4 @@
-import type { DepartmentInfo } from "../types";
+import type { DepartmentInfo } from "../types/department.types";
 
 // Mock Departments List
 export const mockDepartments: DepartmentInfo[] = [

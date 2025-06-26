@@ -1,4 +1,4 @@
-import type { User } from "../types";
+import type { User } from "../types/user.types";
 import { getUserByEmailAndPassword } from "./users";
 
 export interface MockLoginResponse {

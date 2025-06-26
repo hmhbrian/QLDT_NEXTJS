@@ -1,4 +1,4 @@
-import type { DepartmentInfo } from "@/lib/types";
+import type { DepartmentInfo } from "@/lib/types/department.types";
 
 /**
  * Tạo bảng tra cứu nhanh từ ID sang Department
