@@ -215,7 +215,10 @@ export class CoursesService extends BaseService<
     // Lấy token nếu có
     let token = "";
     if (typeof window !== "undefined") {
-      token = localStorage.getItem("becamex-token") || localStorage.getItem("accessToken") || "";
+      token =
+        localStorage.getItem("becamex-token") ||
+        localStorage.getItem("accessToken") ||
+        "";
     }
 
     // Dùng native fetch để gửi FormData
@@ -234,7 +237,7 @@ export class CoursesService extends BaseService<
     }
     const data = await response.json();
     console.log("[createCourse] Success response:", data);
-    
+
     // Backend có thể trả về {success: true, message: "courseId"} thay vì course object
     if (data.success) {
       // Lấy lại course từ API để trả về course object đầy đủ
