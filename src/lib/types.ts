@@ -332,7 +332,7 @@ export interface Course {
     sessions: number;
     hoursPerSession: number;
   };
-  learningType: "online";
+  learningType: "online" | "offline";
   startDate: string | null; // Chuỗi ngày ISO hoặc null
   endDate: string | null; // Chuỗi ngày ISO hoặc null
   location: string;
@@ -387,4 +387,87 @@ export interface StudentCourseEvaluation {
     materialsEffectiveness: number; // Hiệu quả tài liệu
   };
   suggestions?: string; // Góp ý thêm
+}
+
+// Courses API Types - Match backend exactly (only fields that work in test script)
+export interface CreateCourseRequest {
+  code: string; // Required
+  name: string; // Required
+  description: string; // Required
+  objectives: string; // Required
+  // REMOVED: credit, estimatedDuration, thumbUrl, format, optional - not accepted by backend
+  sessions?: number;
+  hoursPerSessions?: number; // Note: backend uses plural form
+  maxParticipant?: number;
+  startDate?: string; // ISO date-time
+  endDate?: string; // ISO date-time
+  registrationStartDate?: string; // ISO date-time
+  registrationClosingDate?: string; // ISO date-time
+  location?: string;
+  statusId?: number;
+  departmentIds?: number[];
+  positionIds?: number[];
+}
+
+export interface UpdateCourseRequest extends Partial<CreateCourseRequest> {
+  // All fields optional for updates
+}
+
+export interface CourseApiResponse {
+  id: string;
+  code: string;
+  name: string;
+  description: string;
+  objectives: string;
+  thumbUrl?: string;
+  format?: string;
+  sessions?: number;
+  hoursPerSessions?: number;
+  optional?: string;
+  maxParticipant?: number;
+  startDate?: string;
+  endDate?: string;
+  registrationStartDate?: string;
+  registrationClosingDate?: string;
+  location?: string;
+  createdAt?: string;
+  modifiedAt?: string;
+  statusId?: number;
+  status?: {
+    id: number;
+    name: string;
+  };
+  departments?: Array<{
+    departmentId: number;
+    departmentName: string;
+    departmentCode?: string;
+    description?: string;
+    parentId?: number;
+    parentName?: string;
+    managerId?: number;
+    managerName?: string;
+    status?: string;
+    level: number;
+    path?: string;
+    createdAt: string;
+    updatedAt: string;
+    children?: any;
+  }>;
+  positions?: Array<{
+    positionId: number;
+    positionName: string;
+  }>;
+}
+
+export interface CourseSearchParams {
+  keyword?: string;
+  statusId?: number;
+  departmentIds?: number[];
+  positionIds?: number[];
+  startDate?: string;
+  endDate?: string;
+}
+
+export interface SoftDeleteCoursesRequest {
+  ids: string[];
 }
