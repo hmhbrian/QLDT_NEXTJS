@@ -60,6 +60,7 @@ import {
 } from "@/lib/constants";
 import NextImage from "next/image";
 import { useCourseStore } from "@/stores/course-store";
+import { useCourses, useCreateCourse, useUpdateCourse, useDeleteCourses } from "@/hooks/use-courses";
 import { DataTable } from "@/components/ui/data-table";
 import { getColumns } from "./columns";
 import { extractErrorMessage } from "@/lib/core";
@@ -76,6 +77,7 @@ export default function CoursesPage() {
   const { user: currentUser } = useAuth();
   const { toast } = useToast();
 
+  // Use only the store for consistency
   const {
     courses,
     isLoading,
@@ -84,6 +86,11 @@ export default function CoursesPage() {
     deleteCourse,
     fetchCourses,
   } = useCourseStore();
+
+  // Get mutation functions for handlers
+  const createCourseMutation = useCreateCourse();
+  const updateCourseMutation = useUpdateCourse();
+  const deleteCourseMutation = useDeleteCourses();
 
   useEffect(() => {
     fetchCourses();
@@ -204,44 +211,59 @@ export default function CoursesPage() {
 
     try {
       if (isDuplicating || !isEditing) {
-        const newCourseData = courseData as Omit<
-          Course,
-          "id" | "createdAt" | "modifiedAt" | "createdBy" | "modifiedBy"
-        >;
-        await addCourse({
-          ...newCourseData,
-          id: crypto.randomUUID(),
-          createdAt: new Date().toISOString(),
-          modifiedAt: new Date().toISOString(),
-          createdBy: currentUser.id,
-          modifiedBy: currentUser.id,
-        });
-        toast({
-          title: "Thành công",
-          description: "Đã thêm khóa học mới.",
-          variant: "success",
-        });
+        // Create new course - use mutation directly
+        if (createCourseMutation) {
+          await createCourseMutation.mutateAsync(courseData);
+        } else {
+          // Fallback to store for legacy support
+          await addCourse({
+            ...courseData,
+            id: crypto.randomUUID(),
+            createdAt: new Date().toISOString(),
+            modifiedAt: new Date().toISOString(),
+            createdBy: currentUser.id,
+            modifiedBy: currentUser.id,
+          } as Course);
+        }
       } else {
+        // Update existing course
         const courseToUpdate = courseData as Course;
-        await updateCourse(courseToUpdate.id, {
-          ...courseToUpdate,
-          modifiedAt: new Date().toISOString(),
-          modifiedBy: currentUser.id,
-        });
-        toast({
-          title: "Thành công",
-          description: "Đã cập nhật thông tin khóa học.",
-          variant: "success",
-        });
+        
+        if (updateCourseMutation) {
+          const apiPayload = {
+            code: courseToUpdate.courseCode,
+            name: courseToUpdate.title,
+            description: courseToUpdate.description,
+            objectives: courseToUpdate.objectives,
+            thumbUrl: courseToUpdate.image,
+            sessions: courseToUpdate.duration?.sessions,
+            hoursPerSessions: courseToUpdate.duration?.hoursPerSession,
+            maxParticipant: courseToUpdate.maxParticipants,
+            startDate: courseToUpdate.startDate,
+            endDate: courseToUpdate.endDate,
+            registrationClosingDate: courseToUpdate.registrationDeadline,
+            location: courseToUpdate.location,
+            statusId: courseToUpdate.status === "published" ? 2 : 1,
+          };
+          await updateCourseMutation.mutateAsync({ 
+            courseId: courseToUpdate.id, 
+            payload: apiPayload 
+          });
+        } else {
+          await updateCourse(courseToUpdate.id, {
+            ...courseToUpdate,
+            modifiedAt: new Date().toISOString(),
+            modifiedBy: currentUser.id,
+          });
+        }
       }
+      
       setIsFormDialogOpen(false);
       setIsDuplicating(false);
     } catch (error) {
-      toast({
-        title: "Lỗi",
-        description: extractErrorMessage(error),
-        variant: "destructive",
-      });
+      // Errors will be handled by mutation hooks and displayed to user
+      console.error("Save course failed:", error);
+      throw error; // Re-throw to let dialog handle it
     }
   };
 

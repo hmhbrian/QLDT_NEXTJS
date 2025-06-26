@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
+import { useToast } from "@/hooks/use-toast";
 import {
   PlusCircle,
   Upload,
@@ -132,6 +133,7 @@ export function CourseFormDialog({
   onSave,
 }: CourseFormDialogProps) {
   const { showError } = useError();
+  const { toast } = useToast();
   const allUsers = useUserStore((state) => state.users);
   const trainees = allUsers.filter((u) => u.role === "HOCVIEN");
 
@@ -811,14 +813,33 @@ export function CourseFormDialog({
     }
   };
 
-  const handleSubmit = () => {
-    if (
-      !formData.title ||
-      !formData.description ||
-      !formData.instructor ||
-      !formData.category
-    ) {
-      showError("FORM001");
+  const handleSubmit = async () => {
+    // Frontend validation - chỉ kiểm tra cơ bản
+    const validationErrors: string[] = [];
+
+    if (!formData.title?.trim()) {
+      validationErrors.push("Tên khóa học là bắt buộc");
+    }
+
+    if (!formData.courseCode?.trim()) {
+      validationErrors.push("Mã khóa học là bắt buộc");
+    }
+
+    if (!formData.description?.trim()) {
+      validationErrors.push("Mô tả khóa học là bắt buộc");
+    }
+
+    if (!formData.objectives?.trim()) {
+      validationErrors.push("Mục tiêu khóa học là bắt buộc");
+    }
+
+    // Hiển thị lỗi frontend nếu có
+    if (validationErrors.length > 0) {
+      toast({
+        title: "Thiếu thông tin bắt buộc",
+        description: validationErrors.join(", "),
+        variant: "destructive",
+      });
       return;
     }
 
@@ -826,11 +847,16 @@ export function CourseFormDialog({
     const finalFormData = {
       ...formData,
       courseCode: formData.courseCode || generateCourseCode(),
-      image: courseImagePreview || formData.image, // Đảm bảo image được cập nhật từ preview nếu có
+      image: courseImagePreview || formData.image,
     };
 
-    onSave(finalFormData, !!courseToEdit); // Truyền isEditing flag
-    onOpenChange(false); // Đóng dialog
+    try {
+      await onSave(finalFormData, !!courseToEdit);
+      onOpenChange(false); // Chỉ đóng dialog khi thành công
+    } catch (error) {
+      // Backend validation errors sẽ được hiển thị từ hook mutation
+      console.error("Save failed:", error);
+    }
   };
 
   const renderMaterialIcon = (type: CourseMaterial["type"]) => {
@@ -1741,7 +1767,7 @@ export function CourseFormDialog({
               Quản lý thông tin và câu hỏi cho bài kiểm tra.
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="flex-1 overflow-hidden">
             <div className="grid gap-6 py-4 h-full overflow-y-auto pr-2">
               <div className="space-y-2">
@@ -1827,61 +1853,61 @@ export function CourseFormDialog({
                               key={q.id || actualIndex}
                               className="flex items-start justify-between p-3 border rounded-md bg-muted/20 hover:bg-muted/30 transition-colors"
                             >
-                                <div className="text-sm flex-1 pr-3">
-                                  <div className="font-medium mb-1">
-                                    {q.questionCode || `Q${actualIndex + 1}`}
-                                  </div>
-                                  <div className="text-muted-foreground mb-2">
-                                    {q.text}
-                                  </div>
-                                  <div className="flex flex-wrap gap-1">
-                                    {q.options.map((option, optIndex) => (
-                                      <span
-                                        key={optIndex}
-                                        className={`text-xs px-2 py-1 rounded ${
-                                          optIndex === q.correctAnswerIndex
-                                            ? "bg-green-100 text-green-700 font-medium"
-                                            : "bg-gray-100 text-gray-600"
-                                        }`}
-                                      >
-                                        {String.fromCharCode(65 + optIndex)}:{" "}
-                                        {option}
-                                      </span>
-                                    ))}
-                                  </div>
+                              <div className="text-sm flex-1 pr-3">
+                                <div className="font-medium mb-1">
+                                  {q.questionCode || `Q${actualIndex + 1}`}
                                 </div>
-                                <div className="flex gap-1 flex-shrink-0">
-                                  <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={() =>
-                                      handleOpenEditQuestion(
-                                        q,
-                                        currentEditingTest?.id || ""
-                                      )
-                                    }
-                                  >
-                                    <Edit className="h-4 w-4" />
-                                  </Button>
-                                  <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="icon"
-                                    className="text-destructive hover:text-destructive"
-                                    onClick={() =>
-                                      handleDeleteQuestionFromTest(
-                                        q.id || `temp-${actualIndex}`,
-                                        currentEditingTest?.id || ""
-                                      )
-                                    }
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
+                                <div className="text-muted-foreground mb-2">
+                                  {q.text}
+                                </div>
+                                <div className="flex flex-wrap gap-1">
+                                  {q.options.map((option, optIndex) => (
+                                    <span
+                                      key={optIndex}
+                                      className={`text-xs px-2 py-1 rounded ${
+                                        optIndex === q.correctAnswerIndex
+                                          ? "bg-green-100 text-green-700 font-medium"
+                                          : "bg-gray-100 text-gray-600"
+                                      }`}
+                                    >
+                                      {String.fromCharCode(65 + optIndex)}:{" "}
+                                      {option}
+                                    </span>
+                                  ))}
                                 </div>
                               </div>
-                            );
-                          })}
+                              <div className="flex gap-1 flex-shrink-0">
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() =>
+                                    handleOpenEditQuestion(
+                                      q,
+                                      currentEditingTest?.id || ""
+                                    )
+                                  }
+                                >
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="text-destructive hover:text-destructive"
+                                  onClick={() =>
+                                    handleDeleteQuestionFromTest(
+                                      q.id || `temp-${actualIndex}`,
+                                      currentEditingTest?.id || ""
+                                    )
+                                  }
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </div>
+                          );
+                        })}
                     </div>
 
                     {/* Pagination cho câu hỏi */}
