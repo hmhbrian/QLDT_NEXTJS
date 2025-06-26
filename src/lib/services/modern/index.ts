@@ -5,6 +5,7 @@
  */
 
 export * from './auth.service';
+export * from './courses.service';
 export * from './departments.service';
 export * from './positions.service';
 export * from './roles.service';

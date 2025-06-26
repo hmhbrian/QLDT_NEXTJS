@@ -4,7 +4,8 @@
  */
 
 // API Environment configuration
-const API_BASE_URL = "/api"; // Use Next.js proxy
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL || "http://localhost:5228/api"; // Direct backend URL
 const API_TIMEOUT = parseInt(process.env.NEXT_PUBLIC_API_TIMEOUT || "30000");
 const USE_API = process.env.NEXT_PUBLIC_USE_API === "true";
 
@@ -60,6 +61,12 @@ export const API_CONFIG = {
     },
     courses: {
       base: "/Courses",
+      create: "/Courses",
+      getAll: "/Courses",
+      getById: (id: string) => `/Courses/${id}`,
+      update: (id: string) => `/Courses/${id}`,
+      search: "/Courses/search",
+      softDelete: "/Courses/soft-delete",
     },
     courseStatus: {
       base: "/CourseStatus",

@@ -15,13 +15,33 @@ export abstract class BaseService<
 > {
   protected readonly endpoint: string;
 
+  // Helper: get Authorization header from localStorage
+  protected getAuthHeaders(): Record<string, string> {
+    let token = "";
+    if (typeof window !== "undefined") {
+      // Sử dụng cùng key token như api-client.ts
+      token =
+        localStorage.getItem("becamex-token") ||
+        localStorage.getItem("accessToken") ||
+        "";
+    }
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  }
+
   constructor(endpoint: string) {
     this.endpoint = endpoint;
   }
 
   protected async get<T>(url: string, config?: RequestConfig): Promise<T> {
     try {
-      const response = await apiClient.get<T>(url, config);
+      const mergedConfig = {
+        ...config,
+        headers: {
+          ...this.getAuthHeaders(),
+          ...config?.headers,
+        },
+      };
+      const response = await apiClient.get<T>(url, mergedConfig);
       return response.data;
     } catch (error) {
       this.handleError("GET", url, error);
@@ -34,7 +54,39 @@ export abstract class BaseService<
     config?: RequestConfig
   ): Promise<T> {
     try {
-      const response = await apiClient.post<T>(url, data, config);
+      // Handle FormData - don't set Content-Type, let browser set it with boundary
+      if (data instanceof FormData) {
+        const formDataConfig = {
+          ...config,
+          headers: {
+            ...this.getAuthHeaders(),
+            ...config?.headers,
+            // Remove Content-Type to let browser set multipart boundary
+          },
+        };
+        delete formDataConfig.headers?.["Content-Type"];
+
+        console.log("📡 Sending FormData request:");
+        console.log("  URL:", url);
+        console.log("  Method: POST");
+        console.log("  Headers:", formDataConfig.headers);
+        console.log(
+          "  FormData entries:",
+          Array.from((data as FormData).entries())
+        );
+
+        const response = await apiClient.post<T>(url, data, formDataConfig);
+        return response.data;
+      }
+
+      const mergedConfig = {
+        ...config,
+        headers: {
+          ...this.getAuthHeaders(),
+          ...config?.headers,
+        },
+      };
+      const response = await apiClient.post<T>(url, data, mergedConfig);
       return response.data;
     } catch (error) {
       this.handleError("POST", url, error);
@@ -47,7 +99,14 @@ export abstract class BaseService<
     config?: RequestConfig
   ): Promise<T> {
     try {
-      const response = await apiClient.put<T>(url, data, config);
+      const mergedConfig = {
+        ...config,
+        headers: {
+          ...this.getAuthHeaders(),
+          ...config?.headers,
+        },
+      };
+      const response = await apiClient.put<T>(url, data, mergedConfig);
       return response.data;
     } catch (error) {
       this.handleError("PUT", url, error);
@@ -60,7 +119,14 @@ export abstract class BaseService<
     config?: RequestConfig
   ): Promise<T> {
     try {
-      const response = await apiClient.patch<T>(url, data, config);
+      const mergedConfig = {
+        ...config,
+        headers: {
+          ...this.getAuthHeaders(),
+          ...config?.headers,
+        },
+      };
+      const response = await apiClient.patch<T>(url, data, mergedConfig);
       return response.data;
     } catch (error) {
       this.handleError("PATCH", url, error);
@@ -72,7 +138,20 @@ export abstract class BaseService<
     config?: RequestConfig
   ): Promise<T> {
     try {
-      const response = await apiClient.delete<T>(url, config);
+      const mergedConfig = {
+        ...config,
+        headers: {
+          ...this.getAuthHeaders(),
+          ...config?.headers,
+        },
+      };
+      // Log chi tiết request DELETE
+      console.log("[BaseService][DELETE] URL:", url);
+      console.log("[BaseService][DELETE] Headers:", mergedConfig.headers);
+      if (config && (config as any).data) {
+        console.log("[BaseService][DELETE] Body:", (config as any).data);
+      }
+      const response = await apiClient.delete<T>(url, mergedConfig);
       return response.data;
     } catch (error) {
       this.handleError("DELETE", url, error);
@@ -125,6 +204,54 @@ export abstract class BaseService<
       message,
       originalError: error,
     });
+
+    // Log raw error response for debugging
+    if (error && typeof error === "object" && "response" in error) {
+      const axiosError = error as any;
+      console.error("🔥 Raw error response:", {
+        status: axiosError.response?.status,
+        statusText: axiosError.response?.statusText,
+        data: axiosError.response?.data,
+        headers: axiosError.response?.headers,
+        config: axiosError.config,
+      });
+      // Log Authorization header nếu có
+      if (axiosError.config && axiosError.config.headers) {
+        console.error("🔥 Request headers:", axiosError.config.headers);
+      }
+      // Log request body nếu có
+      if (axiosError.config && axiosError.config.data) {
+        console.error("🔥 Request body:", axiosError.config.data);
+      }
+      // Try to parse and log detailed error message
+      try {
+        const errorData = axiosError.response?.data;
+        if (typeof errorData === "string") {
+          const parsedError = JSON.parse(errorData);
+          console.error("🔥 Parsed error details:", parsedError);
+
+          // Extract validation errors if present
+          if (parsedError.errors) {
+            console.error("🔥 Validation errors:", parsedError.errors);
+            // Log each validation error in detail
+            Object.entries(parsedError.errors).forEach(([field, errors]) => {
+              console.error(`🔥   Field '${field}':`, errors);
+            });
+          }
+          if (parsedError.title) {
+            console.error("🔥 Error title:", parsedError.title);
+          }
+          if (parsedError.detail) {
+            console.error("🔥 Error detail:", parsedError.detail);
+          }
+        } else if (errorData && typeof errorData === "object") {
+          console.error("🔥 Error object:", errorData);
+        }
+      } catch (parseError) {
+        console.error("🔥 Could not parse error response:", parseError);
+      }
+    }
+
     throw new Error(message);
   }
 
@@ -137,6 +264,10 @@ export abstract class BaseService<
     // but have a successful status code, return the response itself
     if (response.data === undefined) {
       if (response.statusCode >= 200 && response.statusCode < 300) {
+        // Nếu có message hoặc success, trả về response gốc
+        if ("message" in response || "success" in response) {
+          return response as unknown as T;
+        }
         // For void responses, return undefined
         return undefined as T;
       }
