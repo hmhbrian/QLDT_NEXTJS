@@ -20,7 +20,7 @@ import {
 import { Logo } from "@/components/Logo";
 import { navigationItems } from "@/config/navigation";
 import { useAuth } from "@/hooks/useAuth";
-import type { NavItem } from "@/lib/types";
+import type { NavItem } from "@/lib/types/ui.types";
 import { cn } from "@/lib/utils";
 import { ChevronDown, Search } from "lucide-react";
 

@@ -3,7 +3,7 @@
 import React, { useState, useMemo, useCallback, useEffect } from "react";
 import { Building2, ChevronRight, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { DepartmentInfo } from "@/lib/types";
+import type { DepartmentInfo } from "@/lib/types/department.types";
 import {
   buildDepartmentTree,
   getAllChildDepartments,

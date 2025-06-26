@@ -24,10 +24,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/use-toast";
 import type {
   DepartmentInfo,
-  User,
   CreateDepartmentPayload,
   UpdateDepartmentPayload,
-} from "@/lib/types";
+} from "@/lib/types/department.types";
+import type { User } from "@/lib/types/user.types";
 import { NO_DEPARTMENT_VALUE } from "@/lib/constants";
 import { generateDepartmentCode } from "@/lib/utils/code-generator";
 

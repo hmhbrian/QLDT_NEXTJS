@@ -20,7 +20,7 @@ import {
   Loader2,
 } from "lucide-react";
 import NextImage from "next/image";
-import type { Course } from "@/lib/types";
+import type { Course } from "@/lib/types/course.types";
 
 // Cấu hình PDF.js worker
 if (typeof window !== "undefined") {

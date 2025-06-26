@@ -9,7 +9,7 @@ import { Progress } from '@/components/ui/progress';
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useCookie } from '@/hooks/use-cookie';
-import type { Course } from '@/lib/types';
+import type { Course } from "@/lib/types/course.types";
 
 const COURSES_COOKIE_KEY = 'becamex-courses-data';
 

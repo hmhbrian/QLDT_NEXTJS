@@ -1,12 +1,12 @@
-import { fetchUsers } from "@/lib/legacy-api/users";
+import { usersService } from "@/lib/services";
 import { useAuth } from "@/hooks/useAuth";
 import { useEffect, useState } from "react";
+import { ErrorHandler } from "@/lib/utils/error.utils";
 
 export default function UserList() {
-  const { user, loadingAuth: loadingAuth } = useAuth();
+  const { user, loadingAuth } = useAuth();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
 
   useEffect(() => {
     if (!user && !loadingAuth) {
@@ -14,7 +14,8 @@ export default function UserList() {
       return;
     }
     if (user) {
-      fetchUsers()
+      usersService
+        .getAll({ Page: 1, Limit: 50, SortField: "fullName", SortType: "asc" })
         .then((res) => {
           console.log("UserList fetchUsers response:", res);
           setUsers(res.data?.items || []);
@@ -22,7 +23,7 @@ export default function UserList() {
         })
         .catch((err) => {
           console.error("UserList fetchUsers error:", err);
-          setError("Lỗi tải danh sách người dùng");
+          ErrorHandler.handle(err);
           setLoading(false);
         });
     }
@@ -31,7 +32,6 @@ export default function UserList() {
   if (loadingAuth) return <div>Đang kiểm tra đăng nhập...</div>;
   if (!user) return null;
   if (loading) return <div>Đang tải...</div>;
-  if (error) return <div>{error}</div>;
 
   return (
     <div>

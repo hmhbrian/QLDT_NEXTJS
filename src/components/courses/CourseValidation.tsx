@@ -1,6 +1,6 @@
 import React from "react";
 import { useCourseValidation, useCoursesError } from "@/stores/course-store";
-import type { Course } from "@/lib/types";
+import type { Course } from "@/lib/types/course.types";
 
 interface CourseValidationDisplayProps {
   course: Partial<Course>;

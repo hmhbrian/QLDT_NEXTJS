@@ -3,7 +3,7 @@
 import React, { useMemo, useCallback } from 'react';
 import { Building2 } from 'lucide-react';
 import { TreeView, TreeNode } from '@/components/ui/tree-view';
-import type { DepartmentInfo } from '@/lib/types';
+import type { DepartmentInfo } from '@/lib/types/department.types';
 import { buildDepartmentTree } from '@/lib/utils/department-tree';
 
 interface DepartmentTreeProps {
