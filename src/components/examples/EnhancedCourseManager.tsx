@@ -11,7 +11,7 @@ import {
   useIsUpdatingCourse,
   useIsDeletingCourse,
 } from "@/stores/course-store";
-import type { Course } from "@/lib/types";
+import type { Course } from "@/lib/types/course.types";
 
 /**
  * Enhanced Course Management Component

@@ -5,7 +5,7 @@ import {
   CourseValidationSummary,
 } from "@/components/courses/CourseValidation";
 import { useCourseOperations } from "@/stores/course-store";
-import type { Course } from "@/lib/types";
+import type { Course } from "@/lib/types/course.types";
 
 /**
  * Example component demonstrating how to use the enhanced course store

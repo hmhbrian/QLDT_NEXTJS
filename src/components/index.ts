@@ -1,26 +1,23 @@
-// Export the Logo component
-export * from './Logo';
+/**
+ * Enterprise Components Index
+ * Central export point for all components following atomic design principles
+ */
 
-// Export UI components
+// Core UI Components (Atoms & Molecules)
 export * from './ui';
 
-// Export auth components
+// Organizational Components (Organisms)
+export * from './Logo';
+
+// Feature-based Components (Templates & Pages)
 export * from './auth';
-
-// Export layout components
 export * from './layout';
-
-// Export department components
 export * from './departments';
-
-// Export dashboard components
-export * from './dashboard';
-
-// Export settings components 
-export * from './settings';
-
-// Export courses components
 export * from './courses';
-
-// Export lessons components
-export * from './lessons'; 
+export * from './lessons';
+export * from './users';
+export * from './dashboard';
+export * from './settings';
+export * from './hr';
+// Common Components (Shared Utilities)
+export * from './common'; 
