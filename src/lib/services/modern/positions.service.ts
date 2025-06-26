@@ -1,7 +1,6 @@
-
 import { BaseService, ApiResponse, QueryParams } from "../../core";
-import { API_CONFIG } from "@/lib/legacy-api/config";
-import type { Position } from "@/lib/types";
+import { API_CONFIG } from "@/lib/config";
+import type { Position } from "@/lib/types/user.types";
 
 export interface CreatePositionPayload {
   positionName: string;

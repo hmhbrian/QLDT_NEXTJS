@@ -11,9 +11,9 @@ import {
   CourseApiResponse,
   CourseSearchParams,
   SoftDeleteCoursesRequest,
-} from "@/lib/types";
-import { API_CONFIG } from "@/lib/legacy-api/config";
-import { buildFormData, getApiToken } from "@/lib/utils/form";
+} from "@/lib/types/course.types";
+import { API_CONFIG } from "@/lib/config";
+import { buildFormData, getApiToken } from "@/lib/utils/form.utils";
 
 export class CoursesService extends BaseService<
   CourseApiResponse,

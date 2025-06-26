@@ -4,8 +4,8 @@ import {
   QueryParams,
   ApiResponse,
 } from "@/lib/core";
-import { User, CreateUserRequest } from "@/lib/types";
-import { API_CONFIG } from "@/lib/legacy-api/config";
+import { User, CreateUserRequest } from "@/lib/types/user.types";
+import { API_CONFIG } from "@/lib/config";
 
 export type UpdateUserPayload = Partial<CreateUserRequest>;
 

@@ -1,6 +1,6 @@
 import { BaseService, ApiResponse, BaseCreatePayload } from "../../core";
-import type { User, LoginDTO } from "../../types";
-import { API_CONFIG } from "@/lib/legacy-api/config";
+import type { User, LoginDTO } from "../../types/user.types";
+import { API_CONFIG } from "@/lib/config";
 
 export interface LoginResponse extends ApiResponse<User> {}
 

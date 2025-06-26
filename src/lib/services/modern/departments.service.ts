@@ -1,10 +1,10 @@
 import { BaseService, ApiResponse, QueryParams } from "../../core";
-import { API_CONFIG } from "@/lib/legacy-api/config";
+import { API_CONFIG } from "@/lib/config";
 import {
   DepartmentInfo,
   CreateDepartmentPayload,
   UpdateDepartmentPayload,
-} from "@/lib/types";
+} from "@/lib/types/department.types";
 
 // Kiểu dữ liệu thô từ backend API
 interface RawDepartment {

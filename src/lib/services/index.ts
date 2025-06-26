@@ -1,6 +1,6 @@
 /**
- * Modern Services Index
- * Central export point for all modern API services using core architecture
+ * Enterprise Services Index
+ * Central export point for all API services using modern architecture
  */
 
 // Export all modern services individually
@@ -27,7 +27,10 @@ export const services = {
   positions: positionsService,
   roles: rolesService,
   users: usersService,
-};
+} as const;
 
 // Default export for backward compatibility or alternative import style
 export default services;
+
+// Type-safe services object type
+export type Services = typeof services;

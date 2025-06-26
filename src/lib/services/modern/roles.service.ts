@@ -1,7 +1,6 @@
-
 import { BaseService, ApiResponse, QueryParams } from "../../core";
-import { API_CONFIG } from "@/lib/legacy-api/config";
-import type { ServiceRole } from "@/lib/types";
+import { API_CONFIG } from "@/lib/config";
+import type { ServiceRole } from "@/lib/types/user.types";
 
 export interface CreateRolePayload {
   name: string;
@@ -47,7 +46,10 @@ export class RolesService extends BaseService<
     return this.extractData(response);
   }
 
-  async updateRole(id: string, payload: UpdateRolePayload): Promise<ServiceRole> {
+  async updateRole(
+    id: string,
+    payload: UpdateRolePayload
+  ): Promise<ServiceRole> {
     const response = await this.update(id, payload);
     return this.extractData(response);
   }
