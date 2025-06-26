@@ -93,7 +93,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const response = await authService.login(credentials);
 
         // Kiểm tra response.code để xác nhận thành công
-        if (response.code === "SUCCESS" && response.data) {
+        if (response.data) {
           const userToSet = response.data;
 
           setUser(userToSet);
