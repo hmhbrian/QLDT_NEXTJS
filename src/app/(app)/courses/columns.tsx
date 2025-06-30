@@ -5,14 +5,14 @@ import { ArrowUpDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import type { PublicCourse } from "@/lib/types/course.types";
+import type { Course } from "@/lib/types/course.types";
 import { isRegistrationOpen } from "@/lib/helpers";
 
 export const getColumns = (
   currentUserId: string | undefined,
   handleEnroll: (courseId: string) => void,
   handleViewDetails: (courseId: string) => void
-): ColumnDef<PublicCourse>[] => [
+): ColumnDef<Course>[] => [
   {
     id: "select",
     header: ({ table }) => (

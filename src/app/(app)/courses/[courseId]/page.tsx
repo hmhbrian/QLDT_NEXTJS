@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState, useMemo, useCallback } from "react";
@@ -57,7 +58,7 @@ import {
 
 import { useCookie } from "@/hooks/use-cookie";
 import { cn } from "@/lib/utils";
-import { statusOptions, EVALUATIONS_COOKIE_KEY } from "@/lib/constants";
+import { EVALUATIONS_COOKIE_KEY } from "@/lib/constants";
 import {
   Course,
   Lesson,
@@ -68,10 +69,11 @@ import { mockEvaluations as initialMockEvaluationsFromLib } from "@/lib/mock";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/components/ui/use-toast";
 import { useUserStore } from "@/stores/user-store";
-import { useCourseStore } from "@/stores/course-store";
 import { StarRatingInput } from "@/components/courses/StarRatingInput";
 import StarRatingDisplay from "@/components/ui/StarRatingDisplay";
 import { getCategoryLabel, isRegistrationOpen } from "@/lib/helpers";
+import { useCourse, useUpdateCourse } from "@/hooks/use-courses";
+import { Alert } from "@/components/ui/alert";
 
 // Dynamic imports với lazy loading để tối ưu performance
 const CourseViewer = dynamic(
@@ -125,8 +127,6 @@ export default function CourseDetailPage() {
   const courseIdFromParams = params.courseId as string;
 
   // State management
-  const [course, setCourse] = useState<Course | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
   const [isEvaluationDialogOpen, setIsEvaluationDialogOpen] = useState(false);
   const [hasSubmittedEvaluation, setHasSubmittedEvaluation] = useState(false);
 
@@ -134,7 +134,15 @@ export default function CourseDetailPage() {
   const { user: currentUser } = useAuth();
   const { toast } = useToast();
   const allUsers = useUserStore((state) => state.users);
-  const { courses: allCoursesFromStore } = useCourseStore();
+  const updateCourseMutation = useUpdateCourse();
+
+
+  // Fetch course data using React Query for better caching and state management
+  const {
+    course,
+    isLoading,
+    error: courseError,
+  } = useCourse(courseIdFromParams);
 
   // Cookie state cho evaluations
   const [allEvaluations, setAllEvaluations] = useCookie<
@@ -171,71 +179,6 @@ export default function CourseDetailPage() {
     [allUsers]
   );
 
-  // Course fetching useEffect
-  useEffect(() => {
-    const fetchCourse = () => {
-      setIsLoading(true);
-      try {
-        const foundCourse = allCoursesFromStore.find(
-          (c) => c.id === courseIdFromParams
-        );
-
-        if (foundCourse) {
-          const detailedCourseData: Course = {
-            ...foundCourse,
-            id: courseIdFromParams,
-            maxParticipants: foundCourse.maxParticipants || 25,
-            prerequisites: foundCourse.prerequisites || [
-              "Không có yêu cầu tiên quyết cụ thể.",
-            ],
-            syllabus: foundCourse.syllabus || [
-              {
-                title: "Chương trình học đang được cập nhật",
-                content: "",
-                duration: "",
-              },
-            ],
-            slides: foundCourse.slides || [
-              {
-                title: "Nội dung đang được cập nhật",
-                url: "https://placehold.co/800x600.png?text=Updating...",
-                type: "image" as const,
-              },
-            ],
-            lessons: foundCourse.lessons || [],
-            tests: foundCourse.tests || [],
-            materials: foundCourse.materials || [],
-          };
-
-          setCourse(detailedCourseData);
-        } else {
-          toast({
-            title: "Không tìm thấy khóa học",
-            description:
-              "Khóa học bạn đang tìm kiếm không tồn tại hoặc đã bị xóa.",
-            variant: "destructive",
-          });
-          setCourse(null);
-          // Instant redirect - no delay
-          router.push("/courses");
-        }
-      } catch (error) {
-        console.error("Lỗi khi tải dữ liệu khóa học:", error);
-        toast({
-          title: "Lỗi tải dữ liệu",
-          description:
-            "Đã xảy ra lỗi khi tải thông tin khóa học. Vui lòng thử lại sau.",
-          variant: "destructive",
-        });
-        setCourse(null);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchCourse();
-  }, [courseIdFromParams, allCoursesFromStore, toast, router]);
-
   // Check if user has submitted evaluation
   useEffect(() => {
     if (currentUser && courseIdFromParams && allEvaluations.length > 0) {
@@ -254,12 +197,10 @@ export default function CourseDetailPage() {
     if (!course || !currentUser) {
       if (!currentUser) {
         router.push("/login");
-        return;
       }
       return;
     }
-
-    // Check if already enrolled
+  
     if (course.enrolledTrainees?.includes(currentUser.id)) {
       toast({
         title: "Đã đăng ký",
@@ -268,27 +209,18 @@ export default function CourseDetailPage() {
       });
       return;
     }
-
-    // Update enrollment
+  
     const updatedEnrolledTrainees = [
       ...(course.enrolledTrainees || []),
       currentUser.id,
     ];
-
-    useCourseStore.getState().updateCourse(course.id, {
-      enrolledTrainees: updatedEnrolledTrainees,
+  
+    // Call the mutation to update the backend
+    updateCourseMutation.mutate({
+      courseId: course.id,
+      payload: { enrolledTrainees: updatedEnrolledTrainees },
     });
-
-    toast({
-      title: "Đăng ký thành công",
-      description: `Bạn đã đăng ký khóa học "${course.title}" thành công.`,
-      duration: 1500, // Faster toast - 1.5 seconds
-      variant: "success",
-    });
-
-    // Update local state instantly
-    setCourse((prev) => (prev ? { ...prev } : null));
-  }, [course, currentUser, router, toast]);
+  }, [course, currentUser, router, toast, updateCourseMutation]);
 
   const handleEvaluationRatingChange = useCallback(
     (field: keyof StudentCourseEvaluation["ratings"], rating: number) => {
@@ -349,21 +281,24 @@ export default function CourseDetailPage() {
     );
   }
 
-  // Course not found state
-  if (!course) {
+  // Course not found or error state
+  if (courseError || !course) {
     return (
-      <div className="flex flex-col items-center justify-center py-12 text-center">
-        <div className="mb-6 text-red-500">
-          <AlertTriangle className="mx-auto h-16 w-16" />
-        </div>
-        <h1 className="mb-2 text-2xl font-bold">Không tìm thấy khóa học</h1>
-        <p className="mb-6 text-muted-foreground">
-          Khóa học bạn đang tìm kiếm không tồn tại hoặc đã bị xóa.
-        </p>
-        <Button asChild>
+      <Alert
+        variant="destructive"
+        className="max-w-xl mx-auto my-12"
+      >
+        <AlertTriangle className="h-4 w-4" />
+        <CardTitle>Không tìm thấy khóa học</CardTitle>
+        <CardDescription>
+          {courseError
+            ? courseError.message
+            : "Khóa học bạn đang tìm kiếm không tồn tại hoặc đã bị xóa."}
+        </CardDescription>
+        <Button asChild className="mt-4">
           <Link href="/courses">Quay lại danh sách khóa học</Link>
         </Button>
-      </div>
+      </Alert>
     );
   }
 
@@ -375,8 +310,8 @@ export default function CourseDetailPage() {
             <Image
               src={course.image}
               alt={`Ảnh bìa khóa học ${course.title}`}
-              layout="fill"
-              objectFit="cover"
+              fill
+              className="object-cover"
               priority
               data-ai-hint="course banner"
             />
@@ -505,7 +440,7 @@ export default function CourseDetailPage() {
               </Badge>
               {course.enrollmentType === "optional" &&
                 course.registrationDeadline && (
-                  <p className="text-xs text-muted-foreground mt-1">
+                  <div className="text-xs text-muted-foreground mt-1">
                     Hạn ĐK:{" "}
                     {new Date(course.registrationDeadline).toLocaleDateString(
                       "vi-VN"
@@ -518,7 +453,7 @@ export default function CourseDetailPage() {
                         Hết hạn
                       </Badge>
                     )}
-                  </p>
+                  </div>
                 )}
             </CardContent>
           </Card>
@@ -531,18 +466,15 @@ export default function CourseDetailPage() {
             <CardContent>
               <Badge
                 variant={
-                  statusOptions.find((s) => s.value === course.status)
-                    ?.value === "published"
+                  course.status === "Đang mở"
                     ? "default"
-                    : statusOptions.find((s) => s.value === course.status)
-                        ?.value === "draft"
+                    : course.status === "Lưu nháp"
                     ? "secondary"
                     : "destructive"
                 }
                 className="text-base"
               >
-                {statusOptions.find((s) => s.value === course.status)?.label ||
-                  course.status}
+                {course.status}
               </Badge>
             </CardContent>
           </Card>
@@ -595,15 +527,15 @@ export default function CourseDetailPage() {
                 </Button>
               ) : (
                 <div className="space-y-2">
-                  <p className="text-sm text-destructive font-medium">
+                  <div className="text-sm text-destructive font-medium">
                     Đã hết hạn đăng ký
-                  </p>
-                  <p className="text-xs text-muted-foreground">
+                  </div>
+                  <div className="text-xs text-muted-foreground">
                     Hạn đăng ký:{" "}
                     {new Date(course.registrationDeadline!).toLocaleDateString(
                       "vi-VN"
                     )}
-                  </p>
+                  </div>
                 </div>
               )}
             </div>
@@ -951,7 +883,7 @@ export default function CourseDetailPage() {
                             {Object.entries(evaluation.ratings).map(
                               ([key, rating]) => (
                                 <div
-                                  key={String(key)}
+                                  key={key}
                                   className="flex justify-between items-center"
                                 >
                                   <p className="text-muted-foreground">
@@ -1016,8 +948,8 @@ export default function CourseDetailPage() {
                 keyof StudentCourseEvaluation["ratings"]
               >
             ).map((key) => (
-              <div key={String(key)} className="space-y-2">
-                <Label htmlFor={`rating-${String(key)}`}>
+              <div key={key} className="space-y-2">
+                <Label htmlFor={`rating-${key}`}>
                   {EVALUATION_CRITERIA_LABELS[key]}
                 </Label>
                 <StarRatingInput

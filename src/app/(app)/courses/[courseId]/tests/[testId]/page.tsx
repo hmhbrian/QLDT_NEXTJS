@@ -1,10 +1,11 @@
+
 "use client";
 
 import { useParams } from "next/navigation";
 import { useState } from "react";
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { AlertTriangle, CheckCircle, XCircle, ArrowLeft, ArrowRight } from "lucide-react";
+import { AlertTriangle, CheckCircle, XCircle, ArrowLeft, ArrowRight, RefreshCw } from "lucide-react";
 import { useCourseStore } from "@/stores/course-store";
 import { Progress } from "@/components/ui/progress";
 
@@ -16,19 +17,20 @@ export default function TestDetailPage() {
   const testId = params.testId as string;
   const { courses: allCourses } = useCourseStore();
 
-  // Tìm course và test tương ứng
   const course = allCourses.find((c) => c.id === courseId);
   const test = course?.tests?.find((t) => t.id === testId);
 
-  // State cho đáp án người dùng chọn
-  const [answers, setAnswers] = useState<{ [questionId: string]: number | null }>({});
-  const [submitted, setSubmitted] = useState(false);
-  const [score, setScore] = useState<number | null>(null);
-  const [passed, setPassed] = useState<boolean | null>(null);
-  
-  // State mới cho việc hiển thị từng câu hỏi
-  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const [showReview, setShowReview] = useState(false);
+  const getInitialState = () => ({
+    answers: {} as { [questionId: string]: number | null },
+    submitted: false,
+    score: null as number | null,
+    passed: null as boolean | null,
+    currentQuestionIndex: 0,
+    showReview: false,
+  });
+
+  const [state, setState] = useState(getInitialState());
+  const { answers, submitted, score, passed, currentQuestionIndex, showReview } = state;
 
   if (!course || !test) {
     return (
@@ -52,7 +54,7 @@ export default function TestDetailPage() {
 
   const handleSelect = (questionId: string, optionIdx: number) => {
     if (submitted) return;
-    setAnswers((prev) => ({ ...prev, [questionId]: optionIdx }));
+    setState(prev => ({ ...prev, answers: { ...prev.answers, [questionId]: optionIdx } }));
   };
 
   const handleSubmit = () => {
@@ -62,39 +64,42 @@ export default function TestDetailPage() {
       if (answers[q.id] === q.correctAnswerIndex) correct++;
     });
     const percent = (correct / test.questions.length) * 100;
-    setScore(percent);
-    setPassed(percent >= test.passingScorePercentage);
-    setSubmitted(true);
-    setShowReview(true); // Hiển thị kết quả sau khi nộp bài
+    setState(prev => ({
+      ...prev,
+      score: percent,
+      passed: percent >= test.passingScorePercentage,
+      submitted: true,
+      showReview: true,
+    }));
+  };
+
+  const handleRetry = () => {
+    setState(getInitialState());
   };
 
   const goToNextQuestion = () => {
     if (currentQuestionIndex < test.questions.length - 1) {
-      setCurrentQuestionIndex(currentQuestionIndex + 1);
+      setState(prev => ({ ...prev, currentQuestionIndex: prev.currentQuestionIndex + 1 }));
     } else {
-      // Nếu đã là câu cuối cùng, hiển thị trang xem lại trước khi nộp
-      setShowReview(true);
+      setState(prev => ({ ...prev, showReview: true }));
     }
   };
 
   const goToPreviousQuestion = () => {
     if (currentQuestionIndex > 0) {
-      setCurrentQuestionIndex(currentQuestionIndex - 1);
+      setState(prev => ({ ...prev, currentQuestionIndex: prev.currentQuestionIndex - 1 }));
     }
   };
 
   const goToQuestion = (index: number) => {
     if (index >= 0 && index < test.questions.length) {
-      setCurrentQuestionIndex(index);
-      setShowReview(false);
+      setState(prev => ({ ...prev, currentQuestionIndex: index, showReview: false }));
     }
   };
 
-  // Tính số câu đã trả lời
   const answeredQuestionsCount = Object.keys(answers).length;
   const progressPercentage = (answeredQuestionsCount / test.questions.length) * 100;
 
-  // Render câu hỏi hiện tại
   const renderCurrentQuestion = () => {
     const q = test.questions[currentQuestionIndex];
     return (
@@ -122,7 +127,6 @@ export default function TestDetailPage() {
     );
   };
 
-  // Render màn hình xem lại trước khi nộp bài
   const renderReview = () => {
     return (
       <div className="space-y-6">
@@ -155,14 +159,15 @@ export default function TestDetailPage() {
               {passed ? <CheckCircle className="w-6 h-6" /> : <XCircle className="w-6 h-6" />}
               {passed ? 'Đạt' : 'Chưa đạt'} ({score?.toFixed(1)}%)
             </div>
-            <Button variant="outline" onClick={() => window.location.reload()}>Làm lại</Button>
+            <Button variant="outline" onClick={handleRetry}>
+              <RefreshCw className="mr-2 h-4 w-4" /> Làm lại
+            </Button>
           </div>
         )}
       </div>
     );
   };
 
-  // Render kết quả chi tiết sau khi nộp bài
   const renderResults = () => {
     return (
       <div className="space-y-6">
@@ -203,8 +208,8 @@ export default function TestDetailPage() {
           ))}
         </div>
         
-        <Button variant="outline" onClick={() => window.location.reload()} className="w-full">
-          Làm lại
+        <Button variant="outline" onClick={handleRetry} className="w-full">
+           <RefreshCw className="mr-2 h-4 w-4" /> Làm lại
         </Button>
       </div>
     );
@@ -264,4 +269,4 @@ export default function TestDetailPage() {
       </Card>
     </div>
   );
-} 
+}
