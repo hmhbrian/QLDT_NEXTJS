@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
@@ -52,6 +53,7 @@ import {
   positionsService,
 } from "@/lib/services";
 import { DEPARTMENTS_QUERY_KEY } from "@/hooks/use-departments";
+import { useUserStatuses } from "@/hooks/use-statuses";
 import { DraggableDepartmentTree } from "@/components/departments/DraggableDepartmentTree";
 import { DepartmentFormDialog } from "@/components/departments/DepartmentFormDialog";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -91,6 +93,8 @@ export default function DepartmentsPage() {
     queryKey: ["positions"],
     queryFn: () => positionsService.getPositions(),
   });
+
+  const { userStatuses, isLoading: isStatusesLoading } = useUserStatuses();
 
   const managers = useMemo(() => {
     // Chờ cho đến khi cả dữ liệu users và positions đều có sẵn
@@ -140,9 +144,7 @@ export default function DepartmentsPage() {
   // Trạng thái cho tab và tìm kiếm
   const [activeTab, setActiveTab] = useState<"tree" | "table">("tree");
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState<
-    "all" | "active" | "inactive"
-  >("all");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
 
   // Mutations
   const createDeptMutation = useMutation({
@@ -151,7 +153,7 @@ export default function DepartmentsPage() {
     onSuccess: () => {
       toast({
         title: "Thành công",
-        description: "Đã thêm phòng ban mới.",
+        description: "Phòng ban mới đã được tạo thành công.",
         variant: "success",
       });
       queryClient.invalidateQueries({ queryKey: [DEPARTMENTS_QUERY_KEY] });
@@ -159,24 +161,23 @@ export default function DepartmentsPage() {
     },
     onError: (error) =>
       toast({
-        title: "Lỗi",
+        title: "Tạo phòng ban thất bại",
         description: extractErrorMessage(error),
         variant: "destructive",
       }),
   });
 
-  const updateDeptMutation = useMutation({
-    mutationFn: ({
-      id,
-      payload,
-    }: {
-      id: string;
-      payload: UpdateDepartmentPayload;
-    }) => departmentsService.updateDepartment(id, payload),
+  const updateDeptMutation = useMutation<
+    void,
+    Error,
+    { id: string; payload: UpdateDepartmentPayload }
+  >({
+    mutationFn: ({ id, payload }) =>
+      departmentsService.updateDepartment(id, payload),
     onSuccess: () => {
       toast({
         title: "Thành công",
-        description: "Đã cập nhật thông tin phòng ban.",
+        description: "Thông tin phòng ban đã được cập nhật.",
         variant: "success",
       });
       queryClient.invalidateQueries({ queryKey: [DEPARTMENTS_QUERY_KEY] });
@@ -184,7 +185,7 @@ export default function DepartmentsPage() {
     },
     onError: (error) =>
       toast({
-        title: "Lỗi",
+        title: "Cập nhật phòng ban thất bại",
         description: extractErrorMessage(error),
         variant: "destructive",
       }),
@@ -195,7 +196,7 @@ export default function DepartmentsPage() {
     onSuccess: () => {
       toast({
         title: "Thành công",
-        description: "Đã xóa phòng ban.",
+        description: "Phòng ban đã được xóa.",
         variant: "success",
       });
       queryClient.invalidateQueries({ queryKey: [DEPARTMENTS_QUERY_KEY] });
@@ -208,7 +209,7 @@ export default function DepartmentsPage() {
     },
     onError: (error) =>
       toast({
-        title: "Lỗi",
+        title: "Xóa phòng ban thất bại",
         description: extractErrorMessage(error),
         variant: "destructive",
       }),
@@ -231,15 +232,14 @@ export default function DepartmentsPage() {
         (dept.managerName || "")
           .toLowerCase()
           .includes(searchTerm.toLowerCase());
-
+      
+      const statusIdToFilter = userStatuses.find(s => s.name === statusFilter)?.id;
       const matchesStatus =
-        statusFilter === "all" ||
-        (statusFilter === "active" && dept.status === "active") ||
-        (statusFilter === "inactive" && dept.status !== "active");
+        statusFilter === "all" || dept.statusId === statusIdToFilter;
 
       return matchesSearch && matchesStatus;
     });
-  }, [departments, searchTerm, statusFilter]);
+  }, [departments, searchTerm, statusFilter, userStatuses]);
 
   useEffect(() => {
     // Nếu phòng ban được chọn bị xóa, bỏ chọn nó
@@ -265,8 +265,14 @@ export default function DepartmentsPage() {
 
   // Columns cho DataTable - Khai báo sau khi đã có handleOpenEditDialog
   const columns = useMemo(
-    () => getColumns(handleOpenEditDialog, setDeletingDepartment, departments),
-    [departments]
+    () =>
+      getColumns(
+        handleOpenEditDialog,
+        setDeletingDepartment,
+        departments,
+        userStatuses
+      ),
+    [departments, userStatuses]
   );
 
   const handleSaveDepartment = (
@@ -303,7 +309,7 @@ export default function DepartmentsPage() {
             name: originalDept.name, // Bao gồm các trường bắt buộc
             code: originalDept.code, // Bao gồm các trường bắt buộc
             description: originalDept.description,
-            status: originalDept.status as "active" | "inactive",
+            statusId: String(originalDept.statusId),
             managerId: originalDept.managerId,
             parentId: dept.parentId || null,
           },
@@ -362,6 +368,8 @@ export default function DepartmentsPage() {
     const children = departments.filter(
       (d) => d.parentId === selectedDepartment.departmentId
     );
+    const status = userStatuses.find(s => s.id === selectedDepartment.statusId);
+
 
     return (
       <>
@@ -407,14 +415,12 @@ export default function DepartmentsPage() {
             <div>
               <Badge
                 variant={
-                  selectedDepartment.status === "active"
+                  status?.name === "Đang hoạt động"
                     ? "default"
                     : "secondary"
                 }
               >
-                {selectedDepartment.status === "active"
-                  ? "Đang hoạt động"
-                  : "Không hoạt động"}
+                {status?.name || "N/A"}
               </Badge>
             </div>
           </div>
@@ -457,6 +463,15 @@ export default function DepartmentsPage() {
       </>
     );
   };
+
+  const departmentStatuses = useMemo(
+    () =>
+      userStatuses.filter(
+        (s) => s.name === "Đang hoạt động" || s.name === "Không hoạt động"
+      ),
+    [userStatuses]
+  );
+
 
   return (
     <div className="space-y-6">
@@ -539,23 +554,24 @@ export default function DepartmentsPage() {
                   </div>
                   <Select
                     value={statusFilter}
-                    onValueChange={(v: typeof statusFilter) =>
-                      setStatusFilter(v)
-                    }
+                    onValueChange={(v) => setStatusFilter(v)}
                   >
                     <SelectTrigger className="w-full sm:w-[180px]">
                       <SelectValue placeholder="Trạng thái" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">Tất cả trạng thái</SelectItem>
-                      <SelectItem value="active">Đang hoạt động</SelectItem>
-                      <SelectItem value="inactive">Không hoạt động</SelectItem>
+                      {departmentStatuses.map((status) => (
+                        <SelectItem key={status.id} value={status.name}>
+                          {status.name}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
               </div>
 
-              {isDepartmentsLoading ? (
+              {isDepartmentsLoading || isStatusesLoading ? (
                 <div className="flex h-60 w-full items-center justify-center">
                   <Loader2 className="h-10 w-10 animate-spin text-primary" />
                   <p className="ml-3 text-muted-foreground">
@@ -579,6 +595,7 @@ export default function DepartmentsPage() {
         managers={managers}
         isLoading={createDeptMutation.isPending || updateDeptMutation.isPending}
         isLoadingManagers={isUsersLoading || isPositionsLoading}
+        userStatuses={userStatuses}
       />
 
       <Dialog

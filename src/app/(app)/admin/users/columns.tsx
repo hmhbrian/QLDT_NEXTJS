@@ -1,3 +1,4 @@
+
 "use client";
 
 import { ColumnDef } from "@tanstack/react-table";
@@ -19,7 +20,7 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import type { User, Role } from "@/lib/types/user.types";
 import { cn } from "@/lib/utils";
-import { getStatusColor, getStatusText } from "@/lib/helpers";
+import { getStatusColor } from "@/lib/helpers";
 
 const roleBadgeVariant: Record<Role, "default" | "secondary" | "outline"> = {
   ADMIN: "default",
@@ -101,10 +102,10 @@ export const getColumns = (
     accessorKey: "status",
     header: "Trạng thái",
     cell: ({ row }) => {
-      const status = row.original.status || "working";
+      const statusName = row.original.userStatus?.name || "N/A";
       return (
-        <Badge className={cn(getStatusColor(status))}>
-          {getStatusText(status)}
+        <Badge className={cn(getStatusColor(statusName))}>
+          {statusName}
         </Badge>
       );
     },

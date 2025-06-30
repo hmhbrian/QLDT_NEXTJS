@@ -1,6 +1,7 @@
+
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Card,
@@ -37,9 +38,9 @@ import type {
   Role,
   CreateUserRequest,
   RegisterDTO,
+  Position,
 } from "@/lib/types/user.types";
 import type { DepartmentInfo } from "@/lib/types/department.types";
-import type { Position } from "@/lib/types/user.types";
 import { useToast } from "@/components/ui/use-toast";
 import { DataTable } from "@/components/ui/data-table";
 import { getColumns } from "./columns";
@@ -52,6 +53,7 @@ import {
   departmentsService,
   positionsService,
 } from "@/lib/services";
+import { useUserStatuses } from "@/hooks/use-statuses";
 import {
   PlusCircle,
   Search,
@@ -62,6 +64,12 @@ import {
   EyeOff,
 } from "lucide-react";
 import { NO_DEPARTMENT_VALUE } from "@/lib/constants";
+
+// Define a specific type for the form state to avoid conflicts
+// This resolves the 'is not assignable to type never' error
+type UserFormState = Omit<Partial<RegisterDTO>, "statusId"> & {
+  statusId?: string;
+};
 
 export default function UsersPage() {
   const { user: currentUser } = useAuth();
@@ -80,7 +88,7 @@ export default function UsersPage() {
   const [showPassword, setShowPassword] = useState(false);
 
   // Form State
-  const initialNewUserState: RegisterDTO = {
+  const initialNewUserState: UserFormState = {
     fullName: "",
     idCard: "",
     role: "HOCVIEN",
@@ -91,10 +99,10 @@ export default function UsersPage() {
     department: "",
     position: "",
     level: "",
-    status: "working",
-    employeeId: "", // Thêm field mã nhân viên
+    statusId: "",
+    employeeId: "",
   };
-  const [newUser, setNewUser] = useState<RegisterDTO>(initialNewUserState);
+  const [newUser, setNewUser] = useState<UserFormState>(initialNewUserState);
   const [errors, setErrors] = useState<
     Partial<Record<keyof RegisterDTO, string>>
   >({});
@@ -108,7 +116,10 @@ export default function UsersPage() {
   } = useQuery<User[], Error>({
     queryKey: ["users", debouncedSearchTerm],
     queryFn: () =>
-      usersService.getUsers({ search: debouncedSearchTerm, limit: 24 }),
+      usersService.getUsers({
+        search: debouncedSearchTerm,
+        limit: 24,
+      }),
   });
 
   const { data: roles = [], isLoading: isRolesLoading } = useQuery<
@@ -118,6 +129,8 @@ export default function UsersPage() {
     queryKey: ["roles"],
     queryFn: () => rolesService.getRoles(),
   });
+
+  const { userStatuses, isLoading: isStatusesLoading } = useUserStatuses();
 
   const { data: activeDepartments = [], isLoading: isDepartmentsLoading } =
     useQuery<DepartmentInfo[], Error>({
@@ -140,8 +153,7 @@ export default function UsersPage() {
     onSuccess: (response: any) => {
       toast({
         title: "Thành công",
-        description:
-          (response as any)?.message || "Đã thêm người dùng mới thành công.",
+        description: "Người dùng mới đã được tạo thành công.",
         variant: "success",
       });
       queryClient.invalidateQueries({ queryKey: ["users"] });
@@ -149,7 +161,7 @@ export default function UsersPage() {
     },
     onError: (error) =>
       toast({
-        title: "Lỗi",
+        title: "Tạo người dùng thất bại",
         description: extractErrorMessage(error),
         variant: "destructive",
       }),
@@ -164,11 +176,17 @@ export default function UsersPage() {
       payload: Partial<CreateUserRequest>;
     }) => usersService.updateUserByAdmin(id, payload),
     onSuccess: () => {
+      toast({
+        title: "Thành công",
+        description: "Thông tin người dùng đã được cập nhật.",
+        variant: "success",
+      });
       queryClient.invalidateQueries({ queryKey: ["users"] });
+      setIsFormOpen(false);
     },
     onError: (error) =>
       toast({
-        title: "Lỗi",
+        title: "Cập nhật người dùng thất bại",
         description: extractErrorMessage(error),
         variant: "destructive",
       }),
@@ -179,8 +197,7 @@ export default function UsersPage() {
     onSuccess: (response: any) => {
       toast({
         title: "Thành công",
-        description:
-          (response as any)?.message || "Đã xóa người dùng thành công.",
+        description: "Người dùng đã được xóa.",
         variant: "success",
       });
       queryClient.invalidateQueries({ queryKey: ["users"] });
@@ -188,7 +205,7 @@ export default function UsersPage() {
     },
     onError: (error) =>
       toast({
-        title: "Lỗi",
+        title: "Xóa người dùng thất bại",
         description: extractErrorMessage(error),
         variant: "destructive",
       }),
@@ -218,7 +235,7 @@ export default function UsersPage() {
     setIsFormOpen(true);
   };
 
-  const handleOpenEditDialog = (userToEdit: User) => {
+  const handleOpenEditDialog = useCallback((userToEdit: User) => {
     setEditingUser(userToEdit);
 
     let departmentValue = "";
@@ -244,12 +261,14 @@ export default function UsersPage() {
           ? String((userToEdit.position as Position).positionId)
           : "",
       level: userToEdit.level || "",
-      status: userToEdit.status || "working",
+      statusId: userToEdit.userStatus?.id
+        ? String(userToEdit.userStatus.id)
+        : "",
       employeeId: userToEdit.employeeId || (userToEdit as any).code || "",
     });
     setErrors({});
     setIsFormOpen(true);
-  };
+  }, []);
 
   const validateForm = (isEdit: boolean) => {
     const data = newUser;
@@ -279,7 +298,7 @@ export default function UsersPage() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSaveUser = async () => {
+  const handleSaveUser = () => {
     const isEdit = !!editingUser;
     if (!validateForm(isEdit)) {
       showError("FORM001");
@@ -299,65 +318,64 @@ export default function UsersPage() {
     }
 
     if (isEdit && editingUser) {
-      try {
-        const updatePayload: Partial<CreateUserRequest> = {
-          FullName: newUser.fullName,
-          Email: newUser.email,
-          IdCard: newUser.idCard,
-          NumberPhone: newUser.numberPhone,
-          DepartmentId: newUser.department
-            ? parseInt(newUser.department)
-            : undefined,
-          RoleId: selectedRole.id,
-          PositionId: newUser.position ? parseInt(newUser.position) : undefined,
-          Code: newUser.employeeId || undefined,
-        };
-
-        await updateUserMutation.mutateAsync({
-          id: editingUser.id,
-          payload: updatePayload,
-        });
-
-        let successMessage = "Thông tin người dùng đã được cập nhật.";
-        if (newUser.password && newUser.password.trim()) {
-          const resetResponse = await usersService.resetPassword(
-            editingUser.id,
-            {
-              newPassword: newUser.password,
-              confirmNewPassword: newUser.confirmPassword,
-            }
-          );
-          if ((resetResponse as any)?.message) {
-            successMessage = (resetResponse as any).message;
-          }
-        }
-
-        toast({
-          title: "Thành công",
-          description: successMessage,
-          variant: "success",
-        });
-        setIsFormOpen(false);
-      } catch (error) {
-        toast({
-          title: "Lỗi",
-          description: extractErrorMessage(error),
-          variant: "destructive",
-        });
-      }
-    } else {
-      const createUserPayload: CreateUserRequest = {
+      const updatePayload: Partial<CreateUserRequest> = {
         FullName: newUser.fullName,
         Email: newUser.email,
-        Password: newUser.password,
-        ConfirmPassword: newUser.confirmPassword,
+        IdCard: newUser.idCard,
+        NumberPhone: newUser.numberPhone,
+        DepartmentId: newUser.department
+          ? parseInt(newUser.department, 10)
+          : undefined,
+        RoleId: selectedRole.id,
+        PositionId: newUser.position
+          ? parseInt(newUser.position, 10)
+          : undefined,
+        StatusId: newUser.statusId ? parseInt(newUser.statusId, 10) : undefined,
+        Code: newUser.employeeId || undefined,
+      };
+
+      if (newUser.password && newUser.password.trim()) {
+        usersService
+          .resetPassword(editingUser.id, {
+            newPassword: newUser.password,
+            confirmNewPassword: newUser.confirmPassword,
+          })
+          .then(() => {
+            toast({
+              title: "Thành công",
+              description: "Mật khẩu người dùng đã được đặt lại.",
+              variant: "success",
+            });
+          })
+          .catch((error) => {
+            toast({
+              title: "Lỗi đặt lại mật khẩu",
+              description: extractErrorMessage(error),
+              variant: "destructive",
+            });
+          });
+      }
+
+      updateUserMutation.mutate({
+        id: editingUser.id,
+        payload: updatePayload,
+      });
+    } else {
+      const createUserPayload: CreateUserRequest = {
+        FullName: newUser.fullName!,
+        Email: newUser.email!,
+        Password: newUser.password!,
+        ConfirmPassword: newUser.confirmPassword!,
         RoleId: selectedRole.id,
         IdCard: newUser.idCard,
         NumberPhone: newUser.numberPhone,
-        PositionId: newUser.position ? parseInt(newUser.position) : undefined,
-        DepartmentId: newUser.department
-          ? parseInt(newUser.department)
+        PositionId: newUser.position
+          ? parseInt(newUser.position, 10)
           : undefined,
+        DepartmentId: newUser.department
+          ? parseInt(newUser.department, 10)
+          : undefined,
+        StatusId: newUser.statusId ? parseInt(newUser.statusId, 10) : undefined,
         Code: newUser.employeeId || undefined,
       };
       createUserMutation.mutate(createUserPayload);
@@ -368,8 +386,8 @@ export default function UsersPage() {
     if (!deletingUser) return;
     if (deletingUser.email === currentUser?.email) {
       toast({
-        title: "Lỗi",
-        description: "Bạn không thể xóa tài khoản của chính mình!",
+        title: "Thao tác bị từ chối",
+        description: "Bạn không thể xóa tài khoản của chính mình.",
         variant: "destructive",
       });
       return;
@@ -388,7 +406,7 @@ export default function UsersPage() {
         handleOpenEditDialog,
         (user) => setDeletingUser(user)
       ),
-    [currentUser]
+    [currentUser, handleOpenEditDialog]
   );
 
   const renderDepartment = (
@@ -396,8 +414,7 @@ export default function UsersPage() {
   ) => {
     if (!department) return "Chưa có phòng ban";
     if (typeof department === "string") return department;
-    // Handle both departmentName and name properties
-    return department.departmentName || department.name || "Không xác định";
+    return department.name || "Không xác định";
   };
 
   const getEmployeeCode = (user: any): string => {
@@ -429,25 +446,27 @@ export default function UsersPage() {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="mb-4 flex items-center gap-2">
-            <div className="relative w-full max-w-sm">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10" />
-              <Input
-                placeholder="Tìm kiếm theo tên, email..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className={cn("pl-10", isUsersLoading && "pr-10")}
-              />
-              {isUsersLoading && (
-                <Spinner
-                  className="absolute right-3 top-1/2 -translate-y-1/2"
-                  size="sm"
+          <div className="mb-6 space-y-4">
+            <div className="flex flex-col sm:flex-row gap-4">
+              <div className="relative flex-grow">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10" />
+                <Input
+                  placeholder="Tìm kiếm theo tên, email, mã NV..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className={cn("pl-9", isUsersLoading && "pr-10")}
                 />
-              )}
+                {isUsersLoading && (
+                  <Spinner
+                    className="absolute right-3 top-1/2 -translate-y-1/2"
+                    size="sm"
+                  />
+                )}
+              </div>
             </div>
           </div>
 
-          {isUsersLoading ? (
+          {isUsersLoading || isStatusesLoading ? (
             <div className="flex items-center justify-center py-10">
               <Spinner size="lg" />
             </div>
@@ -753,6 +772,36 @@ export default function UsersPage() {
                     ))
                   ) : (
                     <SelectItem value="no_roles" disabled>
+                      Không có dữ liệu
+                    </SelectItem>
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="status">Trạng thái</Label>
+              <Select
+                value={newUser.statusId}
+                onValueChange={(value: string) =>
+                  setNewUser({ ...newUser, statusId: value })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Chọn trạng thái" />
+                </SelectTrigger>
+                <SelectContent>
+                  {isStatusesLoading ? (
+                    <SelectItem value="loading_status" disabled>
+                      Đang tải...
+                    </SelectItem>
+                  ) : userStatuses.length > 0 ? (
+                    userStatuses.map((status) => (
+                      <SelectItem key={status.id} value={String(status.id)}>
+                        {status.name}
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <SelectItem value="no_status" disabled>
                       Không có dữ liệu
                     </SelectItem>
                   )}

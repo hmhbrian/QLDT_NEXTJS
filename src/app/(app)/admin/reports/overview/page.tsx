@@ -1,3 +1,4 @@
+
 "use client";
 
 import {
@@ -560,7 +561,7 @@ export default function TrainingOverviewReportPage() {
           {reportData.totalValidEvaluationsForCriteria > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {criteriaOrder.map((key) => (
-                <Card key={key} className="bg-muted/30 p-4">
+                <Card key={String(key)} className="bg-muted/30 p-4">
                   <p className="text-sm font-medium text-muted-foreground">
                     {evaluationCriteriaLabels[key]}
                   </p>
@@ -613,7 +614,7 @@ export default function TrainingOverviewReportPage() {
                     </TableHead>
                     {criteriaOrder.map((key) => (
                       <TableHead
-                        key={key}
+                        key={String(key)}
                         className="min-w-[180px] text-center whitespace-nowrap"
                       >
                         {evaluationCriteriaLabels[key]}
@@ -631,7 +632,7 @@ export default function TrainingOverviewReportPage() {
                         {item.courseTitle}
                       </TableCell>
                       {criteriaOrder.map((key) => (
-                        <TableCell key={key} className="text-center">
+                        <TableCell key={String(key)} className="text-center">
                           <div className="flex flex-col items-center">
                             <StarRatingDisplay
                               rating={item.averages[key]?.average || 0}

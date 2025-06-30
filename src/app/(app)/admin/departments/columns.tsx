@@ -1,3 +1,4 @@
+
 "use client";
 
 import { ColumnDef } from "@tanstack/react-table";
@@ -18,11 +19,15 @@ import {
   TooltipTrigger,
   TooltipContent,
 } from "@/components/ui/tooltip";
+import type { Status } from "@/lib/types/status.types";
+import { getStatusColor } from "@/lib/helpers";
+import { cn } from "@/lib/utils";
 
 export const getColumns = (
   handleOpenEditDialog: (department: DepartmentInfo) => void,
   setDeletingDepartment: (department: DepartmentInfo | null) => void,
-  departments: DepartmentInfo[]
+  departments: DepartmentInfo[],
+  userStatuses: Status[]
 ): ColumnDef<DepartmentInfo>[] => [
   {
     id: "select",
@@ -110,11 +115,28 @@ export const getColumns = (
     accessorKey: "status",
     header: "Trạng thái",
     cell: ({ row }) => {
-      const isActive = row.original.status === "active";
+      const statusValue = row.original.status;
+      let statusName = "N/A";
+
+      if (statusValue) {
+        // Check if statusValue is a numeric ID string (e.g., "1", "2")
+        if (/^\d+$/.test(statusValue)) {
+          const statusId = Number(statusValue);
+          const foundStatus = userStatuses.find((s) => s.id === statusId);
+          statusName = foundStatus?.name || `ID: ${statusId}`;
+        } else {
+          // It's a string name, try to map common values like "active"
+          const nameMap: { [key: string]: string } = {
+            "active": "Đang hoạt động",
+            "ative": "Đang hoạt động", // Fix typo from API
+            "inactive": "Không hoạt động",
+          };
+          statusName = nameMap[statusValue.toLowerCase()] || statusValue;
+        }
+      }
+
       return (
-        <Badge variant={isActive ? "default" : "secondary"}>
-          {isActive ? "Đang hoạt động" : "Không hoạt động"}
-        </Badge>
+        <Badge className={cn(getStatusColor(statusName))}>{statusName}</Badge>
       );
     },
   },

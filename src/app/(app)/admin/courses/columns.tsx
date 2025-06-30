@@ -19,12 +19,9 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import type { Course, TraineeLevel } from "@/lib/types/course.types";
-import {
-  statusOptions,
-  statusBadgeVariant,
-  departmentOptions as globalDepartmentOptions,
-  traineeLevelLabels,
-} from "@/lib/constants";
+import { Status } from "@/lib/types/status.types";
+import { DepartmentInfo } from "@/lib/types/department.types";
+import { Position } from "@/lib/types/user.types";
 
 // Kiểu này được sử dụng để định nghĩa hình dạng dữ liệu của chúng ta.
 // Bạn có thể sử dụng Zod schema ở đây nếu muốn.
@@ -34,7 +31,17 @@ export const getColumns = (
   handleDuplicateCourse: (course: Course) => void,
   setArchivingCourse: (course: Course | null) => void,
   setDeletingCourse: (course: Course | null) => void,
-  canManageCourses: boolean
+  canManageCourses: boolean,
+  courseStatuses: Status[],
+  getStatusBadgeVariant: (
+    status: string
+  ) =>
+    | "default"
+    | "secondary"
+    | "destructive"
+    | "outline" | null,
+  departments: DepartmentInfo[],
+  positions: Position[]
 ): ColumnDef<Course>[] => [
   {
     id: "select",
@@ -96,10 +103,16 @@ export const getColumns = (
     accessorKey: "status",
     header: "Trạng thái",
     cell: ({ row }) => {
-      const status = row.original.status;
+      const statusName = row.original.status;
+      if (statusName === "N/A") {
+        console.warn(
+          "[Columns] Cell render for status is 'N/A'. Full row data:",
+          row.original
+        );
+      }
       return (
-        <Badge variant={statusBadgeVariant[status]}>
-          {statusOptions.find((opt) => opt.value === status)?.label}
+        <Badge variant={getStatusBadgeVariant(statusName)}>
+          {statusName || "N/A"}
         </Badge>
       );
     },
@@ -120,27 +133,24 @@ export const getColumns = (
     accessorKey: "department",
     header: "Phòng ban",
     cell: ({ row }) => {
-      const departments = row.original.department;
-      return (
-        departments
-          ?.map(
-            (dept) =>
-              globalDepartmentOptions.find((opt) => opt.value === dept)?.label
-          )
-          .join(", ") || "N/A"
-      );
+      const departmentIds = (row.original.department as string[]) || [];
+      if (departmentIds.length === 0) return "N/A";
+      return departmentIds
+        .map((id) => departments.find((d) => String(d.departmentId) === id)?.name)
+        .filter(Boolean)
+        .join(", ");
     },
   },
   {
     accessorKey: "level",
     header: "Cấp độ",
     cell: ({ row }) => {
-      const levels = row.original.level;
-      return (
-        levels
-          ?.map((lvl: TraineeLevel) => traineeLevelLabels[lvl])
-          .join(", ") || "N/A"
-      );
+      const levelIds = (row.original.level as string[]) || [];
+      if (levelIds.length === 0) return "N/A";
+      return levelIds
+        .map((id) => positions.find((p) => String(p.positionId) === id)?.positionName)
+        .filter(Boolean)
+        .join(", ");
     },
   },
   {
@@ -169,7 +179,7 @@ export const getColumns = (
             <DropdownMenuItem onClick={() => handleDuplicateCourse(course)}>
               <Copy className="mr-2 h-4 w-4" /> Nhân bản
             </DropdownMenuItem>
-            {course.status !== "archived" && (
+            {course.status !== "Hủy" && (
               <DropdownMenuItem onClick={() => setArchivingCourse(course)}>
                 <Archive className="mr-2 h-4 w-4" /> Lưu trữ
               </DropdownMenuItem>
