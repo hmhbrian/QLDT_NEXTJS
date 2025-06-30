@@ -84,35 +84,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = async (credentials: LoginDTO) => {
     setLoadingAuth(true);
     try {
-      console.log("Login response 1:", Response);
+      // console.log("Login response 1:", Response);
       if (API_CONFIG.useApi) {
         const response = await authService.login(credentials);
-        console.log("Login response 2:", response);
+        // console.log("Login response 2:", response);
+        // console.log("Login response 3:", response.accessToken);
         // The API response is an object { success, message, data: { user, accessToken } }
         // We need to check for success and the presence of the data object.
-        if (response.success && response) {
-          // The actual user object, which includes the token, is in response.data
-          const userWithToken = response;
-          console.log("User data from API:", userWithToken);
-
-          // Separate token from user data for cleaner state management
-          const { accessToken: token, ...userToStore } = userWithToken;
-
-          // setUser(userToStore);
+        if (response && response.accessToken) {
+          // Nếu response có dạng { success, message, data: { ...user, accessToken } }
+          let userData: any = response;
+          let token: string | undefined;
+          // Nếu có response.data thì lấy user từ đó
+          if (response && response.accessToken) {
+            userData = response;
+            token = response.accessToken;
+          } else {
+            token = response.accessToken;
+          }
+          // Xoá accessToken khỏi userData trước khi lưu
+          const { accessToken, ...userToStore } = userData;
+          setUser(userToStore as User);
           localStorage.setItem(
             API_CONFIG.storage.user,
             JSON.stringify(userToStore)
           );
-          localStorage.setItem(API_CONFIG.storage.token, token);
-
+          localStorage.setItem(API_CONFIG.storage.token, token!);
           toast({
             title: "Đăng nhập thành công",
             description: "Chào mừng bạn đã quay trở lại!",
             variant: "success",
           });
-          // handleRedirect(userToStore.role);
+          handleRedirect(userToStore.role);
         } else {
-          // Use the message from the API for more specific feedback
           throw new Error(
             response.message || "Đăng nhập thất bại do dữ liệu không hợp lệ."
           );
