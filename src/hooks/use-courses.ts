@@ -1,33 +1,42 @@
+
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-// Import trực tiếp để tránh lỗi module resolution
 import { coursesService } from "@/lib/services/modern/courses.service";
 import { useToast } from "@/components/ui/use-toast";
 import type {
   Course,
-  CourseApiResponse,
   CreateCourseRequest,
   UpdateCourseRequest,
+  CourseApiResponse,
   CourseSearchParams,
 } from "@/lib/types/course.types";
 import type { QueryParams } from "@/lib/core";
+import { extractErrorMessage } from "@/lib/core";
+import {
+  mapCourseApiToUi,
+  mapCourseUiToUpdatePayload,
+} from "@/lib/mappers/course.mapper";
+import { useAuth } from "./useAuth";
 
 export const COURSES_QUERY_KEY = "courses";
 
 export function useCourses(params?: QueryParams) {
+  const { user } = useAuth(); // Get current user
+  // The query key is now user-specific. When the user logs out (user becomes null)
+  // or a new user logs in, this key changes, and React Query automatically refetches.
+  const queryKey = [COURSES_QUERY_KEY, params, user?.id];
+
   const {
     data,
     isLoading,
     error,
     refetch: reloadCourses,
   } = useQuery<Course[], Error>({
-    queryKey: [COURSES_QUERY_KEY, params],
+    queryKey, // Use the new user-specific key
     queryFn: async () => {
       const apiCourses = await coursesService.getCourses(params);
-      return apiCourses.map((course) =>
-        coursesService.transformToCourse(course)
-      );
+      return apiCourses.map(mapCourseApiToUi);
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
     refetchOnWindowFocus: false,
@@ -42,16 +51,19 @@ export function useCourses(params?: QueryParams) {
 }
 
 export function useCourse(courseId: string) {
+  const { user } = useAuth(); // Also make single course fetch user-aware
+  const queryKey = [COURSES_QUERY_KEY, courseId, user?.id];
+
   const {
     data,
     isLoading,
     error,
     refetch: reloadCourse,
   } = useQuery<Course, Error>({
-    queryKey: [COURSES_QUERY_KEY, courseId],
+    queryKey,
     queryFn: async () => {
       const apiCourse = await coursesService.getCourseById(courseId);
-      return coursesService.transformToCourse(apiCourse);
+      return mapCourseApiToUi(apiCourse);
     },
     enabled: !!courseId,
     staleTime: 5 * 60 * 1000,
@@ -70,42 +82,25 @@ export function useCreateCourse() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  return useMutation<Course, Error, Partial<Course>>({
-    mutationFn: async (course) => {
-      try {
-        // Use service transformation to convert frontend Course to API payload
-        const payload = coursesService.transformToCreatePayload(course);
-        console.log("🔄 Transformed payload being sent:", payload);
-
-        const apiCourse = await coursesService.createCourse(payload);
-        const transformedCourse = coursesService.transformToCourse(apiCourse);
-        console.log("✅ Course created successfully:", transformedCourse);
-        return transformedCourse;
-      } catch (error) {
-        console.error("❌ Create course error:", error);
-        // Re-throw để onError có thể handle
-        throw error;
-      }
+  return useMutation<Course, Error, CreateCourseRequest>({
+    mutationFn: async (courseData) => {
+      const apiCourse = await coursesService.createCourse(courseData);
+      return mapCourseApiToUi(apiCourse);
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: [COURSES_QUERY_KEY] });
       toast({
         title: "Thành công",
-        description: "Khóa học đã được tạo thành công.",
+        description: `Khóa học "${data.title}" đã được tạo thành công.`,
+        variant: "success",
       });
     },
     onError: (error) => {
-      // Extract backend validation errors from api-utils
-      const errorMessage = error.message || "Có lỗi xảy ra khi tạo khóa học.";
-
       toast({
-        title: "Lỗi",
-        description: errorMessage,
+        title: "Tạo khóa học thất bại",
+        description: extractErrorMessage(error),
         variant: "destructive",
       });
-
-      // Re-throw to let form handle field-specific errors
-      throw error;
     },
   });
 }
@@ -117,23 +112,62 @@ export function useUpdateCourse() {
   return useMutation<
     Course,
     Error,
-    { courseId: string; payload: UpdateCourseRequest }
+    { courseId: string; payload: Partial<Course> }
   >({
     mutationFn: async ({ courseId, payload }) => {
-      const apiCourse = await coursesService.updateCourse(courseId, payload);
-      return coursesService.transformToCourse(apiCourse);
+      // Fetch all courses with a generic key to find the original course,
+      // as the user-specific key might not have this course if it's being newly assigned.
+      const allCourses =
+        queryClient.getQueryData<Course[]>([COURSES_QUERY_KEY, undefined]) ||
+        [];
+      const originalCourse = allCourses.find((c) => c.id === courseId);
+
+      // If not in the generic cache, try the user-specific cache
+      const userSpecificCourses =
+        queryClient.getQueryData<Course[]>([
+          COURSES_QUERY_KEY,
+          undefined,
+          payload.enrolledTrainees?.[0], // A bit of a hack, but might work
+        ]) || [];
+      const finalOriginalCourse =
+        originalCourse || userSpecificCourses.find((c) => c.id === courseId);
+
+      if (!finalOriginalCourse) {
+        // As a last resort, fetch the course directly
+        const fetchedCourse = await coursesService.getCourseById(courseId);
+        if (fetchedCourse) {
+          const uiCourse = mapCourseApiToUi(fetchedCourse);
+          const mergedCourse = { ...uiCourse, ...payload };
+          const apiPayload = mapCourseUiToUpdatePayload(mergedCourse);
+          const apiCourse = await coursesService.updateCourse(
+            courseId,
+            apiPayload
+          );
+          return mapCourseApiToUi(apiCourse);
+        }
+        throw new Error(
+          `Không tìm thấy khóa học gốc với ID: ${courseId} trong cache hoặc API.`
+        );
+      }
+
+      const mergedCourse = { ...finalOriginalCourse, ...payload };
+      const apiPayload = mapCourseUiToUpdatePayload(mergedCourse);
+      const apiCourse = await coursesService.updateCourse(courseId, apiPayload);
+
+      return mapCourseApiToUi(apiCourse);
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: [COURSES_QUERY_KEY] });
       toast({
         title: "Thành công",
-        description: "Khóa học đã được cập nhật thành công.",
+        description: `Khóa học "${data.title}" đã được cập nhật thành công.`,
+        variant: "success",
       });
     },
     onError: (error) => {
       toast({
-        title: "Lỗi",
-        description: error.message || "Có lỗi xảy ra khi cập nhật khóa học.",
+        title: "Cập nhật khóa học thất bại",
+        description: extractErrorMessage(error),
         variant: "destructive",
       });
     },
@@ -145,18 +179,19 @@ export function useDeleteCourses() {
   const { toast } = useToast();
 
   return useMutation<void, Error, string[]>({
-    mutationFn: coursesService.softDeleteCourses.bind(coursesService),
-    onSuccess: () => {
+    mutationFn: (ids) => coursesService.softDeleteCourses(ids),
+    onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: [COURSES_QUERY_KEY] });
       toast({
         title: "Thành công",
-        description: "Khóa học đã được xóa thành công.",
+        description: `Đã xóa ${variables.length} khóa học.`,
+        variant: "success",
       });
     },
     onError: (error) => {
       toast({
-        title: "Lỗi",
-        description: error.message || "Có lỗi xảy ra khi xóa khóa học.",
+        title: "Xóa khóa học thất bại",
+        description: extractErrorMessage(error),
         variant: "destructive",
       });
     },
@@ -164,13 +199,13 @@ export function useDeleteCourses() {
 }
 
 export function useSearchCourses(params: CourseSearchParams) {
+  const { user } = useAuth();
+  const queryKey = [COURSES_QUERY_KEY, "search", params, user?.id];
   const { data, isLoading, error, refetch } = useQuery<Course[], Error>({
-    queryKey: [COURSES_QUERY_KEY, "search", params],
+    queryKey,
     queryFn: async () => {
       const apiCourses = await coursesService.searchCourses(params);
-      return apiCourses.map((course) =>
-        coursesService.transformToCourse(course)
-      );
+      return apiCourses.map(mapCourseApiToUi);
     },
     enabled: !!params.keyword,
     staleTime: 2 * 60 * 1000, // 2 minutes

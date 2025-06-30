@@ -10,10 +10,12 @@ import React, {
   useCallback,
 } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { useError } from "./use-error";
+import { useToast } from "@/components/ui/use-toast";
 import { API_CONFIG } from "@/lib/config";
 import { authService } from "@/lib/services";
 import { mockUsers } from "@/lib/mock";
+import { extractErrorMessage } from "@/lib/core";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface AuthContextType {
   user: User | null;
@@ -35,7 +37,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loadingAuth, setLoadingAuth] = useState(true);
   const router = useRouter();
   const pathname = usePathname();
-  const { showError } = useError();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const handleRedirect = useCallback(
     (userRole: string) => {
@@ -61,15 +64,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (storedUser && token) {
         setUser(JSON.parse(storedUser));
-        // Optional: Validate token with backend here
-        // const isValid = await authService.validateToken();
-        // if (!isValid) {
-        //   logout();
-        // }
-      } else if (
-        pathname !== "/login" &&
-        !pathname.startsWith("/auth") // Adjust as per your auth routes
-      ) {
+      } else if (pathname !== "/login" && !pathname.startsWith("/auth")) {
         router.push("/login");
       }
     } catch (error) {
@@ -89,36 +84,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = async (credentials: LoginDTO) => {
     setLoadingAuth(true);
     try {
+      console.log("Login response 1:", Response);
       if (API_CONFIG.useApi) {
         const response = await authService.login(credentials);
+        console.log("Login response 2:", response);
+        // The API response is an object { success, message, data: { user, accessToken } }
+        // We need to check for success and the presence of the data object.
+        if (response.success && response) {
+          // The actual user object, which includes the token, is in response.data
+          const userWithToken = response;
+          console.log("User data from API:", userWithToken);
 
-        // Kiểm tra response.code để xác nhận thành công
-        if (response.data) {
-          const userToSet = response.data;
+          // Separate token from user data for cleaner state management
+          const { accessToken: token, ...userToStore } = userWithToken;
 
-          setUser(userToSet);
+          // setUser(userToStore);
           localStorage.setItem(
             API_CONFIG.storage.user,
-            JSON.stringify(userToSet)
+            JSON.stringify(userToStore)
           );
-
-          // Tìm accessToken từ nhiều vị trí có thể
-          const token =
-            response.accessToken ||
-            (response as any).token ||
-            (response.data as any).accessToken ||
-            (response.data as any).token ||
-            "mock-token"; // Fallback for development
-
           localStorage.setItem(API_CONFIG.storage.token, token);
 
-          showError("SUCCESS005");
-          handleRedirect(userToSet.role);
+          toast({
+            title: "Đăng nhập thành công",
+            description: "Chào mừng bạn đã quay trở lại!",
+            variant: "success",
+          });
+          // handleRedirect(userToStore.role);
         } else {
-          throw new Error(response.message || "Login failed");
+          // Use the message from the API for more specific feedback
+          throw new Error(
+            response.message || "Đăng nhập thất bại do dữ liệu không hợp lệ."
+          );
         }
       } else {
-        // Mock Login
         const mockUser = mockUsers.find(
           (u) =>
             u.email === credentials.email && u.password === credentials.password
@@ -128,31 +127,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
         setUser(mockUser);
         localStorage.setItem(API_CONFIG.storage.user, JSON.stringify(mockUser));
-        showError("SUCCESS005");
+        toast({
+          title: "Đăng nhập thành công",
+          description: "Chào mừng bạn đã quay trở lại! (Chế độ offline)",
+          variant: "success",
+        });
         handleRedirect(mockUser.role);
       }
     } catch (error: any) {
       console.error("Login failed:", error);
-      logout(); // Đảm bảo trạng thái sạch khi lỗi
-      showError("AUTH001");
-      throw error; // Ném lỗi để form xử lý
+      logout();
+      toast({
+        title: "Đăng nhập thất bại",
+        description: "Email hoặc mật khẩu không chính xác. Vui lòng thử lại.",
+        variant: "destructive",
+      });
+      throw error;
     } finally {
       setLoadingAuth(false);
     }
   };
 
   const logout = () => {
-    // Perform local cleanup immediately
     setUser(null);
     localStorage.removeItem(API_CONFIG.storage.user);
     localStorage.removeItem(API_CONFIG.storage.token);
 
-    // Redirect to login page
+    // Xóa toàn bộ cache của React Query để đảm bảo dữ liệu mới được tải lại
+    queryClient.clear();
+
     if (pathname !== "/login") {
       router.push("/login");
     }
 
-    // Call API to logout on the server in the background
     if (API_CONFIG.useApi) {
       authService.logout().catch((err) => {
         console.error(
@@ -165,15 +172,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const updateAvatar = async (newAvatarUrl: string) => {
     if (!user) {
-      showError("AUTH003");
-      throw new Error("AUTH003");
+      toast({
+        title: "Lỗi xác thực",
+        description: "Vui lòng đăng nhập để thực hiện thao tác này.",
+        variant: "destructive",
+      });
+      throw new Error("User not authenticated.");
     }
 
     if (
       !newAvatarUrl ||
       (!newAvatarUrl.startsWith("http") && !newAvatarUrl.startsWith("blob:"))
     ) {
-      showError("FILE001");
+      toast({
+        title: "Lỗi tệp tin",
+        description: "URL ảnh đại diện không hợp lệ.",
+        variant: "destructive",
+      });
       throw new Error("Invalid avatar URL or file.");
     }
 
@@ -184,12 +199,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const changePassword = async (oldPassword: string, newPassword: string) => {
     if (!user) {
-      showError("AUTH003");
+      toast({
+        title: "Lỗi xác thực",
+        description: "Vui lòng đăng nhập để thực hiện thao tác này.",
+        variant: "destructive",
+      });
       throw new Error("User not authenticated");
     }
     try {
-      if (newPassword.length < 6) throw new Error("PASSWORD001");
-      if (oldPassword === newPassword) throw new Error("PASSWORD003");
+      if (newPassword.length < 6) {
+        throw new Error("Mật khẩu mới phải có ít nhất 6 ký tự.");
+      }
+      if (oldPassword === newPassword) {
+        throw new Error("Mật khẩu mới không được trùng với mật khẩu cũ.");
+      }
 
       if (API_CONFIG.useApi) {
         await authService.changePassword({
@@ -198,15 +221,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           confirmNewPassword: newPassword,
         });
       } else {
-        // Mock password change logic
         console.log("Mock password change successful.");
       }
 
-      showError("SUCCESS004");
+      toast({
+        title: "Thành công",
+        description: "Mật khẩu của bạn đã được thay đổi thành công.",
+        variant: "success",
+      });
       return true;
     } catch (error) {
-      const errorCode = error instanceof Error ? error.message : "SYS002";
-      showError(errorCode);
+      toast({
+        title: "Đổi mật khẩu thất bại",
+        description: extractErrorMessage(error),
+        variant: "destructive",
+      });
       throw error;
     }
   };

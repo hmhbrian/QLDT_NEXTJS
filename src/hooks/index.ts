@@ -12,6 +12,7 @@ export * from "./useAsync";
 export * from "./use-courses";
 export * from "./use-departments";
 export * from "./use-positions";
+export * from "./use-users";
 
 // Form & Validation hooks
 export * from "./useForm";

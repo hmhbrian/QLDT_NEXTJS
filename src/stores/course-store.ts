@@ -1,11 +1,13 @@
+
 import { create } from "zustand";
 import { persist, createJSONStorage, StateStorage } from "zustand/middleware";
 import { devtools } from "zustand/middleware";
-import type { Course } from "@/lib/types/course.types";
+import type { Course, CourseApiResponse } from "@/lib/types/course.types";
 import { mockCourses } from "@/lib/mock";
 import Cookies from "js-cookie";
 import { API_CONFIG } from "@/lib/config";
 import { coursesService } from "@/lib/services/modern/courses.service";
+import { mapCourseApiToUi, mapCourseUiToCreatePayload, mapCourseUiToUpdatePayload } from "@/lib/mappers/course.mapper";
 
 // Enhanced error types for better error handling
 interface CourseStoreError {
@@ -238,7 +240,7 @@ export const useCourseStore = create<CourseStore>()(
               console.log("Fetching courses from API...");
               const apiCourses = await coursesService.getCourses();
               const transformedCourses = apiCourses.map((apiCourse) =>
-                coursesService.transformToCourse(apiCourse)
+                mapCourseApiToUi(apiCourse)
               );
 
               set((prev) => ({
@@ -360,8 +362,7 @@ export const useCourseStore = create<CourseStore>()(
                     modifiedBy: course.modifiedBy || "Admin",
                   };
 
-                  const apiPayload =
-                    coursesService.transformToCreatePayload(completeCourse);
+                  const apiPayload = mapCourseUiToCreatePayload(completeCourse);
 
                   // Log để debug
                   console.log("API Payload being sent:", apiPayload);
@@ -369,8 +370,7 @@ export const useCourseStore = create<CourseStore>()(
                   const newApiCourse = await coursesService.createCourse(
                     apiPayload
                   );
-                  const newCourse =
-                    coursesService.transformToCourse(newApiCourse);
+                  const newCourse = mapCourseApiToUi(newApiCourse);
 
                   set((prev) => ({
                     courses: optimistic
@@ -472,13 +472,13 @@ export const useCourseStore = create<CourseStore>()(
                 if (API_CONFIG.useApi) {
                   console.log("Updating course via API...");
                   const apiPayload =
-                    coursesService.transformToUpdatePayload(courseData);
+                    mapCourseUiToUpdatePayload(courseData as Course);
                   const updatedApiCourse = await coursesService.updateCourse(
                     courseId,
                     apiPayload
                   );
                   const updatedCourse =
-                    coursesService.transformToCourse(updatedApiCourse);
+                    mapCourseApiToUi(updatedApiCourse);
 
                   set((prev) => ({
                     courses: prev.courses.map((c) =>
@@ -670,7 +670,7 @@ export const useCourseStore = create<CourseStore>()(
             if (API_CONFIG.useApi) {
               const apiCourse = await coursesService.getCourseById(courseId);
               const transformedCourse =
-                coursesService.transformToCourse(apiCourse);
+                mapCourseApiToUi(apiCourse);
 
               set((prev) => ({
                 courses: prev.courses.map((c) =>
