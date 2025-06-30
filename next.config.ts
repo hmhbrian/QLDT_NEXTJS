@@ -14,13 +14,25 @@ const nextConfig: NextConfig = {
     ignoreDuringBuilds: true,
   },
   images: {
-    domains: ["images.unsplash.com", "placehold.co"],
+    domains: ["images.unsplash.com", "placehold.co", "localhost"],
     remotePatterns: [
       {
         protocol: "https",
         hostname: "placehold.co",
         port: "",
         pathname: "/**",
+      },
+      {
+        protocol: "http",
+        hostname: "localhost",
+        port: "5228",
+        pathname: "/**",
+      },
+      {
+        protocol: "https",
+        hostname: "res.cloudinary.com",
+        port: "",
+        pathname: "/ttdn/**",
       },
     ],
   },
