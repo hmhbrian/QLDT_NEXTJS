@@ -1,3 +1,4 @@
+
 import { BaseService, ApiResponse, QueryParams } from "../../core";
 import { API_CONFIG } from "@/lib/config";
 import type { ServiceRole } from "@/lib/types/user.types";
@@ -26,42 +27,31 @@ export class RolesService extends BaseService<
   }
 
   async getRoles(params?: RoleQueryParams): Promise<ServiceRole[]> {
-    const response = await this.get<ApiResponse<ServiceRole[]>>(this.endpoint, {
-      params,
-    });
-    return this.extractData(response) || [];
+    return this.get<ServiceRole[]>(this.endpoint, { params });
   }
 
   async getRoleById(id: string): Promise<ServiceRole> {
-    const response = await super.getById(id);
-    const data = this.extractData(response);
-    if (!data) {
-      throw new Error(`Role with ID ${id} not found.`);
-    }
-    return data;
+    return this.get<ServiceRole>(`${this.endpoint}/${id}`);
   }
 
   async createRole(payload: CreateRolePayload): Promise<ServiceRole> {
-    const response = await this.create(payload);
-    return this.extractData(response);
+    return this.post<ServiceRole>(this.endpoint, payload);
   }
 
   async updateRole(
     id: string,
     payload: UpdateRolePayload
   ): Promise<ServiceRole> {
-    const response = await this.update(id, payload);
-    return this.extractData(response);
+    return this.put<ServiceRole>(`${this.endpoint}/${id}`, payload);
   }
 
   async deleteRole(id: string): Promise<void> {
-    await this.remove(id);
+    await this.delete<void>(`${this.endpoint}/${id}`);
   }
 
   async getRoleByName(name: string): Promise<ServiceRole> {
     const url = API_CONFIG.endpoints.roles.byName(name);
-    const response = await this.get<ApiResponse<ServiceRole>>(url);
-    return this.extractData(response);
+    return this.get<ServiceRole>(url);
   }
 }
 

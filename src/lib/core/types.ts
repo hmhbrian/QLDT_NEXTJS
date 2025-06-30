@@ -6,12 +6,13 @@
 
 // Base API Response structure from your backend
 export interface ApiResponse<T = unknown> {
-  message: string;
-  code?: string; // Optional code from backend
-  data: T;
-  statusCode: number;
+  success: boolean;
+  message: string | null;
+  data?: T;
+  statusCode?: number;
   errors?: string[];
   accessToken?: string; // For login response
+  code?: string;
 }
 
 // Pagination Types

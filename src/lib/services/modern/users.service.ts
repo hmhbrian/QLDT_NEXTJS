@@ -1,3 +1,4 @@
+
 import {
   BaseService,
   PaginatedResponse,
@@ -24,62 +25,49 @@ export class UsersService extends BaseService<
   }
 
   async getUsers(params?: QueryParams): Promise<User[]> {
-    // If there's a search term, use the search endpoint
     if (params?.search) {
-      const searchResult = await this.searchUsers(params.search);
+      const searchResult = await this.searchUsers(params.search as string);
       return Array.isArray(searchResult) ? searchResult : [];
     }
 
-    const response = await this.get<ApiResponse<PaginatedResponse<User>>>(
+    const response = await this.get<PaginatedResponse<User>>(
       this.endpoint,
       { params }
     );
-    const items = this.extractItems(response);
-    return Array.isArray(items) ? items : [];
+    return response.items || [];
   }
 
   async getUserById(id: string): Promise<User> {
-    const response = await super.getById(id);
-    return this.extractData(response);
+    return super.getById(id);
   }
 
-  // Override create because the endpoint is non-standard
   async createUser(payload: CreateUserRequest): Promise<User> {
-    const response = await this.post<ApiResponse<User>>(
+    return this.post<User>(
       API_CONFIG.endpoints.users.create,
       payload
     );
-    return this.extractData(response);
   }
 
-  // Override the base 'update' method to use the correct admin endpoint
-  async update(
-    userId: string,
-    payload: UpdateUserPayload
-  ): Promise<ApiResponse<User>> {
-    const url = API_CONFIG.endpoints.users.updateAdmin(userId);
-    return this.put<ApiResponse<User>>(url, payload);
-  }
-
-  // This method remains for clarity if you need to call it explicitly
   async updateUserByAdmin(
     userId: string,
     payload: UpdateUserPayload
   ): Promise<User> {
-    const response = await this.update(userId, payload);
-    return this.extractData(response);
+    const url = API_CONFIG.endpoints.users.updateAdmin(userId);
+    return this.put<User>(url, payload);
   }
 
-  // Update user profile (for the current user)
+  async update(
+    userId: string,
+    payload: UpdateUserPayload
+  ): Promise<User> {
+    return this.updateUserByAdmin(userId, payload);
+  }
+
   async updateProfile(payload: UpdateUserPayload): Promise<User> {
-    // Assuming the backend has an endpoint like '/Users/profile' for self-update
-    // As it is not in the provided list, this might need adjustment.
-    // Let's assume a PUT to the base endpoint without ID updates the current user.
-    const response = await this.put<ApiResponse<User>>(
+    return this.put<User>(
       `${this.endpoint}/update`,
       payload
     );
-    return this.extractData(response);
   }
 
   async deleteUser(userId: string): Promise<any> {
@@ -97,12 +85,10 @@ export class UsersService extends BaseService<
 
   async searchUsers(keyword: string): Promise<User[]> {
     const url = API_CONFIG.endpoints.users.search;
-    const response = await this.get<ApiResponse<PaginatedResponse<User>>>(url, {
+    const response = await this.get<PaginatedResponse<User>>(url, {
       params: { keyword },
     });
-    const items = this.extractItems(response);
-    // Ensure we always return an array
-    return Array.isArray(items) ? items : [];
+    return response.items || [];
   }
 }
 

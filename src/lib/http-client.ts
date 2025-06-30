@@ -1,3 +1,4 @@
+
 /**
  * Custom HTTP Client - Thay thế axios với native fetch
  * Cung cấp interface tương thự axios nhưng sử dụng fetch API
@@ -76,10 +77,15 @@ class CustomHttpClient implements HttpClient {
 
     // Gộp headers
     const headers = {
-      "Content-Type": "application/json",
       ...this.defaultHeaders,
       ...config?.headers,
     };
+    
+    // Nếu data không phải FormData, set Content-Type
+    if (!(data instanceof FormData)) {
+        headers["Content-Type"] = "application/json";
+    }
+
 
     // Thêm query params
     const finalUrl = config?.params
@@ -97,7 +103,7 @@ class CustomHttpClient implements HttpClient {
       const response = await fetch(finalUrl, {
         method,
         headers,
-        body: data ? JSON.stringify(data) : undefined,
+        body: data ? (data instanceof FormData ? data : JSON.stringify(data)) : undefined,
         signal: controller.signal,
         credentials: config?.withCredentials ? "include" : "same-origin",
       });

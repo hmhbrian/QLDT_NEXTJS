@@ -1,3 +1,4 @@
+
 import { BaseService, ApiResponse, QueryParams } from "../../core";
 import { API_CONFIG } from "@/lib/config";
 import {
@@ -17,6 +18,7 @@ interface RawDepartment {
   managerId?: string | null;
   managerName?: string | null;
   status: string; // API gửi chuỗi như "1", "2"
+  statusId: number; // API also sends statusId
   level: number;
   path: string[];
   createdAt: string;
@@ -47,12 +49,8 @@ export class DepartmentsService extends BaseService<
       parentName: raw.parentName,
       managerId: raw.managerId,
       managerName: raw.managerName,
-      // Dựa trên phản hồi mẫu, status "2" có vẻ là trạng thái hoạt động.
-      // Đưa ra giả định linh hoạt ở đây.
-      status:
-        raw.status === "2" || raw.status?.toLowerCase() === "active"
-          ? "active"
-          : "inactive",
+      status: raw.status, // The text name like "Đang hoạt động"
+      statusId: raw.statusId, // The numeric ID
       level: raw.level,
       path: raw.path,
       createdAt: raw.createdAt,
@@ -64,16 +62,13 @@ export class DepartmentsService extends BaseService<
   private mapPayloadToApi(
     payload: CreateDepartmentPayload | UpdateDepartmentPayload
   ) {
-    // Ánh xạ payload thân thiện với frontend thành những gì API mong đợi.
+    // Backend expects PascalCase keys
     return {
-      departmentName: payload.name,
-      departmentCode: payload.code,
-      description: payload.description,
-      // Đặc tả API hiển thị `status: "string"`.
-      // Dựa trên phản hồi mẫu, chúng ta sẽ gửi "2" cho hoạt động. Có thể cần điều chỉnh.
-      status: payload.status === "active" ? "2" : "1",
-      managerId: payload.managerId,
-      // API mong đợi parentId là số hoặc null.
+      DepartmentName: payload.name,
+      DepartmentCode: payload.code,
+      Description: payload.description,
+      StatusId: payload.statusId ? parseInt(payload.statusId, 10) : undefined,
+      ManagerId: payload.managerId,
       ParentId: payload.parentId ? parseInt(payload.parentId, 10) : null,
     };
   }
@@ -81,19 +76,17 @@ export class DepartmentsService extends BaseService<
   async getDepartments(
     params?: DepartmentQueryParams
   ): Promise<DepartmentInfo[]> {
-    const response = await this.get<ApiResponse<RawDepartment[]>>(
+    const response = await this.get<RawDepartment[]>(
       this.endpoint,
       { params }
     );
-    const rawData = this.extractData(response) || [];
-    return rawData.map(this.mapRawToDepartmentInfo.bind(this));
+    return (response || []).map(this.mapRawToDepartmentInfo.bind(this));
   }
 
   async getDepartmentById(id: string): Promise<DepartmentInfo> {
-    const response = await this.get<ApiResponse<RawDepartment>>(
+    const rawData = await this.get<RawDepartment>(
       `${this.endpoint}/${id}`
     );
-    const rawData = this.extractData(response);
     if (!rawData) {
       throw new Error(`Department with ID ${id} not found.`);
     }
@@ -104,23 +97,22 @@ export class DepartmentsService extends BaseService<
     payload: CreateDepartmentPayload
   ): Promise<DepartmentInfo> {
     const apiPayload = this.mapPayloadToApi(payload);
-    const response = await this.post<ApiResponse<RawDepartment>>(
+    const rawData = await this.post<RawDepartment>(
       this.endpoint,
       apiPayload
     );
-    return this.mapRawToDepartmentInfo(this.extractData(response));
+    return this.mapRawToDepartmentInfo(rawData);
   }
 
   async updateDepartment(
     id: string,
     payload: UpdateDepartmentPayload
-  ): Promise<DepartmentInfo> {
+  ): Promise<void> {
     const apiPayload = this.mapPayloadToApi(payload);
-    const response = await this.put<ApiResponse<RawDepartment>>(
+    await this.put<void>(
       `${this.endpoint}/${id}`,
       apiPayload
     );
-    return this.mapRawToDepartmentInfo(this.extractData(response));
   }
 
   async deleteDepartment(id: string): Promise<void> {
