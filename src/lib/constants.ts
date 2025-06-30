@@ -4,19 +4,16 @@
  * This file exists for backward compatibility only
  */
 
-import type { Course, TraineeLevel } from "./types/course.types";
+import type { Course, TraineeLevel, Department } from "./types/course.types";
 import {
-  COURSE_STATUS_OPTIONS as statusOptions,
-  COURSE_STATUS_BADGE_VARIANT as statusBadgeVariant,
   STORAGE_KEYS,
 } from "./config/constants";
 
 // Re-export for backward compatibility
-export { statusOptions, statusBadgeVariant };
 export const EVALUATIONS_COOKIE_KEY = STORAGE_KEYS.EVALUATIONS;
 
 // Các tùy chọn phòng ban
-export const departmentOptions = [
+export const departmentOptions: readonly { value: Department; label: string }[] = [
   { value: "it", label: "IT" },
   { value: "hr", label: "HR" },
   { value: "finance", label: "Tài chính" },
@@ -26,7 +23,7 @@ export const departmentOptions = [
 ] as const;
 
 // Các tùy chọn cấp độ
-export const levelOptions = [
+export const levelOptions: readonly { value: TraineeLevel; label: string }[] = [
   { value: "intern", label: "Thực tập" },
   { value: "probation", label: "Thử việc" },
   { value: "employee", label: "Nhân viên" },

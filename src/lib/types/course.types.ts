@@ -1,3 +1,4 @@
+
 /**
  * Course Domain Types
  * All course-related interfaces and types
@@ -26,9 +27,6 @@ export type CourseCategory =
   | "design"
   | "marketing"
   | "soft_skills";
-
-// Course status enumeration
-export type CourseStatus = "draft" | "published" | "archived";
 
 // Enrollment type enumeration
 export type EnrollmentType = "optional" | "mandatory";
@@ -80,7 +78,23 @@ export interface CourseMaterial {
   __file?: File; // Đối tượng file phía client trước khi upload
 }
 
-// Main Course interface
+// Student Course Evaluation interface
+export interface StudentCourseEvaluation {
+  id: string;
+  courseId: string;
+  traineeId: string;
+  submissionDate: string; // ISO string
+  ratings: {
+    contentRelevance: number; // 1-5
+    clarity: number; // 1-5
+    structureLogic: number; // 1-5
+    durationAppropriateness: number; // 1-5
+    materialsEffectiveness: number; // 1-5
+  };
+  suggestions?: string;
+}
+
+// Main Course interface for Frontend
 export interface Course {
   id: string;
   title: string;
@@ -94,82 +108,54 @@ export interface Course {
     hoursPerSession: number;
   };
   learningType: "online" | "offline";
-  startDate: string | null; // Chuỗi ngày ISO hoặc null
-  endDate: string | null; // Chuỗi ngày ISO hoặc null
+  startDate: string | null;
+  endDate: string | null;
   location: string;
   image: string;
-  status: CourseStatus;
-  department: Department[]; // Mảng mã phòng ban
-  level: TraineeLevel[];
+  status: string;
+  statusId?: number;
+  department: string[];
+  level: string[];
   materials: CourseMaterial[];
   lessons?: Lesson[];
   tests?: Test[];
-  createdAt: string; // Chuỗi ngày ISO
-  modifiedAt: string; // Chuỗi ngày ISO
-  createdBy: string; // ID hoặc tên người tạo
-  modifiedBy: string; // ID hoặc tên người sửa
+  createdAt: string;
+  modifiedAt: string;
+  createdBy: string;
+  modifiedBy: string;
   enrollmentType: EnrollmentType;
-  registrationDeadline?: string | null; // Chuỗi ngày ISO hoặc null
-  enrolledTrainees?: string[]; // Mảng ID học viên đã ghi danh
+  registrationDeadline?: string | null;
+  enrolledTrainees?: string[];
   isPublic?: boolean;
   maxParticipants?: number;
   prerequisites?: string[];
   syllabus?: { title: string; content: string; duration: string }[];
   slides?: { title: string; url: string; type: "pdf" | "image" }[];
-}
-
-// Public course interface for public course page
-export interface PublicCourse {
-  id: string;
-  title: string;
-  description: string;
-  category: string; // Lấy từ label của categoryOptions
-  instructor: string;
-  duration: string; // Chuỗi đã định dạng
-  image: string;
-  dataAiHint?: string;
-  enrollmentType?: EnrollmentType;
-  registrationDeadline?: string | null;
-  isPublic?: boolean;
-  enrolledTrainees?: string[]; // Add enrolledTrainees property
-}
-
-// Student course evaluation
-export interface StudentCourseEvaluation {
-  id: string;
-  courseId: string;
-  traineeId: string;
-  submissionDate: string;
-  ratings: {
-    contentRelevance: number; // Mức độ phù hợp nội dung
-    clarity: number; // Độ rõ ràng
-    structureLogic: number; // Logic cấu trúc
-    durationAppropriateness: number; // Thời lượng hợp lý
-    materialsEffectiveness: number; // Hiệu quả tài liệu
-  };
-  suggestions?: string; // Góp ý thêm
+  registrationStartDate?: string | null;
+  registrationClosingDate?: string | null;
+  imageFile?: File | null;
 }
 
 // Courses API Types - Match backend exactly
 export interface CreateCourseRequest {
-  code: string; // Required
-  name: string; // Required
-  description: string; // Required
-  objectives: string; // Required
-  sessions?: number;
-  hoursPerSessions?: number; // Note: backend uses plural form
-  maxParticipant?: number;
-  startDate?: string; // ISO date-time
-  endDate?: string; // ISO date-time
-  registrationStartDate?: string; // ISO date-time
-  registrationClosingDate?: string; // ISO date-time
-  location?: string;
-  statusId?: number;
-  departmentIds?: number[];
-  positionIds?: number[];
+  Code: string;
+  Name: string;
+  Description: string;
+  Objectives: string;
+  Sessions?: number;
+  HoursPerSessions?: number;
+  MaxParticipant?: number;
+  StartDate?: string;
+  EndDate?: string;
+  RegistrationStartDate?: string;
+  RegistrationClosingDate?: string;
+  Location?: string;
+  StatusId?: number;
+  DepartmentIds?: number[];
+  PositionIds?: number[];
+  imageFile?: File | null;
 }
 
-// Course update request
 export interface UpdateCourseRequest extends Partial<CreateCourseRequest> {
   // All fields optional for updates
 }
@@ -202,18 +188,6 @@ export interface CourseApiResponse {
   departments?: Array<{
     departmentId: number;
     departmentName: string;
-    departmentCode?: string;
-    description?: string;
-    parentId?: number;
-    parentName?: string;
-    managerId?: number;
-    managerName?: string;
-    status?: string;
-    level: number;
-    path?: string;
-    createdAt: string;
-    updatedAt: string;
-    children?: any;
   }>;
   positions?: Array<{
     positionId: number;

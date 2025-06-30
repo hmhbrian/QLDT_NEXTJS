@@ -62,6 +62,21 @@ export const API_ENDPOINTS = {
   userStatus: {
     base: "/UsersStatus",
   },
+  status: {
+    base: "/status",
+    courses: {
+      getAll: "/status/courses",
+      create: "/status/courses",
+      update: (id: string) => `/status/courses/${id}`,
+      delete: (id: string) => `/status/courses/${id}`,
+    },
+    users: {
+      getAll: "/status/users",
+      create: "/status/users",
+      update: (id: string) => `/status/users/${id}`,
+      delete: (id: string) => `/status/users/${id}`,
+    },
+  },
   analytics: {
     base: "/analytics",
     summary: "/analytics/summary",

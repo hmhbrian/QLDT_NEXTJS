@@ -1,3 +1,4 @@
+
 import type { User, Trainee, WorkStatus } from "../types/user.types";
 import type { TraineeLevel } from "../types/course.types";
 
@@ -15,7 +16,7 @@ export const mockUsers: User[] = [
     startWork: new Date("2020-01-15"),
     createdAt: new Date("2020-01-15"),
     modifiedAt: new Date(),
-    status: "working" as WorkStatus,
+    userStatus: { id: 2, name: "Đang hoạt động" },
     department: "IT Administration",
     position: "System Administrator",
   },
@@ -31,7 +32,7 @@ export const mockUsers: User[] = [
     startWork: new Date("2021-05-10"),
     createdAt: new Date("2021-05-10"),
     modifiedAt: new Date(),
-    status: "working" as WorkStatus,
+    userStatus: { id: 2, name: "Đang hoạt động" },
     department: "Human Resources",
     position: "HR Manager",
   },
@@ -47,7 +48,7 @@ export const mockUsers: User[] = [
     startWork: new Date("2024-01-01"),
     createdAt: new Date("2024-01-01"),
     modifiedAt: new Date(),
-    status: "working" as WorkStatus,
+    userStatus: { id: 3, name: "Đang làm việc" },
     department: "IT",
     level: "intern" as TraineeLevel,
     employeeId: "EMP001",

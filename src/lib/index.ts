@@ -1,3 +1,4 @@
+
 /**
  * Main Library Index
  * Central export point for the entire library.
@@ -17,7 +18,10 @@ export * from "./config";
 
 // Export general utilities
 export * from "./utils";
+
+// Export helper helpers
 export * from "./helpers";
+
 
 // Export legacy API for backward compatibility (if still needed)
 // Note: Commented out to avoid API_CONFIG conflict

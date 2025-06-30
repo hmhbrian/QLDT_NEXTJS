@@ -1,3 +1,4 @@
+
 import type { StudentCourseEvaluation } from "../types/course.types";
 
 export const mockEvaluations: StudentCourseEvaluation[] = [

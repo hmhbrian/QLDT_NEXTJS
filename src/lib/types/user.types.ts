@@ -53,7 +53,8 @@ export interface User {
   department?: string | DepartmentInfo; // Mã hoặc tên phòng ban
   position?: string | Position; // Có thể là string hoặc Position object
   level?: string; // Cấp bậc - có thể là string từ Positions API
-  status?: WorkStatus;
+  userStatus?: { id: number; name: string } | null;
+  statusId?: number; // Added for backward compatibility in forms
   manager?: string; // Tên hoặc ID quản lý
   joinDate?: string; // Chuỗi ngày ISO cho ngày vào làm, khác với startWork
 
@@ -132,7 +133,7 @@ export interface RegisterDTO {
   department?: string;
   position?: string; // Chức vụ - free text
   level?: string; // Cấp bậc - positionId từ Positions API
-  status?: WorkStatus;
+  statusId?: number;
   employeeId?: string;
 }
 
