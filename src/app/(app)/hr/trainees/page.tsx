@@ -1,3 +1,4 @@
+
 "use client";
 
 import {
@@ -38,10 +39,9 @@ import {
   Eye,
   EyeOff,
 } from "lucide-react";
-import { useState, useMemo } from "react";
-import type { User, Role, CreateUserRequest } from "@/lib/types/user.types";
+import { useState, useMemo, useCallback } from "react";
+import type { User, Role, CreateUserRequest, Position } from "@/lib/types/user.types";
 import type { DepartmentInfo } from "@/lib/types/department.types";
-import type { Position } from "@/lib/types/user.types";
 import { useToast } from "@/components/ui/use-toast";
 import { useError } from "@/hooks/use-error";
 import { DataTable } from "@/components/ui/data-table";
@@ -53,6 +53,7 @@ import { LoadingButton, Spinner } from "@/components/ui/loading";
 import { extractErrorMessage } from "@/lib/core";
 import { useDepartments } from "@/hooks/use-departments";
 import { usePositions } from "@/hooks/use-positions";
+import { useUserStatuses } from "@/hooks/use-statuses";
 import { NO_DEPARTMENT_VALUE } from "@/lib/constants";
 
 const initialNewTraineeState: Omit<User, "id"> & { password?: string } = {
@@ -65,7 +66,7 @@ const initialNewTraineeState: Omit<User, "id"> & { password?: string } = {
   level: "intern",
   joinDate: "",
   manager: "",
-  status: "working",
+  userStatus: { id: 2, name: "Đang hoạt động"},
   idCard: "",
   role: "HOCVIEN",
   urlAvatar: "https://placehold.co/40x40.png",
@@ -116,6 +117,7 @@ export default function TraineesPage() {
   const { activeDepartments, isLoading: isDepartmentsLoading } =
     useDepartments();
   const { positions, loading: isPositionsLoading } = usePositions();
+  const { userStatuses, isLoading: isStatusesLoading } = useUserStatuses();
 
   // Mutations
   const createTraineeMutation = useMutation({
@@ -132,7 +134,7 @@ export default function TraineesPage() {
     },
     onError: (error) => {
       toast({
-        title: "Lỗi",
+        title: "Thêm học viên thất bại",
         description: extractErrorMessage(error),
         variant: "destructive",
       });
@@ -158,7 +160,7 @@ export default function TraineesPage() {
     },
     onError: (error) => {
       toast({
-        title: "Lỗi",
+        title: "Cập nhật thất bại",
         description: extractErrorMessage(error),
         variant: "destructive",
       });
@@ -178,7 +180,7 @@ export default function TraineesPage() {
     },
     onError: (error) => {
       toast({
-        title: "Lỗi",
+        title: "Xóa thất bại",
         description: extractErrorMessage(error),
         variant: "destructive",
       });
@@ -191,7 +193,7 @@ export default function TraineesPage() {
     setIsFormOpen(true);
   };
 
-  const handleOpenEditDialog = (trainee: User) => {
+  const handleOpenEditDialog = useCallback((trainee: User) => {
     setEditingTrainee(trainee);
     setFormData({
       ...trainee,
@@ -205,7 +207,7 @@ export default function TraineesPage() {
           : "",
     });
     setIsFormOpen(true);
-  };
+  }, []);
 
   const handleDeleteTrainee = () => {
     if (deletingTrainee) {
@@ -282,8 +284,7 @@ export default function TraineesPage() {
       );
       return foundDept ? foundDept.name : "Không xác định";
     }
-    // Handle both departmentName and name properties
-    return department.departmentName || department.name || "Không xác định";
+    return department.name || "Không xác định";
   };
 
   const getPositionName = (user: User): string => {
@@ -310,8 +311,16 @@ export default function TraineesPage() {
           }),
         (trainee) => setDeletingTrainee(trainee)
       ),
-    [activeDepartments, toast]
+    [toast, handleOpenEditDialog]
   );
+
+  if (isTraineesLoading || isStatusesLoading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

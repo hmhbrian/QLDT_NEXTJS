@@ -1,3 +1,4 @@
+
 "use client";
 
 import { ColumnDef } from "@tanstack/react-table";
@@ -20,13 +21,10 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Checkbox } from "@/components/ui/checkbox";
 import type { User } from "@/lib/types/user.types";
+import type { DepartmentInfo } from "@/lib/types/department.types";
 import type { TraineeLevel } from "@/lib/types/course.types";
 import { cn } from "@/lib/utils";
-import {
-  getLevelBadgeColor,
-  getStatusColor,
-  getStatusText,
-} from "@/lib/helpers";
+import { getLevelBadgeColor, getStatusColor } from "@/lib/helpers";
 
 export const getColumns = (
   handleViewDetails: (trainee: User) => void,
@@ -113,8 +111,7 @@ export const getColumns = (
       const department = row.original.department;
       if (!department) return "N/A";
       if (typeof department === "string") return department;
-      // Handle both departmentName and name properties
-      return department.departmentName || department.name || "Không xác định";
+      return (department as DepartmentInfo).name || "Không xác định";
     },
   },
   {
@@ -133,14 +130,14 @@ export const getColumns = (
   {
     accessorKey: "status",
     header: "Trạng thái",
-    cell: ({ row }) => (
-      <Badge
-        variant="outline"
-        className={cn(getStatusColor(row.original.status ?? "working"))}
-      >
-        {getStatusText(row.original.status ?? "working")}
-      </Badge>
-    ),
+    cell: ({ row }) => {
+      const statusName = row.original.userStatus?.name || "N/A";
+      return (
+        <Badge variant="outline" className={cn(getStatusColor(statusName))}>
+          {statusName}
+        </Badge>
+      );
+    },
   },
   {
     id: "actions",

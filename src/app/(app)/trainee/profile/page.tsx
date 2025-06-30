@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
@@ -45,7 +46,6 @@ import { Checkbox } from "@/components/ui/checkbox";
 import {
   getLevelBadgeColor,
   getStatusColor,
-  getStatusText,
 } from "@/lib/helpers";
 
 export default function UserProfilePage() {
@@ -341,18 +341,18 @@ export default function UserProfilePage() {
                         <strong>Quản lý trực tiếp:</strong>{" "}
                         {profileData.manager || "N/A"}
                       </p>
-                      {profileData.status && (
-                        <p className="text-sm">
+                      {profileData.userStatus && (
+                        <div className="text-sm">
                           <strong>Trạng thái:</strong>
                           <Badge
                             variant="outline"
                             className={`ml-2 ${getStatusColor(
-                              profileData.status
+                              profileData.userStatus.name
                             )}`}
                           >
-                            {getStatusText(profileData.status)}
+                            {profileData.userStatus.name}
                           </Badge>
-                        </p>
+                        </div>
                       )}
                     </div>
                   </div>
@@ -374,18 +374,18 @@ export default function UserProfilePage() {
                             )
                           : "N/A"}
                       </p>
-                      {profileData.status && (
-                        <p className="text-sm">
+                      {profileData.userStatus && (
+                        <div className="text-sm">
                           <strong>Trạng thái:</strong>
                           <Badge
                             variant="outline"
                             className={`ml-2 ${getStatusColor(
-                              profileData.status
+                              profileData.userStatus.name
                             )}`}
                           >
-                            {getStatusText(profileData.status)}
+                            {profileData.userStatus.name}
                           </Badge>
-                        </p>
+                        </div>
                       )}
                     </div>
                   </div>

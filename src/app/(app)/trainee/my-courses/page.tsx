@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -8,11 +8,8 @@ import { GraduationCap, BookOpenCheck, PlayCircle, Loader2 } from "lucide-react"
 import Image from "next/image";
 import Link from "next/link";
 import { useAuth } from '@/hooks/useAuth';
-import { useCookie } from '@/hooks/use-cookie';
-import { useCourseStore } from '@/stores/course-store';
-import { mockMyCourses } from '@/lib/mock';
-
-const MY_COURSES_COOKIE_KEY = 'becamex-my-courses-data';
+import { useCourses } from '@/hooks/use-courses';
+import type { Course } from '@/lib/types/course.types';
 
 interface DisplayCourse {
   id: string;
@@ -26,74 +23,42 @@ interface DisplayCourse {
 
 export default function MyCoursesPage() {
   const { user: currentUser, loadingAuth } = useAuth();
-  // Get courses from the course store
-  const { courses: allCoursesFromStore } = useCourseStore();
-  
-  // Get my courses progress data from cookie
-  const [myCoursesFromCookie, setMyCoursesInCookie] = useCookie<DisplayCourse[]>(MY_COURSES_COOKIE_KEY, mockMyCourses);
-  
-  const [myDisplayCourses, setMyDisplayCourses] = useState<DisplayCourse[]>([]);
-  const [isLoadingCourses, setIsLoadingCourses] = useState(true);
+  const { courses: allCourses, isLoading: isLoadingCourses } = useCourses();
 
-  useEffect(() => {
-    if (!loadingAuth) {
-      setIsLoadingCourses(true);
-      
-      // Find enrolled courses from store for the current user
-      const enrolledCourses = currentUser ? allCoursesFromStore.filter(
-        course => course.enrolledTrainees?.includes(currentUser.id)
-      ) : [];
-      
-      // Create a Map to store courses based on ID
-      const courseMap = new Map<string, DisplayCourse>();
-      
-      // Prioritize existing courses from cookie
-      if (myCoursesFromCookie.length > 0) {
-        myCoursesFromCookie.forEach(course => {
-          courseMap.set(course.id, course);
-        });
-      }
-      
-      // Add enrolled courses from store
-      enrolledCourses.forEach(course => {
-        // If course already exists in map, just update the basic information
-        const existingProgress = courseMap.has(course.id) ? courseMap.get(course.id)!.progress : 0;
-        
-        courseMap.set(course.id, {
-          id: course.id,
-          title: course.title,
-          description: course.description,
-          progress: existingProgress,
-          image: course.image,
-          dataAiHint: course.category,
-          nextLesson: course.lessons && course.lessons.length > 0 ? course.lessons[0].title : undefined
-        });
-      });
-      
-      // Add mock courses if no courses exist and mockMyCourses has data
-      if (courseMap.size === 0 && mockMyCourses.length > 0) {
-        mockMyCourses.forEach(course => {
-          courseMap.set(course.id, course);
-        });
-      }
-      
-      // Convert Map to array
-      const combinedCourses = Array.from(courseMap.values());
-      
-      // Update state
-      setMyDisplayCourses(combinedCourses);
-      
-      // Save to cookie only if there are changes
-      const currentCookieJSON = JSON.stringify(myCoursesFromCookie);
-      const newCoursesJSON = JSON.stringify(combinedCourses);
-      
-      if (currentCookieJSON !== newCoursesJSON && combinedCourses.length > 0) {
-        setMyCoursesInCookie(combinedCourses);
-      }
-      
-      setIsLoadingCourses(false);
+  const myDisplayCourses = useMemo(() => {
+    if (!currentUser || !allCourses) {
+      return [];
     }
-  }, [loadingAuth, allCoursesFromStore, myCoursesFromCookie, currentUser, setMyCoursesInCookie]);
+
+    // Filter courses where the current user is enrolled.
+    const enrolledCourses = allCourses.filter(course =>
+      course.enrolledTrainees?.includes(currentUser.id)
+    );
+
+    // Map to the display format.
+    return enrolledCourses.map((course: Course): DisplayCourse => {
+      // Find if the course is completed to calculate progress.
+      const completedCourse = currentUser.completedCourses?.find(c => c.courseId === course.id);
+      // Dummy progress for in-progress courses, assuming 0 if not started.
+      const progress = completedCourse ? 100 : 0;
+
+      // Determine the next lesson. This is a simplification.
+      const nextLesson = course.lessons && course.lessons.length > 0
+        ? course.lessons[0].title
+        : 'Bắt đầu học';
+
+      return {
+        id: course.id,
+        title: course.title,
+        description: course.description,
+        progress: progress,
+        image: course.image,
+        dataAiHint: course.category,
+        nextLesson: completedCourse ? 'Khóa học đã hoàn thành' : nextLesson,
+      };
+    });
+  }, [currentUser, allCourses]);
+
 
   if (loadingAuth || isLoadingCourses) {
     return (
@@ -179,4 +144,3 @@ export default function MyCoursesPage() {
     </div>
   );
 }
-
