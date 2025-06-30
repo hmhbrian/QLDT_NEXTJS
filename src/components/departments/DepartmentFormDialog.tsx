@@ -1,6 +1,7 @@
+
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   Dialog,
   DialogContent,
@@ -28,6 +29,7 @@ import type {
   UpdateDepartmentPayload,
 } from "@/lib/types/department.types";
 import type { User } from "@/lib/types/user.types";
+import type { Status } from "@/lib/types/status.types";
 import { NO_DEPARTMENT_VALUE } from "@/lib/constants";
 import { generateDepartmentCode } from "@/lib/utils/code-generator";
 
@@ -44,6 +46,7 @@ interface DepartmentFormDialogProps {
   managers: User[];
   isLoading?: boolean;
   isLoadingManagers?: boolean;
+  userStatuses: Status[];
 }
 
 const initialFormData: CreateDepartmentPayload = {
@@ -51,7 +54,7 @@ const initialFormData: CreateDepartmentPayload = {
   code: "",
   description: "",
   managerId: "",
-  status: "active",
+  statusId: "2", // Default to "Đang hoạt động"
   parentId: null,
 };
 
@@ -64,25 +67,61 @@ export function DepartmentFormDialog({
   managers,
   isLoading,
   isLoadingManagers,
+  userStatuses,
 }: DepartmentFormDialogProps) {
   const { toast } = useToast();
   const [formData, setFormData] =
     useState<CreateDepartmentPayload>(initialFormData);
 
+  const departmentStatuses = useMemo(
+    () =>
+      userStatuses.filter(
+        (s) => s.name === "Đang hoạt động" || s.name === "Không hoạt động"
+      ),
+    [userStatuses]
+  );
+
   useEffect(() => {
-    if (departmentToEdit) {
+    if (isOpen && departmentToEdit) {
+      const statusValue = departmentToEdit.status;
+      let foundStatusId = "2"; // Default to "Đang hoạt động"
+
+      if (statusValue && userStatuses.length > 0) {
+        const isId = /^\d+$/.test(statusValue);
+        if (isId) {
+          const statusId = Number(statusValue);
+          if (userStatuses.some((s) => s.id === statusId)) {
+            foundStatusId = String(statusId);
+          }
+        } else {
+          const nameMap: { [key: string]: string } = {
+            active: "Đang hoạt động",
+            ative: "Đang hoạt động",
+            inactive: "Không hoạt động",
+          };
+          const normalizedName =
+            nameMap[statusValue.toLowerCase()] || statusValue;
+          const foundStatus = userStatuses.find(
+            (s) => s.name.toLowerCase() === normalizedName.toLowerCase()
+          );
+          if (foundStatus) {
+            foundStatusId = String(foundStatus.id);
+          }
+        }
+      }
+
       setFormData({
         name: departmentToEdit.name,
         code: departmentToEdit.code,
         description: departmentToEdit.description,
         managerId: departmentToEdit.managerId || "",
-        status: departmentToEdit.status as "active" | "inactive",
+        statusId: foundStatusId,
         parentId: departmentToEdit.parentId,
       });
     } else {
       setFormData(initialFormData);
     }
-  }, [departmentToEdit, isOpen]);
+  }, [departmentToEdit, isOpen, userStatuses]);
 
   const handleSubmit = () => {
     if (!formData.name) {
@@ -234,17 +273,23 @@ export function DepartmentFormDialog({
           <div className="grid gap-2">
             <Label htmlFor="status">Trạng thái</Label>
             <Select
-              value={formData.status}
-              onValueChange={(value: "active" | "inactive") =>
-                setFormData({ ...formData, status: value })
+              value={String(formData.statusId || "")}
+              onValueChange={(value: string) =>
+                setFormData({
+                  ...formData,
+                  statusId: value,
+                })
               }
             >
               <SelectTrigger>
                 <SelectValue placeholder="Chọn trạng thái" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="active">Đang hoạt động</SelectItem>
-                <SelectItem value="inactive">Không hoạt động</SelectItem>
+                {departmentStatuses.map((status) => (
+                  <SelectItem key={status.id} value={String(status.id)}>
+                    {status.name}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>

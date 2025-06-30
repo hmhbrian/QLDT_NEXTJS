@@ -2,10 +2,11 @@ import { usersService } from "@/lib/services";
 import { useAuth } from "@/hooks/useAuth";
 import { useEffect, useState } from "react";
 import { ErrorHandler } from "@/lib/utils/error.utils";
+import type { User } from "@/lib/types/user.types";
 
 export default function UserList() {
   const { user, loadingAuth } = useAuth();
-  const [users, setUsers] = useState([]);
+  const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -15,10 +16,10 @@ export default function UserList() {
     }
     if (user) {
       usersService
-        .getAll({ Page: 1, Limit: 50, SortField: "fullName", SortType: "asc" })
+        .getUsers({ Page: 1, Limit: 50, SortField: "fullName", SortType: "asc" })
         .then((res) => {
           console.log("UserList fetchUsers response:", res);
-          setUsers(res.data?.items || []);
+          setUsers(res || []); // res is already User[]
           setLoading(false);
         })
         .catch((err) => {

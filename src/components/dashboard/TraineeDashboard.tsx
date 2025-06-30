@@ -6,58 +6,46 @@ import { GraduationCap, BookMarked, Percent, CalendarClock, CalendarDays } from 
 import Link from 'next/link';
 import { Button } from '../ui/button';
 import { Progress } from '@/components/ui/progress';
-import { useEffect, useState } from 'react';
+import { useMemo } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { useCookie } from '@/hooks/use-cookie';
+import { useCourses } from '@/hooks/use-courses';
 import type { Course } from "@/lib/types/course.types";
-
-const COURSES_COOKIE_KEY = 'becamex-courses-data';
 
 export function TraineeDashboard() {
   const { user: currentUser } = useAuth();
-  const [allCourses] = useCookie<Course[]>(COURSES_COOKIE_KEY, []);
+  const { courses: allCourses } = useCourses();
 
-  const [enrolledCoursesCount, setEnrolledCoursesCount] = useState(0);
-  const [completedCoursesCount, setCompletedCoursesCount] = useState(0);
-  const [overallProgress, setOverallProgress] = useState(0);
-  const [upcomingClasses, setUpcomingClasses] = useState<Course[]>([]);
+  const { enrolledCoursesCount, completedCoursesCount, overallProgress, upcomingClasses } = useMemo(() => {
+    if (!currentUser || !allCourses) {
+        return { enrolledCoursesCount: 0, completedCoursesCount: 0, overallProgress: 0, upcomingClasses: [] };
+    }
 
-  useEffect(() => {
-    if (currentUser && allCourses.length > 0) {
-      // Tính toán các khóa học đã đăng ký
-      const enrolled = allCourses.filter(course =>
-        course.status === 'published' &&
+    const enrolled = allCourses.filter(course =>
         course.enrolledTrainees?.includes(currentUser.id)
-      );
-      setEnrolledCoursesCount(enrolled.length);
-
-      // Tính toán các khóa học đã hoàn thành
-      const completed = currentUser.completedCourses?.length || 0;
-      setCompletedCoursesCount(completed);
-
-      // Tính toán tiến độ tổng thể
-      if (enrolled.length > 0) {
-        setOverallProgress(Math.round((completed / enrolled.length) * 100));
-      } else {
-        setOverallProgress(0);
-      }
-
-      // Tính toán các lớp học sắp tới
-      const now = new Date();
-      const upcoming = enrolled
+    );
+    const completed = currentUser.completedCourses?.length || 0;
+    const progress = enrolled.length > 0 ? Math.round((completed / enrolled.length) * 100) : 0;
+    
+    const now = new Date();
+    const upcoming = enrolled
         .filter(course => {
-          const endDate = course.endDate ? new Date(course.endDate) : null;
-          // Chỉ lấy các khóa học chưa kết thúc
-          return endDate && endDate >= now;
+            const endDate = course.endDate ? new Date(course.endDate) : null;
+            // Get courses that have not yet ended
+            return endDate && endDate >= now;
         })
         .sort((a, b) => {
-          const dateA = a.startDate ? new Date(a.startDate).getTime() : Infinity;
-          const dateB = b.startDate ? new Date(b.startDate).getTime() : Infinity;
-          return dateA - dateB;
+            const dateA = a.startDate ? new Date(a.startDate).getTime() : Infinity;
+            const dateB = b.startDate ? new Date(b.startDate).getTime() : Infinity;
+            return dateA - dateB;
         })
-        .slice(0, 3); // Lấy 3 khóa học sắp tới gần nhất
-      setUpcomingClasses(upcoming);
-    }
+        .slice(0, 3); // Get the 3 nearest upcoming courses
+
+    return {
+        enrolledCoursesCount: enrolled.length,
+        completedCoursesCount: completed,
+        overallProgress: progress,
+        upcomingClasses: upcoming,
+    };
   }, [currentUser, allCourses]);
 
   const stats = [
