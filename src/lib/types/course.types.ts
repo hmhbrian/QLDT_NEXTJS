@@ -195,17 +195,12 @@ export interface CourseApiResponse {
   }>;
 }
 
-// Course search parameters
+// Course search parameters for API
 export interface CourseSearchParams {
   keyword?: string;
-  statusId?: number;
-  departmentIds?: number[];
-  positionIds?: number[];
-  startDate?: string;
-  endDate?: string;
-}
-
-// Soft delete courses request
-export interface SoftDeleteCoursesRequest {
-  ids: string[];
+  StatusIds?: string;
+  DepartmentIds?: string;
+  PositionIds?: string;
+  page?: number;
+  limit?: number;
 }
