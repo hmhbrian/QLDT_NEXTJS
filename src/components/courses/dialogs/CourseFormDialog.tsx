@@ -2,6 +2,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { format } from "date-fns";
 import {
   Dialog,
   DialogContent,
@@ -278,6 +279,38 @@ export function CourseFormDialog({
     formData.materials,
     lessonFormData,
   ]);
+  
+  /**
+   * Safely parses a date string into a Date object for the DatePicker.
+   * Handles date-only strings (YYYY-MM-DD) to avoid timezone issues
+   * and gracefully fails for invalid date strings.
+   * @param dateString The date string to parse.
+   * @returns A valid Date object or undefined.
+   */
+  const parseDateStringForPicker = (dateString: string | null | undefined): Date | undefined => {
+      if (!dateString) {
+          return undefined;
+      }
+      
+      // Check for a date-only string like "YYYY-MM-DD"
+      // and parse it in a way that respects the local timezone to avoid off-by-one errors.
+      const dateOnlyMatch = dateString.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      if (dateOnlyMatch) {
+        const [, year, month, day] = dateOnlyMatch.map(Number);
+        return new Date(year, month - 1, day);
+      }
+  
+      // For other formats (like full ISO strings from API), `new Date()` works fine.
+      const date = new Date(dateString);
+  
+      // If parsing fails for any reason, return undefined.
+      if (isNaN(date.getTime())) {
+          console.warn(`[CourseFormDialog] Could not parse invalid date string: "${dateString}"`);
+          return undefined;
+      }
+      
+      return date;
+  };
 
   const handleInputChange = (field: keyof typeof formData, value: unknown) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -1029,18 +1062,12 @@ export function CourseFormDialog({
               <div>
                 <Label htmlFor="startDate">Ngày bắt đầu</Label>
                 <DatePicker
-                  date={
-                    formData.startDate
-                      ? new Date(formData.startDate)
-                      : undefined
-                  }
+                  date={parseDateStringForPicker(formData.startDate)}
                   setDate={(date) => {
-                    if (date) {
-                      const localDateString = date.toISOString().split("T")[0];
-                      handleInputChange("startDate", localDateString);
-                    } else {
-                      handleInputChange("startDate", null);
-                    }
+                    handleInputChange(
+                      "startDate",
+                      date ? format(date, "yyyy-MM-dd") : null
+                    );
                   }}
                   placeholder="Chọn ngày bắt đầu"
                 />
@@ -1048,16 +1075,12 @@ export function CourseFormDialog({
               <div>
                 <Label htmlFor="endDate">Ngày kết thúc</Label>
                 <DatePicker
-                  date={
-                    formData.endDate ? new Date(formData.endDate) : undefined
-                  }
+                  date={parseDateStringForPicker(formData.endDate)}
                   setDate={(date) => {
-                    if (date) {
-                      const localDateString = date.toISOString().split("T")[0];
-                      handleInputChange("endDate", localDateString);
-                    } else {
-                      handleInputChange("endDate", null);
-                    }
+                    handleInputChange(
+                      "endDate",
+                      date ? format(date, "yyyy-MM-dd") : null
+                    );
                   }}
                   placeholder="Chọn ngày kết thúc"
                 />
@@ -1280,15 +1303,11 @@ export function CourseFormDialog({
                         Ngày bắt đầu đăng ký
                       </Label>
                       <DatePicker
-                        date={
-                          formData.registrationStartDate
-                            ? new Date(formData.registrationStartDate)
-                            : undefined
-                        }
+                        date={parseDateStringForPicker(formData.registrationStartDate)}
                         setDate={(date) => {
                           handleInputChange(
                             "registrationStartDate",
-                            date ? date.toISOString().split("T")[0] : null
+                            date ? format(date, "yyyy-MM-dd") : null
                           );
                         }}
                         placeholder="Chọn ngày bắt đầu ĐK"
@@ -1299,15 +1318,11 @@ export function CourseFormDialog({
                         Hạn chót đăng ký
                       </Label>
                       <DatePicker
-                        date={
-                          formData.registrationDeadline
-                            ? new Date(formData.registrationDeadline)
-                            : undefined
-                        }
+                        date={parseDateStringForPicker(formData.registrationDeadline)}
                         setDate={(date) => {
                           handleInputChange(
                             "registrationDeadline",
-                            date ? date.toISOString().split("T")[0] : null
+                            date ? format(date, "yyyy-MM-dd") : null
                           );
                         }}
                         placeholder="Chọn hạn đăng ký"
@@ -2162,5 +2177,3 @@ export function CourseFormDialog({
     </>
   );
 }
-
-    

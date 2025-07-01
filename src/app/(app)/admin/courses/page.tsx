@@ -52,9 +52,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/components/ui/use-toast";
-import type {
-  Course,
-} from "@/lib/types/course.types";
+import type { Course, CourseSearchParams } from "@/lib/types/course.types";
 import type { Status } from "@/lib/types/status.types";
 import type { DepartmentInfo } from "@/lib/types/department.types";
 import type { Position, User } from "@/lib/types/user.types";
@@ -74,6 +72,7 @@ import { extractErrorMessage } from "@/lib/core";
 import { getStatusBadgeVariant } from "@/lib/helpers";
 import { mapCourseUiToCreatePayload } from "@/lib/mappers/course.mapper";
 import { getColumns } from "./columns";
+import { useDebounce } from "@/hooks/use-debounce";
 
 const CourseFormDialog = dynamic(
   () =>
@@ -83,15 +82,43 @@ const CourseFormDialog = dynamic(
   { ssr: false }
 );
 
+interface CourseFilters {
+  keyword: string;
+  statusId: string;
+  departmentId: string;
+  levelId: string;
+}
+
 export default function CoursesPage() {
   const { user: currentUser } = useAuth();
   const { toast } = useToast();
 
-  const {
-    courses,
-    isLoading,
-    error: coursesError,
-  } = useCourses();
+  const [filters, setFilters] = useState<CourseFilters>({
+    keyword: "",
+    statusId: "all",
+    departmentId: "all",
+    levelId: "all",
+  });
+  const debouncedFilters = useDebounce(filters, 500);
+
+  const apiParams: CourseSearchParams = useMemo(() => {
+    const params: CourseSearchParams = {};
+    if (debouncedFilters.keyword) {
+      params.keyword = debouncedFilters.keyword;
+    }
+    if (debouncedFilters.statusId !== "all") {
+      params.StatusIds = debouncedFilters.statusId;
+    }
+    if (debouncedFilters.departmentId !== "all") {
+      params.DepartmentIds = debouncedFilters.departmentId;
+    }
+    if (debouncedFilters.levelId !== "all") {
+      params.PositionIds = debouncedFilters.levelId;
+    }
+    return params;
+  }, [debouncedFilters]);
+
+  const { courses, isLoading, error: coursesError } = useCourses(apiParams);
 
   // Fetch dynamic course statuses
   const {
@@ -119,13 +146,6 @@ export default function CoursesPage() {
   const deleteCourseMutation = useDeleteCourses();
 
   const [viewMode, setViewMode] = useState<"table" | "card">("table");
-  const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string | "all">("all");
-  const [departmentFilter, setDepartmentFilter] = useState<string | "all">(
-    "all"
-  );
-  const [levelFilter, setLevelFilter] = useState<string | "all">("all");
-
   const [isFormDialogOpen, setIsFormDialogOpen] = useState(false);
   const [editingCourse, setEditingCourse] = useState<Course | null>(null);
   const [deletingCourse, setDeletingCourse] = useState<Course | null>(null);
@@ -156,50 +176,21 @@ export default function CoursesPage() {
   const canManageCourses =
     currentUser?.role === "ADMIN" || currentUser?.role === "HR";
 
-  const filteredCourses = useMemo(
-    () =>
-      courses.filter((course: Course) => {
-        const matchesSearch =
-          (course.title || "")
-            .toLowerCase()
-            .includes(searchTerm.toLowerCase()) ||
-          (course.description || "")
-            .toLowerCase()
-            .includes(searchTerm.toLowerCase()) ||
-          (course.instructor || "")
-            .toLowerCase()
-            .includes(searchTerm.toLowerCase());
-        const matchesStatus =
-          statusFilter === "all" || String(course.statusId) === statusFilter;
-        const matchesDepartment =
-          departmentFilter === "all" ||
-          (course.department &&
-            (course.department as string[]).includes(departmentFilter));
-        const matchesLevel =
-          levelFilter === "all" ||
-          (course.level && (course.level as string[]).includes(levelFilter));
-        return (
-          matchesSearch && matchesStatus && matchesDepartment && matchesLevel
-        );
-      }),
-    [courses, searchTerm, statusFilter, departmentFilter, levelFilter]
-  );
-
   // Reset trang về 1 khi bộ lọc thay đổi
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, statusFilter, departmentFilter, levelFilter, viewMode]);
+  }, [filters, viewMode]);
 
   // Phân trang khóa học cho chế độ xem card
   const paginatedCourses = useMemo(() => {
     if (viewMode === "card") {
       const startIndex = (currentPage - 1) * itemsPerPage;
-      return filteredCourses.slice(startIndex, startIndex + itemsPerPage);
+      return courses.slice(startIndex, startIndex + itemsPerPage);
     }
     return []; // Không sử dụng cho chế độ xem bảng
-  }, [filteredCourses, currentPage, itemsPerPage, viewMode]);
+  }, [courses, currentPage, itemsPerPage, viewMode]);
 
-  const totalPages = Math.ceil(filteredCourses.length / itemsPerPage);
+  const totalPages = Math.ceil(courses.length / itemsPerPage);
 
   const handleFormDialogOpenChange = (isOpen: boolean) => {
     if (!isOpen) {
@@ -221,40 +212,50 @@ export default function CoursesPage() {
   };
 
   const handleSaveCourse = async (
-    courseData: Course | Omit<Course, "id" | "createdAt" | "modifiedAt" | "createdBy" | "modifiedBy">,
+    courseData:
+      | Course
+      | Omit<
+          Course,
+          "id" | "createdAt" | "modifiedAt" | "createdBy" | "modifiedBy"
+        >,
     isEditing: boolean,
     imageFile?: File | null
   ) => {
     if (!canManageCourses || !currentUser) {
-        toast({
-            title: "Không có quyền",
-            description: "Bạn không có quyền thực hiện thao tác này.",
-            variant: "destructive",
-        });
-        return;
+      toast({
+        title: "Không có quyền",
+        description: "Bạn không có quyền thực hiện thao tác này.",
+        variant: "destructive",
+      });
+      return;
     }
 
     try {
-        const courseWithFile = { ...courseData, imageFile: imageFile || undefined };
+      const courseWithFile = {
+        ...courseData,
+        imageFile: imageFile || undefined,
+      };
 
-        if (isDuplicating || !isEditing) {
-            const createPayload = mapCourseUiToCreatePayload(courseWithFile as Course);
-            await createCourseMutation.mutateAsync(createPayload);
-        } else {
-            const courseToUpdate = editingCourse!;
-            await updateCourseMutation.mutateAsync({
-                courseId: courseToUpdate.id,
-                payload: courseWithFile as Partial<Course>,
-            });
-        }
-        
-        setIsFormDialogOpen(false);
-        setIsDuplicating(false);
+      if (isDuplicating || !isEditing) {
+        const createPayload = mapCourseUiToCreatePayload(
+          courseWithFile as Course
+        );
+        await createCourseMutation.mutateAsync(createPayload);
+      } else {
+        const courseToUpdate = editingCourse!;
+        await updateCourseMutation.mutateAsync({
+          courseId: courseToUpdate.id,
+          payload: courseWithFile as Partial<Course>,
+        });
+      }
+
+      setIsFormDialogOpen(false);
+      setIsDuplicating(false);
     } catch (error) {
-        // The mutation hook already shows a toast on error
-        console.error("Lưu khóa học thất bại:", error);
+      // The mutation hook already shows a toast on error
+      console.error("Lưu khóa học thất bại:", error);
     }
-};
+  };
 
   const handleDuplicateCourse = (course: Course) => {
     if (!canManageCourses) {
@@ -274,7 +275,7 @@ export default function CoursesPage() {
         .toString()
         .slice(-4)}`,
       status: "Lưu nháp",
-      statusId: courseStatuses.find(status => status.name === 'Lưu nháp')?.id,
+      statusId: courseStatuses.find((status) => status.name === "Lưu nháp")?.id,
       isPublic: false,
       enrolledTrainees: [],
       lessons: (course.lessons || []).map((l) => ({
@@ -302,17 +303,18 @@ export default function CoursesPage() {
 
   const handleArchiveCourse = async () => {
     if (!canManageCourses || !currentUser || !archivingCourse) return;
-  
-    const cancelledStatus = courseStatuses.find(s => s.name === "Hủy");
+
+    const cancelledStatus = courseStatuses.find((s) => s.name === "Hủy");
     if (!cancelledStatus) {
       toast({
         title: "Lỗi cấu hình",
-        description: "Không tìm thấy trạng thái 'Hủy'. Vui lòng kiểm tra lại hệ thống.",
+        description:
+          "Không tìm thấy trạng thái 'Hủy'. Vui lòng kiểm tra lại hệ thống.",
         variant: "destructive",
       });
       return;
     }
-  
+
     try {
       await updateCourseMutation.mutateAsync({
         courseId: archivingCourse.id,
@@ -321,7 +323,7 @@ export default function CoursesPage() {
           status: cancelledStatus.name,
         },
       });
-  
+
       setArchivingCourse(null);
     } catch (error) {
       console.error("Lưu trữ thất bại:", error);
@@ -372,24 +374,18 @@ export default function CoursesPage() {
         <AlertCircle className="h-10 w-10 mr-3" />
         <div>
           <p className="font-bold">Lỗi tải trạng thái khóa học</p>
-          <p className="text-sm">
-            {extractErrorMessage(statusesError)}
-          </p>
+          <p className="text-sm">{extractErrorMessage(statusesError)}</p>
         </div>
       </div>
     );
   }
 
-  if (isLoading || isLoadingDependencies) {
-    return (
-      <div className="flex h-60 w-full items-center justify-center">
-        <Loader2 className="h-10 w-10 animate-spin text-primary" />
-        <p className="ml-3 text-muted-foreground">
-          Đang tải danh sách khóa học...
-        </p>
-      </div>
-    );
-  }
+  const handleFilterChange = (
+    filterName: keyof CourseFilters,
+    value: string
+  ) => {
+    setFilters((prev) => ({ ...prev, [filterName]: value }));
+  };
 
   return (
     <>
@@ -434,14 +430,16 @@ export default function CoursesPage() {
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10" />
                 <Input
                   placeholder="Tìm kiếm khóa học..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
+                  value={filters.keyword}
+                  onChange={(e) =>
+                    handleFilterChange("keyword", e.target.value)
+                  }
                   className="pl-9"
                 />
               </div>
               <Select
-                value={statusFilter}
-                onValueChange={(v) => setStatusFilter(v)}
+                value={filters.statusId}
+                onValueChange={(v) => handleFilterChange("statusId", v)}
               >
                 <SelectTrigger className="w-full sm:w-[180px]">
                   <SelectValue placeholder="Trạng thái" />
@@ -456,8 +454,8 @@ export default function CoursesPage() {
                 </SelectContent>
               </Select>
               <Select
-                value={departmentFilter}
-                onValueChange={(v) => setDepartmentFilter(v)}
+                value={filters.departmentId}
+                onValueChange={(v) => handleFilterChange("departmentId", v)}
               >
                 <SelectTrigger className="w-full sm:w-[180px]">
                   <SelectValue placeholder="Phòng ban" />
@@ -472,8 +470,8 @@ export default function CoursesPage() {
                 </SelectContent>
               </Select>
               <Select
-                value={levelFilter}
-                onValueChange={(v) => setLevelFilter(v)}
+                value={filters.levelId}
+                onValueChange={(v) => handleFilterChange("levelId", v)}
               >
                 <SelectTrigger className="w-full sm:w-[180px]">
                   <SelectValue placeholder="Cấp độ" />
@@ -490,8 +488,15 @@ export default function CoursesPage() {
             </div>
           </div>
 
-          {viewMode === "table" ? (
-            <DataTable columns={columns} data={filteredCourses as Course[]} />
+          {isLoading || isLoadingDependencies ? (
+            <div className="flex h-60 w-full items-center justify-center">
+              <Loader2 className="h-10 w-10 animate-spin text-primary" />
+              <p className="ml-3 text-muted-foreground">
+                Đang tải danh sách khóa học...
+              </p>
+            </div>
+          ) : viewMode === "table" ? (
+            <DataTable columns={columns} data={courses} />
           ) : (
             <>
               <div className="grid gap-6 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -622,7 +627,7 @@ export default function CoursesPage() {
                 ))}
               </div>
 
-              {filteredCourses.length === 0 ? (
+              {courses.length === 0 ? (
                 <div className="text-center text-muted-foreground mt-6">
                   Không tìm thấy khóa học nào.
                 </div>
@@ -631,7 +636,7 @@ export default function CoursesPage() {
                   <div className="flex items-center justify-between pt-6">
                     <div className="flex-1 text-sm text-muted-foreground">
                       Hiển thị {paginatedCourses.length} trên{" "}
-                      {filteredCourses.length} khóa học.
+                      {courses.length} khóa học.
                     </div>
                     <div className="flex items-center space-x-6 lg:space-x-8">
                       <div className="flex items-center space-x-2">
