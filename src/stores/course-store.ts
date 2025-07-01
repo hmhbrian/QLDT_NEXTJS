@@ -334,11 +334,8 @@ export const useCourseStore = create<CourseStore>()(
               async () => {
                 if (API_CONFIG.useApi) {
                   console.log("Creating course via API...");
-
-                  // Đảm bảo dữ liệu đầy đủ trước khi transform
                   const completeCourse = {
                     ...course,
-                    // Đặt các giá trị mặc định nếu thiếu
                     category: course.category || "programming",
                     instructor: course.instructor || "Giảng viên",
                     duration: course.duration || {
@@ -361,27 +358,12 @@ export const useCourseStore = create<CourseStore>()(
                     createdBy: course.createdBy || "Admin",
                     modifiedBy: course.modifiedBy || "Admin",
                   };
-
                   const apiPayload = mapCourseUiToCreatePayload(completeCourse);
-
-                  // Log để debug
                   console.log("API Payload being sent:", apiPayload);
+                  
+                  await coursesService.createCourse(apiPayload);
+                  await get().fetchCourses({ force: true });
 
-                  const newApiCourse = await coursesService.createCourse(
-                    apiPayload
-                  );
-                  const newCourse = mapCourseApiToUi(newApiCourse);
-
-                  set((prev) => ({
-                    courses: optimistic
-                      ? prev.courses.map((c) =>
-                          c.id === tempId ? newCourse : c
-                        )
-                      : [...prev.courses, newCourse],
-                    loadingStates: { ...prev.loadingStates, creating: false },
-                  }));
-
-                  return newCourse;
                 } else {
                   const newCourse = { ...course, id: `course-${Date.now()}` };
                   set((prev) => ({
@@ -390,39 +372,25 @@ export const useCourseStore = create<CourseStore>()(
                           c.id === tempId ? newCourse : c
                         )
                       : [...prev.courses, newCourse],
-                    loadingStates: { ...prev.loadingStates, creating: false },
                   }));
                   return newCourse;
                 }
               },
               optimistic
             );
-
+            set((prev) => ({
+              loadingStates: { ...prev.loadingStates, creating: false },
+            }));
             // Invalidate cache after successful operation
             get().invalidateCache();
           } catch (error: any) {
             console.error("Failed to add course:", error);
-
-            // Xử lý lỗi validation từ API
-            let errorMessage = "Failed to create course";
-            let errorDetails = error;
-
-            if (error?.response?.data?.errors) {
-              const validationErrors = error.response.data.errors;
-              const errorMessages = Object.entries(validationErrors)
-                .map(
-                  ([field, messages]) =>
-                    `${field}: ${(messages as string[]).join(", ")}`
-                )
-                .join("; ");
-              errorMessage = `Lỗi validation: ${errorMessages}`;
-              errorDetails = validationErrors;
-            } else if (error?.message) {
-              errorMessage = error.message;
-            }
-
             set((prev) => ({
-              error: createError("CREATE_ERROR", errorMessage, errorDetails),
+              error: createError(
+                "CREATE_ERROR",
+                "Failed to create course",
+                error
+              ),
               loadingStates: { ...prev.loadingStates, creating: false },
             }));
             throw error;

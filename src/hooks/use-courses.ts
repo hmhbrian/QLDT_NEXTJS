@@ -7,8 +7,6 @@ import { useToast } from "@/components/ui/use-toast";
 import type {
   Course,
   CreateCourseRequest,
-  UpdateCourseRequest,
-  CourseApiResponse,
   CourseSearchParams,
 } from "@/lib/types/course.types";
 import type { QueryParams } from "@/lib/core";
@@ -21,10 +19,10 @@ import { useAuth } from "./useAuth";
 
 export const COURSES_QUERY_KEY = "courses";
 
-export function useCourses(params?: QueryParams) {
+export function useCourses(params?: CourseSearchParams) {
   const { user } = useAuth(); // Get current user
-  // The query key is now user-specific. When the user logs out (user becomes null)
-  // or a new user logs in, this key changes, and React Query automatically refetches.
+  // The query key includes all relevant filter parameters.
+  // React Query will automatically refetch when any part of this key changes.
   const queryKey = [COURSES_QUERY_KEY, params, user?.id];
 
   const {
@@ -33,8 +31,9 @@ export function useCourses(params?: QueryParams) {
     error,
     refetch: reloadCourses,
   } = useQuery<Course[], Error>({
-    queryKey, // Use the new user-specific key
+    queryKey,
     queryFn: async () => {
+      // Pass params directly to the service
       const apiCourses = await coursesService.getCourses(params);
       return apiCourses.map(mapCourseApiToUi);
     },
@@ -82,16 +81,16 @@ export function useCreateCourse() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  return useMutation<Course, Error, CreateCourseRequest>({
+  return useMutation<void, Error, CreateCourseRequest>({
     mutationFn: async (courseData) => {
-      const apiCourse = await coursesService.createCourse(courseData);
-      return mapCourseApiToUi(apiCourse);
+      await coursesService.createCourse(courseData);
     },
-    onSuccess: (data) => {
+    onSuccess: () => {
+      // Invalidate all queries starting with COURSES_QUERY_KEY to refetch lists
       queryClient.invalidateQueries({ queryKey: [COURSES_QUERY_KEY] });
       toast({
         title: "Thành công",
-        description: `Khóa học "${data.title}" đã được tạo thành công.`,
+        description: `Khóa học đã được tạo thành công. Dữ liệu đang được cập nhật.`,
         variant: "success",
       });
     },
@@ -196,26 +195,4 @@ export function useDeleteCourses() {
       });
     },
   });
-}
-
-export function useSearchCourses(params: CourseSearchParams) {
-  const { user } = useAuth();
-  const queryKey = [COURSES_QUERY_KEY, "search", params, user?.id];
-  const { data, isLoading, error, refetch } = useQuery<Course[], Error>({
-    queryKey,
-    queryFn: async () => {
-      const apiCourses = await coursesService.searchCourses(params);
-      return apiCourses.map(mapCourseApiToUi);
-    },
-    enabled: !!params.keyword,
-    staleTime: 2 * 60 * 1000, // 2 minutes
-    refetchOnWindowFocus: false,
-  });
-
-  return {
-    searchResults: data ?? [],
-    isSearching: isLoading,
-    searchError: error,
-    refetch,
-  };
 }
