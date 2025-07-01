@@ -207,21 +207,30 @@ export abstract class BaseService<
   }
 
   protected extractData<T>(response: ApiResponse<T>): T {
-    if (response && response.success === false) {
-      throw new Error(
-        response.message || "An API error occurred without a message."
-      );
+    // Check for success property first, if it exists and is false, throw error.
+    if (response && typeof response.success === 'boolean' && !response.success) {
+      throw new Error(response.message || 'An API error occurred without a message.');
     }
-    if (response && "data" in response && response.data !== undefined) {
-      return response.data;
+    
+    // If 'data' property exists, return it. This is the primary success case.
+    if (response && 'data' in response) {
+      return response.data as T;
     }
+    
+    // Handle cases where response is the data itself (no wrapper)
+    // This is less common but can happen.
+    if (response && typeof response.success === 'undefined' && typeof response.message === 'undefined') {
+        return response as T;
+    }
+
+    // If success is true but there's no data, return undefined (for void responses like delete)
     if (response && response.success === true) {
-      return undefined as T; 
+        return undefined as T;
     }
-    throw new Error(
-      "Invalid API response format: could not determine success or find data."
-    );
-  }
+
+    // Fallback for unexpected response structures
+    throw new Error('Invalid API response format: could not determine success or find data.');
+}
 
 
   protected extractItems(

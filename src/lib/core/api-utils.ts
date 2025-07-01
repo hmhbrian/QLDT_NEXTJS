@@ -99,9 +99,14 @@ export function extractErrorMessage(error: unknown): string {
 
     // Handle structured API errors from backend validation
     if (apiError.response?.data) {
-      const { message, errors, title } = apiError.response.data;
+      const { message, errors, title, detail } = apiError.response.data;
 
-      // For validation errors with field-specific messages
+      // Prioritize the `detail` field, often used for business logic errors
+      if (detail) {
+        return detail;
+      }
+      
+      // For .NET validation errors with a structured 'errors' object
       if (errors && typeof errors === "object") {
         const validationErrors: string[] = [];
         Object.entries(errors).forEach(
@@ -123,33 +128,11 @@ export function extractErrorMessage(error: unknown): string {
       let fullMessage = title || message || "An unknown error occurred.";
 
       if (Array.isArray(errors) && errors.length > 0) {
-        // Append details from the 'errors' array
+        // Append details from a simple 'errors' array
         const errorDetails = errors.join(" ");
         fullMessage += ` ${errorDetails}`;
       }
       return fullMessage;
-    }
-
-    // Handle direct error objects from axios
-    if (apiError.status === 400 && apiError.data) {
-      const { errors, title } = apiError.data;
-      if (errors && typeof errors === "object") {
-        const validationErrors: string[] = [];
-        Object.entries(errors).forEach(
-          ([field, fieldErrors]: [string, any]) => {
-            if (Array.isArray(fieldErrors)) {
-              fieldErrors.forEach((errorMsg: string) => {
-                validationErrors.push(`${field}: ${errorMsg}`);
-              });
-            }
-          }
-        );
-
-        if (validationErrors.length > 0) {
-          return validationErrors.join("\n");
-        }
-      }
-      return title || "Validation error occurred";
     }
 
     // Fallback for general errors

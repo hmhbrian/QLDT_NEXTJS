@@ -1,4 +1,3 @@
-
 /**
  * Custom HTTP Client - Thay thế axios với native fetch
  * Cung cấp interface tương thự axios nhưng sử dụng fetch API
@@ -119,7 +118,7 @@ class CustomHttpClient implements HttpClient {
       let responseData: T;
       const contentType = response.headers.get("content-type");
 
-      if (contentType && contentType.includes("application/json")) {
+      if (contentType && contentType.includes("json")) {
         responseData = await response.json();
       } else {
         responseData = (await response.text()) as any;
