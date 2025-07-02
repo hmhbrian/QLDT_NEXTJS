@@ -23,7 +23,7 @@ interface AuthContextType {
   loadingAuth: boolean;
   login: (credentials: LoginDTO) => Promise<void>;
   logout: () => void;
-  updateAvatar: (newAvatarUrl: string) => Promise<void>;
+  updateAvatar: (newAvatarFile: File) => Promise<void>;
   changePassword: (
     oldPassword: string,
     newPassword: string
@@ -174,7 +174,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const updateAvatar = async (newAvatarUrl: string) => {
+  const updateAvatar = async (newAvatarFile: File) => {
     if (!user) {
       toast({
         title: "Lỗi xác thực",
@@ -184,21 +184,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       throw new Error("User not authenticated.");
     }
 
-    if (
-      !newAvatarUrl ||
-      (!newAvatarUrl.startsWith("http") && !newAvatarUrl.startsWith("blob:"))
-    ) {
+    const formData = new FormData();
+    formData.append('UrlAvatar', newAvatarFile);
+
+    try {
+      const response = await authService.updateUser(user.id, formData);
+      if (response.success) {
+        // Sau khi cập nhật thành công, lấy lại thông tin người dùng từ backend
+        const updatedUser = await authService.getCurrentUser();
+        setUser(updatedUser);
+        localStorage.setItem(API_CONFIG.storage.user, JSON.stringify(updatedUser));
+        toast({
+          title: "Thành công",
+          description: "Ảnh đại diện đã được cập nhật.",
+          variant: "success",
+        });
+      } else {
+        throw new Error(response.message || "Không thể cập nhật ảnh đại diện.");
+      }
+    } catch (error) {
       toast({
-        title: "Lỗi tệp tin",
-        description: "URL ảnh đại diện không hợp lệ.",
+        title: "Lỗi cập nhật ảnh đại diện",
+        description: extractErrorMessage(error),
         variant: "destructive",
       });
-      throw new Error("Invalid avatar URL or file.");
+      throw error;
     }
-
-    const updatedUser = { ...user, urlAvatar: newAvatarUrl };
-    setUser(updatedUser);
-    localStorage.setItem(API_CONFIG.storage.user, JSON.stringify(updatedUser));
   };
 
   const changePassword = async (oldPassword: string, newPassword: string) => {

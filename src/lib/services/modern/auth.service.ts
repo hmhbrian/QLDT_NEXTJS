@@ -2,12 +2,18 @@ import { BaseService, ApiResponse, BaseCreatePayload } from "../../core";
 import type { User, LoginDTO } from "../../types/user.types";
 import { API_CONFIG } from "@/lib/config";
 
-export interface LoginResponse extends ApiResponse<User> {}
+export interface LoginResponse extends ApiResponse<User> { }
 
 export interface ChangePasswordPayload extends BaseCreatePayload {
   oldPassword: string;
   newPassword: string;
   confirmNewPassword: string;
+}
+
+export interface UserUpdateDTO {
+  id: string;
+  urlAvatar?: string; // string($binary)
+  // Add other fields that can be updated if necessary
 }
 
 export class AuthService extends BaseService<User> {
@@ -31,6 +37,11 @@ export class AuthService extends BaseService<User> {
   async changePassword(payload: ChangePasswordPayload): Promise<void> {
     // For change password, we don't need to extract data, just ensure the request succeeds
     await this.post<any>(API_CONFIG.endpoints.auth.changePassword, payload);
+  }
+
+  async updateUser(userId: string, payload: FormData): Promise<ApiResponse<User>> {
+    const response = await this.put<ApiResponse<User>>(`${API_CONFIG.endpoints.users.updateUsers}`, payload);
+    return response;
   }
 
   async getCurrentUser(): Promise<User> {

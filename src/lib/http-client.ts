@@ -79,10 +79,12 @@ class CustomHttpClient implements HttpClient {
       ...this.defaultHeaders,
       ...config?.headers,
     };
-    
-    // Nếu data không phải FormData, set Content-Type
-    if (!(data instanceof FormData)) {
-        headers["Content-Type"] = "application/json";
+
+    // Nếu data là FormData, xóa Content-Type để trình duyệt tự động đặt với boundary
+    if (data instanceof FormData) {
+      delete headers["Content-Type"];
+    } else if (!(data instanceof FormData)) {
+      headers["Content-Type"] = "application/json";
     }
 
 
