@@ -1,4 +1,3 @@
-
 "use client";
 
 import { ColumnDef } from "@tanstack/react-table";
@@ -104,9 +103,7 @@ export const getColumns = (
     cell: ({ row }) => {
       const statusName = row.original.userStatus?.name || "N/A";
       return (
-        <Badge className={cn(getStatusColor(statusName))}>
-          {statusName}
-        </Badge>
+        <Badge className={cn(getStatusColor(statusName))}>{statusName}</Badge>
       );
     },
   },

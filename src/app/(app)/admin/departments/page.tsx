@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
@@ -232,8 +231,10 @@ export default function DepartmentsPage() {
         (dept.managerName || "")
           .toLowerCase()
           .includes(searchTerm.toLowerCase());
-      
-      const statusIdToFilter = userStatuses.find(s => s.name === statusFilter)?.id;
+
+      const statusIdToFilter = userStatuses.find(
+        (s) => s.name === statusFilter
+      )?.id;
       const matchesStatus =
         statusFilter === "all" || dept.statusId === statusIdToFilter;
 
@@ -368,8 +369,9 @@ export default function DepartmentsPage() {
     const children = departments.filter(
       (d) => d.parentId === selectedDepartment.departmentId
     );
-    const status = userStatuses.find(s => s.id === selectedDepartment.statusId);
-
+    const status = userStatuses.find(
+      (s) => s.id === selectedDepartment.statusId
+    );
 
     return (
       <>
@@ -415,9 +417,7 @@ export default function DepartmentsPage() {
             <div>
               <Badge
                 variant={
-                  status?.name === "Đang hoạt động"
-                    ? "default"
-                    : "secondary"
+                  status?.name === "Đang hoạt động" ? "default" : "secondary"
                 }
               >
                 {status?.name || "N/A"}
@@ -471,7 +471,6 @@ export default function DepartmentsPage() {
       ),
     [userStatuses]
   );
-
 
   return (
     <div className="space-y-6">

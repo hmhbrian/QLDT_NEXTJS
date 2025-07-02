@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
@@ -76,24 +75,23 @@ export default function UserProfilePage() {
 
   useEffect(() => {
     if (user) {
-      const detailedUser = mockUsers.find((u) => u.id === user.id);
-      setProfileData(detailedUser || user); // Dự phòng về người dùng cơ bản nếu không tìm thấy trong danh sách chi tiết giả lập
+      setProfileData(user); // Luôn sử dụng dữ liệu người dùng từ useAuth
     }
   }, [user]);
 
   useEffect(() => {
     if (profileData) {
-      // Sử dụng profileData có thể chi tiết hơn
       setDialogFullName(profileData.fullName || "");
       setDialogEmail(profileData.email || "");
       setDialogPhone(profileData.phoneNumber || "");
-      setAvatarPreview(profileData.urlAvatar || null);
+      // Không cập nhật avatarPreview ở đây, vì nó được quản lý bởi avatarFile và updateAvatar
+      // setAvatarPreview(profileData.urlAvatar || null);
     } else if (user) {
       // Dự phòng về người dùng từ useAuth nếu profileData chưa được đặt
       setDialogFullName(user.fullName || "");
       setDialogEmail(user.email || "");
       setDialogPhone(user.phoneNumber || "");
-      setAvatarPreview(user.urlAvatar || null);
+      // setAvatarPreview(user.urlAvatar || null);
     }
   }, [profileData, user, isEditing]);
 
@@ -156,8 +154,8 @@ export default function UserProfilePage() {
     let passwordChanged = false;
 
     try {
-      if (avatarFile && avatarPreview && avatarPreview !== user.urlAvatar) {
-        await updateAvatar(avatarPreview);
+      if (avatarFile) {
+        await updateAvatar(avatarFile);
         avatarUpdated = true;
       }
 
@@ -205,20 +203,8 @@ export default function UserProfilePage() {
       setAvatarFile(null); // Xóa file avatar đã chọn
       if (avatarInputRef.current) avatarInputRef.current.value = ""; // Đặt lại input file avatar
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : "";
-      if (
-        !(
-          errorMessage.startsWith("AUTH") ||
-          errorMessage.startsWith("PASSWORD") ||
-          errorMessage.startsWith("FILE")
-        )
-      ) {
-        toast({
-          title: "Lỗi",
-          description: "Không thể cập nhật thông tin hồ sơ. Vui lòng thử lại.",
-          variant: "destructive",
-        });
-      }
+      // Loại bỏ thông báo lỗi chung ở đây. Các lỗi cụ thể đã được xử lý bởi updateAvatar/changePassword.
+      // Mục đích chính của khối catch này bây giờ là đảm bảo setIsSubmitting được đặt thành false.
     } finally {
       setIsSubmitting(false);
     }
