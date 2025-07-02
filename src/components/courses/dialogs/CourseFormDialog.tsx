@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useRef } from "react";
@@ -56,6 +55,12 @@ import {
   CommandGroup,
 } from "@/components/ui/command";
 import { Badge } from "@/components/ui/badge";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import type {
   Course,
   CourseMaterial,
@@ -919,8 +924,11 @@ export function CourseFormDialog({
                 : "Điền thông tin để tạo khóa học mới."}
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-6 py-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+          <Accordion type="multiple" defaultValue={["item-1", "item-2", "item-3", "item-4"]} className="w-full py-4">
+            <AccordionItem value="item-1">
+            <AccordionTrigger className="text-lg font-semibold text-gray-900 hover:text-orange-600 transition-colors">Thông tin chung</AccordionTrigger>
+              <AccordionContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-6">
               <div className="md:col-span-2">
                 <Label htmlFor="title">
                   Tên khóa học <span className="text-destructive">*</span>
@@ -1361,8 +1369,42 @@ export function CourseFormDialog({
                 )}
               </div>
 
+                  {courseToEdit && (
+                    <div className="md:col-span-2 pt-4">
+                      <Label htmlFor="status">Trạng thái</Label>
+                      <Select
+                        value={formData.status}
+                        onValueChange={(v: Course["status"]) => {
+                          const statusObj = courseStatuses.find((s) => s.name === v);
+                          setFormData((prev) => ({
+                            ...prev,
+                            status: v,
+                            statusId: statusObj?.id,
+                          }));
+                        }}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Chọn trạng thái" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {courseStatuses.map((o) => (
+                            <SelectItem key={o.id} value={o.name}>
+                              {o.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+
               {/* Phần Bài học */}
-              <div className="md:col-span-2 space-y-3 border-t pt-4">
+            <AccordionItem value="item-2">
+            <AccordionTrigger className="text-lg font-semibold text-gray-900 hover:text-orange-600 transition-colors">Bài học</AccordionTrigger>
+              <AccordionContent>
+                <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <Label className="text-base font-semibold flex items-center">
                     <Library className="mr-2 h-5 w-5 text-primary" /> Bài học
@@ -1416,14 +1458,35 @@ export function CourseFormDialog({
                   </p>
                 )}
               </div>
+              </AccordionContent>
+            </AccordionItem>
 
               {/* Phần Bài kiểm tra */}
-              <div className="md:col-span-2 space-y-3 border-t pt-4">
+            <AccordionItem value="item-3">
+              <AccordionTrigger className="text-lg font-semibold text-gray-900 hover:text-orange-600 transition-colors">Bài kiểm tra</AccordionTrigger>
+              <AccordionContent>
+                <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <Label className="text-base font-semibold flex items-center">
-                    <FileQuestion className="mr-2 h-5 w-5 text-primary" /> Bài
+                    <FileQuestion className="mr-2 h-4 w-4 text-primary" /> Bài
                     kiểm tra
                   </Label>
+                    <div className="flex gap-2">
+                      {/* <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => testExcelImportInputRef.current?.click()}
+                      >
+                        <Upload className="mr-2 h-4 w-4" /> Import Excel
+                      </Button> */}
+                      <input
+                        type="file"
+                        ref={testExcelImportInputRef}
+                        className="hidden"
+                        accept=".xlsx, .xls"
+                        onChange={handleExcelFileImport}
+                      />
                   <Button
                     type="button"
                     variant="outline"
@@ -1432,6 +1495,7 @@ export function CourseFormDialog({
                   >
                     <PlusCircle className="mr-2 h-4 w-4" /> Thêm bài kiểm tra
                   </Button>
+                    </div>
                 </div>
                 {(formData.tests || []).length > 0 ? (
                   <div className="space-y-2">
@@ -1475,10 +1539,15 @@ export function CourseFormDialog({
                   kiểm tra.
                 </p>
               </div>
+              </AccordionContent>
+            </AccordionItem>
 
               {/* Phần Tài liệu */}
-              <div className="md:col-span-2 space-y-3 border-t pt-4">
-                <Label>Tài liệu khóa học</Label>
+            <AccordionItem value="item-4">
+              <AccordionTrigger className="text-lg font-semibold text-gray-900 hover:text-orange-600 transition-colors">Tài liệu khóa học</AccordionTrigger>
+              <AccordionContent>
+                <div className="space-y-2">
+                {/* <Label className="px-3">Tài liệu khóa học</Label> */}
                 <input
                   type="file"
                   ref={materialFileInputRef}
@@ -1583,36 +1652,9 @@ export function CourseFormDialog({
                   <PlusCircle className="h-4 w-4 mr-2" /> Thêm tài liệu
                 </Button>
               </div>
-
-              {courseToEdit && (
-                <div className="md:col-span-2">
-                  <Label htmlFor="status">Trạng thái</Label>
-                  <Select
-                    value={formData.status}
-                    onValueChange={(v: Course["status"]) => {
-                      const statusObj = courseStatuses.find((s) => s.name === v);
-                      setFormData((prev) => ({
-                        ...prev,
-                        status: v,
-                        statusId: statusObj?.id,
-                      }));
-                    }}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Chọn trạng thái" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {courseStatuses.map((o) => (
-                        <SelectItem key={o.id} value={o.name}>
-                          {o.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-            </div>
-          </div>
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
           <DialogFooter className="mt-6">
             <Button variant="outline" onClick={() => onOpenChange(false)}>
               Hủy
