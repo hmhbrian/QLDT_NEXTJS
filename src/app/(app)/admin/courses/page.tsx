@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import dynamic from "next/dynamic";
 import {
   Card,
@@ -70,7 +70,9 @@ import { useCourseStatuses } from "@/hooks/use-statuses";
 import { DataTable } from "@/components/ui/data-table";
 import { extractErrorMessage } from "@/lib/core";
 import { getStatusBadgeVariant } from "@/lib/helpers";
-import { mapCourseUiToCreatePayload } from "@/lib/mappers/course.mapper";
+import {
+  mapCourseUiToCreatePayload,
+} from "@/lib/mappers/course.mapper";
 import { getColumns } from "./columns";
 import { useDebounce } from "@/hooks/use-debounce";
 
@@ -93,6 +95,7 @@ export default function CoursesPage() {
   const { user: currentUser } = useAuth();
   const { toast } = useToast();
 
+  const [viewMode, setViewMode] = useState<"table" | "card">("table");
   const [filters, setFilters] = useState<CourseFilters>({
     keyword: "",
     statusId: "all",
@@ -120,14 +123,12 @@ export default function CoursesPage() {
 
   const { courses, isLoading, error: coursesError } = useCourses(apiParams);
 
-  // Fetch dynamic course statuses
   const {
     courseStatuses,
     isLoading: isLoadingStatuses,
     error: statusesError,
   } = useCourseStatuses();
 
-  // Fetch dynamic departments and positions for filters and dialogs
   const { departments, isLoading: isLoadingDepts } = useDepartments();
   const { positions, loading: isLoadingPositions } = usePositions();
   const { users: trainees, isLoading: isLoadingTrainees } = useUsers({
@@ -140,23 +141,19 @@ export default function CoursesPage() {
     isLoadingPositions ||
     isLoadingTrainees;
 
-  // Get mutation functions for handlers
   const createCourseMutation = useCreateCourse();
   const updateCourseMutation = useUpdateCourse();
   const deleteCourseMutation = useDeleteCourses();
-
-  const [viewMode, setViewMode] = useState<"table" | "card">("table");
+  
   const [isFormDialogOpen, setIsFormDialogOpen] = useState(false);
   const [editingCourse, setEditingCourse] = useState<Course | null>(null);
   const [deletingCourse, setDeletingCourse] = useState<Course | null>(null);
   const [archivingCourse, setArchivingCourse] = useState<Course | null>(null);
   const [isDuplicating, setIsDuplicating] = useState(false);
 
-  // Trạng thái phân trang cho chế độ xem card
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(8);
 
-  // Prepare options for Select components
   const departmentOptions = useMemo(() => {
     if (!departments) return [];
     return departments.map((d) => ({
@@ -176,25 +173,24 @@ export default function CoursesPage() {
   const canManageCourses =
     currentUser?.role === "ADMIN" || currentUser?.role === "HR";
 
-  // Reset trang về 1 khi bộ lọc thay đổi
   useEffect(() => {
     setCurrentPage(1);
   }, [filters, viewMode]);
 
-  // Phân trang khóa học cho chế độ xem card
   const paginatedCourses = useMemo(() => {
     if (viewMode === "card") {
       const startIndex = (currentPage - 1) * itemsPerPage;
       return courses.slice(startIndex, startIndex + itemsPerPage);
     }
-    return []; // Không sử dụng cho chế độ xem bảng
+    return courses;
   }, [courses, currentPage, itemsPerPage, viewMode]);
 
   const totalPages = Math.ceil(courses.length / itemsPerPage);
 
   const handleFormDialogOpenChange = (isOpen: boolean) => {
     if (!isOpen) {
-      setIsDuplicating(false); // Reset cờ khi đóng dialog
+      setEditingCourse(null);
+      setIsDuplicating(false);
     }
     setIsFormDialogOpen(isOpen);
   };
@@ -220,7 +216,7 @@ export default function CoursesPage() {
         >,
     isEditing: boolean,
     imageFile?: File | null
-  ) => {
+  ): Promise<Course | void> => {
     if (!canManageCourses || !currentUser) {
       toast({
         title: "Không có quyền",
@@ -229,31 +225,29 @@ export default function CoursesPage() {
       });
       return;
     }
-
+  
     try {
       const courseWithFile = {
         ...courseData,
         imageFile: imageFile || undefined,
       };
-
+  
       if (isDuplicating || !isEditing) {
         const createPayload = mapCourseUiToCreatePayload(
           courseWithFile as Course
         );
-        await createCourseMutation.mutateAsync(createPayload);
+        return await createCourseMutation.mutateAsync(createPayload);
       } else {
         const courseToUpdate = editingCourse!;
-        await updateCourseMutation.mutateAsync({
+        return await updateCourseMutation.mutateAsync({
           courseId: courseToUpdate.id,
           payload: courseWithFile as Partial<Course>,
         });
       }
-
-      setIsFormDialogOpen(false);
-      setIsDuplicating(false);
     } catch (error) {
-      // The mutation hook already shows a toast on error
       console.error("Lưu khóa học thất bại:", error);
+      // Re-throw the error so the dialog can catch it and not close
+      throw error;
     }
   };
 
@@ -292,7 +286,6 @@ export default function CoursesPage() {
       })),
       materials: (course.materials || []).map((m) => ({
         ...m,
-        id: m.id || crypto.randomUUID(),
       })),
     };
 
@@ -332,23 +325,25 @@ export default function CoursesPage() {
 
   const handleDeleteCourse = async () => {
     if (!canManageCourses || !deletingCourse) return;
-
-    if (deletingCourse.status === "Đang mở") {
-      toast({
-        title: "Thao tác bị từ chối",
-        description:
-          "Không thể xóa khóa học đã xuất bản. Vui lòng lưu trữ trước.",
-        variant: "destructive",
-      });
-      setDeletingCourse(null);
-      return;
+  
+    const registrationStarted = deletingCourse.registrationStartDate && new Date(deletingCourse.registrationStartDate) <= new Date();
+  
+    if (deletingCourse.status === "Đang mở" || registrationStarted) {
+        toast({
+            title: "Thao tác bị từ chối",
+            description: "Không thể xóa khóa học đã xuất bản hoặc đã bắt đầu cho đăng ký. Vui lòng lưu trữ trước.",
+            variant: "destructive",
+        });
+        setDeletingCourse(null);
+        return;
     }
-
+  
     try {
-      await deleteCourseMutation.mutateAsync([deletingCourse.id]);
-      setDeletingCourse(null);
+        await deleteCourseMutation.mutateAsync([deletingCourse.id]);
+        setDeletingCourse(null);
     } catch (error) {
-      console.error("Xóa thất bại:", error);
+        console.error("Xóa thất bại:", error);
+        // Toast is handled by the mutation hook
     }
   };
 
@@ -386,6 +381,13 @@ export default function CoursesPage() {
   ) => {
     setFilters((prev) => ({ ...prev, [filterName]: value }));
   };
+
+  const canDeleteCourse = (course: Course | null): boolean => {
+    if (!course) return false;
+    const registrationStarted = course.registrationStartDate && new Date(course.registrationStartDate) <= new Date();
+    return course.status !== "Đang mở" && !registrationStarted;
+  };
+  
 
   return (
     <>
@@ -549,6 +551,7 @@ export default function CoursesPage() {
                               <DropdownMenuItem
                                 onClick={() => setDeletingCourse(course)}
                                 className="text-destructive focus:text-destructive"
+                                disabled={!canDeleteCourse(course)}
                               >
                                 <Trash2 className="mr-2 h-4 w-4" /> Xóa
                               </DropdownMenuItem>
@@ -743,10 +746,10 @@ export default function CoursesPage() {
                   {deletingCourse.title}
                   &quot;? Hành động này không thể hoàn tác.
                 </span>
-                {deletingCourse.status === "Đang mở" && (
+                {!canDeleteCourse(deletingCourse) && (
                   <div className="mt-2 flex items-center text-destructive">
                     <AlertCircle className="h-4 w-4 mr-2" />
-                    Không thể xóa khóa học đã xuất bản.
+                    Không thể xóa khóa học đã xuất bản hoặc đã bắt đầu đăng ký.
                   </div>
                 )}
               </DialogDescription>
@@ -758,7 +761,7 @@ export default function CoursesPage() {
               <Button
                 variant="destructive"
                 onClick={handleDeleteCourse}
-                disabled={deletingCourse.status === "Đang mở"}
+                disabled={!canDeleteCourse(deletingCourse)}
               >
                 Xác nhận xóa
               </Button>

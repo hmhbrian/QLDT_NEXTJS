@@ -807,7 +807,7 @@ export default function CourseDetailPage() {
                         className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 gap-4 hover:shadow-md transition-shadow"
                       >
                         <div className="flex items-center gap-3">
-                          {renderMaterialIcon(material.type)}
+                          {renderMaterialIcon(material.type as any)}
                           <div>
                             <h4 className="font-semibold">{material.title}</h4>
                           </div>
@@ -819,7 +819,7 @@ export default function CourseDetailPage() {
                           className="w-full sm:w-auto mt-2 sm:mt-0"
                         >
                           <a
-                            href={material.url}
+                            href={material.link}
                             target="_blank"
                             rel="noopener noreferrer"
                           >

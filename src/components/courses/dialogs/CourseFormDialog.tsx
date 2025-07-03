@@ -1,7 +1,9 @@
+
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { format } from "date-fns";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { format, parseISO } from "date-fns";
 import {
   Dialog,
   DialogContent,
@@ -36,8 +38,12 @@ import {
   ListChecks,
   ChevronLeft,
   ChevronRight,
+  Link as LinkIcon,
   ChevronsUpDown,
   Search,
+  Loader2,
+  FileText,
+  Video,
 } from "lucide-react";
 import NextImage from "next/image";
 import { DatePicker } from "@/components/ui/datepicker";
@@ -76,6 +82,25 @@ import { useError } from "@/hooks/use-error";
 import * as XLSX from "xlsx";
 import type { Status } from "@/lib/types/status.types";
 import type { User } from "@/lib/types/user.types";
+import { courseAttachedFilesService } from "@/lib/services";
+import { LoadingButton } from "@/components/ui/loading";
+
+// Helper function to render material icon
+const renderMaterialIcon = (type: string | undefined) => {
+  switch (type?.toLowerCase()) {
+    case 'pdf':
+      return <FileText className="h-5 w-5 text-red-500" />;
+    // case 'slide':
+    //     return <FileText className="h-5 w-5 text-yellow-500" />;
+    // case 'video':
+    //   return <Video className="h-5 w-5 text-purple-500" />;
+    case 'link':
+      return <LinkIcon className="h-5 w-5 text-blue-500" />;
+    default:
+      return <Paperclip className="h-5 w-5 text-gray-500" />;
+  }
+};
+
 
 // Trạng thái ban đầu cho các đối tượng lồng nhau
 const initialDurationState = { sessions: 1, hoursPerSession: 2 };
@@ -97,11 +122,15 @@ const initialTestState: Omit<Test, "id"> = {
   questions: [],
   passingScorePercentage: 70,
 };
-// Trạng thái ban đầu cho khóa học mới trong dialog
-const initialNewCourseStateForDialog: Omit<
-  Course,
-  "id" | "createdAt" | "modifiedAt" | "createdBy" | "modifiedBy"
-> = {
+
+// Define the form data state type to be more flexible with materials
+type CourseFormData = Omit<Course, "id" | "createdAt" | "modifiedAt" | "createdBy" | "modifiedBy"> & {
+  materials: (Partial<CourseMaterial> & { id: string | number; __file?: File | null })[];
+};
+
+
+// Trạng thái ban đầu cho khóa học mới trong dialog, using the new flexible type
+const initialNewCourseStateForDialog: CourseFormData = {
   title: "",
   courseCode: "",
   description: "",
@@ -127,6 +156,7 @@ const initialNewCourseStateForDialog: Omit<
   isPublic: false,
 };
 
+
 export interface CourseFormDialogProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
@@ -140,7 +170,7 @@ export interface CourseFormDialogProps {
         >,
     isEditing: boolean,
     imageFile?: File | null
-  ) => void;
+  ) => Promise<Course | void>; // Return course on success
   courseStatuses: Status[];
   departmentOptions: readonly { value: string; label: string }[];
   levelOptions: readonly { value: string; label: string }[];
@@ -157,31 +187,25 @@ export function CourseFormDialog({
   levelOptions,
   trainees,
 }: CourseFormDialogProps) {
-  const { showError, handleError } = useError();
+  const { showError } = useError();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
-  const [formData, setFormData] = useState<
-    | Course
-    | Omit<
-        Course,
-        "id" | "createdAt" | "modifiedAt" | "createdBy" | "modifiedBy"
-      >
-  >(
-    courseToEdit || initialNewCourseStateForDialog // Nếu có courseToEdit thì dùng nó, không thì dùng state ban đầu
-  );
+  const [formData, setFormData] = useState<CourseFormData>(initialNewCourseStateForDialog);
 
   const [courseImagePreview, setCourseImagePreview] = useState<string | null>(
-    courseToEdit?.image || initialNewCourseStateForDialog.image // Ưu tiên ảnh của khóa học đang sửa
+    courseToEdit?.image || initialNewCourseStateForDialog.image
   );
-  const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null); // New state to hold the File object
+  const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null);
   const courseImageInputRef = useRef<HTMLInputElement>(null);
-  const materialFileInputRef = useRef<HTMLInputElement>(null);
   const lessonPdfInputRef = useRef<HTMLInputElement>(null);
   const testExcelImportInputRef = useRef<HTMLInputElement>(null);
+  const materialFileInputRef = useRef<HTMLInputElement>(null);
 
-  const [currentMaterialUploadIndex, setCurrentMaterialUploadIndex] = useState<
-    number | null
-  >(null);
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [currentMaterialUploadIndex, setCurrentMaterialUploadIndex] = useState<number | null>(null);
+
   const [isSelectingTrainees, setIsSelectingTrainees] = useState(false);
   const [tempSelectedTraineeIds, setTempSelectedTraineeIds] = useState<
     string[]
@@ -215,108 +239,90 @@ export function CourseFormDialog({
   const [questionsPage, setQuestionsPage] = useState(1);
   const questionsPerPage = 5;
 
-  useEffect(() => {
-    if (isOpen) {
-        if (courseToEdit) {
-            // Prefer fresh data from props, ensuring it's the latest version
-            const editableCourseData = JSON.parse(JSON.stringify(courseToEdit));
+  const {
+    data: attachedFiles,
+    isLoading: isLoadingAttachedFiles,
+  } = useQuery({
+    queryKey: ["attachedFiles", courseToEdit?.id],
+    queryFn: () => {
+      if (!courseToEdit?.id) return Promise.resolve([]);
+      return courseAttachedFilesService.getAttachedFiles(courseToEdit.id);
+    },
+    enabled: !!(isOpen && courseToEdit?.id),
+    staleTime: 1 * 60 * 1000, // 1 minute
+  });
 
-            // Ensure all nested arrays are properly initialized with unique keys for UI rendering
-            editableCourseData.materials = (editableCourseData.materials || []).map((m: CourseMaterial) => ({ ...m, id: m.id || crypto.randomUUID() }));
-            editableCourseData.lessons = (editableCourseData.lessons || []).map((l: Lesson) => ({ ...l, id: l.id || crypto.randomUUID() }));
-            editableCourseData.tests = (editableCourseData.tests || []).map((t: Test) => ({
-                ...t,
-                id: t.id || crypto.randomUUID(),
-                questions: (t.questions || []).map((q: Question) => ({ ...q, id: q.id || crypto.randomUUID() })),
-            }));
-            
-            setFormData(editableCourseData);
-            setCourseImagePreview(editableCourseData.image);
-            setTempSelectedTraineeIds(editableCourseData.enrolledTrainees || []);
-        } else {
-            // If creating a new course, start with the initial state
-            setFormData(initialNewCourseStateForDialog);
-            setCourseImagePreview(null);
-            setTempSelectedTraineeIds([]);
+  const parseDateStringForPicker = (dateString: string | null | undefined): Date | undefined => {
+    if (!dateString) return undefined;
+    
+    // Handle YYYY-MM-DD format correctly to avoid timezone issues
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+        const [year, month, day] = dateString.split('-').map(Number);
+        const date = new Date(year, month - 1, day);
+        // Check if the constructed date is valid
+        if (!isNaN(date.getTime())) {
+          return date;
         }
-        // Reset file inputs and temporary states
-        setSelectedImageFile(null);
-        setTraineeSearchTerm("");
-        if (courseImageInputRef.current) courseImageInputRef.current.value = "";
     }
-}, [isOpen, courseToEdit]);
+
+    try {
+      // Handles full ISO strings like "2025-07-14T17:00:00"
+      const parsedDate = parseISO(dateString);
+      if (isNaN(parsedDate.getTime())) {
+        return undefined;
+      }
+      return parsedDate;
+    } catch (e) {
+      console.error("Invalid date string for parseISO:", dateString, e);
+      return undefined;
+    }
+  };
+
+  // Main effect to initialize and update form state
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const draftStatus = courseStatuses.find(s => s.name === "Lưu nháp");
+
+    if (courseToEdit) {
+      // We are editing. Initialize form with courseToEdit data.
+      // Materials will be populated from the `attachedFiles` query result.
+      const editableCourseData = JSON.parse(JSON.stringify(courseToEdit));
+      setFormData({
+        ...initialNewCourseStateForDialog, // Start with a clean slate
+        ...editableCourseData, // Populate with existing course data
+        materials: attachedFiles ? attachedFiles.map(file => ({ ...file, __file: null })) : [], // Use fetched files
+        statusId: editableCourseData.statusId ?? draftStatus?.id,
+      });
+      setCourseImagePreview(editableCourseData.image);
+      setTempSelectedTraineeIds(editableCourseData.enrolledTrainees || []);
+    } else {
+      // We are creating a new course. Reset to initial state.
+      setFormData({
+        ...initialNewCourseStateForDialog,
+        statusId: draftStatus?.id, // Default to "Lưu nháp"
+      });
+      setCourseImagePreview(initialNewCourseStateForDialog.image);
+      setTempSelectedTraineeIds([]);
+    }
+
+    // Reset other states
+    setIsSubmitting(false);
+    setSelectedImageFile(null);
+    setTraineeSearchTerm("");
+    if (courseImageInputRef.current) courseImageInputRef.current.value = "";
+
+  }, [isOpen, courseToEdit, attachedFiles, courseStatuses]);
 
 
-  // Dọn dẹp các URL đối tượng (object URLs)
   useEffect(() => {
     return () => {
       if (courseImagePreview && courseImagePreview.startsWith("blob:")) {
         URL.revokeObjectURL(courseImagePreview);
       }
-      // Also revoke object URL for selectedImageFile if it exists and is a blob URL
-      if (
-        selectedImageFile &&
-        courseImagePreview &&
-        courseImagePreview.startsWith("blob:")
-      ) {
-        URL.revokeObjectURL(courseImagePreview);
-      }
-      formData.materials.forEach((material) => {
-        if (
-          material.url &&
-          material.url.startsWith("blob:") &&
-          material.__file
-        ) {
-          URL.revokeObjectURL(material.url);
-        }
-      });
-      if (
-        lessonFormData.content &&
-        lessonFormData.content.startsWith("blob:") &&
-        lessonFormData.__file
-      ) {
-        URL.revokeObjectURL(lessonFormData.content);
-      }
     };
-  }, [
-    courseImagePreview,
-    selectedImageFile,
-    formData.materials,
-    lessonFormData,
-  ]);
+  }, [courseImagePreview]);
   
-  /**
-   * Safely parses a date string into a Date object for the DatePicker.
-   * Handles date-only strings (YYYY-MM-DD) to avoid timezone issues
-   * and gracefully fails for invalid date strings.
-   * @param dateString The date string to parse.
-   * @returns A valid Date object or undefined.
-   */
-  const parseDateStringForPicker = (dateString: string | null | undefined): Date | undefined => {
-      if (!dateString) {
-          return undefined;
-      }
-      
-      // Check for a date-only string like "YYYY-MM-DD"
-      // and parse it in a way that respects the local timezone to avoid off-by-one errors.
-      const dateOnlyMatch = dateString.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-      if (dateOnlyMatch) {
-        const [, year, month, day] = dateOnlyMatch.map(Number);
-        return new Date(year, month - 1, day);
-      }
-  
-      // For other formats (like full ISO strings from API), `new Date()` works fine.
-      const date = new Date(dateString);
-  
-      // If parsing fails for any reason, return undefined.
-      if (isNaN(date.getTime())) {
-          console.warn(`[CourseFormDialog] Could not parse invalid date string: "${dateString}"`);
-          return undefined;
-      }
-      
-      return date;
-  };
-
   const handleInputChange = (field: keyof typeof formData, value: unknown) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
@@ -341,130 +347,16 @@ export function CourseFormDialog({
   const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      setSelectedImageFile(file); // Store the File object
+      setSelectedImageFile(file); 
       const reader = new FileReader();
       reader.onloadend = () => {
-        setCourseImagePreview(reader.result as string); // For preview purposes (base64)
+        setCourseImagePreview(reader.result as string);
       };
       reader.readAsDataURL(file);
     } else {
       setSelectedImageFile(null);
-      setCourseImagePreview(null); // Clear preview when no file selected
+      setCourseImagePreview(null);
     }
-  };
-
-  const handleFileChange = (
-    event: React.ChangeEvent<HTMLInputElement>,
-    field: number
-  ) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      if (file.size > 10 * 1024 * 1024) {
-        showError("FILE002");
-        return;
-      }
-      const objectUrl = URL.createObjectURL(file);
-      const newMaterials = [...formData.materials];
-      if (newMaterials[field]) {
-        if (
-          newMaterials[field].url &&
-          newMaterials[field].url.startsWith("blob:")
-        ) {
-          URL.revokeObjectURL(newMaterials[field].url);
-        }
-        newMaterials[field] = {
-          ...newMaterials[field],
-          url: objectUrl,
-          __file: file,
-        };
-        handleInputChange("materials", newMaterials);
-      }
-    }
-  };
-
-  const handleAddMaterial = () => {
-    // Hàm thêm tài liệu mới
-    const newMaterial: CourseMaterial = {
-      id: crypto.randomUUID(),
-      type: "pdf",
-      title: "",
-      url: "",
-    }; // Tạo đối tượng tài liệu mới
-    handleInputChange("materials", [...formData.materials, newMaterial]); // Thêm vào danh sách tài liệu
-  };
-
-  const handleRemoveMaterial = (materialId: string) => {
-    const materialToRemove = formData.materials.find(
-      (m) => m.id === materialId
-    );
-    if (
-      materialToRemove?.url &&
-      materialToRemove.url.startsWith("blob:") &&
-      materialToRemove.__file
-    ) {
-      URL.revokeObjectURL(materialToRemove.url);
-    }
-    handleInputChange(
-      "materials",
-      formData.materials.filter((m) => m.id !== materialId)
-    );
-  };
-
-  const handleMaterialDetailChange = (
-    index: number,
-    field: keyof CourseMaterial,
-    value: string
-  ) => {
-    const newMaterials = formData.materials.map((m, i) => {
-      if (i === index) {
-        const updatedMaterial = { ...m, [field]: value };
-        if (
-          field === "url" &&
-          updatedMaterial.__file &&
-          updatedMaterial.url !== value
-        ) {
-          // Nếu URL thay đổi và có file được tải lên trước đó
-          if (updatedMaterial.url.startsWith("blob:"))
-            URL.revokeObjectURL(updatedMaterial.url); // Thu hồi URL blob cũ
-          updatedMaterial.__file = undefined; // Xóa file đã lưu
-        } else if (field === "type") {
-          // Nếu loại tài liệu thay đổi
-          const oldType = m.type; // Loại cũ
-          const newType = value as CourseMaterial["type"]; // Loại mới
-          if (
-            (oldType === "pdf" || oldType === "slide") &&
-            newType !== "pdf" &&
-            newType !== "slide" &&
-            updatedMaterial.__file
-          ) {
-            // Nếu từ PDF/Slide sang loại khác và có file
-            if (updatedMaterial.url.startsWith("blob:"))
-              URL.revokeObjectURL(updatedMaterial.url);
-            updatedMaterial.url = ""; // Xóa URL
-            updatedMaterial.__file = undefined; // Xóa file
-          } else if (
-            (newType === "video" || newType === "link") &&
-            updatedMaterial.__file
-          ) {
-            // Nếu sang Video/Link và có file
-            if (updatedMaterial.url.startsWith("blob:"))
-              URL.revokeObjectURL(updatedMaterial.url);
-            updatedMaterial.url = newType === oldType ? m.url : "";
-            updatedMaterial.__file = undefined;
-          } else if (
-            (newType === "pdf" || newType === "slide") &&
-            (oldType === "video" || oldType === "link")
-          ) {
-            // Nếu từ Video/Link sang PDF/Slide
-            updatedMaterial.url = "";
-            updatedMaterial.__file = undefined;
-          }
-        }
-        return updatedMaterial;
-      }
-      return m;
-    });
-    handleInputChange("materials", newMaterials);
   };
 
   const openTraineeSelectionDialog = () => {
@@ -491,7 +383,7 @@ export function CourseFormDialog({
     setCurrentEditingLesson(null);
     setLessonFormData(initialLessonState);
     setIsLessonDialogOpen(true);
-  }; // Mở dialog thêm bài học
+  }; 
   const handleOpenEditLesson = (lesson: Lesson) => {
     setCurrentEditingLesson(lesson);
     setLessonFormData({ ...lesson, __file: undefined });
@@ -567,16 +459,16 @@ export function CourseFormDialog({
   const handleOpenAddTest = () => {
     setCurrentEditingTest(null);
     setTestFormData(initialTestState);
-    setQuestionsPage(1); // Reset pagination
+    setQuestionsPage(1); 
     setIsTestDialogOpen(true);
-  }; // Mở dialog thêm bài kiểm tra
+  };
   const handleOpenEditTest = (test: Test) => {
     setCurrentEditingTest(test);
     setTestFormData({
       ...test,
       questions: test.questions || [],
     });
-    setQuestionsPage(1); // Reset pagination
+    setQuestionsPage(1); 
     setIsTestDialogOpen(true);
   };
 
@@ -609,13 +501,11 @@ export function CourseFormDialog({
           return;
         }
 
-        // Lấy header từ dòng đầu tiên và chuyển về chữ thường
         const headers = (jsonData[0] as string[]).map(
           (h) => h?.toString().trim().toLowerCase() || ""
         );
         const questions: Question[] = [];
 
-        // Xác định vị trí các cột dựa trên tiêu đề
         const headerMap = {
           code: headers.indexOf("mã câu hỏi"),
           question: headers.indexOf("câu hỏi"),
@@ -628,7 +518,6 @@ export function CourseFormDialog({
           optionD: headers.indexOf("d"),
         };
 
-        // Kiểm tra các cột bắt buộc
         if (
           headerMap.question === -1 ||
           headerMap.correctAnswer === -1 ||
@@ -642,12 +531,10 @@ export function CourseFormDialog({
           return;
         }
 
-        // Xử lý từng dòng dữ liệu
         for (let i = 1; i < jsonData.length; i++) {
           const row = jsonData[i];
           if (!row || row.length === 0) continue;
 
-          // Lấy các giá trị từ hàng
           const code =
             headerMap.code !== -1
               ? row[headerMap.code]?.toString().trim() || `Q${i}`
@@ -678,38 +565,30 @@ export function CourseFormDialog({
               ? row[headerMap.optionD]?.toString().trim()
               : "";
 
-          // Kiểm tra dữ liệu hợp lệ
           if (!question || !correctAnswerLabel || !optionA || !optionB) {
             console.warn(`Bỏ qua dòng ${i + 1} do thiếu dữ liệu bắt buộc.`);
             continue;
           }
-
-          // Tạo mảng các lựa chọn, chỉ giữ lại các option không rỗng
+          
           const options = [optionA, optionB];
           if (optionC) options.push(optionC);
           if (optionD) options.push(optionD);
-
-          // Xác định chỉ số đáp án đúng
+          
           let correctAnswerIndex = 0;
-
-          // Có thể là số (1,2,3,4) hoặc chữ cái (A,B,C,D)
+          
           if (/^\d+$/.test(correctAnswerLabel)) {
-            // Nếu là số, chuyển về index (0-based)
             correctAnswerIndex = parseInt(correctAnswerLabel) - 1;
           } else {
-            // Nếu là chữ cái, chuyển về index (A=0, B=1, C=2, D=3)
             const upperLabel = correctAnswerLabel.toUpperCase();
             const labelMap: Record<string, number> = { A: 0, B: 1, C: 2, D: 3 };
             correctAnswerIndex = labelMap[upperLabel] || 0;
           }
-
-          // Kiểm tra tính hợp lệ của đáp án
+          
           if (correctAnswerIndex < 0 || correctAnswerIndex >= options.length) {
             console.warn(`Đáp án đúng không hợp lệ ở dòng ${i + 1}. Đặt về 0.`);
             correctAnswerIndex = 0;
           }
 
-          // Thêm câu hỏi mới
           questions.push({
             id: crypto.randomUUID(),
             questionCode: code,
@@ -725,18 +604,16 @@ export function CourseFormDialog({
           return;
         }
 
-        // Cập nhật state với các câu hỏi mới
         setTestFormData((prev) => ({
           ...prev,
           questions: [...(prev.questions || []), ...questions],
         }));
 
-        // Reset trang về cuối để hiển thị câu hỏi mới import
         const totalQuestions = (testFormData.questions?.length || 0) + questions.length;
         const lastPage = Math.ceil(totalQuestions / questionsPerPage);
         setQuestionsPage(lastPage);
 
-        showError("SUCCESS006"); // Thông báo thành công
+        showError("SUCCESS006");
       } catch (error) {
         console.error("Lỗi khi import file Excel:", error);
         showError("FILE001");
@@ -779,7 +656,6 @@ export function CourseFormDialog({
 
   // Quản lý Câu hỏi (bên trong Dialog Bài kiểm tra)
   const handleOpenAddQuestion = (testId: string) => {
-    // Mở dialog thêm câu hỏi
     setCurrentTestIdForQuestion(testId);
     setCurrentEditingQuestion(null);
     setQuestionFormData(initialQuestionState);
@@ -827,20 +703,19 @@ export function CourseFormDialog({
       return test;
     });
     handleInputChange("tests", updatedTests);
-    // Cập nhật testFormData nếu bài kiểm tra hiện tại đang được chỉnh sửa
+    
     if (
       currentEditingTest &&
       currentEditingTest.id === currentTestIdForQuestion
     ) {
       const targetTest = updatedTests.find(
         (t) => t.id === currentTestIdForQuestion
-      ); // Tìm bài kiểm tra mục tiêu
+      ); 
       if (targetTest) {
-        // Nếu tìm thấy
         setTestFormData((prev) => ({
           ...prev,
           questions: targetTest.questions,
-        })); // Cập nhật câu hỏi
+        }));
       }
     }
     setIsQuestionDialogOpen(false);
@@ -861,54 +736,144 @@ export function CourseFormDialog({
     });
 
     handleInputChange("tests", updatedTests);
-
-    // Cập nhật testFormData nếu bài kiểm tra hiện tại đang được chỉnh sửa
+    
     if (currentEditingTest && currentEditingTest.id === testId) {
       const targetTest = updatedTests.find((t) => t.id === testId);
       if (targetTest) {
         setTestFormData((prev) => ({
           ...prev,
           questions: targetTest.questions,
-        })); // Cập nhật câu hỏi
+        }));
       }
     }
   };
 
+  const handleAddMaterial = () => {
+    setFormData(prev => ({
+        ...prev,
+        materials: [
+            ...(prev.materials || []),
+            {
+                id: crypto.randomUUID(),
+                type: 'link',
+                title: '',
+                link: '',
+                courseId: courseToEdit?.id || '', 
+                createdAt: new Date().toISOString(),
+                modifiedAt: null,
+                __file: null,
+            }
+        ]
+    }));
+  };
+
+  const handleRemoveMaterial = async (id: string | number) => {
+    if (typeof id === 'string') { // Newly added material on client
+        setFormData(prev => ({
+            ...prev,
+            materials: (prev.materials || []).filter(m => m.id !== id)
+        }));
+        return;
+    }
+
+    if (courseToEdit?.id && typeof id === 'number') { // Existing material from API
+        try {
+            await courseAttachedFilesService.deleteAttachedFile({ courseId: courseToEdit.id, fileId: id });
+            setFormData(prev => ({
+                ...prev,
+                materials: (prev.materials || []).filter(m => m.id !== id)
+            }));
+            toast({ title: "Thành công", description: "Đã xóa tài liệu." });
+        } catch (error) {
+            toast({ title: "Lỗi", description: "Xóa tài liệu thất bại.", variant: "destructive" });
+        }
+    }
+  };
+
+
+  const handleMaterialDetailChange = (index: number, field: 'type' | 'title' | 'link', value: string) => {
+      setFormData(prev => {
+          const newMaterials = [...(prev.materials || [])];
+          if(newMaterials[index]) {
+              (newMaterials[index] as any)[field] = value;
+              if (field === 'type' && value !== 'pdf' && value !== 'slide') {
+                (newMaterials[index] as any).link = '';
+                (newMaterials[index] as any).__file = null;
+              }
+          }
+          return { ...prev, materials: newMaterials };
+      });
+  };
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>, index: number) => {
+      const file = event.target.files?.[0];
+      if (file && index < (formData.materials?.length || 0)) {
+          setFormData(prev => {
+              const newMaterials = [...(prev.materials || [])];
+              (newMaterials[index] as any).link = file.name; // Display file name
+              (newMaterials[index] as any).__file = file; // Store the file object
+              return { ...prev, materials: newMaterials };
+          });
+      }
+  };
+
+
   const handleSubmit = async () => {
-    // Determine if we are editing an existing course or creating a new one
+    setIsSubmitting(true);
     const isEditing = !!courseToEdit;
 
-    // Validate essential fields
     if (!formData.title || !formData.description || !formData.objectives) {
       toast({
         title: "Lỗi",
         description: "Vui lòng điền đầy đủ các trường bắt buộc.",
         variant: "destructive",
       });
+      setIsSubmitting(false);
       return;
     }
 
-    console.log("[CourseFormDialog] Submitting with formData:", formData);
+    try {
+      // Step 1: Save the course data
+      const savedCourse = await onSave(formData, isEditing, selectedImageFile);
+      
+      // Determine the course ID to use for file uploads
+      let finalCourseId: string | null = null;
+      if (savedCourse && 'id' in savedCourse) {
+        finalCourseId = savedCourse.id;
+      } else if (isEditing && courseToEdit) {
+        finalCourseId = courseToEdit.id;
+      }
 
-    // Pass the original formData and selectedImageFile to onSave
-    onSave(formData, isEditing, selectedImageFile);
-    onOpenChange(false); // Close dialog on save
-  };
-
-  const renderMaterialIcon = (type: CourseMaterial["type"]) => {
-    switch (type) {
-      case "pdf":
-        return <FileQuestion className="h-4 w-4 text-red-500" />;
-      case "slide":
-        return <Library className="h-4 w-4 text-yellow-500" />;
-      case "video":
-        return <Users className="h-4 w-4 text-blue-500" />; // Icon video
-      case "link":
-        return <Upload className="h-4 w-4 text-gray-500" />; // Icon link
-      default:
-        return <FileQuestion className="h-4 w-4" />; // Icon mặc định
+      // Step 2: If course was saved and we have an ID, upload new files
+      if (finalCourseId) {
+        const newMaterialsToUpload = formData.materials.filter(
+          (m: any) => m.__file instanceof File
+        );
+  
+        if (newMaterialsToUpload.length > 0) {
+            const payload = newMaterialsToUpload.map((m: any) => ({
+                title: m.title!,
+                file: m.__file as File,
+            }));
+            await courseAttachedFilesService.uploadAttachedFiles(finalCourseId, payload);
+        }
+      } else {
+        console.warn("Could not get course ID to upload attached files.");
+      }
+      
+      onOpenChange(false);
+    } catch (error) {
+      console.error("Error saving course or uploading files:", error);
+      toast({
+        title: "An error occurred",
+        description: error instanceof Error ? error.message : "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
     }
   };
+
 
   return (
     <>
@@ -924,7 +889,7 @@ export function CourseFormDialog({
                 : "Điền thông tin để tạo khóa học mới."}
             </DialogDescription>
           </DialogHeader>
-          <Accordion type="multiple" defaultValue={["item-1", "item-2", "item-3", "item-4"]} className="w-full py-4">
+          <Accordion type="multiple" defaultValue={["item-1"]} className="w-full py-4">
             <AccordionItem value="item-1">
             <AccordionTrigger className="text-lg font-semibold text-gray-900 hover:text-orange-600 transition-colors">Thông tin chung</AccordionTrigger>
               <AccordionContent>
@@ -1369,299 +1334,291 @@ export function CourseFormDialog({
                 )}
               </div>
 
-                  {courseToEdit && (
-                    <div className="md:col-span-2 pt-4">
-                      <Label htmlFor="status">Trạng thái</Label>
-                      <Select
-                        value={formData.status}
-                        onValueChange={(v: Course["status"]) => {
-                          const statusObj = courseStatuses.find((s) => s.name === v);
-                          setFormData((prev) => ({
-                            ...prev,
-                            status: v,
-                            statusId: statusObj?.id,
-                          }));
-                        }}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Chọn trạng thái" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {courseStatuses.map((o) => (
-                            <SelectItem key={o.id} value={o.name}>
-                              {o.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                  <div className="md:col-span-2 pt-4">
+                    <Label htmlFor="status">Trạng thái</Label>
+                    <Select
+                      value={String(formData.statusId || "")}
+                      onValueChange={(v) =>
+                        handleInputChange("statusId", parseInt(v))
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Chọn trạng thái" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {courseStatuses.map((o) => (
+                          <SelectItem key={o.id} value={String(o.id)}>
+                            {o.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+
+            <AccordionItem value="item-2">
+            <AccordionTrigger className="text-lg font-semibold text-gray-900 hover:text-orange-600 transition-colors">Bài học</AccordionTrigger>
+              <AccordionContent>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-base font-semibold flex items-center">
+                      <Library className="mr-2 h-5 w-5 text-primary" /> Bài học
+                    </Label>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleOpenAddLesson}
+                    >
+                      <PlusCircle className="mr-2 h-4 w-4" /> Thêm bài học
+                    </Button>
+                  </div>
+                  {(formData.lessons || []).length > 0 ? (
+                    <div className="space-y-2">
+                      {(formData.lessons || []).map((lesson) => (
+                        <div
+                          key={lesson.id}
+                          className="flex items-center justify-between p-2 border rounded-md"
+                        >
+                          <span className="text-sm">
+                            {lesson.title} ({lesson.contentType})
+                          </span>
+                          <div className="space-x-1">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleOpenEditLesson(lesson)}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="text-destructive hover:text-destructive"
+                              onClick={() =>
+                                handleDeleteExistingLesson(lesson.id)
+                              }
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
                     </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      Chưa có bài học.
+                    </p>
                   )}
                 </div>
               </AccordionContent>
             </AccordionItem>
 
-              {/* Phần Bài học */}
-            <AccordionItem value="item-2">
-            <AccordionTrigger className="text-lg font-semibold text-gray-900 hover:text-orange-600 transition-colors">Bài học</AccordionTrigger>
-              <AccordionContent>
-                <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label className="text-base font-semibold flex items-center">
-                    <Library className="mr-2 h-5 w-5 text-primary" /> Bài học
-                  </Label>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={handleOpenAddLesson}
-                  >
-                    <PlusCircle className="mr-2 h-4 w-4" /> Thêm bài học
-                  </Button>
-                </div>
-                {(formData.lessons || []).length > 0 ? (
-                  <div className="space-y-2">
-                    {(formData.lessons || []).map((lesson) => (
-                      <div
-                        key={lesson.id}
-                        className="flex items-center justify-between p-2 border rounded-md"
-                      >
-                        <span className="text-sm">
-                          {lesson.title} ({lesson.contentType})
-                        </span>
-                        <div className="space-x-1">
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleOpenEditLesson(lesson)}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="text-destructive hover:text-destructive"
-                            onClick={() =>
-                              handleDeleteExistingLesson(lesson.id)
-                            }
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground">
-                    Chưa có bài học.
-                  </p>
-                )}
-              </div>
-              </AccordionContent>
-            </AccordionItem>
-
-              {/* Phần Bài kiểm tra */}
             <AccordionItem value="item-3">
               <AccordionTrigger className="text-lg font-semibold text-gray-900 hover:text-orange-600 transition-colors">Bài kiểm tra</AccordionTrigger>
               <AccordionContent>
                 <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label className="text-base font-semibold flex items-center">
-                    <FileQuestion className="mr-2 h-4 w-4 text-primary" /> Bài
-                    kiểm tra
-                  </Label>
-                    <div className="flex gap-2">
-                      {/* <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => testExcelImportInputRef.current?.click()}
-                      >
-                        <Upload className="mr-2 h-4 w-4" /> Import Excel
-                      </Button> */}
-                      <input
-                        type="file"
-                        ref={testExcelImportInputRef}
-                        className="hidden"
-                        accept=".xlsx, .xls"
-                        onChange={handleExcelFileImport}
-                      />
+                  <div className="flex items-center justify-between">
+                    <Label className="text-base font-semibold flex items-center">
+                      <FileQuestion className="mr-2 h-4 w-4 text-primary" /> Bài
+                      kiểm tra
+                    </Label>
+                      <div className="flex gap-2">
+                        <input
+                          type="file"
+                          ref={testExcelImportInputRef}
+                          className="hidden"
+                          accept=".xlsx, .xls"
+                          onChange={handleExcelFileImport}
+                        />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleOpenAddTest}
+                    >
+                      <PlusCircle className="mr-2 h-4 w-4" /> Thêm bài kiểm tra
+                    </Button>
+                      </div>
+                  </div>
+                  {(formData.tests || []).length > 0 ? (
+                    <div className="space-y-2">
+                      {(formData.tests || []).map((test) => (
+                        <div
+                          key={test.id}
+                          className="flex items-center justify-between p-2 border rounded-md"
+                        >
+                          <span className="text-sm">
+                            {test.title} ({test.questions.length} câu hỏi)
+                          </span>
+                          <div className="space-x-1">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleOpenEditTest(test)}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="text-destructive hover:text-destructive"
+                              onClick={() => handleDeleteExistingTest(test.id)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      Chưa có bài kiểm tra.
+                    </p>
+                  )}
+                  <p className="text-xs text-muted-foreground">
+                    Điều kiện Đạt: Hoàn thành bài học &amp; đạt &gt;= 70% mỗi bài
+                    kiểm tra.
+                  </p>
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+            
+            <AccordionItem value="item-4">
+              <AccordionTrigger className="text-lg font-semibold text-gray-900 hover:text-orange-600 transition-colors">Tài liệu khóa học</AccordionTrigger>
+              <AccordionContent>
+                <div className="space-y-4">
+                  <input
+                    type="file"
+                    ref={materialFileInputRef}
+                    className="hidden"
+                    onChange={(e) => {
+                      if (currentMaterialUploadIndex !== null) {
+                        handleFileChange(e, currentMaterialUploadIndex);
+                        setCurrentMaterialUploadIndex(null);
+                      }
+                    }}
+                  />
+                  {isLoadingAttachedFiles ? (
+                    <div className="flex items-center justify-center p-4">
+                        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                        <p className="ml-2 text-muted-foreground">Đang tải tài liệu...</p>
+                    </div>
+                  ) : (
+                    (formData.materials.length > 0) ? (
+                      <div className="space-y-3">
+                        {formData.materials.map((material, index) => (
+                          <div
+                            key={material.id}
+                            className="flex flex-col sm:flex-row items-start sm:items-center gap-2 p-3 border rounded-md bg-muted/30"
+                          >
+                            <div className="flex-shrink-0 self-center sm:self-start pt-1">
+                              {renderMaterialIcon(material.type)}
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 flex-grow">
+                              <Select
+                                value={material.type || 'link'}
+                                onValueChange={(v: CourseMaterial["type"]) =>
+                                  handleMaterialDetailChange(index, "type", v)
+                                }
+                              >
+                                <SelectTrigger className="w-full sm:w-[120px]">
+                                  <SelectValue placeholder="Loại" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="PDF">PDF</SelectItem>
+                                  <SelectItem value="Link">Link</SelectItem>
+                                </SelectContent>
+                              </Select>
+                              <Input
+                                placeholder="Tiêu đề tài liệu"
+                                value={material.title || ''}
+                                onChange={(e) =>
+                                  handleMaterialDetailChange(
+                                    index,
+                                    "title",
+                                    e.target.value
+                                  )
+                                }
+                              />
+                              <div className="flex items-center gap-1">
+                                <Input
+                                  placeholder="URL hoặc tải lên"
+                                  value={material.link || ''}
+                                  onChange={(e) =>
+                                    handleMaterialDetailChange(
+                                      index,
+                                      "link",
+                                      e.target.value
+                                    )
+                                  }
+                                  readOnly={!!(material as any).__file}
+                                />
+                                {(material.type === "PDF") && (
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="icon"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setCurrentMaterialUploadIndex(index);
+                                      if (materialFileInputRef.current) {
+                                        materialFileInputRef.current.accept =
+                                          material.type === "PDF"
+                                            ? ".pdf"
+                                            : ".ppt, .pptx, .key, .pdf"; // Đặt loại file chấp nhận
+                                        materialFileInputRef.current.value = ""; // Xóa giá trị cũ để đảm bảo sự kiện onChange được kích hoạt
+                                        materialFileInputRef.current.click();
+                                      }
+                                    }}
+                                  >
+                                    <Paperclip className="h-4 w-4" />
+                                  </Button>
+                                )}
+                              </div>
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="sm:ml-auto flex-shrink-0"
+                              onClick={() => handleRemoveMaterial(material.id)}
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-center text-muted-foreground py-2">Chưa có tài liệu nào.</p>
+                    )
+                  )}
+
                   <Button
                     type="button"
                     variant="outline"
                     size="sm"
-                    onClick={handleOpenAddTest}
+                    className="mt-2"
+                    onClick={handleAddMaterial}
                   >
-                    <PlusCircle className="mr-2 h-4 w-4" /> Thêm bài kiểm tra
+                    <PlusCircle className="h-4 w-4 mr-2" /> Thêm tài liệu
                   </Button>
-                    </div>
                 </div>
-                {(formData.tests || []).length > 0 ? (
-                  <div className="space-y-2">
-                    {(formData.tests || []).map((test) => (
-                      <div
-                        key={test.id}
-                        className="flex items-center justify-between p-2 border rounded-md"
-                      >
-                        <span className="text-sm">
-                          {test.title} ({test.questions.length} câu hỏi)
-                        </span>
-                        <div className="space-x-1">
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleOpenEditTest(test)}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="text-destructive hover:text-destructive"
-                            onClick={() => handleDeleteExistingTest(test.id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground">
-                    Chưa có bài kiểm tra.
-                  </p>
-                )}
-                <p className="text-xs text-muted-foreground">
-                  Điều kiện Đạt: Hoàn thành bài học &amp; đạt &gt;= 70% mỗi bài
-                  kiểm tra.
-                </p>
-              </div>
-              </AccordionContent>
-            </AccordionItem>
-
-              {/* Phần Tài liệu */}
-            <AccordionItem value="item-4">
-              <AccordionTrigger className="text-lg font-semibold text-gray-900 hover:text-orange-600 transition-colors">Tài liệu khóa học</AccordionTrigger>
-              <AccordionContent>
-                <div className="space-y-2">
-                {/* <Label className="px-3">Tài liệu khóa học</Label> */}
-                <input
-                  type="file"
-                  ref={materialFileInputRef}
-                  className="hidden"
-                  onChange={(e) => {
-                    if (currentMaterialUploadIndex !== null) {
-                      handleFileChange(e, currentMaterialUploadIndex);
-                      setCurrentMaterialUploadIndex(null); // Đặt lại sau khi xử lý
-                    }
-                  }}
-                />
-                {formData.materials.map((material, index) => (
-                  <div
-                    key={material.id}
-                    className="flex flex-col sm:flex-row items-start sm:items-center gap-2 p-3 border rounded-md bg-muted/30"
-                  >
-                    <div className="flex-shrink-0 self-center sm:self-start pt-1">
-                      {renderMaterialIcon(material.type)}
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 flex-grow">
-                      <Select
-                        value={material.type}
-                        onValueChange={(v: CourseMaterial["type"]) =>
-                          handleMaterialDetailChange(index, "type", v)
-                        }
-                      >
-                        <SelectTrigger className="w-full sm:w-[120px]">
-                          <SelectValue placeholder="Loại" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="pdf">PDF</SelectItem>
-                          <SelectItem value="slide">Slide</SelectItem>
-                          <SelectItem value="video">Video</SelectItem>
-                          <SelectItem value="link">Link</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <Input
-                        placeholder="Tiêu đề tài liệu"
-                        value={material.title}
-                        onChange={(e) =>
-                          handleMaterialDetailChange(
-                            index,
-                            "title",
-                            e.target.value
-                          )
-                        }
-                      />
-                      <div className="flex items-center gap-1">
-                        <Input
-                          placeholder="URL hoặc tải lên"
-                          value={material.url}
-                          onChange={(e) =>
-                            handleMaterialDetailChange(
-                              index,
-                              "url",
-                              e.target.value
-                            )
-                          }
-                          readOnly={!!material.__file}
-                        />
-                        {(material.type === "pdf" ||
-                          material.type === "slide") && (
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="icon"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setCurrentMaterialUploadIndex(index);
-                              if (materialFileInputRef.current) {
-                                materialFileInputRef.current.accept =
-                                  material.type === "pdf"
-                                    ? ".pdf"
-                                    : ".ppt, .pptx, .key, .pdf"; // Đặt loại file chấp nhận
-                                materialFileInputRef.current.value = ""; // Xóa giá trị cũ để đảm bảo sự kiện onChange được kích hoạt
-                                materialFileInputRef.current.click();
-                              }
-                            }}
-                          >
-                            <Paperclip className="h-4 w-4" />
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="sm:ml-auto flex-shrink-0"
-                      onClick={() => handleRemoveMaterial(material.id)}
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ))}
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="mt-2"
-                  onClick={handleAddMaterial}
-                >
-                  <PlusCircle className="h-4 w-4 mr-2" /> Thêm tài liệu
-                </Button>
-              </div>
               </AccordionContent>
             </AccordionItem>
           </Accordion>
           <DialogFooter className="mt-6">
-            <Button variant="outline" onClick={() => onOpenChange(false)}>
+            <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
               Hủy
             </Button>
-            <Button onClick={handleSubmit}>
+            <LoadingButton onClick={handleSubmit} isLoading={isSubmitting}>
               {courseToEdit ? "Lưu thay đổi" : "Thêm khóa học"}
-            </Button>
+            </LoadingButton>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -2015,7 +1972,6 @@ export function CourseFormDialog({
                         })}
                     </div>
 
-                    {/* Pagination cho câu hỏi */}
                     {(testFormData.questions || []).length >
                       questionsPerPage && (
                       <div className="flex items-center justify-between px-2">
@@ -2145,23 +2101,23 @@ export function CourseFormDialog({
                 rows={3}
               />
             </div>
-            {[0, 1, 2, 3].map((i) => (
-              <div key={i} className="space-y-1">
-                <Label htmlFor={`option${i}`}>
-                  Đáp án {String.fromCharCode(65 + i)}{" "}
-                  <span className="text-destructive">*</span>
-                </Label>
-                <Input
-                  id={`option${i}`}
-                  value={questionFormData.options[i] || ""}
-                  onChange={(e) => {
-                    const newOptions = [...questionFormData.options];
-                    newOptions[i] = e.target.value;
-                    setQuestionFormData((p) => ({ ...p, options: newOptions }));
-                  }}
-                />
-              </div>
-            ))}
+            <div className="space-y-2">
+                <Label>Các lựa chọn trả lời <span className="text-destructive">*</span></Label>
+                {[0, 1, 2, 3].map((i) => (
+                    <div key={i} className="flex items-center gap-2">
+                        <Label htmlFor={`option${i}`} className="w-8 text-center">{String.fromCharCode(65 + i)}</Label>
+                        <Input
+                        id={`option${i}`}
+                        value={questionFormData.options[i] || ""}
+                        onChange={(e) => {
+                            const newOptions = [...questionFormData.options];
+                            newOptions[i] = e.target.value;
+                            setQuestionFormData((p) => ({ ...p, options: newOptions }));
+                        }}
+                        />
+                    </div>
+                ))}
+            </div>
             <div className="space-y-1">
               <Label htmlFor="correctAnswerIndex">
                 Đáp án đúng <span className="text-destructive">*</span>
