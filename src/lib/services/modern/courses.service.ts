@@ -1,3 +1,4 @@
+
 import {
   BaseService,
   PaginatedResponse,
@@ -105,7 +106,7 @@ export class CoursesService extends BaseService<
     return formData;
   }
 
-  async createCourse(payload: CreateCourseRequest): Promise<void> {
+  async createCourse(payload: CreateCourseRequest): Promise<CourseApiResponse> {
     const formData = this.buildFormDataFromPayload(payload);
     const token = getApiToken();
 
@@ -118,14 +119,21 @@ export class CoursesService extends BaseService<
       }
     );
 
+    const data = await response.json();
     if (!response.ok) {
-      const data = await response.json().catch(() => ({})); // try to parse error, but don't fail if it's not JSON
       const errorMessage =
-        data.title ||
-        data.message ||
+        data.detail || data.title ||
         (data.errors ? JSON.stringify(data.errors) : "Failed to create course");
       throw new Error(errorMessage);
     }
+    
+    // API returns a wrapper with success and data properties
+    if (data.success && data.data) {
+      return data.data;
+    }
+
+    // Fallback if the response is the course object directly
+    return data;
   }
 
   async updateCourse(
@@ -146,7 +154,7 @@ export class CoursesService extends BaseService<
 
     const data = await response.json();
     if (!response.ok) {
-      throw new Error(data.title || "Failed to update course");
+      throw new Error(data.detail || data.title || "Failed to update course");
     }
 
     if (data.success && data.data?.id) {

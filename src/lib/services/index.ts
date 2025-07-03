@@ -10,6 +10,8 @@ export * from "./modern/departments.service";
 export * from "./modern/positions.service";
 export * from "./modern/roles.service";
 export * from "./modern/users.service";
+export * from "./modern/course-attached-files.service";
+
 
 // Import services to create a single `services` object
 import { authService } from "./modern/auth.service";
@@ -18,6 +20,8 @@ import { departmentsService } from "./modern/departments.service";
 import { positionsService } from "./modern/positions.service";
 import { rolesService } from "./modern/roles.service";
 import { usersService } from "./modern/users.service";
+import { courseAttachedFilesService } from "./modern/course-attached-files.service";
+
 
 // Export a single object containing all services for convenience
 export const services = {
@@ -27,6 +31,7 @@ export const services = {
   positions: positionsService,
   roles: rolesService,
   users: usersService,
+  courseAttachedFiles: courseAttachedFilesService,
 } as const;
 
 // Default export for backward compatibility or alternative import style

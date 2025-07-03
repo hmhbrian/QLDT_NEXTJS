@@ -1,3 +1,4 @@
+
 import type { Course, Lesson, Test, Question } from "../types/course.types";
 import { categoryOptions } from "../constants";
 
@@ -93,16 +94,22 @@ export const mockCourses: Course[] = [
     location: "https://meet.google.com/abc-xyz",
     materials: [
       {
-        id: "mat-js-001",
+        id: 201,
+        courseId: '1',
         type: "pdf",
         title: "Tài liệu JavaScript căn bản",
-        url: "https://mozilla.github.io/pdf.js/web/compressed.tracemonkey-pldi-09.pdf",
+        link: "https://mozilla.github.io/pdf.js/web/compressed.tracemonkey-pldi-09.pdf",
+        createdAt: new Date().toISOString(),
+        modifiedAt: null
       },
       {
-        id: "mat-js-002",
+        id: 202,
+        courseId: '1',
         type: "slide",
         title: "Slide bài giảng tuần 1",
-        url: "https://placehold.co/800x600.png?text=Slide+Tuan+1",
+        link: "https://placehold.co/800x600.png?text=Slide+Tuan+1",
+        createdAt: new Date().toISOString(),
+        modifiedAt: null
       },
     ],
     lessons: sampleLessons.slice(0, 2),
@@ -139,10 +146,13 @@ export const mockCourses: Course[] = [
     location: "https://meet.google.com/def-ghi",
     materials: [
       {
-        id: "mat-pm-001",
+        id: 203,
+        courseId: '2',
         type: "pdf",
         title: "Sổ tay quản lý dự án",
-        url: "https://mozilla.github.io/pdf.js/web/compressed.tracemonkey-pldi-09.pdf",
+        link: "https://mozilla.github.io/pdf.js/web/compressed.tracemonkey-pldi-09.pdf",
+        createdAt: new Date().toISOString(),
+        modifiedAt: null
       },
     ],
     lessons: [
@@ -340,10 +350,13 @@ export const mockCourses: Course[] = [
     location: "https://meet.google.com/jkl-mno",
     materials: [
       {
-        id: "mat-ui-001",
+        id: 204,
+        courseId: '3',
         type: "slide",
         title: "Nguyên tắc vàng trong thiết kế UI",
-        url: "https://placehold.co/800x600.png?text=UI+Design+Principles",
+        link: "https://placehold.co/800x600.png?text=UI+Design+Principles",
+        createdAt: new Date().toISOString(),
+        modifiedAt: null
       },
     ],
     lessons: [],
@@ -525,10 +538,13 @@ export const mockCourses: Course[] = [
     location: "https://meet.google.com/pqr-stu",
     materials: [
       {
-        id: "mat-mkt-001",
+        id: 205,
+        courseId: '4',
         type: "link",
         title: "Blog về Digital Marketing Trends",
-        url: "https://blog.hubspot.com/marketing/digital-marketing-trends",
+        link: "https://blog.hubspot.com/marketing/digital-marketing-trends",
+        createdAt: new Date().toISOString(),
+        modifiedAt: null
       },
     ],
     createdAt: new Date().toISOString(),
@@ -560,10 +576,13 @@ export const mockCourses: Course[] = [
     location: "https://zoom.us/j/python-ds",
     materials: [
       {
-        id: "mat-pyds-001",
+        id: 206,
+        courseId: '5',
         type: "link",
         title: "Tài liệu Pandas chính thức",
-        url: "https://pandas.pydata.org/docs/",
+        link: "https://pandas.pydata.org/docs/",
+        createdAt: new Date().toISOString(),
+        modifiedAt: null
       },
     ],
     lessons: sampleLessons, // Using all sample lessons
@@ -743,10 +762,13 @@ export const mockCourses: Course[] = [
     location: "https://teams.microsoft.com/comms-skills",
     materials: [
       {
-        id: "mat-comms-001",
+        id: 207,
+        courseId: '6',
         type: "pdf",
         title: "Sách: Giao tiếp không bạo lực",
-        url: "https://example.com/nvc.pdf",
+        link: "https://example.com/nvc.pdf",
+        createdAt: new Date().toISOString(),
+        modifiedAt: null
       },
     ],
     createdAt: new Date().toISOString(),
@@ -785,34 +807,49 @@ export const mockCourseDetail: Course = {
   location: "https://meet.google.com/js-advanced-class",
   materials: [
     {
-      id: "mat-jsadv-001",
+      id: 801,
+      courseId: '1',
       type: "pdf",
       title: "Giáo trình JavaScript Nâng cao (PDF)",
-      url: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
+      link: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
+      createdAt: new Date().toISOString(),
+      modifiedAt: null
     },
     {
-      id: "mat-jsadv-002",
+      id: 802,
+      courseId: '1',
       type: "slide",
       title: "Slide Bài 1: Tổng quan ES6+",
-      url: "https://placehold.co/800x600.png?text=ES6+Overview+Slides",
+      link: "https://placehold.co/800x600.png?text=ES6+Overview+Slides",
+      createdAt: new Date().toISOString(),
+      modifiedAt: null
     },
     {
-      id: "mat-jsadv-003",
+      id: 803,
+      courseId: '1',
       type: "video",
       title: "Video: Xử lý bất đồng bộ với Promises",
-      url: "https://www.youtube.com/watch?v=DHvZL2xTBNs",
+      link: "https://www.youtube.com/watch?v=DHvZL2xTBNs",
+      createdAt: new Date().toISOString(),
+      modifiedAt: null
     },
     {
-      id: "mat-jsadv-004",
+      id: 804,
+      courseId: '1',
       type: "link",
       title: "Tài liệu tham khảo: MDN Web Docs - JavaScript",
-      url: "https://developer.mozilla.org/en-US/docs/Web/JavaScript",
+      link: "https://developer.mozilla.org/en-US/docs/Web/JavaScript",
+      createdAt: new Date().toISOString(),
+      modifiedAt: null
     },
     {
-      id: "mat-jsadv-005",
+      id: 805,
+      courseId: '1',
       type: "pdf",
       title: "Bài tập thực hành Chương 1",
-      url: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
+      link: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
+      createdAt: new Date().toISOString(),
+      modifiedAt: null
     },
   ],
   lessons: sampleLessons,
