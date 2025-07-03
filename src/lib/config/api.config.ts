@@ -3,6 +3,8 @@
  * Centralized, type-safe configuration for all API endpoints and settings
  */
 
+import { courseAttachedFilesService } from "../services";
+
 // Environment configuration with proper typing
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:5228/api";
@@ -56,6 +58,13 @@ export const API_ENDPOINTS = {
     update: (id: string) => `/Courses/${id}`,
     search: "/Courses/search",
     softDelete: "/Courses/soft-delete",
+  },
+  courseAttachedFiles: {
+    base: "/courseattachedfiles",
+    getByCourseId: (courseId: string) => `/courseattachedfiles/${courseId}`,
+    upload: (courseId: string) => `/courseattachedfiles/${courseId}`,
+    delete: (courseId: string, fileId: number) =>
+      `/courseattachedfiles/${courseId}/${fileId}`,
   },
   courseStatus: {
     base: "/CourseStatus",
