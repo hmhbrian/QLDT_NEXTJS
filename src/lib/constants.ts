@@ -1,3 +1,4 @@
+
 /**
  * Legacy Constants (Deprecated)
  * @deprecated Import from @/lib/config/constants instead
@@ -79,10 +80,13 @@ export const mockCourses: Course[] = [
     level: ["intern", "probation"],
     materials: [
       {
-        id: "mat-react-001",
+        id: 101,
         type: "pdf",
         title: "Giáo trình React",
-        url: "https://example.com/react.pdf",
+        link: "https://example.com/react.pdf",
+        courseId: "1",
+        createdAt: "2024-03-01T00:00:00Z",
+        modifiedAt: "2024-03-01T00:00:00Z",
       },
     ],
     createdAt: "2024-03-01T00:00:00Z",

@@ -8,6 +8,7 @@ import type {
   Course,
   CreateCourseRequest,
   CourseSearchParams,
+  CourseApiResponse,
 } from "@/lib/types/course.types";
 import type { QueryParams } from "@/lib/core";
 import { extractErrorMessage } from "@/lib/core";
@@ -81,16 +82,16 @@ export function useCreateCourse() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  return useMutation<void, Error, CreateCourseRequest>({
+  return useMutation<Course, Error, CreateCourseRequest>({
     mutationFn: async (courseData) => {
-      await coursesService.createCourse(courseData);
+      const apiCourse = await coursesService.createCourse(courseData);
+      return mapCourseApiToUi(apiCourse);
     },
-    onSuccess: () => {
-      // Invalidate all queries starting with COURSES_QUERY_KEY to refetch lists
+    onSuccess: (newCourse) => {
       queryClient.invalidateQueries({ queryKey: [COURSES_QUERY_KEY] });
       toast({
         title: "Thành công",
-        description: `Khóa học đã được tạo thành công. Dữ liệu đang được cập nhật.`,
+        description: `Khóa học "${newCourse.title}" đã được tạo.`,
         variant: "success",
       });
     },

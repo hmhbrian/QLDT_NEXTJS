@@ -31,9 +31,6 @@ export type CourseCategory =
 // Enrollment type enumeration
 export type EnrollmentType = "optional" | "mandatory";
 
-// Material type enumeration
-export type MaterialType = "pdf" | "video" | "image" | "other";
-
 // Lesson content type enumeration
 export type LessonContentType =
   | "text"
@@ -69,14 +66,17 @@ export interface Lesson {
   duration?: string; // Ví dụ: "30 phút", "1 giờ"
 }
 
-// Course material interface
+// Course material interface from API
 export interface CourseMaterial {
-  id: string;
-  type: "pdf" | "slide" | "video" | "link";
+  id: number | string;
+  courseId: string;
   title: string;
-  url: string;
-  __file?: File; // Đối tượng file phía client trước khi upload
+  type: string; // e.g., "PDF", "VIDEO", "Slide" - Changed to string for flexibility
+  link: string;
+  createdAt: string;
+  modifiedAt: string | null;
 }
+
 
 // Student Course Evaluation interface
 export interface StudentCourseEvaluation {
@@ -116,7 +116,7 @@ export interface Course {
   statusId?: number;
   department: string[];
   level: string[];
-  materials: CourseMaterial[];
+  materials: CourseMaterial[]; // This will now hold the fetched attached files
   lessons?: Lesson[];
   tests?: Test[];
   createdAt: string;
