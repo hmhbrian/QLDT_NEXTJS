@@ -1,8 +1,7 @@
-
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { format, parseISO } from "date-fns";
 import {
   Dialog,
@@ -44,6 +43,7 @@ import {
   Loader2,
   FileText,
   Video,
+  GripVertical,
 } from "lucide-react";
 import NextImage from "next/image";
 import { DatePicker } from "@/components/ui/datepicker";
@@ -74,7 +74,8 @@ import type {
   Lesson,
   Test,
   Question,
-  LessonContentType,
+  UpdateLessonPayload,
+  CourseMaterialType,
 } from "@/lib/types/course.types";
 import { generateCourseCode } from "@/lib/utils/code-generator";
 import { categoryOptions } from "@/lib/constants";
@@ -84,32 +85,63 @@ import type { Status } from "@/lib/types/status.types";
 import type { User } from "@/lib/types/user.types";
 import { courseAttachedFilesService } from "@/lib/services";
 import { LoadingButton } from "@/components/ui/loading";
+import {
+  useLessons,
+  useCreateLesson,
+  useUpdateLesson,
+  useDeleteLesson,
+  useReorderLesson,
+} from "@/hooks/use-lessons";
+import {
+  useTests,
+  useCreateTest,
+  useUpdateTest,
+  useDeleteTest,
+} from "@/hooks/use-tests";
+import {
+  useQuestions,
+  useCreateQuestion,
+  useUpdateQuestion,
+  useDeleteQuestion,
+} from "@/hooks/use-questions";
+import {
+  mapUiTestToCreatePayload,
+  mapUiTestToUpdatePayload,
+} from "@/lib/mappers/test.mapper";
+import { mapUiQuestionToApiPayload } from "@/lib/mappers/question.mapper";
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+  useSortable,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { CourseAttachedFilePayload } from "@/lib/services/modern/course-attached-files.service";
 
 // Helper function to render material icon
-const renderMaterialIcon = (type: string | undefined) => {
-  switch (type?.toLowerCase()) {
-    case 'pdf':
+const renderMaterialIcon = (type: CourseMaterialType | undefined) => {
+  switch (type) {
+    case "PDF":
       return <FileText className="h-5 w-5 text-red-500" />;
-    // case 'slide':
-    //     return <FileText className="h-5 w-5 text-yellow-500" />;
-    // case 'video':
-    //   return <Video className="h-5 w-5 text-purple-500" />;
-    case 'link':
+    case "Link":
       return <LinkIcon className="h-5 w-5 text-blue-500" />;
     default:
       return <Paperclip className="h-5 w-5 text-gray-500" />;
   }
 };
 
-
 // Trạng thái ban đầu cho các đối tượng lồng nhau
 const initialDurationState = { sessions: 1, hoursPerSession: 2 };
-const initialLessonState: Omit<Lesson, "id"> = {
-  title: "",
-  contentType: "text",
-  content: "",
-  duration: "",
-};
+
 const initialQuestionState: Omit<Question, "id"> = {
   questionCode: "",
   text: "",
@@ -124,10 +156,15 @@ const initialTestState: Omit<Test, "id"> = {
 };
 
 // Define the form data state type to be more flexible with materials
-type CourseFormData = Omit<Course, "id" | "createdAt" | "modifiedAt" | "createdBy" | "modifiedBy"> & {
-  materials: (Partial<CourseMaterial> & { id: string | number; __file?: File | null })[];
+type CourseFormData = Omit<
+  Course,
+  "id" | "createdAt" | "modifiedAt" | "createdBy" | "modifiedBy"
+> & {
+  materials: (Partial<CourseMaterial> & {
+    id: string | number;
+    __file?: File | null;
+  })[];
 };
-
 
 // Trạng thái ban đầu cho khóa học mới trong dialog, using the new flexible type
 const initialNewCourseStateForDialog: CourseFormData = {
@@ -156,11 +193,11 @@ const initialNewCourseStateForDialog: CourseFormData = {
   isPublic: false,
 };
 
-
 export interface CourseFormDialogProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   courseToEdit?: Course | null;
+  isDuplicating?: boolean;
   onSave: (
     courseData:
       | Course
@@ -177,10 +214,68 @@ export interface CourseFormDialogProps {
   trainees: User[];
 }
 
+// Sortable Lesson Item Component
+function SortableLessonItem({
+  lesson,
+  onEdit,
+  onDelete,
+}: {
+  lesson: Lesson;
+  onEdit: (l: Lesson) => void;
+  onDelete: (id: number | string) => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition } =
+    useSortable({ id: lesson.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="flex items-center justify-between p-2 border rounded-md bg-background"
+    >
+      <div className="flex items-center gap-2 flex-grow min-w-0">
+        <button
+          {...listeners}
+          {...attributes}
+          className="cursor-grab p-1 text-muted-foreground hover:bg-muted rounded touch-none"
+        >
+          <GripVertical className="h-5 w-5" />
+        </button>
+        <span className="text-sm truncate">{lesson.title}</span>
+      </div>
+      <div className="space-x-1 flex-shrink-0">
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          onClick={() => onEdit(lesson)}
+        >
+          <Edit className="h-4 w-4" />
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="text-destructive hover:text-destructive"
+          onClick={() => onDelete(lesson.id)}
+        >
+          <Trash2 className="h-4 w-4" />
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 export function CourseFormDialog({
   isOpen,
   onOpenChange,
   courseToEdit,
+  isDuplicating = false,
   onSave,
   courseStatuses,
   departmentOptions,
@@ -189,9 +284,10 @@ export function CourseFormDialog({
 }: CourseFormDialogProps) {
   const { showError } = useError();
   const { toast } = useToast();
-  const queryClient = useQueryClient();
 
-  const [formData, setFormData] = useState<CourseFormData>(initialNewCourseStateForDialog);
+  const [formData, setFormData] = useState<CourseFormData>(
+    initialNewCourseStateForDialog
+  );
 
   const [courseImagePreview, setCourseImagePreview] = useState<string | null>(
     courseToEdit?.image || initialNewCourseStateForDialog.image
@@ -202,9 +298,10 @@ export function CourseFormDialog({
   const testExcelImportInputRef = useRef<HTMLInputElement>(null);
   const materialFileInputRef = useRef<HTMLInputElement>(null);
 
-
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [currentMaterialUploadIndex, setCurrentMaterialUploadIndex] = useState<number | null>(null);
+  const [currentMaterialUploadIndex, setCurrentMaterialUploadIndex] = useState<
+    number | null
+  >(null);
 
   const [isSelectingTrainees, setIsSelectingTrainees] = useState(false);
   const [tempSelectedTraineeIds, setTempSelectedTraineeIds] = useState<
@@ -216,8 +313,12 @@ export function CourseFormDialog({
   const [currentEditingLesson, setCurrentEditingLesson] =
     useState<Lesson | null>(null);
   const [lessonFormData, setLessonFormData] = useState<
-    Omit<Lesson, "id"> & { __file?: File }
-  >(initialLessonState);
+    Partial<Lesson & { file: File | null }>
+  >({
+    title: "",
+    content: "",
+    file: null,
+  });
 
   const [isTestDialogOpen, setIsTestDialogOpen] = useState(false);
   const [currentEditingTest, setCurrentEditingTest] = useState<Test | null>(
@@ -229,9 +330,6 @@ export function CourseFormDialog({
   const [isQuestionDialogOpen, setIsQuestionDialogOpen] = useState(false);
   const [currentEditingQuestion, setCurrentEditingQuestion] =
     useState<Question | null>(null);
-  const [currentTestIdForQuestion, setCurrentTestIdForQuestion] = useState<
-    string | null
-  >(null);
   const [questionFormData, setQuestionFormData] =
     useState<Omit<Question, "id">>(initialQuestionState);
 
@@ -239,81 +337,136 @@ export function CourseFormDialog({
   const [questionsPage, setQuestionsPage] = useState(1);
   const questionsPerPage = 5;
 
-  const {
-    data: attachedFiles,
-    isLoading: isLoadingAttachedFiles,
-  } = useQuery({
+  const isEditingExistingCourse = !!courseToEdit && !isDuplicating;
+
+  const { data: attachedFiles, isLoading: isLoadingAttachedFiles } = useQuery({
     queryKey: ["attachedFiles", courseToEdit?.id],
     queryFn: () => {
-      if (!courseToEdit?.id) return Promise.resolve([]);
+      if (!isEditingExistingCourse || !courseToEdit?.id)
+        return Promise.resolve([]);
       return courseAttachedFilesService.getAttachedFiles(courseToEdit.id);
     },
-    enabled: !!(isOpen && courseToEdit?.id),
-    staleTime: 1 * 60 * 1000, // 1 minute
+    enabled: isEditingExistingCourse && !isDuplicating,
   });
 
-  const parseDateStringForPicker = (dateString: string | null | undefined): Date | undefined => {
-    if (!dateString) return undefined;
-    
-    // Handle YYYY-MM-DD format correctly to avoid timezone issues
-    if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
-        const [year, month, day] = dateString.split('-').map(Number);
-        const date = new Date(year, month - 1, day);
-        // Check if the constructed date is valid
-        if (!isNaN(date.getTime())) {
-          return date;
-        }
-    }
+  const {
+    lessons,
+    isLoading: isLoadingLessons,
+    error: lessonsError,
+  } = useLessons(
+    isEditingExistingCourse && !isDuplicating ? courseToEdit.id : undefined
+  );
 
-    try {
-      // Handles full ISO strings like "2025-07-14T17:00:00"
-      const parsedDate = parseISO(dateString);
-      if (isNaN(parsedDate.getTime())) {
-        return undefined;
-      }
-      return parsedDate;
-    } catch (e) {
-      console.error("Invalid date string for parseISO:", dateString, e);
-      return undefined;
-    }
-  };
+  const {
+    tests,
+    isLoading: isLoadingTests,
+    error: testsError,
+  } = useTests(
+    isEditingExistingCourse && !isDuplicating ? courseToEdit.id : undefined
+  );
 
-  // Main effect to initialize and update form state
+  const createLessonMutation = useCreateLesson();
+  const updateLessonMutation = useUpdateLesson();
+  const deleteLessonMutation = useDeleteLesson();
+  const reorderLessonMutation = useReorderLesson();
+
+  const createTestMutation = useCreateTest();
+  const updateTestMutation = useUpdateTest();
+  const deleteTestMutation = useDeleteTest();
+
+  const createQuestionMutation = useCreateQuestion();
+  const updateQuestionMutation = useUpdateQuestion();
+  const deleteQuestionMutation = useDeleteQuestion();
+
+  const { questions: fetchedQuestions, isLoading: isLoadingQuestions } =
+    useQuestions(
+      currentEditingTest && typeof currentEditingTest.id === "number"
+        ? currentEditingTest.id
+        : undefined
+    );
+
+  const sensors = useSensors(useSensor(PointerSensor));
+
+  // Effect to initialize the form when the dialog opens or courseToEdit changes
   useEffect(() => {
     if (!isOpen) return;
 
-    const draftStatus = courseStatuses.find(s => s.name === "Lưu nháp");
-
     if (courseToEdit) {
-      // We are editing. Initialize form with courseToEdit data.
-      // Materials will be populated from the `attachedFiles` query result.
+      // If editing, use courseToEdit data
       const editableCourseData = JSON.parse(JSON.stringify(courseToEdit));
       setFormData({
-        ...initialNewCourseStateForDialog, // Start with a clean slate
-        ...editableCourseData, // Populate with existing course data
-        materials: attachedFiles ? attachedFiles.map(file => ({ ...file, __file: null })) : [], // Use fetched files
-        statusId: editableCourseData.statusId ?? draftStatus?.id,
+        ...initialNewCourseStateForDialog,
+        ...editableCourseData,
       });
       setCourseImagePreview(editableCourseData.image);
       setTempSelectedTraineeIds(editableCourseData.enrolledTrainees || []);
     } else {
-      // We are creating a new course. Reset to initial state.
+      // If adding, use initial state
+      const draftStatus = courseStatuses.find((s) => s.name === "Lưu nháp");
       setFormData({
         ...initialNewCourseStateForDialog,
-        statusId: draftStatus?.id, // Default to "Lưu nháp"
+        statusId: draftStatus?.id,
+        materials: [],
       });
       setCourseImagePreview(initialNewCourseStateForDialog.image);
       setTempSelectedTraineeIds([]);
     }
+  }, [isOpen, courseToEdit, courseStatuses]);
 
-    // Reset other states
-    setIsSubmitting(false);
-    setSelectedImageFile(null);
-    setTraineeSearchTerm("");
-    if (courseImageInputRef.current) courseImageInputRef.current.value = "";
+  // A separate effect to sync async data (lessons, tests, attachedFiles) into the form state
+  useEffect(() => {
+    // Do not sync if we are duplicating, as the data is already copied over.
+    if (!isOpen || !courseToEdit || isDuplicating) return;
 
-  }, [isOpen, courseToEdit, attachedFiles, courseStatuses]);
+    // Sync Lessons
+    if (!isLoadingLessons) {
+      setFormData((prev) => ({ ...prev, lessons: lessons || [] }));
+    }
 
+    // Sync Tests
+    if (!isLoadingTests) {
+      setFormData((prev) => ({ ...prev, tests: tests || [] }));
+    }
+
+    // Sync Attached Files (Materials)
+    if (!isLoadingAttachedFiles) {
+      setFormData((prev) => ({
+        ...prev,
+        materials: (attachedFiles || []).map((file) => ({
+          ...file,
+          __file: null,
+        })),
+      }));
+    }
+  }, [
+    lessons,
+    tests,
+    attachedFiles,
+    isLoadingLessons,
+    isLoadingTests,
+    isLoadingAttachedFiles,
+    isOpen,
+    courseToEdit,
+    isDuplicating,
+  ]);
+
+  // Effect to update test form data with fetched questions
+  useEffect(() => {
+    if (
+      isTestDialogOpen &&
+      currentEditingTest &&
+      typeof currentEditingTest.id === "number"
+    ) {
+      if (!isLoadingQuestions) {
+        setTestFormData((prev) => ({ ...prev, questions: fetchedQuestions }));
+      }
+    }
+  }, [
+    isTestDialogOpen,
+    currentEditingTest,
+    fetchedQuestions,
+    isLoadingQuestions,
+  ]);
 
   useEffect(() => {
     return () => {
@@ -322,7 +475,7 @@ export function CourseFormDialog({
       }
     };
   }, [courseImagePreview]);
-  
+
   const handleInputChange = (field: keyof typeof formData, value: unknown) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
@@ -347,7 +500,7 @@ export function CourseFormDialog({
   const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      setSelectedImageFile(file); 
+      setSelectedImageFile(file);
       const reader = new FileReader();
       reader.onloadend = () => {
         setCourseImagePreview(reader.result as string);
@@ -371,95 +524,139 @@ export function CourseFormDialog({
 
   const getTraineeNameById = (id: string): string =>
     trainees.find((t) => t.id === id)?.fullName || "Không rõ học viên";
-  
+
   const filteredTrainees = trainees.filter(
     (trainee) =>
-      trainee.fullName.toLowerCase().includes(traineeSearchTerm.toLowerCase()) ||
+      trainee.fullName
+        .toLowerCase()
+        .includes(traineeSearchTerm.toLowerCase()) ||
       trainee.email.toLowerCase().includes(traineeSearchTerm.toLowerCase())
   );
 
   // Quản lý Bài học
   const handleOpenAddLesson = () => {
     setCurrentEditingLesson(null);
-    setLessonFormData(initialLessonState);
+    setLessonFormData({ title: "", content: "", file: null });
     setIsLessonDialogOpen(true);
-  }; 
+  };
+
   const handleOpenEditLesson = (lesson: Lesson) => {
     setCurrentEditingLesson(lesson);
-    setLessonFormData({ ...lesson, __file: undefined });
+    setLessonFormData({
+      title: lesson.title,
+      content: lesson.content,
+      file: null,
+    });
     setIsLessonDialogOpen(true);
   };
 
-  const handleLessonPdfUpload = (
-    event: React.ChangeEvent<HTMLInputElement>
-  ) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      if (file.size > 10 * 1024 * 1024) {
-        showError("FILE002");
-        return;
-      }
-      if (file.type !== "application/pdf") {
-        showError("FILE001");
-        return;
-      }
-      if (
-        lessonFormData.content &&
-        lessonFormData.content.startsWith("blob:") &&
-        lessonFormData.__file
-      )
-        URL.revokeObjectURL(lessonFormData.content);
-      const blobUrl = URL.createObjectURL(file);
-      setLessonFormData((prev) => ({
-        ...prev,
-        content: blobUrl,
-        __file: file,
-      }));
-      if (lessonPdfInputRef.current) lessonPdfInputRef.current.value = "";
-    }
-  };
-
-  const handleSaveOrUpdateLesson = () => {
+  const handleSaveLesson = () => {
+    if (!courseToEdit?.id) return;
     if (!lessonFormData.title) {
-      showError("FORM001");
+      toast({
+        title: "Lỗi",
+        description: "Vui lòng nhập tiêu đề.",
+        variant: "destructive",
+      });
       return;
     }
-    let updatedLessons: Lesson[];
-    const lessonToSave: Omit<Lesson, "id"> = {
-      title: lessonFormData.title,
-      contentType: lessonFormData.contentType,
-      content: lessonFormData.content,
-      duration: lessonFormData.duration,
-    };
 
     if (currentEditingLesson) {
-      updatedLessons = (formData.lessons || []).map((l) =>
-        l.id === currentEditingLesson.id
-          ? { ...currentEditingLesson, ...lessonToSave }
-          : l
-      );
+      // Update Logic
+      const payload: UpdateLessonPayload = { title: lessonFormData.title };
+      if (lessonFormData.file) {
+        payload.file = lessonFormData.file;
+      }
+      updateLessonMutation.mutate({
+        courseId: courseToEdit.id,
+        lessonId: currentEditingLesson.id,
+        payload,
+      });
     } else {
-      updatedLessons = [
-        ...(formData.lessons || []),
-        { id: crypto.randomUUID(), ...lessonToSave },
-      ];
+      // Create Logic
+      if (!lessonFormData.file) {
+        toast({
+          title: "Lỗi",
+          description: "Vui lòng chọn file PDF cho bài học mới.",
+          variant: "destructive",
+        });
+        return;
+      }
+      createLessonMutation.mutate({
+        courseId: courseToEdit.id,
+        title: lessonFormData.title || "Bài học không tên",
+        file: lessonFormData.file,
+      });
     }
-    handleInputChange("lessons", updatedLessons);
     setIsLessonDialogOpen(false);
   };
 
-  const handleDeleteExistingLesson = (lessonId: string) => {
-    handleInputChange(
-      "lessons",
-      (formData.lessons || []).filter((l) => l.id !== lessonId)
-    );
+  const handleDeleteLesson = (lessonId: number | string) => {
+    if (!courseToEdit?.id) return;
+    deleteLessonMutation.mutate({
+      courseId: courseToEdit.id,
+      lessonIds: [Number(lessonId)],
+    });
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (over && active.id !== over.id) {
+      const oldIndex = formData.lessons.findIndex((l) => l.id === active.id);
+      const newIndex = formData.lessons.findIndex((l) => l.id === over.id);
+
+      if (oldIndex === -1 || newIndex === -1) return;
+
+      const reorderedLessons = arrayMove(formData.lessons, oldIndex, newIndex);
+      
+      const movedLesson = reorderedLessons[newIndex];
+      const previousLesson =
+        newIndex > 0 ? reorderedLessons[newIndex - 1] : null;
+
+      const movedLessonId = Number(movedLesson.id);
+      const previousLessonId = previousLesson
+        ? Number(previousLesson.id)
+        : null;
+
+      if (
+        isNaN(movedLessonId) ||
+        (previousLessonId !== null && isNaN(previousLessonId))
+      ) {
+        toast({
+          title: "Lỗi sắp xếp",
+          description:
+            "Không thể sắp xếp bài học mới tạo (chưa được lưu). Vui lòng lưu khóa học trước.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Apply optimistic update first
+      handleInputChange("lessons", reorderedLessons);
+
+      if (courseToEdit?.id) {
+        reorderLessonMutation.mutate({
+          courseId: courseToEdit.id,
+          payload: {
+            lessonId: movedLessonId,
+            previousLessonId: previousLessonId,
+          },
+        }, {
+          onError: () => {
+            // On error, revert the optimistic update
+            handleInputChange("lessons", formData.lessons);
+          }
+        });
+      }
+    }
   };
 
   // Quản lý Bài kiểm tra
   const handleOpenAddTest = () => {
     setCurrentEditingTest(null);
     setTestFormData(initialTestState);
-    setQuestionsPage(1); 
+    setQuestionsPage(1);
     setIsTestDialogOpen(true);
   };
   const handleOpenEditTest = (test: Test) => {
@@ -468,7 +665,7 @@ export function CourseFormDialog({
       ...test,
       questions: test.questions || [],
     });
-    setQuestionsPage(1); 
+    setQuestionsPage(1);
     setIsTestDialogOpen(true);
   };
 
@@ -490,11 +687,9 @@ export function CourseFormDialog({
         const workbook = XLSX.read(data, { type: "array" });
         const sheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[sheetName];
-        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as (
-          | string
-          | number
-          | null
-        )[][];
+        const jsonData = XLSX.utils.sheet_to_json(worksheet, {
+          header: 1,
+        }) as (string | number | null)[][];
 
         if (jsonData.length < 2) {
           showError("FILE001");
@@ -537,45 +732,45 @@ export function CourseFormDialog({
 
           const code =
             headerMap.code !== -1
-              ? row[headerMap.code]?.toString().trim() || `Q${i}`
+              ? String(row[headerMap.code] || "").trim() || `Q${i}`
               : `Q${i}`;
-          const question = row[headerMap.question]?.toString().trim();
-          const correctAnswerLabel = row[headerMap.correctAnswer]
-            ?.toString()
-            .trim();
+          const question = String(row[headerMap.question] || "").trim();
+          const correctAnswerLabel = String(
+            row[headerMap.correctAnswer] || ""
+          ).trim();
           const explanation =
             headerMap.explanation !== -1
-              ? row[headerMap.explanation]?.toString().trim()
+              ? String(row[headerMap.explanation] || "").trim()
               : "";
 
           const optionA =
             headerMap.optionA !== -1
-              ? row[headerMap.optionA]?.toString().trim()
+              ? String(row[headerMap.optionA] || "").trim()
               : "";
           const optionB =
             headerMap.optionB !== -1
-              ? row[headerMap.optionB]?.toString().trim()
+              ? String(row[headerMap.optionB] || "").trim()
               : "";
           const optionC =
             headerMap.optionC !== -1
-              ? row[headerMap.optionC]?.toString().trim()
+              ? String(row[headerMap.optionC] || "").trim()
               : "";
           const optionD =
             headerMap.optionD !== -1
-              ? row[headerMap.optionD]?.toString().trim()
+              ? String(row[headerMap.optionD] || "").trim()
               : "";
 
           if (!question || !correctAnswerLabel || !optionA || !optionB) {
             console.warn(`Bỏ qua dòng ${i + 1} do thiếu dữ liệu bắt buộc.`);
             continue;
           }
-          
+
           const options = [optionA, optionB];
           if (optionC) options.push(optionC);
           if (optionD) options.push(optionD);
-          
+
           let correctAnswerIndex = 0;
-          
+
           if (/^\d+$/.test(correctAnswerLabel)) {
             correctAnswerIndex = parseInt(correctAnswerLabel) - 1;
           } else {
@@ -583,7 +778,7 @@ export function CourseFormDialog({
             const labelMap: Record<string, number> = { A: 0, B: 1, C: 2, D: 3 };
             correctAnswerIndex = labelMap[upperLabel] || 0;
           }
-          
+
           if (correctAnswerIndex < 0 || correctAnswerIndex >= options.length) {
             console.warn(`Đáp án đúng không hợp lệ ở dòng ${i + 1}. Đặt về 0.`);
             correctAnswerIndex = 0;
@@ -604,16 +799,48 @@ export function CourseFormDialog({
           return;
         }
 
-        setTestFormData((prev) => ({
-          ...prev,
-          questions: [...(prev.questions || []), ...questions],
-        }));
+        // Handle both new and existing tests
+        if (currentEditingTest && typeof currentEditingTest.id === "number") {
+          // TODO: Implement bulk question creation API call if available
+          // For now, let's create them one by one
+          Promise.all(
+            questions.map((q) =>
+              createQuestionMutation.mutateAsync({
+                testId: currentEditingTest.id as number,
+                payload: mapUiQuestionToApiPayload(q),
+              })
+            )
+          )
+            .then(() => {
+              toast({
+                title: "Thành công",
+                description: `Đã import ${questions.length} câu hỏi.`,
+              });
+            })
+            .catch((err) => {
+              toast({
+                title: "Lỗi",
+                description: "Có lỗi xảy ra khi import một số câu hỏi.",
+                variant: "destructive",
+              });
+            });
+        } else {
+          // For new tests, just update local state
+          setTestFormData((prev) => ({
+            ...prev,
+            questions: [...(prev.questions || []), ...questions],
+          }));
+        }
 
-        const totalQuestions = (testFormData.questions?.length || 0) + questions.length;
+        const totalQuestions =
+          (testFormData.questions?.length || 0) + questions.length;
         const lastPage = Math.ceil(totalQuestions / questionsPerPage);
         setQuestionsPage(lastPage);
 
-        showError("SUCCESS006");
+        toast({
+          title: "Thành công",
+          description: `Đã import ${questions.length} câu hỏi.`,
+        });
       } catch (error) {
         console.error("Lỗi khi import file Excel:", error);
         showError("FILE001");
@@ -628,42 +855,48 @@ export function CourseFormDialog({
   };
 
   const handleSaveOrUpdateTest = () => {
-    if (!testFormData.title) {
+    if (!testFormData.title || !courseToEdit?.id) {
       showError("FORM001");
       return;
     }
-    let updatedTests: Test[];
-    if (currentEditingTest) {
-      updatedTests = (formData.tests || []).map((t) =>
-        t.id === currentEditingTest.id
-          ? { ...currentEditingTest, ...testFormData }
-          : t
-      );
+
+    if (currentEditingTest && typeof currentEditingTest.id === "number") {
+      const updatePayload = mapUiTestToUpdatePayload(testFormData as Test);
+      updateTestMutation.mutate({
+        courseId: courseToEdit.id,
+        testId: currentEditingTest.id,
+        payload: updatePayload,
+      });
     } else {
-      const newTestWithId = { ...testFormData, id: crypto.randomUUID() };
-      updatedTests = [...(formData.tests || []), newTestWithId] as Test[];
+      const createPayload = mapUiTestToCreatePayload(testFormData as Test);
+      createTestMutation.mutate({
+        courseId: courseToEdit.id,
+        payload: createPayload,
+      });
     }
-    handleInputChange("tests", updatedTests);
     setIsTestDialogOpen(false);
   };
 
-  const handleDeleteExistingTest = (testId: string) => {
-    handleInputChange(
-      "tests",
-      (formData.tests || []).filter((t) => t.id !== testId)
-    );
+  const handleDeleteExistingTest = (testId: number | string) => {
+    if (!courseToEdit?.id || typeof testId !== "number") {
+      toast({
+        title: "Lỗi",
+        description: "Không thể xóa bài kiểm tra chưa được lưu.",
+        variant: "destructive",
+      });
+      return;
+    }
+    deleteTestMutation.mutate({ courseId: courseToEdit.id, testId });
   };
 
   // Quản lý Câu hỏi (bên trong Dialog Bài kiểm tra)
-  const handleOpenAddQuestion = (testId: string) => {
-    setCurrentTestIdForQuestion(testId);
+  const handleOpenAddQuestion = () => {
     setCurrentEditingQuestion(null);
     setQuestionFormData(initialQuestionState);
     setIsQuestionDialogOpen(true);
   };
 
-  const handleOpenEditQuestion = (question: Question, testId: string) => {
-    setCurrentTestIdForQuestion(testId);
+  const handleOpenEditQuestion = (question: Question) => {
     setCurrentEditingQuestion(question);
     setQuestionFormData({
       ...question,
@@ -681,142 +914,167 @@ export function CourseFormDialog({
       showError("FORM001");
       return;
     }
-    if (!currentTestIdForQuestion) return;
 
-    const updatedTests = (formData.tests || []).map((test) => {
-      if (test.id === currentTestIdForQuestion) {
-        let updatedQuestions: Question[];
-        if (currentEditingQuestion) {
-          updatedQuestions = (test.questions || []).map((q) =>
-            q.id === currentEditingQuestion.id
-              ? { ...currentEditingQuestion, ...questionFormData }
-              : q
-          );
-        } else {
-          updatedQuestions = [
-            ...(test.questions || []),
-            { id: crypto.randomUUID(), ...questionFormData },
-          ];
+    const testId =
+      currentEditingTest && typeof currentEditingTest.id === "number"
+        ? currentEditingTest.id
+        : null;
+
+    if (testId) {
+      // Logic for an existing test (call API)
+      const payload = mapUiQuestionToApiPayload(questionFormData);
+      if (currentEditingQuestion) {
+        const questionId =
+          typeof currentEditingQuestion.id === "number"
+            ? currentEditingQuestion.id
+            : null;
+        if (!questionId) {
+          toast({
+            title: "Lỗi",
+            description: "Không xác định được câu hỏi.",
+            variant: "destructive",
+          });
+          return;
         }
-        return { ...test, questions: updatedQuestions };
+        updateQuestionMutation.mutate({ testId, questionId, payload });
+      } else {
+        createQuestionMutation.mutate({ testId, payload });
       }
-      return test;
-    });
-    handleInputChange("tests", updatedTests);
-    
-    if (
-      currentEditingTest &&
-      currentEditingTest.id === currentTestIdForQuestion
-    ) {
-      const targetTest = updatedTests.find(
-        (t) => t.id === currentTestIdForQuestion
-      ); 
-      if (targetTest) {
-        setTestFormData((prev) => ({
-          ...prev,
-          questions: targetTest.questions,
-        }));
-      }
+    } else {
+      // Logic for a new test (update local state)
+      setTestFormData((prev) => {
+        const newQuestions = [...(prev.questions || [])];
+        if (currentEditingQuestion) {
+          const index = newQuestions.findIndex(
+            (q) => q.id === currentEditingQuestion.id
+          );
+          if (index > -1) {
+            newQuestions[index] = {
+              ...currentEditingQuestion,
+              ...questionFormData,
+            };
+          }
+        } else {
+          newQuestions.push({
+            id: crypto.randomUUID(), // Client-side ID
+            ...questionFormData,
+          });
+        }
+        return { ...prev, questions: newQuestions };
+      });
     }
     setIsQuestionDialogOpen(false);
   };
 
-  const handleDeleteQuestionFromTest = (
-    questionId: string,
-    testId: string
-  ) => {
-    const updatedTests = (formData.tests || []).map((test) => {
-      if (test.id === testId) {
-        return {
-          ...test,
-          questions: (test.questions || []).filter((q) => q.id !== questionId),
-        };
-      }
-      return test;
-    });
+  const handleDeleteQuestionFromTest = (questionId: string | number) => {
+    const testId =
+      currentEditingTest && typeof currentEditingTest.id === "number"
+        ? currentEditingTest.id
+        : null;
 
-    handleInputChange("tests", updatedTests);
-    
-    if (currentEditingTest && currentEditingTest.id === testId) {
-      const targetTest = updatedTests.find((t) => t.id === testId);
-      if (targetTest) {
-        setTestFormData((prev) => ({
-          ...prev,
-          questions: targetTest.questions,
-        }));
-      }
+    if (testId && typeof questionId === "number") {
+      // Existing question in an existing test
+      deleteQuestionMutation.mutate({ testId, questionIds: [questionId] });
+    } else {
+      // Client-side question (or existing question in a new test)
+      setTestFormData((prev) => ({
+        ...prev,
+        questions: (prev.questions || []).filter((q) => q.id !== questionId),
+      }));
     }
   };
 
   const handleAddMaterial = () => {
-    setFormData(prev => ({
-        ...prev,
-        materials: [
-            ...(prev.materials || []),
-            {
-                id: crypto.randomUUID(),
-                type: 'link',
-                title: '',
-                link: '',
-                courseId: courseToEdit?.id || '', 
-                createdAt: new Date().toISOString(),
-                modifiedAt: null,
-                __file: null,
-            }
-        ]
+    setFormData((prev) => ({
+      ...prev,
+      materials: [
+        ...(prev.materials || []),
+        {
+          id: crypto.randomUUID(),
+          type: "Link",
+          title: "",
+          link: "",
+          courseId: courseToEdit?.id || "",
+          createdAt: new Date().toISOString(),
+          modifiedAt: null,
+          __file: null,
+        },
+      ],
     }));
   };
 
   const handleRemoveMaterial = async (id: string | number) => {
-    if (typeof id === 'string') { // Newly added material on client
-        setFormData(prev => ({
-            ...prev,
-            materials: (prev.materials || []).filter(m => m.id !== id)
+    // If it's a string, it's a temporary client-side ID
+    if (typeof id === "string") {
+      setFormData((prev) => ({
+        ...prev,
+        materials: (prev.materials || []).filter((m) => m.id !== id),
+      }));
+      return;
+    }
+
+    // If it's a number, it's an existing file from the API
+    if (courseToEdit?.id && typeof id === "number") {
+      try {
+        const response = await courseAttachedFilesService.deleteAttachedFile({
+          courseId: courseToEdit.id,
+          fileId: id,
+        });
+        setFormData((prev) => ({
+          ...prev,
+          materials: (prev.materials || []).filter((m: any) => m.id !== id),
         }));
-        return;
-    }
 
-    if (courseToEdit?.id && typeof id === 'number') { // Existing material from API
-        try {
-            await courseAttachedFilesService.deleteAttachedFile({ courseId: courseToEdit.id, fileId: id });
-            setFormData(prev => ({
-                ...prev,
-                materials: (prev.materials || []).filter(m => m.id !== id)
-            }));
-            toast({ title: "Thành công", description: "Đã xóa tài liệu." });
-        } catch (error) {
-            toast({ title: "Lỗi", description: "Xóa tài liệu thất bại.", variant: "destructive" });
-        }
-    }
-  };
-
-
-  const handleMaterialDetailChange = (index: number, field: 'type' | 'title' | 'link', value: string) => {
-      setFormData(prev => {
-          const newMaterials = [...(prev.materials || [])];
-          if(newMaterials[index]) {
-              (newMaterials[index] as any)[field] = value;
-              if (field === 'type' && value !== 'pdf' && value !== 'slide') {
-                (newMaterials[index] as any).link = '';
-                (newMaterials[index] as any).__file = null;
-              }
-          }
-          return { ...prev, materials: newMaterials };
-      });
-  };
-
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>, index: number) => {
-      const file = event.target.files?.[0];
-      if (file && index < (formData.materials?.length || 0)) {
-          setFormData(prev => {
-              const newMaterials = [...(prev.materials || [])];
-              (newMaterials[index] as any).link = file.name; // Display file name
-              (newMaterials[index] as any).__file = file; // Store the file object
-              return { ...prev, materials: newMaterials };
+        // Hiển thị thông báo thành công
+        // Nếu backend trả về response có message, dùng nó; nếu không, dùng message mặc định
+        if (response && typeof response === "object" && "message" in response) {
+          showError(response);
+        } else {
+          // Fallback: tạo response thành công
+          showError({
+            success: true,
+            message: "Xóa tài liệu thành công.",
           });
+        }
+      } catch (error) {
+        // Sử dụng showError để hiển thị lỗi từ backend
+        showError(error);
       }
+    }
   };
 
+  const handleMaterialDetailChange = (
+    index: number,
+    field: "type" | "title" | "link",
+    value: string
+  ) => {
+    setFormData((prev) => {
+      const newMaterials = [...(prev.materials || [])];
+      if (newMaterials[index]) {
+        (newMaterials[index] as any)[field] = value;
+        if (field === "type" && value !== "PDF") {
+          (newMaterials[index] as any).link = "";
+          (newMaterials[index] as any).__file = null;
+        }
+      }
+      return { ...prev, materials: newMaterials };
+    });
+  };
+
+  const handleFileChange = (
+    event: React.ChangeEvent<HTMLInputElement>,
+    index: number
+  ) => {
+    const file = event.target.files?.[0];
+    if (file && index < (formData.materials?.length || 0)) {
+      setFormData((prev) => {
+        const newMaterials = [...(prev.materials || [])];
+        (newMaterials[index] as any).link = file.name; // Display file name
+        (newMaterials[index] as any).__file = file; // Store the file object
+        return { ...prev, materials: newMaterials };
+      });
+    }
+  };
 
   const handleSubmit = async () => {
     setIsSubmitting(true);
@@ -833,40 +1091,52 @@ export function CourseFormDialog({
     }
 
     try {
-      // Step 1: Save the course data
-      const savedCourse = await onSave(formData, isEditing, selectedImageFile);
-      
-      // Determine the course ID to use for file uploads
+      const savedCourseResult = await onSave(
+        formData,
+        isEditing,
+        selectedImageFile
+      );
+
       let finalCourseId: string | null = null;
-      if (savedCourse && 'id' in savedCourse) {
-        finalCourseId = savedCourse.id;
+      if (savedCourseResult && "id" in savedCourseResult) {
+        finalCourseId = savedCourseResult.id;
       } else if (isEditing && courseToEdit) {
         finalCourseId = courseToEdit.id;
       }
 
-      // Step 2: If course was saved and we have an ID, upload new files
       if (finalCourseId) {
-        const newMaterialsToUpload = formData.materials.filter(
-          (m: any) => m.__file instanceof File
-        );
-  
-        if (newMaterialsToUpload.length > 0) {
-            const payload = newMaterialsToUpload.map((m: any) => ({
-                title: m.title!,
-                file: m.__file as File,
-            }));
-            await courseAttachedFilesService.uploadAttachedFiles(finalCourseId, payload);
+        const newMaterialsPayload: CourseAttachedFilePayload[] = (
+          formData.materials || []
+        )
+          .filter((m) => typeof m.id === "string") // Only process new materials
+          .map((m) => {
+            const item: CourseAttachedFilePayload = {
+              title: m.title || "Untitled",
+            };
+            if (m.type === "PDF" && (m as any).__file instanceof File) {
+              item.file = (m as any).__file;
+            } else if (m.type === "Link") {
+              item.link = m.link;
+            }
+            return item;
+          })
+          .filter((p) => p.file || p.link); // Filter out empty payloads
+
+        if (newMaterialsPayload.length > 0) {
+          await courseAttachedFilesService.uploadAttachedFiles(
+            finalCourseId,
+            newMaterialsPayload
+          );
         }
-      } else {
-        console.warn("Could not get course ID to upload attached files.");
       }
-      
+
       onOpenChange(false);
     } catch (error) {
       console.error("Error saving course or uploading files:", error);
       toast({
         title: "An error occurred",
-        description: error instanceof Error ? error.message : "Please try again.",
+        description:
+          error instanceof Error ? error.message : "Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -874,6 +1144,21 @@ export function CourseFormDialog({
     }
   };
 
+  const parseDateStringForPicker = (
+    dateString: string | null | undefined
+  ): Date | undefined => {
+    if (!dateString) return undefined;
+    try {
+      const parsedDate = parseISO(dateString);
+      if (isNaN(parsedDate.getTime())) {
+        return undefined;
+      }
+      return parsedDate;
+    } catch (e) {
+      console.error("Invalid date string for parseISO:", dateString, e);
+      return undefined;
+    }
+  };
 
   return (
     <>
@@ -889,450 +1174,475 @@ export function CourseFormDialog({
                 : "Điền thông tin để tạo khóa học mới."}
             </DialogDescription>
           </DialogHeader>
-          <Accordion type="multiple" defaultValue={["item-1"]} className="w-full py-4">
+          <Accordion
+            type="multiple"
+            defaultValue={["item-1"]}
+            className="w-full py-4"
+          >
             <AccordionItem value="item-1">
-            <AccordionTrigger className="text-lg font-semibold text-gray-900 hover:text-orange-600 transition-colors">Thông tin chung</AccordionTrigger>
+              <AccordionTrigger className="text-lg font-semibold text-gray-900 hover:text-orange-600 transition-colors">
+                Thông tin chung
+              </AccordionTrigger>
               <AccordionContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-6">
-              <div className="md:col-span-2">
-                <Label htmlFor="title">
-                  Tên khóa học <span className="text-destructive">*</span>
-                </Label>
-                <Input
-                  id="title"
-                  value={formData.title}
-                  onChange={(e) => handleInputChange("title", e.target.value)}
-                />
-              </div>
-              <div>
-                <Label htmlFor="courseCode">Mã khóa học</Label>
-                <div className="flex gap-2">
-                  <Input
-                    id="courseCode"
-                    value={formData.courseCode}
-                    onChange={(e) =>
-                      handleInputChange("courseCode", e.target.value)
-                    }
-                    placeholder="VD: CRSE001"
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() =>
-                      handleInputChange("courseCode", generateCourseCode())
-                    }
-                    className="whitespace-nowrap"
-                  >
-                    Tạo tự động
-                  </Button>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Nếu để trống, hệ thống sẽ tự động tạo mã khóa học
-                </p>
-              </div>
-              <div>
-                <Label htmlFor="category">
-                  Danh mục <span className="text-destructive">*</span>
-                </Label>
-                <Select
-                  value={formData.category}
-                  onValueChange={(v: Course["category"]) =>
-                    handleInputChange("category", v)
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Chọn danh mục" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {categoryOptions.map((o) => (
-                      <SelectItem key={o.value} value={o.value}>
-                        {o.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="md:col-span-2">
-                <Label htmlFor="description">
-                  Mô tả ngắn <span className="text-destructive">*</span>
-                </Label>
-                <Textarea
-                  id="description"
-                  value={formData.description}
-                  onChange={(e) =>
-                    handleInputChange("description", e.target.value)
-                  }
-                />
-              </div>
-              <div className="md:col-span-2">
-                <Label htmlFor="objectives">
-                  Mục tiêu đào tạo <span className="text-destructive">*</span>
-                </Label>
-                <Textarea
-                  id="objectives"
-                  value={formData.objectives}
-                  onChange={(e) =>
-                    handleInputChange("objectives", e.target.value)
-                  }
-                />
-              </div>
-              <div>
-                <Label htmlFor="instructor">
-                  Giảng viên <span className="text-destructive">*</span>
-                </Label>
-                <Input
-                  id="instructor"
-                  value={formData.instructor}
-                  onChange={(e) =>
-                    handleInputChange("instructor", e.target.value)
-                  }
-                />
-              </div>
-              <div>
-                <Label htmlFor="learningType">Hình thức học</Label>
-                <Select
-                  value={formData.learningType}
-                  onValueChange={(v: "online") =>
-                    handleInputChange("learningType", v)
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Chọn hình thức" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="online">Trực tuyến</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label htmlFor="sessions">
-                  Số buổi học <span className="text-destructive">*</span>
-                </Label>
-                <Input
-                  id="sessions"
-                  type="number"
-                  value={formData.duration.sessions}
-                  onChange={(e) =>
-                    handleDurationChange("sessions", e.target.value)
-                  }
-                />
-              </div>
-              <div>
-                <Label htmlFor="hoursPerSession">
-                  Số giờ/buổi <span className="text-destructive">*</span>
-                </Label>
-                <Input
-                  id="hoursPerSession"
-                  type="number"
-                  step="0.5"
-                  value={formData.duration.hoursPerSession}
-                  onChange={(e) =>
-                    handleDurationChange("hoursPerSession", e.target.value)
-                  }
-                />
-              </div>
-              <div>
-                <Label htmlFor="startDate">Ngày bắt đầu</Label>
-                <DatePicker
-                  date={parseDateStringForPicker(formData.startDate)}
-                  setDate={(date) => {
-                    handleInputChange(
-                      "startDate",
-                      date ? format(date, "yyyy-MM-dd") : null
-                    );
-                  }}
-                  placeholder="Chọn ngày bắt đầu"
-                />
-              </div>
-              <div>
-                <Label htmlFor="endDate">Ngày kết thúc</Label>
-                <DatePicker
-                  date={parseDateStringForPicker(formData.endDate)}
-                  setDate={(date) => {
-                    handleInputChange(
-                      "endDate",
-                      date ? format(date, "yyyy-MM-dd") : null
-                    );
-                  }}
-                  placeholder="Chọn ngày kết thúc"
-                />
-              </div>
-              <div className="md:col-span-2">
-                <Label htmlFor="location">
-                  Địa điểm học (Link học trực tuyến)
-                </Label>
-                <Input
-                  id="location"
-                  value={formData.location}
-                  onChange={(e) =>
-                    handleInputChange("location", e.target.value)
-                  }
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Phòng ban</Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className="w-full justify-start font-normal"
-                    >
-                      <PlusCircle className="mr-2 h-4 w-4" />
-                      Chọn phòng ban ({formData.department?.length || 0})
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-[300px] p-0" align="start">
-                    <Command>
-                      <CommandInput placeholder="Tìm phòng ban..." />
-                      <CommandList>
-                        <CommandEmpty>Không tìm thấy phòng ban.</CommandEmpty>
-                        <CommandGroup>
-                          {departmentOptions.map((option) => (
-                            <CommandItem
-                              key={option.value}
-                              onSelect={() => {
-                                const selected = formData.department || [];
-                                const isSelected = selected.includes(
-                                  option.value
-                                );
-                                const newSelection = isSelected
-                                  ? selected.filter((id) => id !== option.value)
-                                  : [...selected, option.value];
-                                handleInputChange("department", newSelection);
-                              }}
-                            >
-                              <Checkbox
-                                className="mr-2"
-                                checked={formData.department?.includes(
-                                  option.value
-                                )}
-                              />
-                              <span>{option.label}</span>
-                            </CommandItem>
-                          ))}
-                        </CommandGroup>
-                      </CommandList>
-                    </Command>
-                  </PopoverContent>
-                </Popover>
-                <div className="flex flex-wrap gap-1 pt-1">
-                  {formData.department
-                    ?.map(
-                      (id) =>
-                        departmentOptions.find((opt) => opt.value === id)?.label
-                    )
-                    .filter(Boolean)
-                    .map((label) => (
-                      <Badge key={label} variant="secondary">
-                        {label}
-                      </Badge>
-                    ))}
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Cấp độ</Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className="w-full justify-start font-normal"
-                    >
-                      <PlusCircle className="mr-2 h-4 w-4" />
-                      Chọn cấp độ ({formData.level?.length || 0})
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-[300px] p-0" align="start">
-                    <Command>
-                      <CommandInput placeholder="Tìm cấp độ..." />
-                      <CommandList>
-                        <CommandEmpty>Không tìm thấy cấp độ.</CommandEmpty>
-                        <CommandGroup>
-                          {levelOptions.map((option) => (
-                            <CommandItem
-                              key={option.value}
-                              onSelect={() => {
-                                const selected = formData.level || [];
-                                const isSelected = selected.includes(
-                                  option.value
-                                );
-                                const newSelection = isSelected
-                                  ? selected.filter((id) => id !== option.value)
-                                  : [...selected, option.value];
-                                handleInputChange("level", newSelection);
-                              }}
-                            >
-                              <Checkbox
-                                className="mr-2"
-                                checked={formData.level?.includes(option.value)}
-                              />
-                              <span>{option.label}</span>
-                            </CommandItem>
-                          ))}
-                        </CommandGroup>
-                      </CommandList>
-                    </Command>
-                  </PopoverContent>
-                </Popover>
-                <div className="flex flex-wrap gap-1 pt-1">
-                  {formData.level
-                    ?.map(
-                      (id) =>
-                        levelOptions.find((opt) => opt.value === id)?.label
-                    )
-                    .filter(Boolean)
-                    .map((label) => (
-                      <Badge key={label} variant="secondary">
-                        {label}
-                      </Badge>
-                    ))}
-                </div>
-              </div>
-              <div className="md:col-span-2">
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="isPublic"
-                    checked={formData.isPublic}
-                    onCheckedChange={(c) =>
-                      handleInputChange("isPublic", c === true)
-                    }
-                  />
-                  <Label htmlFor="isPublic">Công khai khóa học này?</Label>
-                </div>
-              </div>
-              <div className="md:col-span-2">
-                <Label htmlFor="course-image-upload">Ảnh khóa học</Label>
-                <div className="flex items-center gap-4 mt-1">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => courseImageInputRef.current?.click()}
-                  >
-                    <Upload className="mr-2 h-4 w-4" /> Tải ảnh lên
-                  </Button>
-                  <input
-                    id="course-image-upload"
-                    type="file"
-                    ref={courseImageInputRef}
-                    accept="image/*"
-                    onChange={handleImageChange}
-                    className="hidden"
-                  />
-                  {courseImagePreview && (
-                    <NextImage
-                      src={courseImagePreview}
-                      alt="Xem trước"
-                      width={96}
-                      height={64}
-                      className="w-24 h-16 object-cover rounded border"
-                      data-ai-hint="course thumbnail"
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-6">
+                  <div className="md:col-span-2">
+                    <Label htmlFor="title">
+                      Tên khóa học <span className="text-destructive">*</span>
+                    </Label>
+                    <Input
+                      id="title"
+                      value={formData.title}
+                      onChange={(e) =>
+                        handleInputChange("title", e.target.value)
+                      }
                     />
-                  )}
-                  {courseImagePreview && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => {
-                        if (
-                          courseImagePreview &&
-                          courseImagePreview.startsWith("blob:")
-                        )
-                          URL.revokeObjectURL(courseImagePreview);
-                        setCourseImagePreview(null);
-                        setSelectedImageFile(null);
-                      }}
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  )}
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  PNG, JPG, GIF tối đa 5MB.
-                </p>
-              </div>
-
-              <div className="md:col-span-2 space-y-4 border-t pt-4">
-                <Label htmlFor="enrollmentType">Loại ghi danh</Label>
-                <Select
-                  value={formData.enrollmentType}
-                  onValueChange={(v: EnrollmentType) =>
-                    handleInputChange("enrollmentType", v)
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Chọn loại ghi danh" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="optional">Tùy chọn</SelectItem>
-                    <SelectItem value="mandatory">Bắt buộc</SelectItem>
-                  </SelectContent>
-                </Select>
-                {formData.enrollmentType === "optional" && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
-                    <div>
-                      <Label htmlFor="registrationStartDate">
-                        Ngày bắt đầu đăng ký
-                      </Label>
-                      <DatePicker
-                        date={parseDateStringForPicker(formData.registrationStartDate)}
-                        setDate={(date) => {
-                          handleInputChange(
-                            "registrationStartDate",
-                            date ? format(date, "yyyy-MM-dd") : null
-                          );
-                        }}
-                        placeholder="Chọn ngày bắt đầu ĐK"
+                  </div>
+                  <div>
+                    <Label htmlFor="courseCode">Mã khóa học</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        id="courseCode"
+                        value={formData.courseCode}
+                        onChange={(e) =>
+                          handleInputChange("courseCode", e.target.value)
+                        }
+                        placeholder="VD: CRSE001"
                       />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          handleInputChange("courseCode", generateCourseCode())
+                        }
+                        className="whitespace-nowrap"
+                      >
+                        Tạo tự động
+                      </Button>
                     </div>
-                    <div>
-                      <Label htmlFor="registrationDeadline">
-                        Hạn chót đăng ký
-                      </Label>
-                      <DatePicker
-                        date={parseDateStringForPicker(formData.registrationDeadline)}
-                        setDate={(date) => {
-                          handleInputChange(
-                            "registrationDeadline",
-                            date ? format(date, "yyyy-MM-dd") : null
-                          );
-                        }}
-                        placeholder="Chọn hạn đăng ký"
-                      />
+                    <p className="text-xs text-muted-foreground">
+                      Nếu để trống, hệ thống sẽ tự động tạo mã khóa học
+                    </p>
+                  </div>
+                  <div>
+                    <Label htmlFor="category">
+                      Danh mục <span className="text-destructive">*</span>
+                    </Label>
+                    <Select
+                      value={formData.category}
+                      onValueChange={(v: Course["category"]) =>
+                        handleInputChange("category", v)
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Chọn danh mục" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {categoryOptions.map((o) => (
+                          <SelectItem key={o.value} value={o.value}>
+                            {o.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="md:col-span-2">
+                    <Label htmlFor="description">
+                      Mô tả ngắn <span className="text-destructive">*</span>
+                    </Label>
+                    <Textarea
+                      id="description"
+                      value={formData.description}
+                      onChange={(e) =>
+                        handleInputChange("description", e.target.value)
+                      }
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    <Label htmlFor="objectives">
+                      Mục tiêu đào tạo{" "}
+                      <span className="text-destructive">*</span>
+                    </Label>
+                    <Textarea
+                      id="objectives"
+                      value={formData.objectives}
+                      onChange={(e) =>
+                        handleInputChange("objectives", e.target.value)
+                      }
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="instructor">
+                      Giảng viên <span className="text-destructive">*</span>
+                    </Label>
+                    <Input
+                      id="instructor"
+                      value={formData.instructor}
+                      onChange={(e) =>
+                        handleInputChange("instructor", e.target.value)
+                      }
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="learningType">Hình thức học</Label>
+                    <Select
+                      value={formData.learningType}
+                      onValueChange={(v: "online") =>
+                        handleInputChange("learningType", v)
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Chọn hình thức" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="online">Trực tuyến</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label htmlFor="sessions">
+                      Số buổi học <span className="text-destructive">*</span>
+                    </Label>
+                    <Input
+                      id="sessions"
+                      type="number"
+                      value={formData.duration.sessions}
+                      onChange={(e) =>
+                        handleDurationChange("sessions", e.target.value)
+                      }
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="hoursPerSession">
+                      Số giờ/buổi <span className="text-destructive">*</span>
+                    </Label>
+                    <Input
+                      id="hoursPerSession"
+                      type="number"
+                      step="0.5"
+                      value={formData.duration.hoursPerSession}
+                      onChange={(e) =>
+                        handleDurationChange("hoursPerSession", e.target.value)
+                      }
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="startDate">Ngày bắt đầu</Label>
+                    <DatePicker
+                      date={parseDateStringForPicker(formData.startDate)}
+                      setDate={(date) => {
+                        handleInputChange(
+                          "startDate",
+                          date ? format(date, "yyyy-MM-dd") : null
+                        );
+                      }}
+                      placeholder="Chọn ngày bắt đầu"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="endDate">Ngày kết thúc</Label>
+                    <DatePicker
+                      date={parseDateStringForPicker(formData.endDate)}
+                      setDate={(date) => {
+                        handleInputChange(
+                          "endDate",
+                          date ? format(date, "yyyy-MM-dd") : null
+                        );
+                      }}
+                      placeholder="Chọn ngày kết thúc"
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    <Label htmlFor="location">
+                      Địa điểm học (Link học trực tuyến)
+                    </Label>
+                    <Input
+                      id="location"
+                      value={formData.location}
+                      onChange={(e) =>
+                        handleInputChange("location", e.target.value)
+                      }
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Phòng ban</Label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className="w-full justify-start font-normal"
+                        >
+                          <PlusCircle className="mr-2 h-4 w-4" />
+                          Chọn phòng ban ({formData.department?.length || 0})
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[300px] p-0" align="start">
+                        <Command>
+                          <CommandInput placeholder="Tìm phòng ban..." />
+                          <CommandList>
+                            <CommandEmpty>
+                              Không tìm thấy phòng ban.
+                            </CommandEmpty>
+                            <CommandGroup>
+                              {departmentOptions.map((option) => (
+                                <CommandItem
+                                  key={option.value}
+                                  onSelect={() => {
+                                    const selected = formData.department || [];
+                                    const isSelected = selected.includes(
+                                      option.value
+                                    );
+                                    const newSelection = isSelected
+                                      ? selected.filter(
+                                          (id) => id !== option.value
+                                        )
+                                      : [...selected, option.value];
+                                    handleInputChange(
+                                      "department",
+                                      newSelection
+                                    );
+                                  }}
+                                >
+                                  <Checkbox
+                                    className="mr-2"
+                                    checked={formData.department?.includes(
+                                      option.value
+                                    )}
+                                  />
+                                  <span>{option.label}</span>
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
+                    <div className="flex flex-wrap gap-1 pt-1">
+                      {formData.department
+                        ?.map(
+                          (id) =>
+                            departmentOptions.find((opt) => opt.value === id)
+                              ?.label
+                        )
+                        .filter(Boolean)
+                        .map((label) => (
+                          <Badge key={label} variant="secondary">
+                            {label}
+                          </Badge>
+                        ))}
                     </div>
                   </div>
-                )}
-                {formData.enrollmentType === "mandatory" && (
-                  <div>
-                    <Label>Học viên được chỉ định</Label>
-                    <div className="mt-1 p-3 border rounded-md bg-muted/30 min-h-[60px]">
-                      {(formData.enrolledTrainees || []).length > 0 ? (
-                        <ul className="list-disc list-inside text-sm space-y-1">
-                          {(formData.enrolledTrainees || []).map((id) => (
-                            <li key={id}>
-                              {getTraineeNameById(id)} (ID: {id})
-                            </li>
-                          ))}
-                        </ul>
-                      ) : (
-                        <p className="text-sm text-muted-foreground">
-                          Chưa có.
-                        </p>
+
+                  <div className="space-y-2">
+                    <Label>Cấp độ</Label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className="w-full justify-start font-normal"
+                        >
+                          <PlusCircle className="mr-2 h-4 w-4" />
+                          Chọn cấp độ ({formData.level?.length || 0})
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[300px] p-0" align="start">
+                        <Command>
+                          <CommandInput placeholder="Tìm cấp độ..." />
+                          <CommandList>
+                            <CommandEmpty>Không tìm thấy cấp độ.</CommandEmpty>
+                            <CommandGroup>
+                              {levelOptions.map((option) => (
+                                <CommandItem
+                                  key={option.value}
+                                  onSelect={() => {
+                                    const selected = formData.level || [];
+                                    const isSelected = selected.includes(
+                                      option.value
+                                    );
+                                    const newSelection = isSelected
+                                      ? selected.filter(
+                                          (id) => id !== option.value
+                                        )
+                                      : [...selected, option.value];
+                                    handleInputChange("level", newSelection);
+                                  }}
+                                >
+                                  <Checkbox
+                                    className="mr-2"
+                                    checked={formData.level?.includes(
+                                      option.value
+                                    )}
+                                  />
+                                  <span>{option.label}</span>
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
+                    <div className="flex flex-wrap gap-1 pt-1">
+                      {formData.level
+                        ?.map(
+                          (id) =>
+                            levelOptions.find((opt) => opt.value === id)?.label
+                        )
+                        .filter(Boolean)
+                        .map((label) => (
+                          <Badge key={label} variant="secondary">
+                            {label}
+                          </Badge>
+                        ))}
+                    </div>
+                  </div>
+                  <div className="md:col-span-2">
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="isPublic"
+                        checked={formData.isPublic}
+                        onCheckedChange={(c) =>
+                          handleInputChange("isPublic", c === true)
+                        }
+                      />
+                      <Label htmlFor="isPublic">Công khai khóa học này?</Label>
+                    </div>
+                  </div>
+                  <div className="md:col-span-2">
+                    <Label htmlFor="course-image-upload">Ảnh khóa học</Label>
+                    <div className="flex items-center gap-4 mt-1">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => courseImageInputRef.current?.click()}
+                      >
+                        <Upload className="mr-2 h-4 w-4" /> Tải ảnh lên
+                      </Button>
+                      <input
+                        id="course-image-upload"
+                        type="file"
+                        ref={courseImageInputRef}
+                        accept="image/*"
+                        onChange={handleImageChange}
+                        className="hidden"
+                      />
+                      {courseImagePreview && (
+                        <NextImage
+                          src={courseImagePreview}
+                          alt="Xem trước"
+                          width={96}
+                          height={64}
+                          className="w-24 h-16 object-cover rounded border"
+                          data-ai-hint="course thumbnail"
+                        />
+                      )}
+                      {courseImagePreview && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => {
+                            if (
+                              courseImagePreview &&
+                              courseImagePreview.startsWith("blob:")
+                            )
+                              URL.revokeObjectURL(courseImagePreview);
+                            setCourseImagePreview(null);
+                            setSelectedImageFile(null);
+                          }}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
                       )}
                     </div>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="mt-2"
-                      onClick={openTraineeSelectionDialog}
-                    >
-                      <Users className="mr-2 h-4 w-4" /> Chọn/Sửa
-                    </Button>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      PNG, JPG, GIF tối đa 5MB.
+                    </p>
                   </div>
-                )}
-              </div>
+
+                  <div className="md:col-span-2 space-y-4 border-t pt-4">
+                    <Label htmlFor="enrollmentType">Loại ghi danh</Label>
+                    <Select
+                      value={formData.enrollmentType}
+                      onValueChange={(v: EnrollmentType) =>
+                        handleInputChange("enrollmentType", v)
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Chọn loại ghi danh" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="optional">Tùy chọn</SelectItem>
+                        <SelectItem value="mandatory">Bắt buộc</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {formData.enrollmentType === "optional" && (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
+                        <div>
+                          <Label htmlFor="registrationStartDate">
+                            Ngày bắt đầu đăng ký
+                          </Label>
+                          <DatePicker
+                            date={parseDateStringForPicker(
+                              formData.registrationStartDate
+                            )}
+                            setDate={(date) => {
+                              handleInputChange(
+                                "registrationStartDate",
+                                date ? format(date, "yyyy-MM-dd") : null
+                              );
+                            }}
+                            placeholder="Chọn ngày bắt đầu ĐK"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="registrationDeadline">
+                            Hạn chót đăng ký
+                          </Label>
+                          <DatePicker
+                            date={parseDateStringForPicker(
+                              formData.registrationDeadline
+                            )}
+                            setDate={(date) => {
+                              handleInputChange(
+                                "registrationDeadline",
+                                date ? format(date, "yyyy-MM-dd") : null
+                              );
+                            }}
+                            placeholder="Chọn hạn đăng ký"
+                          />
+                        </div>
+                      </div>
+                    )}
+                    {formData.enrollmentType === "mandatory" && (
+                      <div>
+                        <Label>Học viên được chỉ định</Label>
+                        <div className="mt-1 p-3 border rounded-md bg-muted/30 min-h-[60px]">
+                          {(formData.enrolledTrainees || []).length > 0 ? (
+                            <ul className="list-disc list-inside text-sm space-y-1">
+                              {(formData.enrolledTrainees || []).map((id) => (
+                                <li key={id}>
+                                  {getTraineeNameById(id)} (ID: {id})
+                                </li>
+                              ))}
+                            </ul>
+                          ) : (
+                            <p className="text-sm text-muted-foreground">
+                              Chưa có.
+                            </p>
+                          )}
+                        </div>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="mt-2"
+                          onClick={openTraineeSelectionDialog}
+                        >
+                          <Users className="mr-2 h-4 w-4" /> Chọn/Sửa
+                        </Button>
+                      </div>
+                    )}
+                  </div>
 
                   <div className="md:col-span-2 pt-4">
                     <Label htmlFor="status">Trạng thái</Label>
@@ -1359,7 +1669,9 @@ export function CourseFormDialog({
             </AccordionItem>
 
             <AccordionItem value="item-2">
-            <AccordionTrigger className="text-lg font-semibold text-gray-900 hover:text-orange-600 transition-colors">Bài học</AccordionTrigger>
+              <AccordionTrigger className="text-lg font-semibold text-gray-900 hover:text-orange-600 transition-colors">
+                Bài học
+              </AccordionTrigger>
               <AccordionContent>
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
@@ -1371,44 +1683,41 @@ export function CourseFormDialog({
                       variant="outline"
                       size="sm"
                       onClick={handleOpenAddLesson}
+                      disabled={!courseToEdit?.id}
                     >
                       <PlusCircle className="mr-2 h-4 w-4" /> Thêm bài học
                     </Button>
                   </div>
-                  {(formData.lessons || []).length > 0 ? (
-                    <div className="space-y-2">
-                      {(formData.lessons || []).map((lesson) => (
-                        <div
-                          key={lesson.id}
-                          className="flex items-center justify-between p-2 border rounded-md"
-                        >
-                          <span className="text-sm">
-                            {lesson.title} ({lesson.contentType})
-                          </span>
-                          <div className="space-x-1">
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleOpenEditLesson(lesson)}
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              className="text-destructive hover:text-destructive"
-                              onClick={() =>
-                                handleDeleteExistingLesson(lesson.id)
-                              }
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </div>
-                      ))}
+                  {isLoadingLessons ? (
+                    <div className="flex justify-center items-center py-4">
+                      <Loader2 className="h-6 w-6 animate-spin text-primary" />
                     </div>
+                  ) : lessonsError ? (
+                    <p className="text-destructive text-sm">
+                      Lỗi tải bài học: {lessonsError.message}
+                    </p>
+                  ) : formData.lessons.length > 0 ? (
+                    <DndContext
+                      sensors={sensors}
+                      collisionDetection={closestCenter}
+                      onDragEnd={handleDragEnd}
+                    >
+                      <SortableContext
+                        items={formData.lessons.map((l) => l.id)}
+                        strategy={verticalListSortingStrategy}
+                      >
+                        <div className="space-y-2">
+                          {formData.lessons.map((lesson) => (
+                            <SortableLessonItem
+                              key={lesson.id}
+                              lesson={lesson}
+                              onEdit={handleOpenEditLesson}
+                              onDelete={handleDeleteLesson}
+                            />
+                          ))}
+                        </div>
+                      </SortableContext>
+                    </DndContext>
                   ) : (
                     <p className="text-sm text-muted-foreground">
                       Chưa có bài học.
@@ -1419,7 +1728,9 @@ export function CourseFormDialog({
             </AccordionItem>
 
             <AccordionItem value="item-3">
-              <AccordionTrigger className="text-lg font-semibold text-gray-900 hover:text-orange-600 transition-colors">Bài kiểm tra</AccordionTrigger>
+              <AccordionTrigger className="text-lg font-semibold text-gray-900 hover:text-orange-600 transition-colors">
+                Bài kiểm tra
+              </AccordionTrigger>
               <AccordionContent>
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
@@ -1427,33 +1738,37 @@ export function CourseFormDialog({
                       <FileQuestion className="mr-2 h-4 w-4 text-primary" /> Bài
                       kiểm tra
                     </Label>
-                      <div className="flex gap-2">
-                        <input
-                          type="file"
-                          ref={testExcelImportInputRef}
-                          className="hidden"
-                          accept=".xlsx, .xls"
-                          onChange={handleExcelFileImport}
-                        />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={handleOpenAddTest}
-                    >
-                      <PlusCircle className="mr-2 h-4 w-4" /> Thêm bài kiểm tra
-                    </Button>
-                      </div>
+                    <div className="flex gap-2">
+                      <input
+                        type="file"
+                        ref={testExcelImportInputRef}
+                        className="hidden"
+                        accept=".xlsx, .xls"
+                        onChange={handleExcelFileImport}
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={handleOpenAddTest}
+                        disabled={!isEditingExistingCourse}
+                      >
+                        <PlusCircle className="mr-2 h-4 w-4" /> Thêm bài kiểm
+                        tra
+                      </Button>
+                    </div>
                   </div>
                   {(formData.tests || []).length > 0 ? (
                     <div className="space-y-2">
                       {(formData.tests || []).map((test) => (
                         <div
-                          key={test.id}
+                          key={String(test.id)}
                           className="flex items-center justify-between p-2 border rounded-md"
                         >
                           <span className="text-sm">
-                            {test.title} ({test.questions.length} câu hỏi)
+                            {test.title} (
+                            {(test.questions && test.questions.length) || 0} câu
+                            hỏi)
                           </span>
                           <div className="space-x-1">
                             <Button
@@ -1483,15 +1798,17 @@ export function CourseFormDialog({
                     </p>
                   )}
                   <p className="text-xs text-muted-foreground">
-                    Điều kiện Đạt: Hoàn thành bài học &amp; đạt &gt;= 70% mỗi bài
-                    kiểm tra.
+                    Điều kiện Đạt: Hoàn thành bài học &amp; đạt &gt;= 70% mỗi
+                    bài kiểm tra.
                   </p>
                 </div>
               </AccordionContent>
             </AccordionItem>
-            
+
             <AccordionItem value="item-4">
-              <AccordionTrigger className="text-lg font-semibold text-gray-900 hover:text-orange-600 transition-colors">Tài liệu khóa học</AccordionTrigger>
+              <AccordionTrigger className="text-lg font-semibold text-gray-900 hover:text-orange-600 transition-colors">
+                Tài liệu khóa học
+              </AccordionTrigger>
               <AccordionContent>
                 <div className="space-y-4">
                   <input
@@ -1507,96 +1824,96 @@ export function CourseFormDialog({
                   />
                   {isLoadingAttachedFiles ? (
                     <div className="flex items-center justify-center p-4">
-                        <Loader2 className="h-6 w-6 animate-spin text-primary" />
-                        <p className="ml-2 text-muted-foreground">Đang tải tài liệu...</p>
+                      <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                      <p className="ml-2 text-muted-foreground">
+                        Đang tải tài liệu...
+                      </p>
                     </div>
-                  ) : (
-                    (formData.materials.length > 0) ? (
-                      <div className="space-y-3">
-                        {formData.materials.map((material, index) => (
-                          <div
-                            key={material.id}
-                            className="flex flex-col sm:flex-row items-start sm:items-center gap-2 p-3 border rounded-md bg-muted/30"
-                          >
-                            <div className="flex-shrink-0 self-center sm:self-start pt-1">
-                              {renderMaterialIcon(material.type)}
-                            </div>
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 flex-grow">
-                              <Select
-                                value={material.type || 'link'}
-                                onValueChange={(v: CourseMaterial["type"]) =>
-                                  handleMaterialDetailChange(index, "type", v)
-                                }
-                              >
-                                <SelectTrigger className="w-full sm:w-[120px]">
-                                  <SelectValue placeholder="Loại" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="PDF">PDF</SelectItem>
-                                  <SelectItem value="Link">Link</SelectItem>
-                                </SelectContent>
-                              </Select>
+                  ) : formData.materials.length > 0 ? (
+                    <div className="space-y-3">
+                      {formData.materials.map((material, index) => (
+                        <div
+                          key={material.id}
+                          className="flex flex-col sm:flex-row items-start sm:items-center gap-2 p-3 border rounded-md bg-muted/30"
+                        >
+                          <div className="flex-shrink-0 self-center sm:self-start pt-1">
+                            {renderMaterialIcon(material.type)}
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 flex-grow">
+                            <Select
+                              value={material.type || "Link"}
+                              onValueChange={(v: CourseMaterialType) =>
+                                handleMaterialDetailChange(index, "type", v)
+                              }
+                            >
+                              <SelectTrigger className="w-full sm:w-[120px]">
+                                <SelectValue placeholder="Loại" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="PDF">PDF</SelectItem>
+                                <SelectItem value="Link">Link</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <Input
+                              placeholder="Tiêu đề tài liệu"
+                              value={material.title || ""}
+                              onChange={(e) =>
+                                handleMaterialDetailChange(
+                                  index,
+                                  "title",
+                                  e.target.value
+                                )
+                              }
+                            />
+                            <div className="flex items-center gap-1">
                               <Input
-                                placeholder="Tiêu đề tài liệu"
-                                value={material.title || ''}
+                                placeholder="URL hoặc tải lên"
+                                value={material.link || ""}
                                 onChange={(e) =>
                                   handleMaterialDetailChange(
                                     index,
-                                    "title",
+                                    "link",
                                     e.target.value
                                   )
                                 }
+                                readOnly={!!(material as any).__file}
                               />
-                              <div className="flex items-center gap-1">
-                                <Input
-                                  placeholder="URL hoặc tải lên"
-                                  value={material.link || ''}
-                                  onChange={(e) =>
-                                    handleMaterialDetailChange(
-                                      index,
-                                      "link",
-                                      e.target.value
-                                    )
-                                  }
-                                  readOnly={!!(material as any).__file}
-                                />
-                                {(material.type === "PDF") && (
-                                  <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="icon"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setCurrentMaterialUploadIndex(index);
-                                      if (materialFileInputRef.current) {
-                                        materialFileInputRef.current.accept =
-                                          material.type === "PDF"
-                                            ? ".pdf"
-                                            : ".ppt, .pptx, .key, .pdf"; // Đặt loại file chấp nhận
-                                        materialFileInputRef.current.value = ""; // Xóa giá trị cũ để đảm bảo sự kiện onChange được kích hoạt
-                                        materialFileInputRef.current.click();
-                                      }
-                                    }}
-                                  >
-                                    <Paperclip className="h-4 w-4" />
-                                  </Button>
-                                )}
-                              </div>
+                              {material.type === "PDF" && (
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="icon"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setCurrentMaterialUploadIndex(index);
+                                    if (materialFileInputRef.current) {
+                                      materialFileInputRef.current.accept =
+                                        ".pdf";
+                                      materialFileInputRef.current.value = "";
+                                      materialFileInputRef.current.click();
+                                    }
+                                  }}
+                                >
+                                  <Paperclip className="h-4 w-4" />
+                                </Button>
+                              )}
                             </div>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="sm:ml-auto flex-shrink-0"
-                              onClick={() => handleRemoveMaterial(material.id)}
-                            >
-                              <X className="h-4 w-4" />
-                            </Button>
                           </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-sm text-center text-muted-foreground py-2">Chưa có tài liệu nào.</p>
-                    )
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="sm:ml-auto flex-shrink-0"
+                            onClick={() => handleRemoveMaterial(material.id)}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-center text-muted-foreground py-2">
+                      Chưa có tài liệu nào.
+                    </p>
                   )}
 
                   <Button
@@ -1613,7 +1930,11 @@ export function CourseFormDialog({
             </AccordionItem>
           </Accordion>
           <DialogFooter className="mt-6">
-            <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
+            <Button
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              disabled={isSubmitting}
+            >
               Hủy
             </Button>
             <LoadingButton onClick={handleSubmit} isLoading={isSubmitting}>
@@ -1633,13 +1954,13 @@ export function CourseFormDialog({
             </DialogDescription>
           </DialogHeader>
           <div className="relative mt-4">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                  placeholder="Tìm theo tên hoặc email..."
-                  value={traineeSearchTerm}
-                  onChange={(e) => setTraineeSearchTerm(e.target.value)}
-                  className="pl-9"
-              />
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Tìm theo tên hoặc email..."
+              value={traineeSearchTerm}
+              onChange={(e) => setTraineeSearchTerm(e.target.value)}
+              className="pl-9"
+            />
           </div>
           <div className="max-h-[50vh] overflow-y-auto py-4 space-y-2">
             {filteredTrainees.length === 0 ? (
@@ -1686,12 +2007,7 @@ export function CourseFormDialog({
       </Dialog>
 
       {/* Dialog Bài học */}
-      <Dialog
-        open={isLessonDialogOpen}
-        onOpenChange={(isOpen) => {
-          if (!isOpen) setIsLessonDialogOpen(false);
-        }}
-      >
+      <Dialog open={isLessonDialogOpen} onOpenChange={setIsLessonDialogOpen}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>
@@ -1705,96 +2021,37 @@ export function CourseFormDialog({
               </Label>
               <Input
                 id="lessonTitle"
-                value={lessonFormData.title}
+                value={lessonFormData.title || ""}
                 onChange={(e) =>
                   setLessonFormData((p) => ({ ...p, title: e.target.value }))
                 }
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="lessonContentType">Loại nội dung</Label>
-              <Select
-                value={lessonFormData.contentType}
-                onValueChange={(v: LessonContentType) =>
+              <Label htmlFor="lessonFile">
+                File PDF{" "}
+                {currentEditingLesson ? "(Để trống nếu không đổi)" : "*"}
+              </Label>
+              {currentEditingLesson?.urlPdf && (
+                <a
+                  href={currentEditingLesson.urlPdf}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm text-blue-600 hover:underline block mb-2"
+                >
+                  Xem file hiện tại
+                </a>
+              )}
+              <Input
+                id="lessonFile"
+                type="file"
+                accept=".pdf"
+                onChange={(e) =>
                   setLessonFormData((p) => ({
                     ...p,
-                    contentType: v,
-                    content: "",
-                    __file: undefined,
+                    file: e.target.files?.[0] || null,
                   }))
                 }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Chọn loại" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="text">Chữ (Text/Markdown)</SelectItem>
-                  <SelectItem value="video_url">Video URL</SelectItem>
-                  <SelectItem value="pdf_url">
-                    PDF (URL hoặc Tải lên)
-                  </SelectItem>
-                  <SelectItem value="slide_url">Slide URL</SelectItem>
-                  <SelectItem value="external_link">Link ngoài</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="lessonContent">
-                Nội dung / URL <span className="text-destructive">*</span>
-              </Label>
-              {lessonFormData.contentType === "text" ? (
-                <Textarea
-                  id="lessonContent"
-                  value={lessonFormData.content}
-                  onChange={(e) =>
-                    setLessonFormData((p) => ({
-                      ...p,
-                      content: e.target.value,
-                    }))
-                  }
-                  rows={5}
-                />
-              ) : (
-                <div className="flex items-center gap-2">
-                  <Input
-                    id="lessonContent"
-                    value={lessonFormData.content}
-                    onChange={(e) =>
-                      setLessonFormData((p) => ({
-                        ...p,
-                        content: e.target.value,
-                        __file: undefined,
-                      }))
-                    }
-                    readOnly={
-                      !!lessonFormData.__file &&
-                      lessonFormData.contentType === "pdf_url"
-                    }
-                  />
-                  {lessonFormData.contentType === "pdf_url" &&
-                    lessonFormData.__file && (
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Đã tải lên: {lessonFormData.__file.name}
-                      </p>
-                    )}
-                </div>
-              )}
-              {lessonFormData.contentType === "pdf_url" &&
-                lessonFormData.__file && (
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Đã tải lên: {lessonFormData.__file.name}
-                  </p>
-                )}
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="lessonDuration">Thời lượng</Label>
-              <Input
-                id="lessonDuration"
-                value={lessonFormData.duration || ""}
-                onChange={(e) =>
-                  setLessonFormData((p) => ({ ...p, duration: e.target.value }))
-                }
-                placeholder="VD: 30 phút"
               />
             </div>
           </div>
@@ -1805,7 +2062,14 @@ export function CourseFormDialog({
             >
               Hủy
             </Button>
-            <Button onClick={handleSaveOrUpdateLesson}>Lưu Bài học</Button>
+            <LoadingButton
+              onClick={handleSaveLesson}
+              isLoading={
+                createLessonMutation.isPending || updateLessonMutation.isPending
+              }
+            >
+              Lưu Bài học
+            </LoadingButton>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -1837,7 +2101,7 @@ export function CourseFormDialog({
                 </Label>
                 <Input
                   id="testTitle"
-                  value={testFormData.title}
+                  value={testFormData.title || ""}
                   onChange={(e) =>
                     setTestFormData((p) => ({ ...p, title: e.target.value }))
                   }
@@ -1852,7 +2116,7 @@ export function CourseFormDialog({
                   type="number"
                   min={0}
                   max={100}
-                  value={testFormData.passingScorePercentage}
+                  value={testFormData.passingScorePercentage || 70}
                   onChange={(e) =>
                     setTestFormData((p) => ({
                       ...p,
@@ -1867,7 +2131,7 @@ export function CourseFormDialog({
                 <div className="flex items-center justify-between">
                   <Label className="text-base font-semibold flex items-center">
                     <ListChecks className="mr-2 h-5 w-5 text-primary" /> Danh
-                    sách Câu hỏi
+                    sách Câu hỏi ({(testFormData.questions || []).length})
                   </Label>
                   <div className="flex gap-2">
                     <Button
@@ -1889,17 +2153,17 @@ export function CourseFormDialog({
                       type="button"
                       variant="outline"
                       size="sm"
-                      onClick={() =>
-                        handleOpenAddQuestion(
-                          currentEditingTest?.id || testFormData.id || ""
-                        )
-                      }
+                      onClick={() => handleOpenAddQuestion()}
                     >
                       <PlusCircle className="mr-2 h-4 w-4" /> Thêm câu hỏi
                     </Button>
                   </div>
                 </div>
-                {(testFormData.questions || []).length > 0 ? (
+                {isLoadingQuestions ? (
+                  <div className="flex justify-center items-center h-40">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                  </div>
+                ) : (testFormData.questions || []).length > 0 ? (
                   <>
                     <div className="space-y-2">
                       {(testFormData.questions || [])
@@ -1912,7 +2176,7 @@ export function CourseFormDialog({
                             (questionsPage - 1) * questionsPerPage + index;
                           return (
                             <div
-                              key={q.id || `q-${actualIndex}`}
+                              key={String(q.id) || `q-${actualIndex}`}
                               className="flex items-start justify-between p-3 border rounded-md bg-muted/20 hover:bg-muted/30 transition-colors"
                             >
                               <div className="text-sm flex-1 pr-3">
@@ -1943,12 +2207,7 @@ export function CourseFormDialog({
                                   type="button"
                                   variant="ghost"
                                   size="icon"
-                                  onClick={() =>
-                                    handleOpenEditQuestion(
-                                      q,
-                                      currentEditingTest?.id || testFormData.id || ""
-                                    )
-                                  }
+                                  onClick={() => handleOpenEditQuestion(q)}
                                 >
                                   <Edit className="h-4 w-4" />
                                 </Button>
@@ -1958,10 +2217,7 @@ export function CourseFormDialog({
                                   size="icon"
                                   className="text-destructive hover:text-destructive"
                                   onClick={() =>
-                                    handleDeleteQuestionFromTest(
-                                      q.id,
-                                      currentEditingTest?.id || testFormData.id || ""
-                                    )
+                                    handleDeleteQuestionFromTest(q.id)
                                   }
                                 >
                                   <Trash2 className="h-4 w-4" />
@@ -2004,7 +2260,8 @@ export function CourseFormDialog({
                           <span className="text-sm">
                             Trang {questionsPage} /{" "}
                             {Math.ceil(
-                              testFormData.questions.length / questionsPerPage
+                              (testFormData.questions?.length || 0) /
+                                questionsPerPage
                             )}
                           </span>
                           <Button
@@ -2015,7 +2272,7 @@ export function CourseFormDialog({
                               setQuestionsPage((p) =>
                                 Math.min(
                                   Math.ceil(
-                                    testFormData.questions.length /
+                                    (testFormData.questions?.length || 0) /
                                       questionsPerPage
                                   ),
                                   p + 1
@@ -2025,7 +2282,8 @@ export function CourseFormDialog({
                             disabled={
                               questionsPage ===
                               Math.ceil(
-                                testFormData.questions.length / questionsPerPage
+                                (testFormData.questions?.length || 0) /
+                                  questionsPerPage
                               )
                             }
                           >
@@ -2102,21 +2360,28 @@ export function CourseFormDialog({
               />
             </div>
             <div className="space-y-2">
-                <Label>Các lựa chọn trả lời <span className="text-destructive">*</span></Label>
-                {[0, 1, 2, 3].map((i) => (
-                    <div key={i} className="flex items-center gap-2">
-                        <Label htmlFor={`option${i}`} className="w-8 text-center">{String.fromCharCode(65 + i)}</Label>
-                        <Input
-                        id={`option${i}`}
-                        value={questionFormData.options[i] || ""}
-                        onChange={(e) => {
-                            const newOptions = [...questionFormData.options];
-                            newOptions[i] = e.target.value;
-                            setQuestionFormData((p) => ({ ...p, options: newOptions }));
-                        }}
-                        />
-                    </div>
-                ))}
+              <Label>
+                Các lựa chọn trả lời <span className="text-destructive">*</span>
+              </Label>
+              {[0, 1, 2, 3].map((i) => (
+                <div key={i} className="flex items-center gap-2">
+                  <Label htmlFor={`option${i}`} className="w-8 text-center">
+                    {String.fromCharCode(65 + i)}
+                  </Label>
+                  <Input
+                    id={`option${i}`}
+                    value={questionFormData.options[i] || ""}
+                    onChange={(e) => {
+                      const newOptions = [...questionFormData.options];
+                      newOptions[i] = e.target.value;
+                      setQuestionFormData((p) => ({
+                        ...p,
+                        options: newOptions,
+                      }));
+                    }}
+                  />
+                </div>
+              ))}
             </div>
             <div className="space-y-1">
               <Label htmlFor="correctAnswerIndex">
@@ -2168,7 +2433,15 @@ export function CourseFormDialog({
             >
               Hủy
             </Button>
-            <Button onClick={handleSaveOrUpdateQuestion}>Lưu Câu hỏi</Button>
+            <LoadingButton
+              onClick={handleSaveOrUpdateQuestion}
+              isLoading={
+                createQuestionMutation.isPending ||
+                updateQuestionMutation.isPending
+              }
+            >
+              Lưu Câu hỏi
+            </LoadingButton>
           </DialogFooter>
         </DialogContent>
       </Dialog>

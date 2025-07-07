@@ -18,7 +18,7 @@ export default function TestDetailPage() {
   const { courses: allCourses } = useCourseStore();
 
   const course = allCourses.find((c) => c.id === courseId);
-  const test = course?.tests?.find((t) => t.id === testId);
+  const test = course?.tests?.find((t) => String(t.id) === testId);
 
   const getInitialState = () => ({
     answers: {} as { [questionId: string]: number | null },
@@ -61,7 +61,7 @@ export default function TestDetailPage() {
     if (submitted) return;
     let correct = 0;
     test.questions.forEach((q) => {
-      if (answers[q.id] === q.correctAnswerIndex) correct++;
+      if (answers[String(q.id)] === q.correctAnswerIndex) correct++;
     });
     const percent = (correct / test.questions.length) * 100;
     setState(prev => ({
@@ -109,13 +109,13 @@ export default function TestDetailPage() {
         </div>
         <div className="space-y-2 mt-4">
           {q.options.map((opt, optIdx) => (
-            <label key={optIdx} className={`flex items-center gap-2 p-3 rounded cursor-pointer border transition-colors ${answers[q.id] === optIdx ? 'border-primary bg-primary/10' : 'border-muted'}`}>
+            <label key={optIdx} className={`flex items-center gap-2 p-3 rounded cursor-pointer border transition-colors ${answers[String(q.id)] === optIdx ? 'border-primary bg-primary/10' : 'border-muted'}`}>
               <input
                 type="radio"
-                name={`q_${q.id}`}
+                name={`q_${String(q.id)}`}
                 value={optIdx}
-                checked={answers[q.id] === optIdx}
-                onChange={() => handleSelect(q.id, optIdx)}
+                checked={answers[String(q.id)] === optIdx}
+                onChange={() => handleSelect(String(q.id), optIdx)}
                 className="accent-primary"
               />
               <span className="font-semibold">{OPTION_LABELS[optIdx] || String.fromCharCode(65 + optIdx)}</span>
@@ -134,9 +134,9 @@ export default function TestDetailPage() {
         <div className="grid grid-cols-5 gap-2">
           {test.questions.map((q, idx) => (
             <Button
-              key={q.id}
-              variant={answers[q.id] !== undefined ? "default" : "outline"}
-              className={`text-center ${answers[q.id] !== undefined ? "bg-primary" : "bg-muted/50"}`}
+              key={String(q.id)}
+              variant={answers[String(q.id)] !== undefined ? "default" : "outline"}
+              className={`text-center ${answers[String(q.id)] !== undefined ? "bg-primary" : "bg-muted/50"}`}
               onClick={() => goToQuestion(idx)}
             >
               {idx + 1}
@@ -178,7 +178,7 @@ export default function TestDetailPage() {
         
         <div className="space-y-4">
           {test.questions.map((q, idx) => (
-            <div key={q.id} className="p-4 border rounded-md">
+            <div key={String(q.id)} className="p-4 border rounded-md">
               <div className="font-semibold mb-2">
                 Câu {idx + 1}: {q.text}
               </div>
@@ -186,13 +186,13 @@ export default function TestDetailPage() {
                 {q.options.map((opt, optIdx) => (
                   <div key={optIdx} className={`flex items-center gap-2 p-2 rounded border 
                     ${q.correctAnswerIndex === optIdx ? 'border-green-500 bg-green-50' : 
-                      answers[q.id] === optIdx && answers[q.id] !== q.correctAnswerIndex ? 'border-red-500 bg-red-50' : 'border-muted'}`}>
+                      answers[String(q.id)] === optIdx && answers[String(q.id)] !== q.correctAnswerIndex ? 'border-red-500 bg-red-50' : 'border-muted'}`}>
                     <span className="font-semibold">{OPTION_LABELS[optIdx]}</span>
                     <span>{opt}</span>
                     {q.correctAnswerIndex === optIdx && (
                       <CheckCircle className="w-4 h-4 text-green-600 ml-auto" />
                     )}
-                    {answers[q.id] === optIdx && answers[q.id] !== q.correctAnswerIndex && (
+                    {answers[String(q.id)] === optIdx && answers[String(q.id)] !== q.correctAnswerIndex && (
                       <XCircle className="w-4 h-4 text-red-500 ml-auto" />
                     )}
                   </div>

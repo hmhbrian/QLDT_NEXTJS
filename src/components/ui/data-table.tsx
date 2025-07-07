@@ -8,8 +8,10 @@ import {
   getCoreRowModel,
   getPaginationRowModel,
   getSortedRowModel,
-  useReactTable,
+  OnChangeFn,
+  PaginationState,
   SortingState,
+  useReactTable,
   getFilteredRowModel,
 } from "@tanstack/react-table";
 import {
@@ -35,34 +37,113 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
+import { Skeleton } from "./skeleton";
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
   data: TData[];
+  isLoading?: boolean;
+  // Server-side pagination props
+  pageCount?: number;
+  pagination?: PaginationState;
+  onPaginationChange?: OnChangeFn<PaginationState>;
 }
 
 export function DataTable<TData, TValue>({
   columns,
   data,
+  isLoading = false,
+  pageCount,
+  pagination,
+  onPaginationChange,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [rowSelection, setRowSelection] = React.useState({});
+  
+  const isServerSidePagination = pageCount !== undefined;
+
+  // Fallback for client-side pagination when not controlled
+  const [uncontrolledPagination, setUncontrolledPagination] = React.useState<PaginationState>({
+      pageIndex: 0,
+      pageSize: 10,
+  });
+
+  const paginationState = pagination ?? uncontrolledPagination;
+  const onPaginationChangeHandler = onPaginationChange ?? setUncontrolledPagination;
 
   const table = useReactTable({
     data,
     columns,
     getCoreRowModel: getCoreRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
     onSortingChange: setSorting,
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     onRowSelectionChange: setRowSelection,
+    // Pagination
+    manualPagination: isServerSidePagination,
+    pageCount: pageCount,
+    onPaginationChange: onPaginationChangeHandler,
+    getPaginationRowModel: getPaginationRowModel(),
     state: {
       sorting,
       rowSelection,
+      pagination: paginationState,
     },
   });
+  
+  const renderTableBody = () => {
+    if (isLoading) {
+      return (
+        <TableBody>
+          {Array.from({ length: table.getState().pagination?.pageSize || 10 }).map((_, i) => (
+            <TableRow key={`skeleton-${i}`}>
+              {columns.map((column, j) => (
+                <TableCell key={`skeleton-cell-${i}-${j}`}>
+                  <Skeleton className="h-4 w-full" />
+                </TableCell>
+              ))}
+            </TableRow>
+          ))}
+        </TableBody>
+      );
+    }
+
+    if (table.getRowModel().rows?.length) {
+      return (
+        <TableBody>
+          {table.getRowModel().rows.map((row) => (
+            <TableRow
+              key={row.id}
+              data-state={row.getIsSelected() && "selected"}
+            >
+              {row.getVisibleCells().map((cell) => (
+                <TableCell key={cell.id} className="whitespace-nowrap">
+                  {flexRender(
+                    cell.column.columnDef.cell,
+                    cell.getContext()
+                  )}
+                </TableCell>
+              ))}
+            </TableRow>
+          ))}
+        </TableBody>
+      );
+    }
+    
+    return (
+      <TableBody>
+        <TableRow>
+          <TableCell
+            colSpan={columns.length}
+            className="h-24 text-center"
+          >
+            Không có kết quả.
+          </TableCell>
+        </TableRow>
+      </TableBody>
+    );
+  };
+
 
   return (
     <div>
@@ -86,34 +167,7 @@ export function DataTable<TData, TValue>({
               </TableRow>
             ))}
           </TableHeader>
-          <TableBody>
-            {table.getRowModel().rows?.length ? (
-              table.getRowModel().rows.map((row) => (
-                <TableRow
-                  key={row.id}
-                  data-state={row.getIsSelected() && "selected"}
-                >
-                  {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id} className="whitespace-nowrap">
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext()
-                      )}
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell
-                  colSpan={columns.length}
-                  className="h-24 text-center"
-                >
-                  Không có kết quả.
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
+          {renderTableBody()}
         </Table>
       </div>
       <div className="flex items-center justify-between px-2 py-4">

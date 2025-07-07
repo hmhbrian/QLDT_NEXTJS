@@ -64,6 +64,8 @@ import {
   Lesson,
   CourseMaterial,
   StudentCourseEvaluation,
+  LessonContentType,
+  CourseMaterialType,
 } from "@/lib/types/course.types";
 import { mockEvaluations as initialMockEvaluationsFromLib } from "@/lib/mock";
 import { useAuth } from "@/hooks/useAuth";
@@ -92,8 +94,8 @@ const PdfLessonViewer = dynamic(
   }
 );
 
-const renderLessonIcon = (contentType: Lesson["contentType"]) => {
-  const iconMap = {
+const renderLessonIcon = (contentType: LessonContentType) => {
+  const iconMap: Record<LessonContentType, React.ReactNode> = {
     video_url: <Video className="h-5 w-5 text-blue-500" />,
     pdf_url: <FileText className="h-5 w-5 text-red-500" />,
     slide_url: <FileText className="h-5 w-5 text-yellow-500" />,
@@ -103,11 +105,10 @@ const renderLessonIcon = (contentType: Lesson["contentType"]) => {
   return iconMap[contentType] || <FileText className="h-5 w-5 text-gray-500" />;
 };
 
-const renderMaterialIcon = (type: CourseMaterial["type"]) => {
-  const iconMap = {
-    document: <FileText className="h-5 w-5 text-blue-500" />,
-    video: <Video className="h-5 w-5 text-red-500" />,
-    link: <LinkIcon className="h-5 w-5 text-green-500" />,
+const renderMaterialIcon = (type: CourseMaterialType) => {
+  const iconMap: Record<CourseMaterialType, React.ReactNode> = {
+    PDF: <FileText className="h-5 w-5 text-red-500" />,
+    Link: <LinkIcon className="h-5 w-5 text-blue-500" />,
   };
   return iconMap[type] || <FileText className="h-5 w-5 text-gray-500" />;
 };
@@ -135,7 +136,6 @@ export default function CourseDetailPage() {
   const { toast } = useToast();
   const allUsers = useUserStore((state) => state.users);
   const updateCourseMutation = useUpdateCourse();
-
 
   // Fetch course data using React Query for better caching and state management
   const {
@@ -200,7 +200,7 @@ export default function CourseDetailPage() {
       }
       return;
     }
-  
+
     if (course.enrolledTrainees?.includes(currentUser.id)) {
       toast({
         title: "Đã đăng ký",
@@ -209,12 +209,12 @@ export default function CourseDetailPage() {
       });
       return;
     }
-  
+
     const updatedEnrolledTrainees = [
       ...(course.enrolledTrainees || []),
       currentUser.id,
     ];
-  
+
     // Call the mutation to update the backend
     updateCourseMutation.mutate({
       courseId: course.id,
@@ -608,26 +608,29 @@ export default function CourseDetailPage() {
                       <AccordionItem value={`lesson-${index}`} key={lesson.id}>
                         <AccordionTrigger className="text-base font-semibold hover:no-underline">
                           <div className="flex items-center gap-2">
-                            {renderLessonIcon(lesson.contentType)}
+                            {lesson.contentType &&
+                              renderLessonIcon(lesson.contentType)}
                             {lesson.title}{" "}
                             {lesson.duration && `(${lesson.duration})`}
                           </div>
                         </AccordionTrigger>
                         <AccordionContent className="prose prose-sm max-w-none text-muted-foreground dark:prose-invert">
-                          {lesson.contentType === "text" ? (
+                          {lesson.contentType === "text" && lesson.content ? (
                             <div
                               dangerouslySetInnerHTML={{
                                 __html: lesson.content.replace(/\n/g, "<br />"),
                               }}
                             />
-                          ) : lesson.contentType === "video_url" ? (
+                          ) : lesson.contentType === "video_url" &&
+                            lesson.content ? (
                             <iframe
                               src={lesson.content}
                               className="w-full h-64 rounded"
                               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                               allowFullScreen
                             />
-                          ) : lesson.contentType === "pdf_url" ? (
+                          ) : lesson.contentType === "pdf_url" &&
+                            lesson.content ? (
                             <PdfLessonViewer
                               pdfUrl={lesson.content}
                               onLessonComplete={() =>
@@ -636,7 +639,7 @@ export default function CourseDetailPage() {
                                 )
                               }
                             />
-                          ) : (
+                          ) : lesson.content ? (
                             <a
                               href={lesson.content}
                               target="_blank"
@@ -644,8 +647,10 @@ export default function CourseDetailPage() {
                               className="text-primary hover:underline"
                             >
                               Truy cập nội dung{" "}
-                              {lesson.contentType.replace("_url", "")}
+                              {lesson.contentType?.replace("_url", "")}
                             </a>
+                          ) : (
+                            <p>Nội dung không xác định.</p>
                           )}
                         </AccordionContent>
                       </AccordionItem>
@@ -824,8 +829,7 @@ export default function CourseDetailPage() {
                             rel="noopener noreferrer"
                           >
                             <Download className="mr-2 h-4 w-4" />
-                            {material.type === "link" ||
-                            material.type === "video"
+                            {material.type === "Link"
                               ? "Truy cập"
                               : "Tải xuống"}
                           </a>

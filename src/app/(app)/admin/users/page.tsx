@@ -1,7 +1,7 @@
+
 "use client";
 
 import { useState, useMemo, useCallback } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Card,
   CardContent,
@@ -52,7 +52,17 @@ import {
   departmentsService,
   positionsService,
 } from "@/lib/services";
+import {
+  useUsers,
+  useCreateUserMutation,
+  useUpdateUserMutation,
+  useDeleteUserMutation,
+} from "@/hooks/use-users";
 import { useUserStatuses } from "@/hooks/use-statuses";
+import {
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import {
   PlusCircle,
   Search,
@@ -63,6 +73,7 @@ import {
   EyeOff,
 } from "lucide-react";
 import { NO_DEPARTMENT_VALUE } from "@/lib/constants";
+import type { PaginationState } from "@tanstack/react-table";
 
 // Define a specific type for the form state to avoid conflicts
 // This resolves the 'is not assignable to type never' error
@@ -85,8 +96,11 @@ export default function UsersPage() {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [isViewingUser, setIsViewingUser] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(24);
+  
+  const [pagination, setPagination] = useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: 10,
+  });
 
   // Form State
   const initialNewUserState: UserFormState = {
@@ -110,18 +124,29 @@ export default function UsersPage() {
 
   // Data Fetching with TanStack Query
   const {
-    data: users = [],
+    data: paginatedUsers,
     isLoading: isUsersLoading,
     isError: isUsersError,
     error: usersError,
-  } = useQuery<User[], Error>({
-    queryKey: ["users", debouncedSearchTerm],
+  } = useQuery({
+    queryKey: [
+      "users",
+      debouncedSearchTerm,
+      pagination.pageIndex,
+      pagination.pageSize,
+    ],
     queryFn: () =>
-      usersService.getUsers({
+      usersService.getUsersWithPagination({
         search: debouncedSearchTerm,
-        limit: 24,
+        page: pagination.pageIndex + 1,
+        limit: pagination.pageSize,
       }),
+    placeholderData: (previousData) => previousData,
   });
+  
+  const users = useMemo(() => paginatedUsers?.items ?? [], [paginatedUsers]);
+  const pageCount = useMemo(() => paginatedUsers?.pagination?.totalPages ?? 0, [paginatedUsers]);
+
 
   const { data: roles = [], isLoading: isRolesLoading } = useQuery<
     any[],
@@ -147,70 +172,10 @@ export default function UsersPage() {
     queryFn: () => positionsService.getPositions(),
   });
 
-  // Mutations
-  const createUserMutation = useMutation({
-    mutationFn: (payload: CreateUserRequest) =>
-      usersService.createUser(payload),
-    onSuccess: (response: any) => {
-      toast({
-        title: "Thành công",
-        description: "Người dùng mới đã được tạo thành công.",
-        variant: "success",
-      });
-      queryClient.invalidateQueries({ queryKey: ["users"] });
-      setIsFormOpen(false);
-    },
-    onError: (error) =>
-      toast({
-        title: "Tạo người dùng thất bại",
-        description: extractErrorMessage(error),
-        variant: "destructive",
-      }),
-  });
-
-  const updateUserMutation = useMutation({
-    mutationFn: ({
-      id,
-      payload,
-    }: {
-      id: string;
-      payload: Partial<CreateUserRequest>;
-    }) => usersService.updateUserByAdmin(id, payload),
-    onSuccess: () => {
-      toast({
-        title: "Thành công",
-        description: "Thông tin người dùng đã được cập nhật.",
-        variant: "success",
-      });
-      queryClient.invalidateQueries({ queryKey: ["users"] });
-      setIsFormOpen(false);
-    },
-    onError: (error) =>
-      toast({
-        title: "Cập nhật người dùng thất bại",
-        description: extractErrorMessage(error),
-        variant: "destructive",
-      }),
-  });
-
-  const deleteUserMutation = useMutation({
-    mutationFn: (userId: string) => usersService.deleteUser(userId),
-    onSuccess: (response: any) => {
-      toast({
-        title: "Thành công",
-        description: "Người dùng đã được xóa.",
-        variant: "success",
-      });
-      queryClient.invalidateQueries({ queryKey: ["users"] });
-      setDeletingUser(null);
-    },
-    onError: (error) =>
-      toast({
-        title: "Xóa người dùng thất bại",
-        description: extractErrorMessage(error),
-        variant: "destructive",
-      }),
-  });
+  // Mutations from hooks
+  const createUserMutation = useCreateUserMutation();
+  const updateUserMutation = useUpdateUserMutation();
+  const deleteUserMutation = useDeleteUserMutation();
 
   const sortedUsers = useMemo(
     () =>
@@ -299,87 +264,67 @@ export default function UsersPage() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSaveUser = () => {
+  const handleSaveUser = async () => {
     const isEdit = !!editingUser;
     if (!validateForm(isEdit)) {
-      showError("FORM001");
-      return;
+        showError("FORM001");
+        return;
     }
 
-    const selectedRole = roles.find(
-      (role) => role.name.toUpperCase() === newUser.role
-    );
+    const selectedRole = roles.find(role => role.name.toUpperCase() === newUser.role);
     if (!selectedRole) {
-      toast({
-        title: "Lỗi",
-        description: `Không tìm thấy vai trò ${newUser.role}.`,
-        variant: "destructive",
-      });
-      return;
+        toast({ title: "Lỗi", description: `Không tìm thấy vai trò ${newUser.role}.`, variant: "destructive" });
+        return;
     }
 
-    if (isEdit && editingUser) {
-      const updatePayload: Partial<CreateUserRequest> = {
-        FullName: newUser.fullName,
-        Email: newUser.email,
-        IdCard: newUser.idCard,
-        NumberPhone: newUser.numberPhone,
-        DepartmentId: newUser.department
-          ? parseInt(newUser.department, 10)
-          : undefined,
-        RoleId: selectedRole.id,
-        PositionId: newUser.position
-          ? parseInt(newUser.position, 10)
-          : undefined,
-        StatusId: newUser.statusId ? parseInt(newUser.statusId, 10) : undefined,
-        Code: newUser.employeeId || undefined,
-      };
+    try {
+        if (isEdit && editingUser) {
+            // Sequential Operations: Reset Password, then Update User Info
+            if (newUser.password && newUser.password.trim()) {
+                await usersService.resetPassword(editingUser.id, {
+                    newPassword: newUser.password,
+                    confirmNewPassword: newUser.confirmPassword!,
+                });
+                toast({ title: "Thành công", description: "Mật khẩu người dùng đã được đặt lại.", variant: "success" });
+            }
 
-      if (newUser.password && newUser.password.trim()) {
-        usersService
-          .resetPassword(editingUser.id, {
-            newPassword: newUser.password,
-            confirmNewPassword: newUser.confirmPassword,
-          })
-          .then(() => {
-            toast({
-              title: "Thành công",
-              description: "Mật khẩu người dùng đã được đặt lại.",
-              variant: "success",
-            });
-          })
-          .catch((error) => {
-            toast({
-              title: "Lỗi đặt lại mật khẩu",
-              description: extractErrorMessage(error),
-              variant: "destructive",
-            });
-          });
-      }
+            const updatePayload: Partial<CreateUserRequest> = {
+                FullName: newUser.fullName,
+                Email: newUser.email,
+                IdCard: newUser.idCard,
+                NumberPhone: newUser.numberPhone,
+                DepartmentId: newUser.department ? parseInt(newUser.department, 10) : undefined,
+                RoleId: selectedRole.id,
+                PositionId: newUser.position ? parseInt(newUser.position, 10) : undefined,
+                StatusId: newUser.statusId ? parseInt(newUser.statusId, 10) : undefined,
+                Code: newUser.employeeId || undefined,
+            };
+            
+            await updateUserMutation.mutateAsync({ id: editingUser.id, payload: updatePayload });
 
-      updateUserMutation.mutate({
-        id: editingUser.id,
-        payload: updatePayload,
-      });
-    } else {
-      const createUserPayload: CreateUserRequest = {
-        FullName: newUser.fullName!,
-        Email: newUser.email!,
-        Password: newUser.password!,
-        ConfirmPassword: newUser.confirmPassword!,
-        RoleId: selectedRole.id,
-        IdCard: newUser.idCard,
-        NumberPhone: newUser.numberPhone,
-        PositionId: newUser.position
-          ? parseInt(newUser.position, 10)
-          : undefined,
-        DepartmentId: newUser.department
-          ? parseInt(newUser.department, 10)
-          : undefined,
-        StatusId: newUser.statusId ? parseInt(newUser.statusId, 10) : undefined,
-        Code: newUser.employeeId || undefined,
-      };
-      createUserMutation.mutate(createUserPayload);
+        } else {
+            // Create new user
+            const createUserPayload: CreateUserRequest = {
+                FullName: newUser.fullName!,
+                Email: newUser.email!,
+                Password: newUser.password!,
+                ConfirmPassword: newUser.confirmPassword!,
+                RoleId: selectedRole.id,
+                IdCard: newUser.idCard,
+                NumberPhone: newUser.numberPhone,
+                PositionId: newUser.position ? parseInt(newUser.position, 10) : undefined,
+                DepartmentId: newUser.department ? parseInt(newUser.department, 10) : undefined,
+                StatusId: newUser.statusId ? parseInt(newUser.statusId, 10) : undefined,
+                Code: newUser.employeeId || undefined,
+            };
+            await createUserMutation.mutateAsync(createUserPayload);
+        }
+
+        setIsFormOpen(false); // Close dialog on success
+
+    } catch (error) {
+        // Errors from mutations are handled by the hooks themselves (toast).
+        console.error("Failed to save user:", error);
     }
   };
 
@@ -394,6 +339,7 @@ export default function UsersPage() {
       return;
     }
     deleteUserMutation.mutate(deletingUser.id);
+    setDeletingUser(null);
   };
 
   const columns = useMemo(
@@ -467,16 +413,19 @@ export default function UsersPage() {
             </div>
           </div>
 
-          {isUsersLoading || isStatusesLoading ? (
-            <div className="flex items-center justify-center py-10">
-              <Spinner size="lg" />
-            </div>
-          ) : isUsersError ? (
+          {isUsersError ? (
             <p className="text-destructive text-center py-10">
               {extractErrorMessage(usersError)}
             </p>
           ) : (
-            <DataTable columns={columns} data={sortedUsers} />
+            <DataTable 
+              columns={columns} 
+              data={sortedUsers}
+              isLoading={isUsersLoading}
+              pageCount={pageCount}
+              pagination={pagination}
+              onPaginationChange={setPagination}
+            />
           )}
         </CardContent>
       </Card>
@@ -810,7 +759,9 @@ export default function UsersPage() {
               </Select>
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="password">Mật khẩu *</Label>
+              <Label htmlFor="password">
+                {editingUser ? "Mật khẩu mới (để trống nếu không đổi)" : "Mật khẩu *"}
+              </Label>
               <div className="relative">
                 <Input
                   id="password"
@@ -840,7 +791,9 @@ export default function UsersPage() {
               )}
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="confirmPassword">Xác nhận mật khẩu *</Label>
+              <Label htmlFor="confirmPassword">
+                {editingUser ? "Xác nhận mật khẩu mới" : "Xác nhận mật khẩu *"}
+              </Label>
               <div className="relative">
                 <Input
                   id="confirmPassword"
@@ -927,3 +880,4 @@ export default function UsersPage() {
     </>
   );
 }
+ 

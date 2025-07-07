@@ -286,6 +286,7 @@ export default function CoursesPage() {
       })),
       materials: (course.materials || []).map((m) => ({
         ...m,
+        id: crypto.randomUUID(),
       })),
     };
 
@@ -360,7 +361,7 @@ export default function CoursesPage() {
         departments || [],
         positions || []
       ),
-    [canManageCourses, courseStatuses, departments, positions]
+    [canManageCourses, courseStatuses, departments, positions, handleOpenEditDialog, handleDuplicateCourse]
   );
 
   if (statusesError) {
@@ -699,6 +700,7 @@ export default function CoursesPage() {
         isOpen={isFormDialogOpen}
         onOpenChange={handleFormDialogOpenChange}
         courseToEdit={editingCourse}
+        isDuplicating={isDuplicating}
         onSave={handleSaveCourse}
         courseStatuses={courseStatuses}
         departmentOptions={departmentOptions}
