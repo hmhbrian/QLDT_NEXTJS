@@ -62,48 +62,36 @@ export class UsersService extends BaseService<
   }
 
   async getUsersWithPagination(params?: QueryParams): Promise<PaginatedResponse<User>> {
-    // Determine the endpoint and map parameters for the backend.
-    // This handles both general listing and searching with consistent pagination.
-    const isSearch = params?.search && params.search.trim() !== "";
+    const isSearch = params?.search && String(params.search).trim() !== "";
     const endpoint = isSearch
       ? API_CONFIG.endpoints.users.search
       : this.endpoint;
-
-    // Map frontend query params (camelCase) to backend expected params (PascalCase)
+  
     const backendParams: Record<string, any> = {};
     if (params) {
       if (params.page) backendParams.Page = params.page;
-      if (params.limit) {
-        // The backend API returns an error "Value must be less than 24".
-        // To prevent this validation error, we will only send the Limit parameter
-        // if it meets this condition. If the requested limit is 24 or more,
-        // we omit it, and the backend will use its default page size.
-        if (params.limit < 24) {
-          backendParams.Limit = params.limit;
-        }
-      }
-      if (params.sortField) backendParams.SortField = params.sortField;
-      if (params.sortType) backendParams.SortType = params.sortType;
-
+      if (params.limit) backendParams.Limit = params.limit;
+      if (params.sortBy) backendParams.SortField = params.sortBy;
+      if (params.sortOrder) backendParams.SortType = params.sortOrder;
+      
       // The search endpoint expects 'keyword' for the search term.
       if (isSearch) {
         backendParams.keyword = params.search;
       }
     }
-
+  
     const response = await this.get<PaginatedResponse<User>>(
       endpoint,
       { params: backendParams }
     );
-    // Ensure a valid paginated response structure is always returned for the UI.
-    // This provides the necessary `pagination` object for the DataTable component.
+  
     return {
       items: response.items || [],
       pagination: response.pagination || {
         totalItems: response.items?.length || 0,
-        itemsPerPage: backendParams.Limit || 24, // Use the limit sent or a default
+        itemsPerPage: backendParams.Limit || 10,
         currentPage: backendParams.Page || 1,
-        totalPages: 1, // Default to 1 page if no pagination info from API
+        totalPages: 1,
       },
     };
   }
@@ -155,9 +143,9 @@ export class UsersService extends BaseService<
   async resetPassword(
     userId: string,
     payload: ResetPasswordPayload
-  ): Promise<any> {
+  ): Promise<void> {
     const url = API_CONFIG.endpoints.users.resetPassword(userId);
-    return await this.patch<any>(url, payload);
+    await this.patch<void>(url, payload);
   }
 
 }

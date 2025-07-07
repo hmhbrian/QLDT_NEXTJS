@@ -1,3 +1,4 @@
+
 /**
  * Enterprise Services Index
  * Central export point for all API services using modern architecture
@@ -11,6 +12,9 @@ export * from "./modern/positions.service";
 export * from "./modern/roles.service";
 export * from "./modern/users.service";
 export * from "./modern/course-attached-files.service";
+export * from "./modern/lessons.service";
+export * from "./modern/tests.service";
+export * from "./modern/questions.service";
 
 
 // Import services to create a single `services` object
@@ -21,6 +25,9 @@ import { positionsService } from "./modern/positions.service";
 import { rolesService } from "./modern/roles.service";
 import { usersService } from "./modern/users.service";
 import { courseAttachedFilesService } from "./modern/course-attached-files.service";
+import { lessonsService } from "./modern/lessons.service";
+import { testsService } from "./modern/tests.service";
+import { questionsService } from "./modern/questions.service";
 
 
 // Export a single object containing all services for convenience
@@ -32,6 +39,9 @@ export const services = {
   roles: rolesService,
   users: usersService,
   courseAttachedFiles: courseAttachedFilesService,
+  lessons: lessonsService,
+  tests: testsService,
+  questions: questionsService,
 } as const;
 
 // Default export for backward compatibility or alternative import style

@@ -58,8 +58,8 @@ class CourseAttachedFilesService extends BaseService<CourseMaterial> {
   }: {
     courseId: string;
     fileId: number;
-  }): Promise<void> {
-    await this.delete<void>(
+  }): Promise<any> {
+    return this.delete<any>(
       API_CONFIG.endpoints.courseAttachedFiles.delete(courseId, fileId)
     );
   }

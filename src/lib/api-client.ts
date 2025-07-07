@@ -1,3 +1,4 @@
+
 import {
   CustomHttpClient,
   HttpResponse,
@@ -71,8 +72,7 @@ const makeRequest = async <T>(
         response = await httpClient.patch<T>(url, data, requestConfig);
         break;
       case "delete":
-        // For DELETE, data is not standard in body, it's handled via config.params
-        response = await httpClient.delete<T>(url, requestConfig);
+        response = await httpClient.delete<T>(url, data, requestConfig);
         break;
       case "options":
         response = await httpClient.options<T>(url, requestConfig);
@@ -158,11 +158,10 @@ const apiClient = {
   },
   delete: <T = any>(
     url: string,
+    data?: any,
     config?: HttpRequestConfig
   ): Promise<HttpResponse<T>> => {
-    // Pass undefined for the body (data) argument, as DELETE with body is not standard
-    // and query params are handled via the config object.
-    return makeRequest<T>("delete", url, undefined, config);
+    return makeRequest<T>("delete", url, data, config);
   },
   options: <T = any>(
     url: string,

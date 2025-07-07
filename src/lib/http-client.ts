@@ -1,3 +1,4 @@
+
 /**
  * Custom HTTP Client - Thay thế axios với native fetch
  * Cung cấp interface tương thự axios nhưng sử dụng fetch API
@@ -39,6 +40,7 @@ export interface HttpClient {
   ): Promise<HttpResponse<T>>;
   delete<T = any>(
     url: string,
+    data?: any, // Allow body for delete
     config?: HttpRequestConfig
   ): Promise<HttpResponse<T>>;
   options<T = any>(
@@ -83,7 +85,7 @@ class CustomHttpClient implements HttpClient {
     // Nếu data là FormData, xóa Content-Type để trình duyệt tự động đặt với boundary
     if (data instanceof FormData) {
       delete headers["Content-Type"];
-    } else if (!(data instanceof FormData)) {
+    } else if (!(data instanceof FormData) && data) { // Ensure data exists before setting JSON header
       headers["Content-Type"] = "application/json";
     }
 
@@ -190,9 +192,10 @@ class CustomHttpClient implements HttpClient {
 
   async delete<T = any>(
     url: string,
+    data?:any,
     config?: HttpRequestConfig
   ): Promise<HttpResponse<T>> {
-    return this.request<T>("DELETE", url, undefined, config);
+    return this.request<T>("DELETE", url, data, config);
   }
 
   async options<T = any>(

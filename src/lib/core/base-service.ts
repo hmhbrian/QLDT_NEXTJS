@@ -100,6 +100,20 @@ export abstract class BaseService<
     config?: RequestConfig
   ): Promise<T> {
     try {
+       // Handle FormData for PUT requests as well
+       if (data instanceof FormData) {
+        const formDataConfig = {
+          ...config,
+          headers: {
+            ...this.getAuthHeaders(),
+            ...config?.headers,
+          },
+        };
+        delete formDataConfig.headers?.["Content-Type"];
+        const response = await apiClient.put<ApiResponse<T>>(url, data, formDataConfig);
+        return this.extractData(response.data);
+      }
+      
       const mergedConfig = {
         ...config,
         headers: {
@@ -136,6 +150,7 @@ export abstract class BaseService<
 
   protected async delete<T = void>(
     url: string,
+    data?: unknown,
     config?: RequestConfig
   ): Promise<T> {
     try {
@@ -146,7 +161,7 @@ export abstract class BaseService<
           ...config?.headers,
         },
       };
-      const response = await apiClient.delete<ApiResponse<T>>(url, mergedConfig);
+      const response = await apiClient.delete<ApiResponse<T>>(url, data, mergedConfig);
       return this.extractData(response.data);
     } catch (error) {
       this.handleError("DELETE", url, error);
@@ -212,23 +227,24 @@ export abstract class BaseService<
       throw new Error(response.message || 'An API error occurred without a message.');
     }
     
-    // If 'data' property exists, return it. This is the primary success case.
+    // If 'data' property exists, return it. This is the primary success case for GET requests.
     if (response && 'data' in response) {
       return response.data as T;
     }
     
-    // Handle cases where response is the data itself (no wrapper)
-    // This is less common but can happen.
-    if (response && typeof response.success === 'undefined' && typeof response.message === 'undefined') {
-        return response as T;
-    }
-
-    // If success is true but there's no data, return undefined (for void responses like delete)
+    // Handle successful mutations (POST, PUT, PATCH, DELETE) that might not return a 'data' field.
+    // If success is true, we can return undefined as T, which is valid for void promises.
     if (response && response.success === true) {
         return undefined as T;
     }
 
-    // Fallback for unexpected response structures
+    // Handle cases where the response is the data itself (no wrapper), for backward compatibility.
+    if (response && typeof response.success === 'undefined' && typeof response.message === 'undefined') {
+        return response as T;
+    }
+
+    // Fallback for unexpected response structures that are not explicitly errors.
+    // This could be considered a contract violation with the API.
     throw new Error('Invalid API response format: could not determine success or find data.');
 }
 
