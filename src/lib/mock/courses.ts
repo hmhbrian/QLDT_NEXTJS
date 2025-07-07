@@ -1,31 +1,32 @@
 
-import type { Course, Lesson, Test, Question } from "../types/course.types";
+import type { Course, Lesson, Test, Question, LessonContentType } from "../types/course.types";
 import { categoryOptions } from "../constants";
 
 // --- Sample Lessons and Tests Data ---
 const sampleLessons: Lesson[] = [
   {
-    id: "l1",
+    id: 1,
     title: "Bài 1: Giới thiệu về JavaScript",
-    contentType: "video_url",
-    content: "https://www.youtube.com/watch?v=DHvZL2xTBNs",
-    duration: "45 phút",
+    contentType: 'pdf_url',
+    content: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
+    urlPdf: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
+    duration: "15 phút"
   },
   {
-    id: "l2",
+    id: 2,
     title: "Bài 2: Biến và Kiểu dữ liệu",
-    contentType: "pdf_url",
-    content:
-      "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
-    duration: "60 phút",
+    contentType: 'pdf_url',
+    content: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
+    urlPdf: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
+    duration: "20 phút"
   },
   {
-    id: "l3",
+    id: 3,
     title: "Bài 3: Hàm và Phạm vi",
-    contentType: "text",
-    content:
-      "### Hàm trong JavaScript\nMột hàm là một khối mã được thiết kế để thực hiện một tác vụ cụ thể...",
-    duration: "75 phút",
+    contentType: 'text',
+    content: "Đây là nội dung văn bản cho bài học về hàm và phạm vi.",
+    urlPdf: "", // Text content has no PDF url
+    duration: "10 phút"
   },
 ];
 
@@ -96,7 +97,7 @@ export const mockCourses: Course[] = [
       {
         id: 201,
         courseId: '1',
-        type: "pdf",
+        type: "PDF",
         title: "Tài liệu JavaScript căn bản",
         link: "https://mozilla.github.io/pdf.js/web/compressed.tracemonkey-pldi-09.pdf",
         createdAt: new Date().toISOString(),
@@ -105,7 +106,7 @@ export const mockCourses: Course[] = [
       {
         id: 202,
         courseId: '1',
-        type: "slide",
+        type: "Link",
         title: "Slide bài giảng tuần 1",
         link: "https://placehold.co/800x600.png?text=Slide+Tuan+1",
         createdAt: new Date().toISOString(),
@@ -148,7 +149,7 @@ export const mockCourses: Course[] = [
       {
         id: 203,
         courseId: '2',
-        type: "pdf",
+        type: "PDF",
         title: "Sổ tay quản lý dự án",
         link: "https://mozilla.github.io/pdf.js/web/compressed.tracemonkey-pldi-09.pdf",
         createdAt: new Date().toISOString(),
@@ -157,19 +158,18 @@ export const mockCourses: Course[] = [
     ],
     lessons: [
       {
-        id: "lpm1",
+        id: 101,
         title: "Bài 1: Giới thiệu Quản lý dự án",
-        contentType: "video_url",
-        content: "https://www.youtube.com/watch?v=some_pm_video",
-        duration: "30 phút",
+        contentType: "pdf_url",
+        content: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
+        urlPdf: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
       },
       {
-        id: "lpm2",
+        id: 102,
         title: "Bài 2: Lập kế hoạch dự án",
-        contentType: "slide_url",
-        content:
-          "https://placehold.co/800x600.png?text=Project+Planning+Slides",
-        duration: "90 phút",
+        contentType: "pdf_url",
+        content: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
+        urlPdf: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
       },
     ],
     tests: [
@@ -352,7 +352,7 @@ export const mockCourses: Course[] = [
       {
         id: 204,
         courseId: '3',
-        type: "slide",
+        type: "Link",
         title: "Nguyên tắc vàng trong thiết kế UI",
         link: "https://placehold.co/800x600.png?text=UI+Design+Principles",
         createdAt: new Date().toISOString(),
@@ -540,7 +540,7 @@ export const mockCourses: Course[] = [
       {
         id: 205,
         courseId: '4',
-        type: "link",
+        type: "Link",
         title: "Blog về Digital Marketing Trends",
         link: "https://blog.hubspot.com/marketing/digital-marketing-trends",
         createdAt: new Date().toISOString(),
@@ -578,7 +578,7 @@ export const mockCourses: Course[] = [
       {
         id: 206,
         courseId: '5',
-        type: "link",
+        type: "Link",
         title: "Tài liệu Pandas chính thức",
         link: "https://pandas.pydata.org/docs/",
         createdAt: new Date().toISOString(),
@@ -764,7 +764,7 @@ export const mockCourses: Course[] = [
       {
         id: 207,
         courseId: '6',
-        type: "pdf",
+        type: "PDF",
         title: "Sách: Giao tiếp không bạo lực",
         link: "https://example.com/nvc.pdf",
         createdAt: new Date().toISOString(),
@@ -809,7 +809,7 @@ export const mockCourseDetail: Course = {
     {
       id: 801,
       courseId: '1',
-      type: "pdf",
+      type: "PDF",
       title: "Giáo trình JavaScript Nâng cao (PDF)",
       link: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
       createdAt: new Date().toISOString(),
@@ -818,7 +818,7 @@ export const mockCourseDetail: Course = {
     {
       id: 802,
       courseId: '1',
-      type: "slide",
+      type: "Link",
       title: "Slide Bài 1: Tổng quan ES6+",
       link: "https://placehold.co/800x600.png?text=ES6+Overview+Slides",
       createdAt: new Date().toISOString(),
@@ -827,7 +827,7 @@ export const mockCourseDetail: Course = {
     {
       id: 803,
       courseId: '1',
-      type: "video",
+      type: "Link",
       title: "Video: Xử lý bất đồng bộ với Promises",
       link: "https://www.youtube.com/watch?v=DHvZL2xTBNs",
       createdAt: new Date().toISOString(),
@@ -836,7 +836,7 @@ export const mockCourseDetail: Course = {
     {
       id: 804,
       courseId: '1',
-      type: "link",
+      type: "Link",
       title: "Tài liệu tham khảo: MDN Web Docs - JavaScript",
       link: "https://developer.mozilla.org/en-US/docs/Web/JavaScript",
       createdAt: new Date().toISOString(),
@@ -845,7 +845,7 @@ export const mockCourseDetail: Course = {
     {
       id: 805,
       courseId: '1',
-      type: "pdf",
+      type: "PDF",
       title: "Bài tập thực hành Chương 1",
       link: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
       createdAt: new Date().toISOString(),

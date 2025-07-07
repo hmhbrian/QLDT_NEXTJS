@@ -1,4 +1,3 @@
-
 /**
  * Course Domain Types
  * All course-related interfaces and types
@@ -31,17 +30,9 @@ export type CourseCategory =
 // Enrollment type enumeration
 export type EnrollmentType = "optional" | "mandatory";
 
-// Lesson content type enumeration
-export type LessonContentType =
-  | "text"
-  | "video_url"
-  | "pdf_url"
-  | "slide_url"
-  | "external_link";
-
 // Question interface for tests
 export interface Question {
-  id: string;
+  id: string | number;
   questionCode?: string; // Mã câu hỏi
   text: string;
   options: string[];
@@ -51,32 +42,52 @@ export interface Question {
 
 // Test interface
 export interface Test {
-  id: string;
+  id: string | number;
   title: string;
   questions: Question[];
-  passingScorePercentage: number; // Ví dụ: 70 cho 70%
+  passingScorePercentage: number;
+  time?: number;
 }
 
-// Lesson interface
-export interface Lesson {
-  id: string;
+// Lesson content type enumeration
+export type LessonContentType =
+  | "video_url"
+  | "pdf_url"
+  | "slide_url"
+  | "text"
+  | "external_link";
+
+// API-facing Lesson type
+export interface ApiLesson {
+  id: number;
   title: string;
-  contentType: LessonContentType;
-  content: string; // Có thể là markdown hoặc URL
-  duration?: string; // Ví dụ: "30 phút", "1 giờ"
+  urlPdf: string;
 }
+
+// UI-facing Lesson type
+export interface Lesson {
+  id: number | string; // Can be string for client-side generated lessons
+  title: string;
+  content?: string;
+  contentType?: LessonContentType;
+  duration?: string;
+  urlPdf?: string; // Add urlPdf to UI type
+  link?: string;
+}
+
+export type CourseMaterialType = "PDF" | "Link";
+
 
 // Course material interface from API
 export interface CourseMaterial {
   id: number | string;
   courseId: string;
   title: string;
-  type: string; // e.g., "PDF", "VIDEO", "Slide" - Changed to string for flexibility
+  type: CourseMaterialType;
   link: string;
   createdAt: string;
   modifiedAt: string | null;
 }
-
 
 // Student Course Evaluation interface
 export interface StudentCourseEvaluation {
@@ -204,3 +215,60 @@ export interface CourseSearchParams {
   page?: number;
   limit?: number;
 }
+
+// Lesson API Payloads
+export interface CreateLessonPayload {
+  title: string;
+  file: File;
+}
+
+export interface UpdateLessonPayload extends Partial<CreateLessonPayload> {}
+
+// Test and Question API Types
+export interface ApiQuestion {
+  id: number;
+  questionCode?: string;
+  questionText: string;
+  correctOption: string;
+  questionType: number;
+  explanation: string;
+  a: string;
+  b: string;
+  c?: string;
+  d?: string;
+}
+
+export interface ApiTest {
+  id: number;
+  title: string;
+  passThreshold: number;
+  timeTest: number;
+  questions: ApiQuestion[];
+}
+
+export interface CreateTestPayload {
+  title: string;
+  passThreshold: number;
+  timeTest: number;
+  questions: Array<Omit<ApiQuestion, 'id'>>;
+}
+
+export interface UpdateTestPayload {
+  title: string;
+  pass_threshold: number;
+  time_test: number;
+  position: number;
+}
+
+export interface CreateQuestionPayload {
+  questionText: string;
+  correctOption: string;
+  questionType: number;
+  explanation: string;
+  a: string;
+  b: string;
+  c: string;
+  d: string;
+}
+
+export interface UpdateQuestionPayload extends CreateQuestionPayload {}

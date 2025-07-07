@@ -59,6 +59,9 @@ export const API_ENDPOINTS = {
     search: "/Courses/search",
     softDelete: "/Courses/soft-delete",
   },
+  tests: {
+    base: "/tests",
+  },
   courseAttachedFiles: {
     base: "/courseattachedfiles",
     getByCourseId: (courseId: string) => `/courseattachedfiles/${courseId}`,

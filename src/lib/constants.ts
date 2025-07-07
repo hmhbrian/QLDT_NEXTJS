@@ -74,14 +74,14 @@ export const mockCourses: Course[] = [
     startDate: "2024-03-01",
     endDate: "2024-04-01",
     location: "https://meet.google.com/abc-xyz",
-    image: "https://placehold.co/600x400",
+    image: "https://placehold.co/600x400.png",
     status: "draft",
     department: ["it"],
     level: ["intern", "probation"],
     materials: [
       {
         id: 101,
-        type: "pdf",
+        type: "PDF",
         title: "Giáo trình React",
         link: "https://example.com/react.pdf",
         courseId: "1",

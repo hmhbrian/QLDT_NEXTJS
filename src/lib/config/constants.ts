@@ -150,20 +150,3 @@ export const API_PATHS = {
   COURSES: "/courses",
   DEPARTMENTS: "/departments",
 } as const;
-
-// Course-related constants (migrated from lib/constants.ts)
-// These will now be fetched from the API dynamically
-// export const COURSE_STATUS_OPTIONS = [
-//   { value: "draft", label: "Lưu nháp" },
-//   { value: "published", label: "Đã xuất bản" },
-//   { value: "archived", label: "Đã lưu trữ" },
-// ] as const;
-
-// export const COURSE_STATUS_BADGE_VARIANT: Record<
-//   string,
-//   "default" | "destructive" | "outline" | "secondary"
-// > = {
-//   draft: "secondary",
-//   published: "default",
-//   archived: "destructive",
-// };
