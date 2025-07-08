@@ -734,10 +734,22 @@ export function CourseFormDialog({
 
         const headerMap = {
           code: headers.indexOf("mã câu hỏi"),
-          question: headers.indexOf("câu hỏi"),
-          correctAnswer: headers.indexOf("câu trả lời"),
-          questionType: headers.indexOf("loại câu hỏi"),
-          explanation: headers.indexOf("lời giải"),
+          question:
+            headers.indexOf("questiontext") !== -1
+              ? headers.indexOf("questiontext")
+              : headers.indexOf("câu hỏi"),
+          correctAnswer:
+            headers.indexOf("correctoption") !== -1
+              ? headers.indexOf("correctoption")
+              : headers.indexOf("câu trả lời"),
+          questionType:
+            headers.indexOf("questiontype") !== -1
+              ? headers.indexOf("questiontype")
+              : headers.indexOf("loại câu hỏi"),
+          explanation:
+            headers.indexOf("explanation") !== -1
+              ? headers.indexOf("explanation")
+              : headers.indexOf("lời giải"),
           optionA: headers.indexOf("a"),
           optionB: headers.indexOf("b"),
           optionC: headers.indexOf("c"),
@@ -747,11 +759,12 @@ export function CourseFormDialog({
         if (
           headerMap.question === -1 ||
           headerMap.correctAnswer === -1 ||
+          headerMap.questionType === -1 ||
           headerMap.optionA === -1 ||
           headerMap.optionB === -1
         ) {
           console.error(
-            "Cấu trúc file Excel không đúng. Cần có các cột: 'Câu hỏi', 'Câu trả lời', 'A', 'B'"
+            "Cấu trúc file Excel không đúng. Cần có các cột: 'QuestionText/Câu hỏi', 'CorrectOption/Câu trả lời', 'QuestionType/Loại câu hỏi', 'A', 'B'"
           );
           showError("FILE001");
           return;
@@ -766,9 +779,13 @@ export function CourseFormDialog({
               ? String(row[headerMap.code] || "").trim() || `Q${i}`
               : `Q${i}`;
           const question = String(row[headerMap.question] || "").trim();
-          const correctAnswerLabel = String(
+          const correctAnswerText = String(
             row[headerMap.correctAnswer] || ""
           ).trim();
+          const questionType =
+            headerMap.questionType !== -1
+              ? parseInt(String(row[headerMap.questionType] || "1"))
+              : 1;
           const explanation =
             headerMap.explanation !== -1
               ? String(row[headerMap.explanation] || "").trim()
@@ -791,7 +808,7 @@ export function CourseFormDialog({
               ? String(row[headerMap.optionD] || "").trim()
               : "";
 
-          if (!question || !correctAnswerLabel || !optionA || !optionB) {
+          if (!question || !correctAnswerText || !optionA || !optionB) {
             console.warn(`Bỏ qua dòng ${i + 1} do thiếu dữ liệu bắt buộc.`);
             continue;
           }
@@ -800,23 +817,57 @@ export function CourseFormDialog({
           if (optionC) options.push(optionC);
           if (optionD) options.push(optionD);
 
-          let correctAnswerIndex = -1;
+          // Xử lý đáp án đúng dựa trên QuestionType
+          let correctAnswerIndexes: number[] = [];
 
-          if (/^\d+$/.test(correctAnswerLabel)) {
-            correctAnswerIndex = parseInt(correctAnswerLabel) - 1;
-          } else {
-            const upperLabel = correctAnswerLabel.toUpperCase();
-            const labelMap: Record<string, number> = { A: 0, B: 1, C: 2, D: 3 };
-            correctAnswerIndex = labelMap[upperLabel];
+          // Tách các đáp án đúng (có thể cách nhau bằng dấu phẩy, chấm phẩy hoặc khoảng trắng)
+          const correctAnswers = correctAnswerText
+            .split(/[,;\s]+/)
+            .filter((a) => a.trim());
+
+          for (const answer of correctAnswers) {
+            let correctIndex = -1;
+
+            // Kiểm tra nếu là số (1, 2, 3, 4)
+            if (/^\d+$/.test(answer.trim())) {
+              correctIndex = parseInt(answer.trim()) - 1;
+            } else {
+              // Kiểm tra nếu là chữ cái (A, B, C, D)
+              const upperAnswer = answer.trim().toUpperCase();
+              const labelMap: Record<string, number> = {
+                A: 0,
+                B: 1,
+                C: 2,
+                D: 3,
+              };
+              correctIndex = labelMap[upperAnswer];
+            }
+
+            if (correctIndex >= 0 && correctIndex < options.length) {
+              correctAnswerIndexes.push(correctIndex);
+            }
           }
 
-          if (
-            correctAnswerIndex === undefined ||
-            correctAnswerIndex < 0 ||
-            correctAnswerIndex >= options.length
-          ) {
+          // Loại bỏ trùng lặp và sắp xếp
+          correctAnswerIndexes = [...new Set(correctAnswerIndexes)].sort(
+            (a, b) => a - b
+          );
+
+          // Kiểm tra số lượng đáp án đúng phù hợp với QuestionType
+          if (correctAnswerIndexes.length !== questionType) {
             console.warn(
-              `Đáp án đúng không hợp lệ ở dòng ${i + 1}. Bỏ qua câu hỏi.`
+              `Dòng ${i + 1}: QuestionType=${questionType} nhưng có ${
+                correctAnswerIndexes.length
+              } đáp án đúng. Bỏ qua câu hỏi.`
+            );
+            continue;
+          }
+
+          if (correctAnswerIndexes.length === 0) {
+            console.warn(
+              `Không tìm thấy đáp án đúng hợp lệ ở dòng ${
+                i + 1
+              }. Bỏ qua câu hỏi.`
             );
             continue;
           }
@@ -826,7 +877,8 @@ export function CourseFormDialog({
             questionCode: code,
             text: question,
             options: options,
-            correctAnswerIndex: correctAnswerIndex,
+            correctAnswerIndex: correctAnswerIndexes[0], // Đáp án đúng đầu tiên
+            correctAnswerIndexes: correctAnswerIndexes, // Tất cả đáp án đúng
             explanation: explanation,
             position: (testFormData.questions?.length || 0) + questions.length,
           });
