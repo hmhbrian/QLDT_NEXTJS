@@ -1,4 +1,3 @@
-
 import { BaseService } from "@/lib/core";
 import { API_CONFIG } from "@/lib/config";
 import type {
@@ -7,7 +6,7 @@ import type {
   UpdateTestPayload,
 } from "@/lib/types/course.types";
 
-class TestsService extends BaseService<ApiTest, CreateTestPayload, UpdateTestPayload> {
+class TestsService extends BaseService<ApiTest, CreateTestPayload, any> {
   constructor() {
     super(API_CONFIG.endpoints.courses.base); // Base endpoint for context
   }
@@ -32,14 +31,21 @@ class TestsService extends BaseService<ApiTest, CreateTestPayload, UpdateTestPay
     return this.get<ApiTest>(endpoint);
   }
 
-  async createTest(courseId: string, payload: CreateTestPayload): Promise<ApiTest> {
+  async createTest(
+    courseId: string,
+    payload: CreateTestPayload
+  ): Promise<ApiTest> {
     const endpoint = `${this.endpoint}/${courseId}/tests/create`;
     return this.post<ApiTest>(endpoint, payload);
   }
 
-  async updateTest(courseId: string, testId: number, payload: UpdateTestPayload): Promise<ApiTest> {
+  async updateTest(
+    courseId: string,
+    testId: number,
+    payload: UpdateTestPayload
+  ): Promise<any> {
     const endpoint = `${this.endpoint}/${courseId}/tests/update/${testId}`;
-    return this.put<ApiTest>(endpoint, payload);
+    return this.put<any>(endpoint, payload);
   }
 
   async deleteTest(courseId: string, testId: number): Promise<void> {

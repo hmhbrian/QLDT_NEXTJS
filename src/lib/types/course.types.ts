@@ -38,6 +38,7 @@ export interface Question {
   options: string[];
   correctAnswerIndex: number; // Vị trí đáp án đúng trong mảng options
   explanation?: string; // Lời giải
+  position?: number;
 }
 
 // Test interface
@@ -47,6 +48,7 @@ export interface Test {
   questions: Question[];
   passingScorePercentage: number;
   time?: number;
+  countQuestion?: number; // Add this field
 }
 
 // Lesson content type enumeration
@@ -66,17 +68,16 @@ export interface ApiLesson {
 
 // UI-facing Lesson type
 export interface Lesson {
-  id: number | string; // Can be string for client-side generated lessons
+  id: number | string;
   title: string;
   content?: string;
   contentType?: LessonContentType;
   duration?: string;
-  urlPdf?: string; // Add urlPdf to UI type
+  urlPdf?: string;
   link?: string;
 }
 
 export type CourseMaterialType = "PDF" | "Link";
-
 
 // Course material interface from API
 export interface CourseMaterial {
@@ -167,9 +168,7 @@ export interface CreateCourseRequest {
   imageFile?: File | null;
 }
 
-export interface UpdateCourseRequest extends Partial<CreateCourseRequest> {
-  // All fields optional for updates
-}
+export interface UpdateCourseRequest extends Partial<CreateCourseRequest> {}
 
 // Course API response
 export interface CourseApiResponse {
@@ -236,6 +235,7 @@ export interface ApiQuestion {
   b: string;
   c?: string;
   d?: string;
+  position?: number;
 }
 
 export interface ApiTest {
@@ -243,21 +243,22 @@ export interface ApiTest {
   title: string;
   passThreshold: number;
   timeTest: number;
-  questions: ApiQuestion[];
+  questions?: ApiQuestion[]; // Note: This might be null or not present in list views
+  countQuestion?: number; // Add this field for list views
 }
 
 export interface CreateTestPayload {
   title: string;
   passThreshold: number;
   timeTest: number;
-  questions: Array<Omit<ApiQuestion, 'id'>>;
+  questions: Array<Omit<ApiQuestion, "id" | "questionCode">>;
 }
 
 export interface UpdateTestPayload {
   title: string;
-  pass_threshold: number;
+  passThreshold: number;
   time_test: number;
-  position: number;
+  position?: number;
 }
 
 export interface CreateQuestionPayload {
@@ -269,6 +270,7 @@ export interface CreateQuestionPayload {
   b: string;
   c: string;
   d: string;
+  position?: number;
 }
 
 export interface UpdateQuestionPayload extends CreateQuestionPayload {}

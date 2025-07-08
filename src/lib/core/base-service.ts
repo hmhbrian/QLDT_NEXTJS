@@ -1,4 +1,3 @@
-
 import apiClient from "@/lib/api-client";
 import {
   ApiResponse,
@@ -76,7 +75,11 @@ export abstract class BaseService<
           Array.from((data as FormData).entries())
         );
 
-        const response = await apiClient.post<ApiResponse<T>>(url, data, formDataConfig);
+        const response = await apiClient.post<ApiResponse<T>>(
+          url,
+          data,
+          formDataConfig
+        );
         return this.extractData(response.data);
       }
 
@@ -87,7 +90,11 @@ export abstract class BaseService<
           ...config?.headers,
         },
       };
-      const response = await apiClient.post<ApiResponse<T>>(url, data, mergedConfig);
+      const response = await apiClient.post<ApiResponse<T>>(
+        url,
+        data,
+        mergedConfig
+      );
       return this.extractData(response.data);
     } catch (error) {
       this.handleError("POST", url, error);
@@ -100,8 +107,8 @@ export abstract class BaseService<
     config?: RequestConfig
   ): Promise<T> {
     try {
-       // Handle FormData for PUT requests as well
-       if (data instanceof FormData) {
+      // Handle FormData for PUT requests as well
+      if (data instanceof FormData) {
         const formDataConfig = {
           ...config,
           headers: {
@@ -110,10 +117,14 @@ export abstract class BaseService<
           },
         };
         delete formDataConfig.headers?.["Content-Type"];
-        const response = await apiClient.put<ApiResponse<T>>(url, data, formDataConfig);
+        const response = await apiClient.put<ApiResponse<T>>(
+          url,
+          data,
+          formDataConfig
+        );
         return this.extractData(response.data);
       }
-      
+
       const mergedConfig = {
         ...config,
         headers: {
@@ -121,7 +132,11 @@ export abstract class BaseService<
           ...config?.headers,
         },
       };
-      const response = await apiClient.put<ApiResponse<T>>(url, data, mergedConfig);
+      const response = await apiClient.put<ApiResponse<T>>(
+        url,
+        data,
+        mergedConfig
+      );
       return this.extractData(response.data);
     } catch (error) {
       this.handleError("PUT", url, error);
@@ -141,7 +156,11 @@ export abstract class BaseService<
           ...config?.headers,
         },
       };
-      const response = await apiClient.patch<ApiResponse<T>>(url, data, mergedConfig);
+      const response = await apiClient.patch<ApiResponse<T>>(
+        url,
+        data,
+        mergedConfig
+      );
       return this.extractData(response.data);
     } catch (error) {
       this.handleError("PATCH", url, error);
@@ -161,21 +180,21 @@ export abstract class BaseService<
           ...config?.headers,
         },
       };
-      const response = await apiClient.delete<ApiResponse<T>>(url, data, mergedConfig);
+      const response = await apiClient.delete<ApiResponse<T>>(
+        url,
+        data,
+        mergedConfig
+      );
       return this.extractData(response.data);
     } catch (error) {
       this.handleError("DELETE", url, error);
     }
   }
 
-
-  async getAll(
-    params?: QueryParams
-  ): Promise<TEntity[]> {
-    const response = await this.get<PaginatedResponse<TEntity>>(
-      this.endpoint,
-      { params }
-    );
+  async getAll(params?: QueryParams): Promise<TEntity[]> {
+    const response = await this.get<PaginatedResponse<TEntity>>(this.endpoint, {
+      params,
+    });
     return response.items || [];
   }
 
@@ -187,17 +206,13 @@ export abstract class BaseService<
     return this.post<TEntity>(this.endpoint, payload);
   }
 
-  async update(
-    id: EntityId,
-    payload: TUpdatePayload
-  ): Promise<TEntity> {
+  async update(id: EntityId, payload: TUpdatePayload): Promise<TEntity> {
     return this.put<TEntity>(`${this.endpoint}/${id}`, payload);
   }
 
   async remove(id: EntityId): Promise<void> {
     await this.delete<void>(`${this.endpoint}/${id}`);
-}
-
+  }
 
   protected buildQueryString(params: Record<string, unknown>): string {
     const searchParams = new URLSearchParams();
@@ -223,35 +238,44 @@ export abstract class BaseService<
 
   protected extractData<T>(response: ApiResponse<T>): T {
     // Check for success property first, if it exists and is false, throw error.
-    if (response && typeof response.success === 'boolean' && !response.success) {
-      throw new Error(response.message || 'An API error occurred without a message.');
+    if (
+      response &&
+      typeof response.success === "boolean" &&
+      !response.success
+    ) {
+      throw new Error(
+        response.message || "An API error occurred without a message."
+      );
     }
-    
+
     // If 'data' property exists, return it. This is the primary success case for GET requests.
-    if (response && 'data' in response) {
+    if (response && "data" in response && response.data !== undefined) {
       return response.data as T;
     }
-    
+
     // Handle successful mutations (POST, PUT, PATCH, DELETE) that might not return a 'data' field.
-    // If success is true, we can return undefined as T, which is valid for void promises.
+    // Return the full response so mutations can access success, message, etc.
     if (response && response.success === true) {
-        return undefined as T;
+      return response as T;
     }
 
     // Handle cases where the response is the data itself (no wrapper), for backward compatibility.
-    if (response && typeof response.success === 'undefined' && typeof response.message === 'undefined') {
-        return response as T;
+    if (
+      response &&
+      typeof response.success === "undefined" &&
+      typeof response.message === "undefined"
+    ) {
+      return response as T;
     }
 
     // Fallback for unexpected response structures that are not explicitly errors.
     // This could be considered a contract violation with the API.
-    throw new Error('Invalid API response format: could not determine success or find data.');
-}
+    throw new Error(
+      "Invalid API response format: could not determine success or find data."
+    );
+  }
 
-
-  protected extractItems(
-    response: PaginatedResponse<TEntity>
-  ): TEntity[] {
+  protected extractItems(response: PaginatedResponse<TEntity>): TEntity[] {
     return response?.items || [];
   }
 }
