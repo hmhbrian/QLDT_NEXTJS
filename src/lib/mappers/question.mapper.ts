@@ -22,15 +22,16 @@ export function mapUiQuestionToApiPayload(
     uiQuestion.correctAnswerIndexes.length > 0
   ) {
     // Multiple correct answers - convert indices to letters (a,b,c,d)
-    const letters = uiQuestion.correctAnswerIndexes.map(
-      (index) => String.fromCharCode(97 + index) // 97 = 'a'
-    );
+    const letters = uiQuestion.correctAnswerIndexes
+      .filter(index => index >= 0 && index < 4) // Validate indices
+      .map(index => String.fromCharCode(97 + index)); // 97 = 'a'
     correctOption = letters.join(",");
   } else if (
     uiQuestion.correctAnswerIndex !== undefined &&
-    uiQuestion.correctAnswerIndex >= 0
+    uiQuestion.correctAnswerIndex >= 0 &&
+    uiQuestion.correctAnswerIndex < 4
   ) {
-    // Single correct answer (backward compatibility)
+    // Single correct answer (backward compatibility) - store as letter
     correctOption = String.fromCharCode(97 + uiQuestion.correctAnswerIndex);
   }
 
