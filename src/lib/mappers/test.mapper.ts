@@ -43,8 +43,8 @@ function mapUiQuestionToApiPayload(
   ) {
     // Multiple correct answers - convert indices to letters (a,b,c,d)
     const letters = uiQuestion.correctAnswerIndexes
-      .filter(index => index >= 0 && index < 4) // Validate indices
-      .map(index => String.fromCharCode(97 + index)); // 97 = 'a'
+      .filter((index) => index >= 0 && index < 4) // Validate indices
+      .map((index) => String.fromCharCode(97 + index)); // 97 = 'a'
     correctOption = letters.join(",");
   } else if (
     uiQuestion.correctAnswerIndex !== undefined &&
