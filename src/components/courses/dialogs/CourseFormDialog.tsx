@@ -845,7 +845,8 @@ export function CourseFormDialog({
 
         toast({
           title: "Thành công",
-          description: `Đã import ${questions.length} câu hỏi vào danh sách. Nhấn 'Lưu' để cập nhật vào cơ sở dữ liệu.`,
+          description: `Đã import ${questions.length} câu hỏi vào danh sách.`,
+          variant: "success",
         });
 
         const totalQuestions =
@@ -1096,6 +1097,7 @@ export function CourseFormDialog({
       title: "Thành công",
       description:
         "Câu hỏi đã được xóa khỏi danh sách. Nhấn 'Lưu' để cập nhật vào cơ sở dữ liệu.",
+      variant: "success",
     });
 
     setDeletingItem(null);

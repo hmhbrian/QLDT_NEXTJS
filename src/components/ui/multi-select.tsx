@@ -67,14 +67,17 @@ export function MultiSelect({
               selected.map((value) => {
                 const option = options.find((opt) => opt.value === value);
                 // Extract just the letter part (A:, B:, etc.) from the label
-                const letterOnly = option?.label.split(':')[0] || option?.label;
+                const letterOnly = option?.label.split(":")[0] || option?.label;
                 return (
                   <Badge key={value} variant="secondary" className="mr-1 mb-1">
                     {letterOnly}
-                    <button
-                      className="ml-1 ring-offset-background rounded-full outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                    <span
+                      className="ml-1 ring-offset-background rounded-full outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 cursor-pointer"
+                      role="button"
+                      tabIndex={0}
                       onKeyDown={(e) => {
-                        if (e.key === "Enter") {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
                           handleRemove(value);
                         }
                       }}
@@ -82,10 +85,14 @@ export function MultiSelect({
                         e.preventDefault();
                         e.stopPropagation();
                       }}
-                      onClick={() => handleRemove(value)}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handleRemove(value);
+                      }}
                     >
                       <X className="h-3 w-3 text-muted-foreground hover:text-foreground" />
-                    </button>
+                    </span>
                   </Badge>
                 );
               })
