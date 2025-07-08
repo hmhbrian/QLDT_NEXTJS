@@ -105,7 +105,7 @@ export default function TraineesPage() {
       usersService.getUsers({
         role: "HOCVIEN",
         search: debouncedSearchTerm,
-        limit: 24,
+        limit: 50,
       }),
   });
 

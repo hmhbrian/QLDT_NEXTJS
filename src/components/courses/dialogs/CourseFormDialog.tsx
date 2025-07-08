@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { format, parseISO } from "date-fns";
 import {
@@ -44,6 +44,7 @@ import {
   FileText,
   Video,
   GripVertical,
+  AlertTriangle,
 } from "lucide-react";
 import NextImage from "next/image";
 import { DatePicker } from "@/components/ui/datepicker";
@@ -76,10 +77,11 @@ import type {
   Question,
   UpdateLessonPayload,
   CourseMaterialType,
+  CreateQuestionPayload,
 } from "@/lib/types/course.types";
 import { generateCourseCode } from "@/lib/utils/code-generator";
-import { categoryOptions } from "@/lib/constants";
 import { useError } from "@/hooks/use-error";
+import { extractErrorMessage } from "@/lib/core";
 import * as XLSX from "xlsx";
 import type { Status } from "@/lib/types/status.types";
 import type { User } from "@/lib/types/user.types";
@@ -126,6 +128,8 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { CourseAttachedFilePayload } from "@/lib/services/modern/course-attached-files.service";
+import { categoryOptions } from "@/lib/constants";
+import { NO_DEPARTMENT_VALUE } from "@/lib/constants";
 
 // Helper function to render material icon
 const renderMaterialIcon = (type: CourseMaterialType | undefined) => {
@@ -146,8 +150,9 @@ const initialQuestionState: Omit<Question, "id"> = {
   questionCode: "",
   text: "",
   options: ["", "", "", ""],
-  correctAnswerIndex: 0,
+  correctAnswerIndex: -1,
   explanation: "",
+  position: 0,
 };
 const initialTestState: Omit<Test, "id"> = {
   title: "",
@@ -155,10 +160,17 @@ const initialTestState: Omit<Test, "id"> = {
   passingScorePercentage: 70,
 };
 
+type DeletingItem = {
+  type: "lesson" | "test" | "question" | "material";
+  id: string | number;
+  name: string;
+  testId?: string | number; // Optional, for deleting questions
+};
+
 // Define the form data state type to be more flexible with materials
 type CourseFormData = Omit<
   Course,
-  "id" | "createdAt" | "modifiedAt" | "createdBy" | "modifiedBy"
+  "id" | "createdAt" | "modifiedAt" | "createdBy" | "modifiedBy" | "materials"
 > & {
   materials: (Partial<CourseMaterial> & {
     id: string | number;
@@ -222,7 +234,7 @@ function SortableLessonItem({
 }: {
   lesson: Lesson;
   onEdit: (l: Lesson) => void;
-  onDelete: (id: number | string) => void;
+  onDelete: (l: Lesson) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition } =
     useSortable({ id: lesson.id });
@@ -262,7 +274,7 @@ function SortableLessonItem({
           variant="ghost"
           size="icon"
           className="text-destructive hover:text-destructive"
-          onClick={() => onDelete(lesson.id)}
+          onClick={() => onDelete(lesson)}
         >
           <Trash2 className="h-4 w-4" />
         </Button>
@@ -335,7 +347,10 @@ export function CourseFormDialog({
 
   // State cho pagination câu hỏi
   const [questionsPage, setQuestionsPage] = useState(1);
-  const questionsPerPage = 5;
+  const questionsPerPage = 10;
+
+  // State for deletion confirmation
+  const [deletingItem, setDeletingItem] = useState<DeletingItem | null>(null);
 
   const isEditingExistingCourse = !!courseToEdit && !isDuplicating;
 
@@ -353,17 +368,13 @@ export function CourseFormDialog({
     lessons,
     isLoading: isLoadingLessons,
     error: lessonsError,
-  } = useLessons(
-    isEditingExistingCourse && !isDuplicating ? courseToEdit.id : undefined
-  );
+  } = useLessons(isEditingExistingCourse ? courseToEdit?.id : undefined);
 
   const {
     tests,
     isLoading: isLoadingTests,
     error: testsError,
-  } = useTests(
-    isEditingExistingCourse && !isDuplicating ? courseToEdit.id : undefined
-  );
+  } = useTests(isEditingExistingCourse ? courseToEdit?.id : undefined);
 
   const createLessonMutation = useCreateLesson();
   const updateLessonMutation = useUpdateLesson();
@@ -387,12 +398,10 @@ export function CourseFormDialog({
 
   const sensors = useSensors(useSensor(PointerSensor));
 
-  // Effect to initialize the form when the dialog opens or courseToEdit changes
   useEffect(() => {
     if (!isOpen) return;
 
     if (courseToEdit) {
-      // If editing, use courseToEdit data
       const editableCourseData = JSON.parse(JSON.stringify(courseToEdit));
       setFormData({
         ...initialNewCourseStateForDialog,
@@ -401,7 +410,6 @@ export function CourseFormDialog({
       setCourseImagePreview(editableCourseData.image);
       setTempSelectedTraineeIds(editableCourseData.enrolledTrainees || []);
     } else {
-      // If adding, use initial state
       const draftStatus = courseStatuses.find((s) => s.name === "Lưu nháp");
       setFormData({
         ...initialNewCourseStateForDialog,
@@ -411,25 +419,24 @@ export function CourseFormDialog({
       setCourseImagePreview(initialNewCourseStateForDialog.image);
       setTempSelectedTraineeIds([]);
     }
-  }, [isOpen, courseToEdit, courseStatuses]);
+    setSelectedImageFile(null);
+    if (courseImageInputRef.current) {
+      courseImageInputRef.current.value = "";
+    }
+  }, [isOpen, courseToEdit, courseStatuses, isDuplicating]);
 
-  // A separate effect to sync async data (lessons, tests, attachedFiles) into the form state
   useEffect(() => {
-    // Do not sync if we are duplicating, as the data is already copied over.
-    if (!isOpen || !courseToEdit || isDuplicating) return;
+    if (isDuplicating || !isEditingExistingCourse) return;
 
-    // Sync Lessons
-    if (!isLoadingLessons) {
+    if (!isLoadingLessons && lessons) {
       setFormData((prev) => ({ ...prev, lessons: lessons || [] }));
     }
 
-    // Sync Tests
-    if (!isLoadingTests) {
+    if (!isLoadingTests && tests) {
       setFormData((prev) => ({ ...prev, tests: tests || [] }));
     }
 
-    // Sync Attached Files (Materials)
-    if (!isLoadingAttachedFiles) {
+    if (!isLoadingAttachedFiles && attachedFiles) {
       setFormData((prev) => ({
         ...prev,
         materials: (attachedFiles || []).map((file) => ({
@@ -445,12 +452,10 @@ export function CourseFormDialog({
     isLoadingLessons,
     isLoadingTests,
     isLoadingAttachedFiles,
-    isOpen,
-    courseToEdit,
+    isEditingExistingCourse,
     isDuplicating,
   ]);
 
-  // Effect to update test form data with fetched questions
   useEffect(() => {
     if (
       isTestDialogOpen &&
@@ -533,7 +538,6 @@ export function CourseFormDialog({
       trainee.email.toLowerCase().includes(traineeSearchTerm.toLowerCase())
   );
 
-  // Quản lý Bài học
   const handleOpenAddLesson = () => {
     setCurrentEditingLesson(null);
     setLessonFormData({ title: "", content: "", file: null });
@@ -550,7 +554,7 @@ export function CourseFormDialog({
     setIsLessonDialogOpen(true);
   };
 
-  const handleSaveLesson = () => {
+  const handleSaveLesson = async () => {
     if (!courseToEdit?.id) return;
     if (!lessonFormData.title) {
       toast({
@@ -561,41 +565,62 @@ export function CourseFormDialog({
       return;
     }
 
-    if (currentEditingLesson) {
-      // Update Logic
-      const payload: UpdateLessonPayload = { title: lessonFormData.title };
-      if (lessonFormData.file) {
-        payload.file = lessonFormData.file;
-      }
-      updateLessonMutation.mutate({
-        courseId: courseToEdit.id,
-        lessonId: currentEditingLesson.id,
-        payload,
-      });
-    } else {
-      // Create Logic
-      if (!lessonFormData.file) {
-        toast({
-          title: "Lỗi",
-          description: "Vui lòng chọn file PDF cho bài học mới.",
-          variant: "destructive",
+    try {
+      if (currentEditingLesson) {
+        const payload: UpdateLessonPayload = { title: lessonFormData.title };
+        if (lessonFormData.file) {
+          payload.file = lessonFormData.file;
+        }
+        await updateLessonMutation.mutateAsync({
+          courseId: courseToEdit.id,
+          lessonId: Number(currentEditingLesson.id),
+          payload,
         });
-        return;
+        // Mutation sẽ tự hiển thị thông báo thành công qua onSuccess callback
+      } else {
+        if (!lessonFormData.file) {
+          toast({
+            title: "Lỗi",
+            description: "Vui lòng chọn file PDF cho bài học mới.",
+            variant: "destructive",
+          });
+          return;
+        }
+        await createLessonMutation.mutateAsync({
+          courseId: courseToEdit.id,
+          title: lessonFormData.title || "Bài học không tên",
+          file: lessonFormData.file,
+        });
+        // Mutation sẽ tự hiển thị thông báo thành công qua onSuccess callback
       }
-      createLessonMutation.mutate({
-        courseId: courseToEdit.id,
-        title: lessonFormData.title || "Bài học không tên",
-        file: lessonFormData.file,
+      setIsLessonDialogOpen(false);
+    } catch (error) {
+      console.error("Failed to save lesson:", error);
+      toast({
+        title: "Lỗi",
+        description:
+          extractErrorMessage(error) ||
+          "Không thể lưu bài học. Vui lòng thử lại.",
+        variant: "destructive",
       });
     }
-    setIsLessonDialogOpen(false);
   };
 
-  const handleDeleteLesson = (lessonId: number | string) => {
-    if (!courseToEdit?.id) return;
+  const executeDeleteLesson = () => {
+    if (!deletingItem || deletingItem.type !== "lesson" || !courseToEdit?.id)
+      return;
     deleteLessonMutation.mutate({
       courseId: courseToEdit.id,
-      lessonIds: [Number(lessonId)],
+      lessonIds: [Number(deletingItem.id)],
+    });
+    setDeletingItem(null);
+  };
+
+  const handleDeleteLesson = (lesson: Lesson) => {
+    setDeletingItem({
+      type: "lesson",
+      id: lesson.id,
+      name: lesson.title,
     });
   };
 
@@ -609,56 +634,33 @@ export function CourseFormDialog({
       if (oldIndex === -1 || newIndex === -1) return;
 
       const reorderedLessons = arrayMove(formData.lessons, oldIndex, newIndex);
-      
-      const movedLesson = reorderedLessons[newIndex];
-      const previousLesson =
-        newIndex > 0 ? reorderedLessons[newIndex - 1] : null;
 
-      const movedLessonId = Number(movedLesson.id);
-      const previousLessonId = previousLesson
-        ? Number(previousLesson.id)
-        : null;
-
-      if (
-        isNaN(movedLessonId) ||
-        (previousLessonId !== null && isNaN(previousLessonId))
-      ) {
-        toast({
-          title: "Lỗi sắp xếp",
-          description:
-            "Không thể sắp xếp bài học mới tạo (chưa được lưu). Vui lòng lưu khóa học trước.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      // Apply optimistic update first
       handleInputChange("lessons", reorderedLessons);
 
       if (courseToEdit?.id) {
+        const movedLesson = reorderedLessons[newIndex];
+        const previousLesson =
+          newIndex > 0 ? reorderedLessons[newIndex - 1] : null;
+
+        const payload = {
+          lessonId: Number(movedLesson.id),
+          previousLessonId: previousLesson ? Number(previousLesson.id) : null,
+        };
         reorderLessonMutation.mutate({
           courseId: courseToEdit.id,
-          payload: {
-            lessonId: movedLessonId,
-            previousLessonId: previousLessonId,
-          },
-        }, {
-          onError: () => {
-            // On error, revert the optimistic update
-            handleInputChange("lessons", formData.lessons);
-          }
+          payload,
         });
       }
     }
   };
 
-  // Quản lý Bài kiểm tra
   const handleOpenAddTest = () => {
     setCurrentEditingTest(null);
     setTestFormData(initialTestState);
     setQuestionsPage(1);
     setIsTestDialogOpen(true);
   };
+
   const handleOpenEditTest = (test: Test) => {
     setCurrentEditingTest(test);
     setTestFormData({
@@ -667,6 +669,21 @@ export function CourseFormDialog({
     });
     setQuestionsPage(1);
     setIsTestDialogOpen(true);
+  };
+
+  const handleOpenAddQuestion = () => {
+    setCurrentEditingQuestion(null);
+    setQuestionFormData(initialQuestionState);
+    setIsQuestionDialogOpen(true);
+  };
+
+  const handleOpenEditQuestion = (question: Question) => {
+    setCurrentEditingQuestion(question);
+    setQuestionFormData({
+      ...initialQuestionState,
+      ...question,
+    });
+    setIsQuestionDialogOpen(true);
   };
 
   const handleExcelFileImport = (
@@ -681,7 +698,7 @@ export function CourseFormDialog({
     }
 
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
       try {
         const data = e.target?.result;
         const workbook = XLSX.read(data, { type: "array" });
@@ -769,19 +786,25 @@ export function CourseFormDialog({
           if (optionC) options.push(optionC);
           if (optionD) options.push(optionD);
 
-          let correctAnswerIndex = 0;
+          let correctAnswerIndex = -1;
 
           if (/^\d+$/.test(correctAnswerLabel)) {
             correctAnswerIndex = parseInt(correctAnswerLabel) - 1;
           } else {
             const upperLabel = correctAnswerLabel.toUpperCase();
             const labelMap: Record<string, number> = { A: 0, B: 1, C: 2, D: 3 };
-            correctAnswerIndex = labelMap[upperLabel] || 0;
+            correctAnswerIndex = labelMap[upperLabel];
           }
 
-          if (correctAnswerIndex < 0 || correctAnswerIndex >= options.length) {
-            console.warn(`Đáp án đúng không hợp lệ ở dòng ${i + 1}. Đặt về 0.`);
-            correctAnswerIndex = 0;
+          if (
+            correctAnswerIndex === undefined ||
+            correctAnswerIndex < 0 ||
+            correctAnswerIndex >= options.length
+          ) {
+            console.warn(
+              `Đáp án đúng không hợp lệ ở dòng ${i + 1}. Bỏ qua câu hỏi.`
+            );
+            continue;
           }
 
           questions.push({
@@ -791,6 +814,7 @@ export function CourseFormDialog({
             options: options,
             correctAnswerIndex: correctAnswerIndex,
             explanation: explanation,
+            position: (testFormData.questions?.length || 0) + questions.length,
           });
         }
 
@@ -799,48 +823,34 @@ export function CourseFormDialog({
           return;
         }
 
-        // Handle both new and existing tests
         if (currentEditingTest && typeof currentEditingTest.id === "number") {
-          // TODO: Implement bulk question creation API call if available
-          // For now, let's create them one by one
-          Promise.all(
+          await Promise.all(
             questions.map((q) =>
               createQuestionMutation.mutateAsync({
                 testId: currentEditingTest.id as number,
-                payload: mapUiQuestionToApiPayload(q),
+                payload: mapUiQuestionToApiPayload(q) as CreateQuestionPayload,
               })
             )
-          )
-            .then(() => {
-              toast({
-                title: "Thành công",
-                description: `Đã import ${questions.length} câu hỏi.`,
-              });
-            })
-            .catch((err) => {
-              toast({
-                title: "Lỗi",
-                description: "Có lỗi xảy ra khi import một số câu hỏi.",
-                variant: "destructive",
-              });
-            });
+          );
+          toast({
+            title: "Thành công",
+            description: `Đã import ${questions.length} câu hỏi.`,
+          });
         } else {
-          // For new tests, just update local state
           setTestFormData((prev) => ({
             ...prev,
             questions: [...(prev.questions || []), ...questions],
           }));
+          toast({
+            title: "Thành công",
+            description: `Đã import ${questions.length} câu hỏi vào trạng thái tạm thời.`,
+          });
         }
 
         const totalQuestions =
           (testFormData.questions?.length || 0) + questions.length;
         const lastPage = Math.ceil(totalQuestions / questionsPerPage);
         setQuestionsPage(lastPage);
-
-        toast({
-          title: "Thành công",
-          description: `Đã import ${questions.length} câu hỏi.`,
-        });
       } catch (error) {
         console.error("Lỗi khi import file Excel:", error);
         showError("FILE001");
@@ -854,31 +864,59 @@ export function CourseFormDialog({
       testExcelImportInputRef.current.value = "";
   };
 
-  const handleSaveOrUpdateTest = () => {
+  const handleSaveOrUpdateTest = async () => {
     if (!testFormData.title || !courseToEdit?.id) {
       showError("FORM001");
       return;
     }
 
-    if (currentEditingTest && typeof currentEditingTest.id === "number") {
-      const updatePayload = mapUiTestToUpdatePayload(testFormData as Test);
-      updateTestMutation.mutate({
-        courseId: courseToEdit.id,
-        testId: currentEditingTest.id,
-        payload: updatePayload,
-      });
-    } else {
-      const createPayload = mapUiTestToCreatePayload(testFormData as Test);
-      createTestMutation.mutate({
-        courseId: courseToEdit.id,
-        payload: createPayload,
+    try {
+      if (currentEditingTest && typeof currentEditingTest.id === "number") {
+        const updatePayload = mapUiTestToUpdatePayload(testFormData as Test);
+        await updateTestMutation.mutateAsync({
+          courseId: courseToEdit.id,
+          testId: currentEditingTest.id,
+          payload: updatePayload,
+        });
+        // Mutation sẽ tự hiển thị thông báo thành công qua onSuccess callback
+      } else {
+        const createPayload = mapUiTestToCreatePayload(testFormData as Test);
+        await createTestMutation.mutateAsync({
+          courseId: courseToEdit.id,
+          payload: createPayload,
+        });
+        // Mutation sẽ tự hiển thị thông báo thành công qua onSuccess callback
+      }
+      setIsTestDialogOpen(false);
+    } catch (error) {
+      console.error("Failed to save test:", error);
+      toast({
+        title: "Lỗi",
+        description:
+          extractErrorMessage(error) ||
+          "Không thể lưu bài kiểm tra. Vui lòng thử lại.",
+        variant: "destructive",
       });
     }
-    setIsTestDialogOpen(false);
   };
 
-  const handleDeleteExistingTest = (testId: number | string) => {
-    if (!courseToEdit?.id || typeof testId !== "number") {
+  const executeDeleteTest = () => {
+    if (
+      !deletingItem ||
+      deletingItem.type !== "test" ||
+      !courseToEdit?.id ||
+      typeof deletingItem.id !== "number"
+    )
+      return;
+    deleteTestMutation.mutate({
+      courseId: courseToEdit.id,
+      testId: deletingItem.id,
+    });
+    setDeletingItem(null);
+  };
+
+  const handleDeleteExistingTest = (test: Test) => {
+    if (typeof test.id !== "number") {
       toast({
         title: "Lỗi",
         description: "Không thể xóa bài kiểm tra chưa được lưu.",
@@ -886,32 +924,27 @@ export function CourseFormDialog({
       });
       return;
     }
-    deleteTestMutation.mutate({ courseId: courseToEdit.id, testId });
-  };
-
-  // Quản lý Câu hỏi (bên trong Dialog Bài kiểm tra)
-  const handleOpenAddQuestion = () => {
-    setCurrentEditingQuestion(null);
-    setQuestionFormData(initialQuestionState);
-    setIsQuestionDialogOpen(true);
-  };
-
-  const handleOpenEditQuestion = (question: Question) => {
-    setCurrentEditingQuestion(question);
-    setQuestionFormData({
-      ...question,
-      options: question.options || [],
+    setDeletingItem({
+      type: "test",
+      id: test.id,
+      name: test.title,
     });
-    setIsQuestionDialogOpen(true);
   };
 
-  const handleSaveOrUpdateQuestion = () => {
+  const handleSaveOrUpdateQuestion = async () => {
+    const validOptions = questionFormData.options.filter((opt) => opt.trim());
     if (
       !questionFormData.text ||
-      questionFormData.options.some((opt) => !opt.trim()) ||
-      questionFormData.correctAnswerIndex < 0
+      validOptions.length < 2 ||
+      questionFormData.correctAnswerIndex < 0 ||
+      questionFormData.correctAnswerIndex >= validOptions.length
     ) {
-      showError("FORM001");
+      toast({
+        title: "Dữ liệu không hợp lệ",
+        description:
+          "Vui lòng điền nội dung câu hỏi, ít nhất 2 lựa chọn và chọn đáp án đúng.",
+        variant: "destructive",
+      });
       return;
     }
 
@@ -920,68 +953,138 @@ export function CourseFormDialog({
         ? currentEditingTest.id
         : null;
 
-    if (testId) {
-      // Logic for an existing test (call API)
-      const payload = mapUiQuestionToApiPayload(questionFormData);
-      if (currentEditingQuestion) {
-        const questionId =
-          typeof currentEditingQuestion.id === "number"
-            ? currentEditingQuestion.id
-            : null;
-        if (!questionId) {
-          toast({
-            title: "Lỗi",
-            description: "Không xác định được câu hỏi.",
-            variant: "destructive",
-          });
-          return;
-        }
-        updateQuestionMutation.mutate({ testId, questionId, payload });
-      } else {
-        createQuestionMutation.mutate({ testId, payload });
-      }
-    } else {
-      // Logic for a new test (update local state)
-      setTestFormData((prev) => {
-        const newQuestions = [...(prev.questions || [])];
+    try {
+      if (testId) {
+        const payload = mapUiQuestionToApiPayload({
+          ...questionFormData,
+          position: currentEditingQuestion
+            ? currentEditingQuestion.position
+            : fetchedQuestions?.length || 0,
+        });
         if (currentEditingQuestion) {
-          const index = newQuestions.findIndex(
-            (q) => q.id === currentEditingQuestion.id
-          );
-          if (index > -1) {
-            newQuestions[index] = {
-              ...currentEditingQuestion,
-              ...questionFormData,
-            };
-          }
-        } else {
-          newQuestions.push({
-            id: crypto.randomUUID(), // Client-side ID
-            ...questionFormData,
+          const questionId =
+            typeof currentEditingQuestion.id === "number"
+              ? currentEditingQuestion.id
+              : null;
+          if (!questionId) return;
+          await updateQuestionMutation.mutateAsync({
+            testId,
+            questionId,
+            payload,
           });
+          // Mutation sẽ tự hiển thị thông báo thành công qua onSuccess callback
+        } else {
+          await createQuestionMutation.mutateAsync({ testId, payload });
+          // Mutation sẽ tự hiển thị thông báo thành công qua onSuccess callback
         }
-        return { ...prev, questions: newQuestions };
+      } else {
+        setTestFormData((prev) => {
+          const newQuestions = [...(prev.questions || [])];
+          if (currentEditingQuestion) {
+            const index = newQuestions.findIndex(
+              (q) => q.id === currentEditingQuestion.id
+            );
+            if (index > -1) {
+              newQuestions[index] = {
+                ...currentEditingQuestion,
+                ...questionFormData,
+              };
+            }
+          } else {
+            newQuestions.push({
+              id: crypto.randomUUID(),
+              ...questionFormData,
+              position: newQuestions.length,
+            });
+          }
+          return { ...prev, questions: newQuestions };
+        });
+        // Hiển thị thông báo cho thao tác local (test chưa lưu)
+        toast({
+          title: "Thành công",
+          description: currentEditingQuestion
+            ? "Câu hỏi đã được cập nhật thành công."
+            : "Câu hỏi đã được thêm thành công.",
+          variant: "success",
+        });
+      }
+      setIsQuestionDialogOpen(false);
+    } catch (error) {
+      console.error("Failed to save question:", error);
+      toast({
+        title: "Lỗi",
+        description:
+          extractErrorMessage(error) ||
+          "Không thể lưu câu hỏi. Vui lòng thử lại.",
+        variant: "destructive",
       });
     }
-    setIsQuestionDialogOpen(false);
   };
 
-  const handleDeleteQuestionFromTest = (questionId: string | number) => {
-    const testId =
-      currentEditingTest && typeof currentEditingTest.id === "number"
-        ? currentEditingTest.id
-        : null;
+  const executeDeleteQuestion = () => {
+    if (!deletingItem || deletingItem.type !== "question") return;
 
-    if (testId && typeof questionId === "number") {
-      // Existing question in an existing test
-      deleteQuestionMutation.mutate({ testId, questionIds: [questionId] });
+    const { id, testId } = deletingItem;
+
+    if (testId && typeof id === "number" && typeof testId === "number") {
+      deleteQuestionMutation.mutate({ testId, questionIds: [id] });
     } else {
-      // Client-side question (or existing question in a new test)
       setTestFormData((prev) => ({
         ...prev,
-        questions: (prev.questions || []).filter((q) => q.id !== questionId),
+        questions: (prev.questions || [])
+          .filter((q) => q.id !== id)
+          .map((q, index) => ({ ...q, position: index })),
       }));
     }
+    setDeletingItem(null);
+  };
+
+  const handleDeleteQuestionFromTest = (question: Question) => {
+    setDeletingItem({
+      type: "question",
+      id: question.id,
+      name: `câu hỏi "${question.text.substring(0, 30)}..."`,
+      testId: currentEditingTest?.id,
+    });
+  };
+
+  const executeRemoveMaterial = async () => {
+    if (!deletingItem || deletingItem.type !== "material") return;
+    const { id } = deletingItem;
+
+    if (typeof id === "string") {
+      setFormData((prev) => ({
+        ...prev,
+        materials: (prev.materials || []).filter((m) => m.id !== id),
+      }));
+    } else if (courseToEdit?.id && typeof id === "number") {
+      try {
+        await courseAttachedFilesService.deleteAttachedFile({
+          courseId: courseToEdit.id,
+          fileId: id,
+        });
+        setFormData((prev) => ({
+          ...prev,
+          materials: (prev.materials || []).filter((m: any) => m.id !== id),
+        }));
+        toast({
+          title: "Thành công",
+          description: "Đã xóa tài liệu.",
+          variant: "success",
+        });
+      } catch (error) {
+        showError(error);
+      }
+    }
+    setDeletingItem(null);
+  };
+
+  const handleRemoveMaterial = (material: Partial<CourseMaterial>) => {
+    setDeletingItem({
+      type: "material",
+      id: material.id!,
+      name: material.title || "Tài liệu không tên",
+    });
   };
 
   const handleAddMaterial = () => {
@@ -991,56 +1094,13 @@ export function CourseFormDialog({
         ...(prev.materials || []),
         {
           id: crypto.randomUUID(),
-          type: "Link",
+          type: "Link", // Default to Link
           title: "",
           link: "",
-          courseId: courseToEdit?.id || "",
-          createdAt: new Date().toISOString(),
-          modifiedAt: null,
           __file: null,
         },
       ],
     }));
-  };
-
-  const handleRemoveMaterial = async (id: string | number) => {
-    // If it's a string, it's a temporary client-side ID
-    if (typeof id === "string") {
-      setFormData((prev) => ({
-        ...prev,
-        materials: (prev.materials || []).filter((m) => m.id !== id),
-      }));
-      return;
-    }
-
-    // If it's a number, it's an existing file from the API
-    if (courseToEdit?.id && typeof id === "number") {
-      try {
-        const response = await courseAttachedFilesService.deleteAttachedFile({
-          courseId: courseToEdit.id,
-          fileId: id,
-        });
-        setFormData((prev) => ({
-          ...prev,
-          materials: (prev.materials || []).filter((m: any) => m.id !== id),
-        }));
-
-        // Hiển thị thông báo thành công
-        // Nếu backend trả về response có message, dùng nó; nếu không, dùng message mặc định
-        if (response && typeof response === "object" && "message" in response) {
-          showError(response);
-        } else {
-          // Fallback: tạo response thành công
-          showError({
-            success: true,
-            message: "Xóa tài liệu thành công.",
-          });
-        }
-      } catch (error) {
-        // Sử dụng showError để hiển thị lỗi từ backend
-        showError(error);
-      }
-    }
   };
 
   const handleMaterialDetailChange = (
@@ -1069,8 +1129,8 @@ export function CourseFormDialog({
     if (file && index < (formData.materials?.length || 0)) {
       setFormData((prev) => {
         const newMaterials = [...(prev.materials || [])];
-        (newMaterials[index] as any).link = file.name; // Display file name
-        (newMaterials[index] as any).__file = file; // Store the file object
+        (newMaterials[index] as any).link = file.name;
+        (newMaterials[index] as any).__file = file;
         return { ...prev, materials: newMaterials };
       });
     }
@@ -1078,7 +1138,7 @@ export function CourseFormDialog({
 
   const handleSubmit = async () => {
     setIsSubmitting(true);
-    const isEditing = !!courseToEdit;
+    const isEditing = !!courseToEdit && !isDuplicating;
 
     if (!formData.title || !formData.description || !formData.objectives) {
       toast({
@@ -1091,8 +1151,28 @@ export function CourseFormDialog({
     }
 
     try {
+      // Separate materials from the rest of the form data for type safety
+      const { materials, ...restOfFormData } = formData;
+
+      // Filter out new materials that don't have a courseId for the onSave call.
+      // These will be uploaded separately after the course is saved.
+      const savedMaterials = (materials || []).filter(
+        (m): m is CourseMaterial => m.courseId !== undefined
+      );
+
+      // Reconstruct the course data to match the expected 'onSave' signature.
+      const courseDataForSave:
+        | Course
+        | Omit<
+            Course,
+            "id" | "createdAt" | "modifiedAt" | "createdBy" | "modifiedBy"
+          > = {
+        ...restOfFormData,
+        materials: savedMaterials,
+      };
+
       const savedCourseResult = await onSave(
-        formData,
+        courseDataForSave,
         isEditing,
         selectedImageFile
       );
@@ -1108,7 +1188,7 @@ export function CourseFormDialog({
         const newMaterialsPayload: CourseAttachedFilePayload[] = (
           formData.materials || []
         )
-          .filter((m) => typeof m.id === "string") // Only process new materials
+          .filter((m) => typeof m.id === "string")
           .map((m) => {
             const item: CourseAttachedFilePayload = {
               title: m.title || "Untitled",
@@ -1120,7 +1200,7 @@ export function CourseFormDialog({
             }
             return item;
           })
-          .filter((p) => p.file || p.link); // Filter out empty payloads
+          .filter((p) => p.file || p.link);
 
         if (newMaterialsPayload.length > 0) {
           await courseAttachedFilesService.uploadAttachedFiles(
@@ -1133,15 +1213,29 @@ export function CourseFormDialog({
       onOpenChange(false);
     } catch (error) {
       console.error("Error saving course or uploading files:", error);
-      toast({
-        title: "An error occurred",
-        description:
-          error instanceof Error ? error.message : "Please try again.",
-        variant: "destructive",
-      });
+      // Let the onSave function's error handling (toast) manage user feedback.
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleConfirmDelete = () => {
+    if (!deletingItem) return;
+    switch (deletingItem.type) {
+      case "lesson":
+        executeDeleteLesson();
+        break;
+      case "test":
+        executeDeleteTest();
+        break;
+      case "question":
+        executeDeleteQuestion();
+        break;
+      case "material":
+        executeRemoveMaterial();
+        break;
+    }
+    setDeletingItem(null);
   };
 
   const parseDateStringForPicker = (
@@ -1159,6 +1253,23 @@ export function CourseFormDialog({
       return undefined;
     }
   };
+
+  const sortedQuestions = useMemo(() => {
+    return [...(testFormData.questions || [])].sort(
+      (a, b) => (a.position || 0) - (b.position || 0)
+    );
+  }, [testFormData.questions]);
+
+  const paginatedQuestions = useMemo(() => {
+    return sortedQuestions.slice(
+      (questionsPage - 1) * questionsPerPage,
+      questionsPage * questionsPerPage
+    );
+  }, [sortedQuestions, questionsPage, questionsPerPage]);
+
+  const totalQuestionPages = useMemo(() => {
+    return Math.ceil((testFormData.questions?.length || 0) / questionsPerPage);
+  }, [testFormData.questions, questionsPerPage]);
 
   return (
     <>
@@ -1683,7 +1794,7 @@ export function CourseFormDialog({
                       variant="outline"
                       size="sm"
                       onClick={handleOpenAddLesson}
-                      disabled={!courseToEdit?.id}
+                      disabled={!isEditingExistingCourse}
                     >
                       <PlusCircle className="mr-2 h-4 w-4" /> Thêm bài học
                     </Button>
@@ -1712,7 +1823,7 @@ export function CourseFormDialog({
                               key={lesson.id}
                               lesson={lesson}
                               onEdit={handleOpenEditLesson}
-                              onDelete={handleDeleteLesson}
+                              onDelete={() => handleDeleteLesson(lesson)}
                             />
                           ))}
                         </div>
@@ -1766,9 +1877,7 @@ export function CourseFormDialog({
                           className="flex items-center justify-between p-2 border rounded-md"
                         >
                           <span className="text-sm">
-                            {test.title} (
-                            {(test.questions && test.questions.length) || 0} câu
-                            hỏi)
+                            {test.title} ({test.countQuestion || 0} câu hỏi)
                           </span>
                           <div className="space-x-1">
                             <Button
@@ -1784,7 +1893,7 @@ export function CourseFormDialog({
                               variant="ghost"
                               size="icon"
                               className="text-destructive hover:text-destructive"
-                              onClick={() => handleDeleteExistingTest(test.id)}
+                              onClick={() => handleDeleteExistingTest(test)}
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
@@ -1903,7 +2012,7 @@ export function CourseFormDialog({
                             variant="ghost"
                             size="icon"
                             className="sm:ml-auto flex-shrink-0"
-                            onClick={() => handleRemoveMaterial(material.id)}
+                            onClick={() => handleRemoveMaterial(material)}
                           >
                             <X className="h-4 w-4" />
                           </Button>
@@ -1940,6 +2049,31 @@ export function CourseFormDialog({
             <LoadingButton onClick={handleSubmit} isLoading={isSubmitting}>
               {courseToEdit ? "Lưu thay đổi" : "Thêm khóa học"}
             </LoadingButton>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Universal Deletion Confirmation Dialog */}
+      <Dialog open={!!deletingItem} onOpenChange={() => setDeletingItem(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="text-destructive" />
+              Xác nhận xóa
+            </DialogTitle>
+            <DialogDescription className="pt-2">
+              Bạn có chắc chắn muốn xóa mục{" "}
+              <strong>&quot;{deletingItem?.name}&quot;</strong>? Hành động này
+              không thể hoàn tác.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeletingItem(null)}>
+              Hủy
+            </Button>
+            <Button variant="destructive" onClick={handleConfirmDelete}>
+              Xác nhận xóa
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -2166,83 +2300,75 @@ export function CourseFormDialog({
                 ) : (testFormData.questions || []).length > 0 ? (
                   <>
                     <div className="space-y-2">
-                      {(testFormData.questions || [])
-                        .slice(
-                          (questionsPage - 1) * questionsPerPage,
-                          questionsPage * questionsPerPage
-                        )
-                        .map((q, index) => {
-                          const actualIndex =
-                            (questionsPage - 1) * questionsPerPage + index;
-                          return (
-                            <div
-                              key={String(q.id) || `q-${actualIndex}`}
-                              className="flex items-start justify-between p-3 border rounded-md bg-muted/20 hover:bg-muted/30 transition-colors"
-                            >
-                              <div className="text-sm flex-1 pr-3">
-                                <div className="font-medium mb-1">
-                                  {q.questionCode || `Q${actualIndex + 1}`}
-                                </div>
-                                <div className="text-muted-foreground mb-2">
-                                  {q.text}
-                                </div>
-                                <div className="flex flex-wrap gap-1">
-                                  {q.options.map((option, optIndex) => (
-                                    <span
-                                      key={optIndex}
-                                      className={`text-xs px-2 py-1 rounded ${
-                                        optIndex === q.correctAnswerIndex
-                                          ? "bg-green-100 text-green-700 font-medium"
-                                          : "bg-gray-100 text-gray-600"
-                                      }`}
-                                    >
-                                      {String.fromCharCode(65 + optIndex)}:{" "}
-                                      {option}
-                                    </span>
-                                  ))}
-                                </div>
+                      {paginatedQuestions.map((q, index) => {
+                        const actualIndex =
+                          (questionsPage - 1) * questionsPerPage + index;
+                        return (
+                          <div
+                            key={String(q.id) || `q-${actualIndex}`}
+                            className="flex items-start justify-between p-3 border rounded-md bg-muted/20 hover:bg-muted/30 transition-colors"
+                          >
+                            <div className="text-sm flex-1 pr-3">
+                              <div className="font-medium mb-1">
+                                {`Q${q.position ?? 0}`}
                               </div>
-                              <div className="flex gap-1 flex-shrink-0">
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => handleOpenEditQuestion(q)}
-                                >
-                                  <Edit className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="icon"
-                                  className="text-destructive hover:text-destructive"
-                                  onClick={() =>
-                                    handleDeleteQuestionFromTest(q.id)
-                                  }
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
+                              <div className="text-muted-foreground mb-2">
+                                {q.text}
+                              </div>
+                              <div className="flex flex-wrap gap-1">
+                                {q.options.map((option, optIndex) => (
+                                  <span
+                                    key={optIndex}
+                                    className={`text-xs px-2 py-1 rounded ${
+                                      optIndex === q.correctAnswerIndex
+                                        ? "bg-green-100 text-green-700 font-medium"
+                                        : "bg-gray-100 text-gray-600"
+                                    }`}
+                                  >
+                                    {String.fromCharCode(65 + optIndex)}:{" "}
+                                    {option}
+                                  </span>
+                                ))}
                               </div>
                             </div>
-                          );
-                        })}
+                            <div className="flex gap-1 flex-shrink-0">
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleOpenEditQuestion(q)}
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="text-destructive hover:text-destructive"
+                                onClick={() => handleDeleteQuestionFromTest(q)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
 
-                    {(testFormData.questions || []).length >
-                      questionsPerPage && (
-                      <div className="flex items-center justify-between px-2">
+                    {totalQuestionPages > 1 && (
+                      <div className="flex items-center justify-between px-2 pt-2">
                         <div className="text-sm text-muted-foreground">
                           Hiển thị{" "}
                           {Math.min(
                             (questionsPage - 1) * questionsPerPage + 1,
-                            testFormData.questions.length
+                            sortedQuestions.length
                           )}{" "}
                           -{" "}
                           {Math.min(
                             questionsPage * questionsPerPage,
-                            testFormData.questions.length
+                            sortedQuestions.length
                           )}{" "}
-                          trong tổng số {testFormData.questions.length} câu hỏi
+                          trên tổng số {sortedQuestions.length} câu hỏi
                         </div>
                         <div className="flex items-center gap-2">
                           <Button
@@ -2258,11 +2384,7 @@ export function CourseFormDialog({
                             Trước
                           </Button>
                           <span className="text-sm">
-                            Trang {questionsPage} /{" "}
-                            {Math.ceil(
-                              (testFormData.questions?.length || 0) /
-                                questionsPerPage
-                            )}
+                            Trang {questionsPage} / {totalQuestionPages}
                           </span>
                           <Button
                             type="button"
@@ -2270,22 +2392,10 @@ export function CourseFormDialog({
                             size="sm"
                             onClick={() =>
                               setQuestionsPage((p) =>
-                                Math.min(
-                                  Math.ceil(
-                                    (testFormData.questions?.length || 0) /
-                                      questionsPerPage
-                                  ),
-                                  p + 1
-                                )
+                                Math.min(totalQuestionPages, p + 1)
                               )
                             }
-                            disabled={
-                              questionsPage ===
-                              Math.ceil(
-                                (testFormData.questions?.length || 0) /
-                                  questionsPerPage
-                              )
-                            }
+                            disabled={questionsPage === totalQuestionPages}
                           >
                             Sau
                             <ChevronRight className="h-4 w-4 ml-1" />
@@ -2295,7 +2405,7 @@ export function CourseFormDialog({
                     )}
                   </>
                 ) : (
-                  <p className="text-sm text-muted-foreground italic">
+                  <p className="text-sm text-muted-foreground italic text-center py-4">
                     Chưa có câu hỏi nào. Hãy thêm thủ công hoặc import từ Excel.
                   </p>
                 )}
@@ -2309,7 +2419,14 @@ export function CourseFormDialog({
             >
               Hủy
             </Button>
-            <Button onClick={handleSaveOrUpdateTest}>Lưu Bài kiểm tra</Button>
+            <LoadingButton
+              onClick={handleSaveOrUpdateTest}
+              isLoading={
+                createTestMutation.isPending || updateTestMutation.isPending
+              }
+            >
+              Lưu Bài kiểm tra
+            </LoadingButton>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -2333,11 +2450,11 @@ export function CourseFormDialog({
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4 max-h-[70vh] overflow-y-auto pr-2">
-            <div className="space-y-1">
+            {/* <div className="space-y-1">
               <Label htmlFor="questionCode">Mã câu hỏi (Tùy chọn)</Label>
               <Input
                 id="questionCode"
-                value={questionFormData.questionCode || ""}
+                value={questionFormData.position || ""}
                 onChange={(e) =>
                   setQuestionFormData((p) => ({
                     ...p,
@@ -2345,7 +2462,7 @@ export function CourseFormDialog({
                   }))
                 }
               />
-            </div>
+            </div> */}
             <div className="space-y-1">
               <Label htmlFor="questionText">
                 Nội dung câu hỏi <span className="text-destructive">*</span>
@@ -2388,7 +2505,11 @@ export function CourseFormDialog({
                 Đáp án đúng <span className="text-destructive">*</span>
               </Label>
               <Select
-                value={questionFormData.correctAnswerIndex.toString()}
+                value={
+                  questionFormData.correctAnswerIndex > -1
+                    ? questionFormData.correctAnswerIndex.toString()
+                    : ""
+                }
                 onValueChange={(v) =>
                   setQuestionFormData((p) => ({
                     ...p,

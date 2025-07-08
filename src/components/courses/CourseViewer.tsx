@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
@@ -170,7 +171,7 @@ function CourseViewer({ course }: CourseViewerProps) {
           className={`relative ${
             isFullscreen
               ? "h-screen bg-background"
-              : "min-h-[400px] md:min-h-[500px] lg:min-h-[600px]"
+              : "min-h-[400px] md:min-h-[500px] lg:min-h-[800px]"
           } w-full flex flex-col items-center justify-center bg-muted/30`}
         >
           {currentSlide?.type === "pdf" ? (
@@ -206,7 +207,7 @@ function CourseViewer({ course }: CourseViewerProps) {
                   loading={
                     <Skeleton
                       className={`w-full ${
-                        isFullscreen ? "h-screen" : "h-[600px]"
+                        isFullscreen ? "h-screen" : "h-[800px]"
                       }`}
                     />
                   } // Hiển thị skeleton khi đang tải
@@ -233,7 +234,7 @@ function CourseViewer({ course }: CourseViewerProps) {
                     loading={
                       <Skeleton
                         className={`w-full ${
-                          isFullscreen ? "h-screen" : "h-[600px]"
+                          isFullscreen ? "h-screen" : "h-[800px]"
                         }`}
                       />
                     } // Hiển thị skeleton khi trang đang tải
