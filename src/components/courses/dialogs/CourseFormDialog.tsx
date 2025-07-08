@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { format, parseISO } from "date-fns";
 import {
   Dialog,
@@ -104,8 +104,13 @@ import {
 import {
   useQuestions,
   useCreateQuestion,
+  useCreateQuestions,
+  useCreateQuestionSilent,
+  useCreateQuestionsSilent,
   useUpdateQuestion,
+  useUpdateQuestionSilent,
   useDeleteQuestion,
+  useDeleteQuestionSilent,
 } from "@/hooks/use-questions";
 import {
   mapUiTestToCreatePayload,
@@ -378,6 +383,8 @@ export function CourseFormDialog({
     error: testsError,
   } = useTests(isEditingExistingCourse ? courseToEdit?.id : undefined);
 
+  const queryClient = useQueryClient();
+
   const createLessonMutation = useCreateLesson();
   const updateLessonMutation = useUpdateLesson();
   const deleteLessonMutation = useDeleteLesson();
@@ -388,8 +395,13 @@ export function CourseFormDialog({
   const deleteTestMutation = useDeleteTest();
 
   const createQuestionMutation = useCreateQuestion();
+  const createQuestionsMutation = useCreateQuestions();
+  const createQuestionSilentMutation = useCreateQuestionSilent();
+  const createQuestionsSilentMutation = useCreateQuestionsSilent();
   const updateQuestionMutation = useUpdateQuestion();
+  const updateQuestionSilentMutation = useUpdateQuestionSilent();
   const deleteQuestionMutation = useDeleteQuestion();
+  const deleteQuestionSilentMutation = useDeleteQuestionSilent();
 
   const { questions: fetchedQuestions, isLoading: isLoadingQuestions } =
     useQuestions(
@@ -825,29 +837,16 @@ export function CourseFormDialog({
           return;
         }
 
-        if (currentEditingTest && typeof currentEditingTest.id === "number") {
-          await Promise.all(
-            questions.map((q) =>
-              createQuestionMutation.mutateAsync({
-                testId: currentEditingTest.id as number,
-                payload: mapUiQuestionToApiPayload(q) as CreateQuestionPayload,
-              })
-            )
-          );
-          toast({
-            title: "Thành công",
-            description: `Đã import ${questions.length} câu hỏi.`,
-          });
-        } else {
-          setTestFormData((prev) => ({
-            ...prev,
-            questions: [...(prev.questions || []), ...questions],
-          }));
-          toast({
-            title: "Thành công",
-            description: `Đã import ${questions.length} câu hỏi vào trạng thái tạm thời.`,
-          });
-        }
+        // Always add imported questions to local state first, regardless of whether editing or creating test
+        setTestFormData((prev) => ({
+          ...prev,
+          questions: [...(prev.questions || []), ...questions],
+        }));
+
+        toast({
+          title: "Thành công",
+          description: `Đã import ${questions.length} câu hỏi vào danh sách. Nhấn 'Lưu' để cập nhật vào cơ sở dữ liệu.`,
+        });
 
         const totalQuestions =
           (testFormData.questions?.length || 0) + questions.length;
@@ -874,13 +873,93 @@ export function CourseFormDialog({
 
     try {
       if (currentEditingTest && typeof currentEditingTest.id === "number") {
+        const testId = currentEditingTest.id;
+
+        // First update the test basic info
         const updatePayload = mapUiTestToUpdatePayload(testFormData as Test);
         await updateTestMutation.mutateAsync({
           courseId: courseToEdit.id,
-          testId: currentEditingTest.id,
+          testId: testId,
           payload: updatePayload,
         });
-        // Mutation sẽ tự hiển thị thông báo thành công qua onSuccess callback
+
+        // Then handle questions synchronization
+        const currentQuestions = testFormData.questions || [];
+        const originalQuestions = fetchedQuestions || [];
+
+        // Ensure positions are unique and sequential
+        const questionsWithCorrectPositions = currentQuestions.map(
+          (q, index) => ({
+            ...q,
+            position: index,
+          })
+        );
+
+        // Create new questions (those with string IDs from crypto.randomUUID())
+        const newQuestions = questionsWithCorrectPositions.filter(
+          (q) => typeof q.id === "string"
+        );
+        if (newQuestions.length > 0) {
+          const payloads = newQuestions.map((question) =>
+            mapUiQuestionToApiPayload(question)
+          );
+          await createQuestionsSilentMutation.mutateAsync({
+            testId: testId,
+            questions: payloads,
+          });
+        }
+
+        // Update existing questions (those with numeric IDs) - batch all updates
+        const existingQuestions = questionsWithCorrectPositions.filter(
+          (q) => typeof q.id === "number"
+        );
+        const updatePromises = existingQuestions.map((question) => {
+          const payload = mapUiQuestionToApiPayload(question);
+          return updateQuestionSilentMutation.mutateAsync({
+            testId: testId,
+            questionId: question.id as number,
+            payload,
+          });
+        });
+        await Promise.all(updatePromises);
+
+        // Delete questions that were removed (exist in original but not in current)
+        const currentQuestionIds = new Set(existingQuestions.map((q) => q.id));
+        const questionsToDelete = originalQuestions.filter(
+          (q) => typeof q.id === "number" && !currentQuestionIds.has(q.id)
+        );
+        const deletePromises = questionsToDelete.map((question) =>
+          deleteQuestionSilentMutation.mutateAsync({
+            testId: testId,
+            questionIds: [question.id as number],
+          })
+        );
+        await Promise.all(deletePromises);
+
+        // Manually invalidate queries once after all operations
+        queryClient.invalidateQueries({
+          queryKey: ["questions", testId],
+        });
+        queryClient.invalidateQueries({
+          queryKey: ["tests"],
+        });
+
+        toast({
+          title: "Thành công",
+          description: `Bài kiểm tra đã được cập nhật thành công. ${
+            newQuestions.length > 0
+              ? `Đã thêm ${newQuestions.length} câu hỏi mới. `
+              : ""
+          }${
+            existingQuestions.length > 0
+              ? `Đã cập nhật ${existingQuestions.length} câu hỏi. `
+              : ""
+          }${
+            questionsToDelete.length > 0
+              ? `Đã xóa ${questionsToDelete.length} câu hỏi.`
+              : ""
+          }`,
+        });
       } else {
         const createPayload = mapUiTestToCreatePayload(testFormData as Test);
         await createTestMutation.mutateAsync({
@@ -954,66 +1033,39 @@ export function CourseFormDialog({
       return;
     }
 
-    const testId =
-      currentEditingTest && typeof currentEditingTest.id === "number"
-        ? currentEditingTest.id
-        : null;
-
     try {
-      if (testId) {
-        const payload = mapUiQuestionToApiPayload({
-          ...questionFormData,
-          position: currentEditingQuestion
-            ? currentEditingQuestion.position
-            : fetchedQuestions?.length || 0,
-        });
+      // Always use local state for question management, regardless of new or editing test
+      setTestFormData((prev) => {
+        const newQuestions = [...(prev.questions || [])];
         if (currentEditingQuestion) {
-          const questionId =
-            typeof currentEditingQuestion.id === "number"
-              ? currentEditingQuestion.id
-              : null;
-          if (!questionId) return;
-          await updateQuestionMutation.mutateAsync({
-            testId,
-            questionId,
-            payload,
-          });
-          // Mutation sẽ tự hiển thị thông báo thành công qua onSuccess callback
-        } else {
-          await createQuestionMutation.mutateAsync({ testId, payload });
-          // Mutation sẽ tự hiển thị thông báo thành công qua onSuccess callback
-        }
-      } else {
-        setTestFormData((prev) => {
-          const newQuestions = [...(prev.questions || [])];
-          if (currentEditingQuestion) {
-            const index = newQuestions.findIndex(
-              (q) => q.id === currentEditingQuestion.id
-            );
-            if (index > -1) {
-              newQuestions[index] = {
-                ...currentEditingQuestion,
-                ...questionFormData,
-              };
-            }
-          } else {
-            newQuestions.push({
-              id: crypto.randomUUID(),
+          const index = newQuestions.findIndex(
+            (q) => q.id === currentEditingQuestion.id
+          );
+          if (index > -1) {
+            newQuestions[index] = {
+              ...currentEditingQuestion,
               ...questionFormData,
-              position: newQuestions.length,
-            });
+            };
           }
-          return { ...prev, questions: newQuestions };
-        });
-        // Hiển thị thông báo cho thao tác local (test chưa lưu)
-        toast({
-          title: "Thành công",
-          description: currentEditingQuestion
-            ? "Câu hỏi đã được cập nhật thành công."
-            : "Câu hỏi đã được thêm thành công.",
-          variant: "success",
-        });
-      }
+        } else {
+          newQuestions.push({
+            id: crypto.randomUUID(),
+            ...questionFormData,
+            position: newQuestions.length,
+          });
+        }
+        return { ...prev, questions: newQuestions };
+      });
+
+      // Show success message
+      toast({
+        title: "Thành công",
+        description: currentEditingQuestion
+          ? "Câu hỏi đã được cập nhật. Nhấn 'Lưu' để cập nhật vào cơ sở dữ liệu."
+          : "Câu hỏi đã được thêm. Nhấn 'Lưu' để cập nhật vào cơ sở dữ liệu.",
+        variant: "success",
+      });
+
       setIsQuestionDialogOpen(false);
     } catch (error) {
       console.error("Failed to save question:", error);
@@ -1030,18 +1082,22 @@ export function CourseFormDialog({
   const executeDeleteQuestion = () => {
     if (!deletingItem || deletingItem.type !== "question") return;
 
-    const { id, testId } = deletingItem;
+    const { id } = deletingItem;
 
-    if (testId && typeof id === "number" && typeof testId === "number") {
-      deleteQuestionMutation.mutate({ testId, questionIds: [id] });
-    } else {
-      setTestFormData((prev) => ({
-        ...prev,
-        questions: (prev.questions || [])
-          .filter((q) => q.id !== id)
-          .map((q, index) => ({ ...q, position: index })),
-      }));
-    }
+    // Always remove from local state, regardless of whether it's a new or existing test
+    setTestFormData((prev) => ({
+      ...prev,
+      questions: (prev.questions || [])
+        .filter((q) => q.id !== id)
+        .map((q, index) => ({ ...q, position: index })),
+    }));
+
+    toast({
+      title: "Thành công",
+      description:
+        "Câu hỏi đã được xóa khỏi danh sách. Nhấn 'Lưu' để cập nhật vào cơ sở dữ liệu.",
+    });
+
     setDeletingItem(null);
   };
 
@@ -2436,7 +2492,15 @@ export function CourseFormDialog({
             <LoadingButton
               onClick={handleSaveOrUpdateTest}
               isLoading={
-                createTestMutation.isPending || updateTestMutation.isPending
+                createTestMutation.isPending ||
+                updateTestMutation.isPending ||
+                createQuestionMutation.isPending ||
+                createQuestionSilentMutation.isPending ||
+                createQuestionsSilentMutation.isPending ||
+                updateQuestionMutation.isPending ||
+                updateQuestionSilentMutation.isPending ||
+                deleteQuestionMutation.isPending ||
+                deleteQuestionSilentMutation.isPending
               }
             >
               Lưu Bài kiểm tra

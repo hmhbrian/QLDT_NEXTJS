@@ -260,6 +260,7 @@ export interface UpdateTestPayload {
   passThreshold: number;
   time_test: number;
   position?: number;
+  questions?: Array<Omit<ApiQuestion, "id" | "questionCode">>;
 }
 
 export interface CreateQuestionPayload {

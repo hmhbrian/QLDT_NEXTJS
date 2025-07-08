@@ -1,4 +1,3 @@
-
 import { BaseService, PaginatedResponse, QueryParams } from "@/lib/core";
 import { API_CONFIG } from "@/lib/config";
 import type {
@@ -28,6 +27,16 @@ class QuestionsService extends BaseService<ApiQuestion> {
     return this.post<ApiQuestion>(endpoint, payload);
   }
 
+  async createQuestions(
+    testId: number,
+    questions: CreateQuestionPayload[]
+  ): Promise<void> {
+    const endpoint = `${this.endpoint}/${testId}/questions`;
+    // Backend expects the questions array directly, not wrapped in a 'request' field
+    // API returns success message, not array of questions
+    await this.post<void>(endpoint, questions);
+  }
+
   async updateQuestion(
     testId: number,
     questionId: number,
@@ -42,10 +51,7 @@ class QuestionsService extends BaseService<ApiQuestion> {
     await this.delete<void>(endpoint);
   }
 
-  async deleteQuestions(
-    testId: number,
-    questionIds: number[]
-  ): Promise<void> {
+  async deleteQuestions(testId: number, questionIds: number[]): Promise<void> {
     const endpoint = `${this.endpoint}/${testId}/questions`;
     // API expects the array of IDs in the request body for bulk delete
     await this.delete<void>(endpoint, questionIds);

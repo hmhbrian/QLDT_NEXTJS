@@ -78,6 +78,96 @@ export function useCreateQuestion() {
   });
 }
 
+export function useCreateQuestionSilent() {
+  const queryClient = useQueryClient();
+
+  return useMutation<
+    Question,
+    Error,
+    { testId: number; payload: CreateQuestionPayload }
+  >({
+    mutationFn: async (variables) => {
+      const apiQuestion = await questionsService.createQuestion(
+        variables.testId,
+        variables.payload
+      );
+      return mapApiQuestionToUi(apiQuestion);
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: [QUESTIONS_QUERY_KEY, variables.testId],
+      });
+    },
+  });
+}
+
+export function useCreateQuestions() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation<
+    void,
+    Error,
+    { testId: number; questions: CreateQuestionPayload[] }
+  >({
+    mutationFn: async (variables) => {
+      await questionsService.createQuestions(
+        variables.testId,
+        variables.questions
+      );
+      // API returns success message, not array of questions
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: [QUESTIONS_QUERY_KEY, variables.testId],
+      });
+      // Also invalidate tests to update countQuestion
+      queryClient.invalidateQueries({
+        queryKey: ["tests"],
+      });
+      toast({
+        title: "Thành công",
+        description: `Đã thêm ${variables.questions.length} câu hỏi mới.`,
+        variant: "success",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Thêm câu hỏi thất bại",
+        description: extractErrorMessage(error),
+        variant: "destructive",
+      });
+    },
+  });
+}
+
+export function useCreateQuestionsSilent() {
+  const queryClient = useQueryClient();
+
+  return useMutation<
+    void,
+    Error,
+    { testId: number; questions: CreateQuestionPayload[] }
+  >({
+    mutationFn: async (variables) => {
+      await questionsService.createQuestions(
+        variables.testId,
+        variables.questions
+      );
+      // API returns success message, not array of questions
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: [QUESTIONS_QUERY_KEY, variables.testId],
+      });
+      // Also invalidate tests to update countQuestion
+      queryClient.invalidateQueries({
+        queryKey: ["tests"],
+      });
+    },
+  });
+}
+
 export function useUpdateQuestion() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -112,6 +202,36 @@ export function useUpdateQuestion() {
         variant: "destructive",
       });
     },
+  });
+}
+
+export function useUpdateQuestionSilent() {
+  const queryClient = useQueryClient();
+
+  return useMutation<
+    Question,
+    Error,
+    { testId: number; questionId: number; payload: UpdateQuestionPayload }
+  >({
+    mutationFn: async (variables) => {
+      const apiQuestion = await questionsService.updateQuestion(
+        variables.testId,
+        variables.questionId,
+        variables.payload
+      );
+      return mapApiQuestionToUi(apiQuestion);
+    },
+    // No onSuccess invalidation - will be handled manually
+  });
+}
+
+export function useDeleteQuestionSilent() {
+  const queryClient = useQueryClient();
+
+  return useMutation<void, Error, { testId: number; questionIds: number[] }>({
+    mutationFn: (variables) =>
+      questionsService.deleteQuestions(variables.testId, variables.questionIds),
+    // No onSuccess invalidation - will be handled manually
   });
 }
 

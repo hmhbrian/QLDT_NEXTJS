@@ -93,5 +93,6 @@ export function mapUiTestToUpdatePayload(uiTest: Test): UpdateTestPayload {
     passThreshold: uiTest.passingScorePercentage,
     time_test: uiTest.time || 0,
     position: 0, // Defaulting as per API spec
+    questions: (uiTest.questions || []).map(mapUiQuestionToApiPayload),
   };
 }
