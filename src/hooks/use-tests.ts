@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -11,6 +10,7 @@ import type {
 import { useToast } from "@/components/ui/use-toast";
 import { extractErrorMessage } from "@/lib/core";
 import { mapApiTestToUiTest } from "@/lib/mappers/test.mapper";
+import { useError } from "@/hooks/use-error";
 
 export const TESTS_QUERY_KEY = "tests";
 
@@ -44,37 +44,43 @@ export function useTests(courseId: string | undefined) {
 
 export function useCreateTest() {
   const queryClient = useQueryClient();
-  const { toast } = useToast();
+  const { showError } = useError();
 
-  return useMutation<Test, Error, { courseId: string; payload: CreateTestPayload }>({
+  return useMutation<
+    Test,
+    Error,
+    { courseId: string; payload: CreateTestPayload }
+  >({
     mutationFn: async (variables) => {
-        const apiTest = await testsService.createTest(variables.courseId, variables.payload);
-        return mapApiTestToUiTest(apiTest);
+      const apiTest = await testsService.createTest(
+        variables.courseId,
+        variables.payload
+      );
+      return mapApiTestToUiTest(apiTest);
     },
     onSuccess: (newTest, variables) => {
-      queryClient.invalidateQueries({ queryKey: [TESTS_QUERY_KEY, variables.courseId] });
-      toast({
-        title: "Thành công",
-        description: `Bài kiểm tra "${newTest.title}" đã được tạo.`,
-        variant: "success",
+      queryClient.invalidateQueries({
+        queryKey: [TESTS_QUERY_KEY, variables.courseId],
+      });
+
+      // Sử dụng thông báo frontend cho create vì backend chỉ trả về data object
+      showError({
+        success: true,
+        message: `Bài kiểm tra "${newTest.title}" đã được tạo.`,
       });
     },
     onError: (error) => {
-      toast({
-        title: "Tạo bài kiểm tra thất bại",
-        description: extractErrorMessage(error),
-        variant: "destructive",
-      });
+      showError(error);
     },
   });
 }
 
 export function useUpdateTest() {
   const queryClient = useQueryClient();
-  const { toast } = useToast();
+  const { showError } = useError();
 
   return useMutation<
-    Test,
+    any,
     Error,
     {
       courseId: string;
@@ -83,48 +89,45 @@ export function useUpdateTest() {
     }
   >({
     mutationFn: async (variables) => {
-        const apiTest = await testsService.updateTest(variables.courseId, variables.testId, variables.payload);
-        return mapApiTestToUiTest(apiTest);
+      const response = await testsService.updateTest(
+        variables.courseId,
+        variables.testId,
+        variables.payload
+      );
+      return response;
     },
-    onSuccess: (updatedTest, variables) => {
-      queryClient.invalidateQueries({ queryKey: [TESTS_QUERY_KEY, variables.courseId] });
-      toast({
-        title: "Thành công",
-        description: `Bài kiểm tra "${updatedTest.title}" đã được cập nhật.`,
-        variant: "success",
+    onSuccess: (response, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: [TESTS_QUERY_KEY, variables.courseId],
       });
+
+      // Truyền response trực tiếp cho showError để nó tự xử lý
+      showError(response);
     },
     onError: (error) => {
-      toast({
-        title: "Cập nhật bài kiểm tra thất bại",
-        description: extractErrorMessage(error),
-        variant: "destructive",
-      });
+      showError(error);
     },
   });
 }
 
 export function useDeleteTest() {
-    const queryClient = useQueryClient();
-    const { toast } = useToast();
-  
-    return useMutation<void, Error, { courseId: string; testId: number }>({
-      mutationFn: (variables) =>
-        testsService.deleteTest(variables.courseId, variables.testId),
-      onSuccess: (_, variables) => {
-        queryClient.invalidateQueries({ queryKey: [TESTS_QUERY_KEY, variables.courseId] });
-        toast({
-          title: "Thành công",
-          description: "Đã xóa bài kiểm tra.",
-          variant: "success",
-        });
-      },
-      onError: (error) => {
-        toast({
-          title: "Xóa bài kiểm tra thất bại",
-          description: extractErrorMessage(error),
-          variant: "destructive",
-        });
-      },
-    });
-  }
+  const queryClient = useQueryClient();
+  const { showError } = useError();
+
+  return useMutation<void, Error, { courseId: string; testId: number }>({
+    mutationFn: (variables) =>
+      testsService.deleteTest(variables.courseId, variables.testId),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: [TESTS_QUERY_KEY, variables.courseId],
+      });
+      showError({
+        success: true,
+        message: "Đã xóa bài kiểm tra.",
+      });
+    },
+    onError: (error) => {
+      showError(error);
+    },
+  });
+}

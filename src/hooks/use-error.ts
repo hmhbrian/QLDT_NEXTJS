@@ -74,9 +74,6 @@ export function useError(): UseErrorReturn {
 
   const showError = useCallback(
     (error: ErrorCode | Error | unknown) => {
-      // Debug: log để xem backend trả về gì
-      console.log("showError received:", error);
-
       let title = "Đã có lỗi xảy ra";
       let description = "Vui lòng thử lại sau.";
       let variant: "default" | "destructive" | "success" = "destructive";

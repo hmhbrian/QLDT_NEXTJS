@@ -1,4 +1,3 @@
-
 import type {
   Test,
   Question,
@@ -7,31 +6,7 @@ import type {
   CreateTestPayload,
   UpdateTestPayload,
 } from "@/lib/types/course.types";
-
-/**
- * Maps an API question object to a UI-friendly Question object.
- * @param apiQuestion - The question object from the API.
- * @returns A UI `Question` object.
- */
-function mapApiQuestionToUi(apiQuestion: ApiQuestion): Question {
-  const options = [
-    apiQuestion.a,
-    apiQuestion.b,
-    apiQuestion.c,
-    apiQuestion.d,
-  ].filter((opt): opt is string => typeof opt === 'string' && opt.trim() !== '');
-
-  const correctIndex = options.findIndex(opt => opt === apiQuestion.correctOption);
-
-  return {
-    id: apiQuestion.id.toString(), // Convert number ID to string for UI consistency
-    questionCode: apiQuestion.questionCode || `Q${apiQuestion.id}`,
-    text: apiQuestion.questionText,
-    options,
-    correctAnswerIndex: correctIndex !== -1 ? correctIndex : 0,
-    explanation: apiQuestion.explanation || "",
-  };
-}
+import { mapApiQuestionToUi } from "./question.mapper";
 
 /**
  * Maps an API test object to a UI-friendly Test object.
@@ -42,6 +17,9 @@ export function mapApiTestToUiTest(apiTest: ApiTest): Test {
   return {
     id: apiTest.id,
     title: apiTest.title,
+    // Use the countQuestion from the API if available, otherwise default to 0
+    countQuestion: apiTest.countQuestion || 0,
+    // Map questions only if the array exists in the response
     questions: (apiTest.questions || []).map(mapApiQuestionToUi),
     passingScorePercentage: apiTest.passThreshold || 70,
     time: apiTest.timeTest || 0,
@@ -53,7 +31,9 @@ export function mapApiTestToUiTest(apiTest: ApiTest): Test {
  * @param uiQuestion - The UI Question object.
  * @returns An object matching the API's question structure.
  */
-function mapUiQuestionToApiPayload(uiQuestion: Question): any {
+function mapUiQuestionToApiPayload(
+  uiQuestion: Question
+): Omit<ApiQuestion, "id" | "questionCode"> {
   return {
     questionText: uiQuestion.text,
     correctOption: uiQuestion.options[uiQuestion.correctAnswerIndex],
@@ -63,6 +43,7 @@ function mapUiQuestionToApiPayload(uiQuestion: Question): any {
     b: uiQuestion.options[1] || "",
     c: uiQuestion.options[2] || "",
     d: uiQuestion.options[3] || "",
+    position: uiQuestion.position,
   };
 }
 
@@ -88,7 +69,7 @@ export function mapUiTestToCreatePayload(uiTest: Test): CreateTestPayload {
 export function mapUiTestToUpdatePayload(uiTest: Test): UpdateTestPayload {
   return {
     title: uiTest.title,
-    pass_threshold: uiTest.passingScorePercentage,
+    passThreshold: uiTest.passingScorePercentage,
     time_test: uiTest.time || 0,
     position: 0, // Defaulting as per API spec
   };

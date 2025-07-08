@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { questionsService } from "@/lib/services";
 import type {
@@ -24,7 +23,11 @@ export function useQuestions(testId: number | undefined) {
     queryKey,
     queryFn: async () => {
       if (!testId) return [];
-      const paginatedResponse = await questionsService.getQuestions(testId);
+      const paginatedResponse = await questionsService.getQuestions(testId, {
+        SortField: "position",
+        SortType: "asc",
+        Limit: 50, // Reduced limit as requested
+      });
       return (paginatedResponse.items || []).map(mapApiQuestionToUi);
     },
     enabled: !!testId,

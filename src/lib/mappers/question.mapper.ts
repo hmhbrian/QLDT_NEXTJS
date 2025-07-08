@@ -15,13 +15,17 @@ export function mapUiQuestionToApiPayload(
   const options = uiQuestion.options || ["", "", "", ""];
   return {
     questionText: uiQuestion.text || "",
-    correctOption: options[uiQuestion.correctAnswerIndex || 0] || "",
+    correctOption:
+      uiQuestion.correctAnswerIndex !== undefined
+        ? options[uiQuestion.correctAnswerIndex] || ""
+        : "",
     questionType: 0, // Defaulting as per API spec
     explanation: uiQuestion.explanation || "",
     a: options[0] || "",
     b: options[1] || "",
     c: options[2] || "",
     d: options[3] || "",
+    position: uiQuestion.position,
   };
 }
 
@@ -49,5 +53,6 @@ export function mapApiQuestionToUi(apiQuestion: ApiQuestion): Question {
     options,
     correctAnswerIndex: correctIndex !== -1 ? correctIndex : 0,
     explanation: apiQuestion.explanation || "",
+    position: apiQuestion.position,
   };
 }
