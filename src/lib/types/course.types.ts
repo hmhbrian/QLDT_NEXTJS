@@ -36,7 +36,8 @@ export interface Question {
   questionCode?: string; // Mã câu hỏi
   text: string;
   options: string[];
-  correctAnswerIndex: number; // Vị trí đáp án đúng trong mảng options
+  correctAnswerIndex: number; // Vị trí đáp án đúng trong mảng options (backward compatibility)
+  correctAnswerIndexes?: number[]; // Nhiều đáp án đúng (new feature)
   explanation?: string; // Lời giải
   position?: number;
 }

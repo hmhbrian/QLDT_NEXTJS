@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
+import { MultiSelect } from "@/components/ui/multi-select";
 import { useToast } from "@/components/ui/use-toast";
 import {
   PlusCircle,
@@ -151,6 +152,7 @@ const initialQuestionState: Omit<Question, "id"> = {
   text: "",
   options: ["", "", "", ""],
   correctAnswerIndex: -1,
+  correctAnswerIndexes: [],
   explanation: "",
   position: 0,
 };
@@ -933,16 +935,20 @@ export function CourseFormDialog({
 
   const handleSaveOrUpdateQuestion = async () => {
     const validOptions = questionFormData.options.filter((opt) => opt.trim());
+    const hasCorrectAnswers =
+      (questionFormData.correctAnswerIndexes &&
+        questionFormData.correctAnswerIndexes.length > 0) ||
+      questionFormData.correctAnswerIndex >= 0;
+
     if (
       !questionFormData.text ||
       validOptions.length < 2 ||
-      questionFormData.correctAnswerIndex < 0 ||
-      questionFormData.correctAnswerIndex >= validOptions.length
+      !hasCorrectAnswers
     ) {
       toast({
         title: "Dữ liệu không hợp lệ",
         description:
-          "Vui lòng điền nội dung câu hỏi, ít nhất 2 lựa chọn và chọn đáp án đúng.",
+          "Vui lòng điền nội dung câu hỏi, ít nhất 2 lựa chọn và chọn ít nhất một đáp án đúng.",
         variant: "destructive",
       });
       return;
@@ -2316,19 +2322,27 @@ export function CourseFormDialog({
                                 {q.text}
                               </div>
                               <div className="flex flex-wrap gap-1">
-                                {q.options.map((option, optIndex) => (
-                                  <span
-                                    key={optIndex}
-                                    className={`text-xs px-2 py-1 rounded ${
-                                      optIndex === q.correctAnswerIndex
-                                        ? "bg-green-100 text-green-700 font-medium"
-                                        : "bg-gray-100 text-gray-600"
-                                    }`}
-                                  >
-                                    {String.fromCharCode(65 + optIndex)}:{" "}
-                                    {option}
-                                  </span>
-                                ))}
+                                {q.options.map((option, optIndex) => {
+                                  const isCorrect =
+                                    (q.correctAnswerIndexes &&
+                                      q.correctAnswerIndexes.includes(
+                                        optIndex
+                                      )) ||
+                                    optIndex === q.correctAnswerIndex;
+                                  return (
+                                    <span
+                                      key={optIndex}
+                                      className={`text-xs px-2 py-1 rounded ${
+                                        isCorrect
+                                          ? "bg-green-100 text-green-700 font-medium"
+                                          : "bg-gray-100 text-gray-600"
+                                      }`}
+                                    >
+                                      {String.fromCharCode(65 + optIndex)}:{" "}
+                                      {option}
+                                    </span>
+                                  );
+                                })}
                               </div>
                             </div>
                             <div className="flex gap-1 flex-shrink-0">
@@ -2501,36 +2515,34 @@ export function CourseFormDialog({
               ))}
             </div>
             <div className="space-y-1">
-              <Label htmlFor="correctAnswerIndex">
+              <Label>
                 Đáp án đúng <span className="text-destructive">*</span>
               </Label>
-              <Select
-                value={
-                  questionFormData.correctAnswerIndex > -1
-                    ? questionFormData.correctAnswerIndex.toString()
-                    : ""
-                }
-                onValueChange={(v) =>
+              <MultiSelect
+                options={(questionFormData.options || [])
+                  .map((opt, i) => ({
+                    value: i.toString(),
+                    label: `${String.fromCharCode(65 + i)}: ${opt}`,
+                  }))
+                  .filter((opt) =>
+                    questionFormData.options?.[parseInt(opt.value)]?.trim()
+                  )}
+                selected={(questionFormData.correctAnswerIndexes || []).map(
+                  (i) => i.toString()
+                )}
+                onChange={(values) => {
+                  const indexes = values
+                    .map((v) => parseInt(v))
+                    .sort((a, b) => a - b);
                   setQuestionFormData((p) => ({
                     ...p,
-                    correctAnswerIndex: parseInt(v),
-                  }))
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Chọn đáp án đúng" />
-                </SelectTrigger>
-                <SelectContent>
-                  {(questionFormData.options || []).map(
-                    (opt, i) =>
-                      opt.trim() && (
-                        <SelectItem key={i} value={i.toString()}>
-                          Đáp án {String.fromCharCode(65 + i)}
-                        </SelectItem>
-                      )
-                  )}
-                </SelectContent>
-              </Select>
+                    correctAnswerIndexes: indexes,
+                    // Update single correctAnswerIndex for backward compatibility
+                    correctAnswerIndex: indexes.length > 0 ? indexes[0] : -1,
+                  }));
+                }}
+                placeholder="Chọn đáp án đúng"
+              />
             </div>
             <div className="space-y-1">
               <Label htmlFor="explanation">Lời giải (Tùy chọn)</Label>
