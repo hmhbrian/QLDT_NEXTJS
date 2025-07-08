@@ -66,9 +66,11 @@ export function MultiSelect({
             {selected.length > 0 ? (
               selected.map((value) => {
                 const option = options.find((opt) => opt.value === value);
+                // Extract just the letter part (A:, B:, etc.) from the label
+                const letterOnly = option?.label.split(':')[0] || option?.label;
                 return (
                   <Badge key={value} variant="secondary" className="mr-1 mb-1">
-                    {option?.label}
+                    {letterOnly}
                     <button
                       className="ml-1 ring-offset-background rounded-full outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
                       onKeyDown={(e) => {
