@@ -264,8 +264,7 @@ export default function UserProfilePage() {
                 <span>{profileData.email}</span>
                 {profileData.role === "HOCVIEN" && profileData.position && (
                   <Badge
-                    variant="outline"
-                    className={getLevelBadgeColor(
+                      className={getLevelBadgeColor(
                       (profileData.position as Position).positionName as any
                     )}
                   >
