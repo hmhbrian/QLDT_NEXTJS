@@ -1,4 +1,3 @@
-
 /**
  * Course Domain Types
  * All course-related interfaces and types
@@ -156,8 +155,10 @@ export interface CreateCourseRequest {
   Name: string;
   Description: string;
   Objectives: string;
+  Format?: string; // "online" hoặc "offline"
   Sessions?: number;
   HoursPerSessions?: number;
+  Optional?: string; // "tùy chọn" hoặc "bắt buộc"
   MaxParticipant?: number;
   StartDate?: string;
   EndDate?: string;
@@ -165,6 +166,8 @@ export interface CreateCourseRequest {
   RegistrationClosingDate?: string;
   Location?: string;
   StatusId?: number;
+  CategoryId?: number;
+  LecturerId?: number;
   DepartmentIds?: number[];
   PositionIds?: number[];
   TraineeIds?: string[];

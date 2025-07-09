@@ -64,7 +64,13 @@ export const getCategoryLabel = (categoryValue: string | undefined): string => {
 
 export const getLevelBadgeColor = (
   level: TraineeLevel
-): "default" | "secondary" | "destructive" | "outline" => {
+):
+  | "default"
+  | "secondary"
+  | "destructive"
+  | "outline"
+  | "success"
+  | "warning" => {
   switch (level) {
     case "senior_manager":
       return "default";

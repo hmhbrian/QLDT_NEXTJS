@@ -1,4 +1,3 @@
-
 import {
   BaseService,
   PaginatedResponse,
@@ -73,14 +72,23 @@ export class CoursesService extends BaseService<
     formData.append("Name", payload.Name || "");
     formData.append("Description", payload.Description || "");
     formData.append("Objectives", payload.Objectives || "");
+    formData.append("Format", payload.Format || "online");
     formData.append("Sessions", (payload.Sessions || 0).toString());
     formData.append(
       "HoursPerSessions",
       (payload.HoursPerSessions || 0).toString()
     );
+    formData.append("Optional", payload.Optional || "Tùy chọn");
     formData.append("MaxParticipant", (payload.MaxParticipant || 0).toString());
     formData.append("Location", payload.Location || "");
     formData.append("StatusId", (payload.StatusId || "").toString());
+
+    if (payload.CategoryId) {
+      formData.append("CategoryId", payload.CategoryId.toString());
+    }
+    if (payload.LecturerId) {
+      formData.append("LecturerId", payload.LecturerId.toString());
+    }
 
     if (payload.StartDate) formData.append("StartDate", payload.StartDate);
     if (payload.EndDate) formData.append("EndDate", payload.EndDate);
@@ -122,11 +130,12 @@ export class CoursesService extends BaseService<
     const data = await response.json();
     if (!response.ok) {
       const errorMessage =
-        data.detail || data.title ||
+        data.detail ||
+        data.title ||
         (data.errors ? JSON.stringify(data.errors) : "Failed to create course");
       throw new Error(errorMessage);
     }
-    
+
     // API returns a wrapper with success and data properties
     if (data.success && data.data) {
       return data.data;
@@ -174,8 +183,8 @@ export class CoursesService extends BaseService<
     // The API endpoint /api/Courses/soft-delete expects a single 'id' as a query parameter.
     // We will process deletions one by one. The UI currently only deletes one at a time anyway.
     const deletePromises = courseIds.map((id) => {
-      // Pass the config object with `params` as the second argument.
-      return this.delete(API_CONFIG.endpoints.courses.softDelete, {
+      // Pass the config object with `params` as the third argument (config), not second (data)
+      return this.delete(API_CONFIG.endpoints.courses.softDelete, undefined, {
         params: { id },
       });
     });

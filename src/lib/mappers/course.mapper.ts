@@ -48,6 +48,7 @@ export function mapCourseApiToUi(apiCourse: CourseApiResponse): Course {
       sessions: apiCourse.sessions || 0,
       hoursPerSession: apiCourse.hoursPerSessions || 0,
     },
+    learningType: apiCourse.format === "offline" ? "offline" : "online",
     maxParticipants: apiCourse.maxParticipant,
     startDate: apiCourse.startDate || null,
     endDate: apiCourse.endDate || null,
@@ -58,7 +59,6 @@ export function mapCourseApiToUi(apiCourse: CourseApiResponse): Course {
     ),
     level: (apiCourse.positions || []).map((p) => String(p.positionId)),
     category: "programming", // Default category
-    learningType: "online", // Default learning type
     materials: [], // Default empty array
     createdAt: apiCourse.createdAt || new Date().toISOString(),
     modifiedAt: apiCourse.modifiedAt || new Date().toISOString(),
@@ -80,8 +80,10 @@ export function mapCourseUiToCreatePayload(
     Name: course.title || "",
     Description: course.description || "",
     Objectives: course.objectives || "",
+    Format: course.learningType || "online",
     Sessions: course.duration?.sessions,
     HoursPerSessions: course.duration?.hoursPerSession,
+    Optional: course.enrollmentType === "mandatory" ? "Bắt buộc" : "Tùy chọn",
     MaxParticipant: course.maxParticipants,
     StartDate: course.startDate
       ? new Date(course.startDate).toISOString()
@@ -118,8 +120,10 @@ export function mapCourseUiToUpdatePayload(
     Name: course.title,
     Description: course.description,
     Objectives: course.objectives,
+    Format: course.learningType,
     Sessions: course.duration.sessions,
     HoursPerSessions: course.duration.hoursPerSession,
+    Optional: course.enrollmentType === "mandatory" ? "Bắt buộc" : "Tùy chọn",
     MaxParticipant: course.maxParticipants,
     StartDate: course.startDate
       ? new Date(course.startDate).toISOString()
