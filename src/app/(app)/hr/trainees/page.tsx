@@ -40,21 +40,31 @@ import {
   EyeOff,
 } from "lucide-react";
 import { useState, useMemo, useCallback } from "react";
-import type { User, Role, CreateUserRequest, Position } from "@/lib/types/user.types";
+import type {
+  User,
+  Role,
+  CreateUserRequest,
+  Position,
+} from "@/lib/types/user.types";
 import type { DepartmentInfo } from "@/lib/types/department.types";
 import { useToast } from "@/components/ui/use-toast";
 import { useError } from "@/hooks/use-error";
 import { DataTable } from "@/components/ui/data-table";
 import { getColumns } from "./columns";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { usersService, rolesService } from "@/lib/services";
 import { useDebounce } from "@/hooks/use-debounce";
 import { LoadingButton, Spinner } from "@/components/ui/loading";
-import { extractErrorMessage } from "@/lib/core";
 import { useDepartments } from "@/hooks/use-departments";
 import { usePositions } from "@/hooks/use-positions";
 import { useUserStatuses } from "@/hooks/use-statuses";
-import { NO_DEPARTMENT_VALUE } from "@/lib/constants";
+import { NO_DEPARTMENT_VALUE } from "@/lib/config/constants";
+import {
+  useCreateUserMutation,
+  useDeleteUserMutation,
+  useUpdateUserMutation,
+} from "@/hooks/use-users";
+import { extractErrorMessage } from "@/lib/core";
 
 const initialNewTraineeState: Omit<User, "id"> & { password?: string } = {
   fullName: "",
@@ -66,7 +76,7 @@ const initialNewTraineeState: Omit<User, "id"> & { password?: string } = {
   level: "intern",
   joinDate: "",
   manager: "",
-  userStatus: { id: 2, name: "Đang hoạt động"},
+  userStatus: { id: 2, name: "Đang hoạt động" },
   idCard: "",
   role: "HOCVIEN",
   urlAvatar: "https://placehold.co/40x40.png",
@@ -119,73 +129,10 @@ export default function TraineesPage() {
   const { positions, loading: isPositionsLoading } = usePositions();
   const { userStatuses, isLoading: isStatusesLoading } = useUserStatuses();
 
-  // Mutations
-  const createTraineeMutation = useMutation({
-    mutationFn: (payload: CreateUserRequest) =>
-      usersService.createUser(payload),
-    onSuccess: () => {
-      toast({
-        title: "Thành công",
-        description: "Đã thêm học viên mới.",
-        variant: "success",
-      });
-      queryClient.invalidateQueries({ queryKey: ["trainees"] });
-      setIsFormOpen(false);
-    },
-    onError: (error) => {
-      toast({
-        title: "Thêm học viên thất bại",
-        description: extractErrorMessage(error),
-        variant: "destructive",
-      });
-    },
-  });
-
-  const updateTraineeMutation = useMutation({
-    mutationFn: ({
-      id,
-      payload,
-    }: {
-      id: string;
-      payload: Partial<CreateUserRequest>;
-    }) => usersService.updateUserByAdmin(id, payload),
-    onSuccess: () => {
-      toast({
-        title: "Thành công",
-        description: "Thông tin học viên đã được cập nhật.",
-        variant: "success",
-      });
-      queryClient.invalidateQueries({ queryKey: ["trainees"] });
-      setIsFormOpen(false);
-    },
-    onError: (error) => {
-      toast({
-        title: "Cập nhật thất bại",
-        description: extractErrorMessage(error),
-        variant: "destructive",
-      });
-    },
-  });
-
-  const deleteTraineeMutation = useMutation({
-    mutationFn: (id: string) => usersService.deleteUser(id),
-    onSuccess: () => {
-      toast({
-        title: "Thành công",
-        description: "Đã xóa học viên.",
-        variant: "success",
-      });
-      queryClient.invalidateQueries({ queryKey: ["trainees"] });
-      setDeletingTrainee(null);
-    },
-    onError: (error) => {
-      toast({
-        title: "Xóa thất bại",
-        description: extractErrorMessage(error),
-        variant: "destructive",
-      });
-    },
-  });
+  // Use centralized mutation hooks
+  const createTraineeMutation = useCreateUserMutation();
+  const updateTraineeMutation = useUpdateUserMutation();
+  const deleteTraineeMutation = useDeleteUserMutation();
 
   const handleOpenAddDialog = () => {
     setEditingTrainee(null);
@@ -211,7 +158,11 @@ export default function TraineesPage() {
 
   const handleDeleteTrainee = () => {
     if (deletingTrainee) {
-      deleteTraineeMutation.mutate(deletingTrainee.id);
+      deleteTraineeMutation.mutate(deletingTrainee.id, {
+        onSuccess: () => {
+          setDeletingTrainee(null);
+        },
+      });
     }
   };
 
@@ -231,8 +182,11 @@ export default function TraineesPage() {
       return;
     }
 
+    const onMutationSuccess = () => {
+      setIsFormOpen(false);
+    };
+
     if (editingTrainee) {
-      // Update logic
       const updatePayload: Partial<CreateUserRequest> = {
         FullName: formData.fullName,
         Email: formData.email,
@@ -249,12 +203,14 @@ export default function TraineesPage() {
         updatePayload.Password = formData.password;
         updatePayload.ConfirmPassword = formData.confirmPassword;
       }
-      updateTraineeMutation.mutate({
-        id: editingTrainee.id,
-        payload: updatePayload,
-      });
+      updateTraineeMutation.mutate(
+        {
+          id: editingTrainee.id,
+          payload: updatePayload,
+        },
+        { onSuccess: onMutationSuccess }
+      );
     } else {
-      // Create logic
       const createPayload: CreateUserRequest = {
         FullName: formData.fullName!,
         Email: formData.email!,
@@ -270,7 +226,9 @@ export default function TraineesPage() {
           ? parseInt(formData.department as string)
           : undefined,
       };
-      createTraineeMutation.mutate(createPayload);
+      createTraineeMutation.mutate(createPayload, {
+        onSuccess: onMutationSuccess,
+      });
     }
   };
 

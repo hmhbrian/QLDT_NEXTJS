@@ -60,7 +60,7 @@ import {
 } from "@/components/ui/tooltip";
 import { useCookie } from "@/hooks/use-cookie";
 import { cn } from "@/lib/utils";
-import { EVALUATIONS_COOKIE_KEY } from "@/lib/constants";
+import { EVALUATIONS_COOKIE_KEY } from "@/lib/config/constants";
 import {
   Course,
   Lesson,
@@ -76,10 +76,11 @@ import { StarRatingInput } from "@/components/courses/StarRatingInput";
 import StarRatingDisplay from "@/components/ui/StarRatingDisplay";
 import { getCategoryLabel, isRegistrationOpen } from "@/lib/helpers";
 import { useCourse, useUpdateCourse } from "@/hooks/use-courses";
-import { Alert } from "@/components/ui/alert";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useLessons } from "@/hooks/use-lessons";
 import { useTests } from "@/hooks/use-tests";
 import { useAttachedFiles } from "@/hooks/use-course-attached-files";
+import { useError } from "@/hooks/use-error";
 
 // Dynamic imports with lazy loading to optimize performance
 const CourseViewer = dynamic(
@@ -132,6 +133,7 @@ export default function CourseDetailPage() {
   // Hooks
   const { user: currentUser } = useAuth();
   const { toast } = useToast();
+  const { showError } = useError();
   const allUsers = useUserStore((state) => state.users);
   const updateCourseMutation = useUpdateCourse();
 
@@ -221,7 +223,7 @@ export default function CourseDetailPage() {
     updateCourseMutation.mutate({
       courseId: course.id,
       payload: {
-        enrolledTrainees: [...(course.enrolledTrainees || []), currentUser.id],
+        TraineeIds: [...(course.enrolledTrainees || []), currentUser.id],
       },
     });
   }, [course, currentUser, router, isEnrolled, updateCourseMutation]);
@@ -273,7 +275,7 @@ export default function CourseDetailPage() {
   }, []);
 
   const handleTabChange = (value: string) => {
-    if (value === "content") {
+    if (value !== "content") {
       setSelectedLesson(null);
     }
     setActiveTab(value);
@@ -292,11 +294,11 @@ export default function CourseDetailPage() {
       <Alert variant="destructive" className="max-w-xl mx-auto my-12">
         <AlertTriangle className="h-4 w-4" />
         <CardTitle>Không tìm thấy khóa học</CardTitle>
-        <CardDescription>
+        <AlertDescription>
           {courseError
             ? courseError.message
             : "Khóa học bạn đang tìm kiếm không tồn tại hoặc đã bị xóa."}
-        </CardDescription>
+        </AlertDescription>
         <Button asChild className="mt-4">
           <Link href="/courses">Quay lại danh sách khóa học</Link>
         </Button>
@@ -460,13 +462,13 @@ export default function CourseDetailPage() {
           <TabsList className="flex w-full overflow-x-auto h-auto items-center rounded-md bg-muted p-1 text-muted-foreground justify-start">
             <TabsTrigger value="content" className="text-base">Nội dung chính</TabsTrigger>
             <TabsTrigger value="objectives" className="text-base">Mục tiêu</TabsTrigger>
-            <TabsTrigger value="lessons_tab" className="text-base">Danh sách Bài học</TabsTrigger>
-            <TabsTrigger value="tests_tab" className="text-base">Bài kiểm tra</TabsTrigger>
+            <TabsTrigger value="lessons" className="text-base">Bài học</TabsTrigger>
+            <TabsTrigger value="tests" className="text-base">Bài kiểm tra</TabsTrigger>
             <TabsTrigger value="requirements" className="text-base">Yêu cầu</TabsTrigger>
             <TabsTrigger value="syllabus" className="text-base">Chương trình học</TabsTrigger>
-            <TabsTrigger value="materials_tab" className="text-base">Tài liệu</TabsTrigger>
+            <TabsTrigger value="materials" className="text-base">Tài liệu</TabsTrigger>
             {(currentUser?.role === "ADMIN" || currentUser?.role === "HR") && (
-              <TabsTrigger value="evaluations_tab" className="text-base">Phản hồi học viên</TabsTrigger>
+              <TabsTrigger value="evaluations" className="text-base">Phản hồi học viên</TabsTrigger>
             )}
           </TabsList>
 
@@ -535,7 +537,7 @@ export default function CourseDetailPage() {
                   <CardContent className="p-6 text-center text-muted-foreground h-[800px] flex flex-col justify-center items-center">
                     <BookOpen className="mx-auto h-12 w-12 mb-4" />
                     <p className="font-semibold">Nội dung khóa học đang được cập nhật.</p>
-                    <p className="text-sm mt-2">Vui lòng chọn một bài học từ tab "Danh sách Bài học" để xem chi tiết.</p>
+                    <p className="text-sm mt-2">Vui lòng chọn một bài học từ tab "Bài học" để xem chi tiết.</p>
                   </CardContent>
                 </Card>
               )
@@ -567,7 +569,7 @@ export default function CourseDetailPage() {
             </Card>
           </TabsContent>
 
-          <TabsContent value="lessons_tab">
+          <TabsContent value="lessons">
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center"><Library className="mr-2 h-5 w-5" />Danh sách Bài học</CardTitle>
@@ -607,7 +609,7 @@ export default function CourseDetailPage() {
             </Card>
           </TabsContent>
 
-          <TabsContent value="tests_tab">
+          <TabsContent value="tests">
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center"><FileQuestion className="mr-2 h-5 w-5" />Danh sách Bài kiểm tra</CardTitle>
@@ -712,7 +714,7 @@ export default function CourseDetailPage() {
             </Card>
           </TabsContent>
 
-          <TabsContent value="materials_tab">
+          <TabsContent value="materials">
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center"><Download className="mr-2 h-5 w-5" />Tài liệu khóa học</CardTitle>
@@ -751,7 +753,7 @@ export default function CourseDetailPage() {
           </TabsContent>
 
           {(currentUser?.role === "ADMIN" || currentUser?.role === "HR") && (
-            <TabsContent value="evaluations_tab">
+            <TabsContent value="evaluations">
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center"><MessageSquare className="mr-2 h-5 w-5 text-primary" /> Phản hồi của Học viên</CardTitle>

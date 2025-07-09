@@ -30,11 +30,13 @@ import { DataTable } from "@/components/ui/data-table";
 import { getColumns } from "./columns";
 import { isRegistrationOpen } from "@/lib/helpers";
 import { useCourses, useUpdateCourse } from "@/hooks/use-courses";
+import { useError } from "@/hooks/use-error";
 
 export default function CoursesPage() {
   const { user: currentUser } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
+  const { showError } = useError();
 
   const {
     courses: allApiCourses,
@@ -70,26 +72,12 @@ export default function CoursesPage() {
   const handleEnroll = useCallback(
     (courseId: string) => {
       if (!currentUser) {
-        toast({
-          title: "Chưa đăng nhập",
-          description: "Vui lòng đăng nhập để đăng ký khóa học.",
-          variant: "destructive",
-        });
+        showError("AUTH002");
         router.push("/login");
         return;
       }
       const courseToEnroll = publicCourses.find((c) => c.id === courseId);
       if (!courseToEnroll) return;
-
-      if (courseToEnroll.enrolledTrainees?.includes(currentUser.id)) {
-        toast({
-          title: "Đã đăng ký",
-          description: `Bạn đã đăng ký khóa học "${courseToEnroll.title}" trước đó.`,
-          variant: "default",
-        });
-        router.push(`/courses/${courseId}`);
-        return;
-      }
 
       const updatedEnrolledTrainees = [
         ...(courseToEnroll.enrolledTrainees || []),
@@ -99,21 +87,17 @@ export default function CoursesPage() {
       updateCourseMutation.mutate(
         {
           courseId,
-          payload: { enrolledTrainees: updatedEnrolledTrainees },
+          payload: { TraineeIds: updatedEnrolledTrainees },
         },
         {
-          onSuccess: () => {
-            toast({
-              title: "Đăng ký thành công",
-              description: `Bạn đã đăng ký khóa học "${courseToEnroll.title}" thành công.`,
-              variant: "success",
-            });
+          onSuccess: (response) => {
+            // The hook now handles showing the toast
             router.push(`/courses/${courseId}`);
           },
         }
       );
     },
-    [currentUser, publicCourses, router, toast, updateCourseMutation]
+    [currentUser, publicCourses, router, showError, updateCourseMutation]
   );
 
   const columns = useMemo(
