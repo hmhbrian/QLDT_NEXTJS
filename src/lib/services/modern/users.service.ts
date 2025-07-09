@@ -1,4 +1,3 @@
-
 import {
   BaseService,
   PaginatedResponse,
@@ -61,30 +60,31 @@ export class UsersService extends BaseService<
     return this.extractData(data);
   }
 
-  async getUsersWithPagination(params?: QueryParams): Promise<PaginatedResponse<User>> {
+  async getUsersWithPagination(
+    params?: QueryParams
+  ): Promise<PaginatedResponse<User>> {
     const isSearch = params?.search && String(params.search).trim() !== "";
     const endpoint = isSearch
       ? API_CONFIG.endpoints.users.search
       : this.endpoint;
-  
+
     const backendParams: Record<string, any> = {};
     if (params) {
       if (params.page) backendParams.Page = params.page;
       if (params.limit) backendParams.Limit = params.limit;
       if (params.sortBy) backendParams.SortField = params.sortBy;
       if (params.sortOrder) backendParams.SortType = params.sortOrder;
-      
+
       // The search endpoint expects 'keyword' for the search term.
       if (isSearch) {
         backendParams.keyword = params.search;
       }
     }
-  
-    const response = await this.get<PaginatedResponse<User>>(
-      endpoint,
-      { params: backendParams }
-    );
-  
+
+    const response = await this.get<PaginatedResponse<User>>(endpoint, {
+      params: backendParams,
+    });
+
     return {
       items: response.items || [],
       pagination: response.pagination || {
@@ -106,10 +106,7 @@ export class UsersService extends BaseService<
   }
 
   async createUser(payload: CreateUserRequest): Promise<User> {
-    return this.post<User>(
-      API_CONFIG.endpoints.users.create,
-      payload
-    );
+    return this.post<User>(API_CONFIG.endpoints.users.create, payload);
   }
 
   async updateUserByAdmin(
@@ -147,7 +144,6 @@ export class UsersService extends BaseService<
     const url = API_CONFIG.endpoints.users.resetPassword(userId);
     await this.patch<void>(url, payload);
   }
-
 }
 
 export const usersService = new UsersService();

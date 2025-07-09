@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useMemo, useCallback } from "react";
@@ -59,10 +58,7 @@ import {
   useDeleteUserMutation,
 } from "@/hooks/use-users";
 import { useUserStatuses } from "@/hooks/use-statuses";
-import {
-  useQuery,
-  useQueryClient,
-} from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   PlusCircle,
   Search,
@@ -96,7 +92,7 @@ export default function UsersPage() {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [isViewingUser, setIsViewingUser] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  
+
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
     pageSize: 10,
@@ -143,10 +139,12 @@ export default function UsersPage() {
       }),
     placeholderData: (previousData) => previousData,
   });
-  
-  const users = useMemo(() => paginatedUsers?.items ?? [], [paginatedUsers]);
-  const pageCount = useMemo(() => paginatedUsers?.pagination?.totalPages ?? 0, [paginatedUsers]);
 
+  const users = useMemo(() => paginatedUsers?.items ?? [], [paginatedUsers]);
+  const pageCount = useMemo(
+    () => paginatedUsers?.pagination?.totalPages ?? 0,
+    [paginatedUsers]
+  );
 
   const { data: roles = [], isLoading: isRolesLoading } = useQuery<
     any[],
@@ -267,62 +265,84 @@ export default function UsersPage() {
   const handleSaveUser = async () => {
     const isEdit = !!editingUser;
     if (!validateForm(isEdit)) {
-        showError("FORM001");
-        return;
+      showError("FORM001");
+      return;
     }
 
-    const selectedRole = roles.find(role => role.name.toUpperCase() === newUser.role);
+    const selectedRole = roles.find(
+      (role) => role.name.toUpperCase() === newUser.role
+    );
     if (!selectedRole) {
-        toast({ title: "Lỗi", description: `Không tìm thấy vai trò ${newUser.role}.`, variant: "destructive" });
-        return;
+      toast({
+        title: "Lỗi",
+        description: `Không tìm thấy vai trò ${newUser.role}.`,
+        variant: "destructive",
+      });
+      return;
     }
 
     try {
-        if (isEdit && editingUser) {
-            // Build the update payload in one go
-            const updatePayload: Partial<CreateUserRequest> = {
-                FullName: newUser.fullName,
-                Email: newUser.email,
-                IdCard: newUser.idCard,
-                NumberPhone: newUser.numberPhone,
-                DepartmentId: newUser.department ? parseInt(newUser.department, 10) : undefined,
-                RoleId: selectedRole.id,
-                PositionId: newUser.position ? parseInt(newUser.position, 10) : undefined,
-                StatusId: newUser.statusId ? parseInt(newUser.statusId, 10) : undefined,
-                Code: newUser.employeeId || undefined,
-            };
+      if (isEdit && editingUser) {
+        // Build the update payload in one go
+        const updatePayload: Partial<CreateUserRequest> = {
+          FullName: newUser.fullName,
+          Email: newUser.email,
+          IdCard: newUser.idCard,
+          NumberPhone: newUser.numberPhone,
+          DepartmentId: newUser.department
+            ? parseInt(newUser.department, 10)
+            : undefined,
+          RoleId: selectedRole.id,
+          PositionId: newUser.position
+            ? parseInt(newUser.position, 10)
+            : undefined,
+          StatusId: newUser.statusId
+            ? parseInt(newUser.statusId, 10)
+            : undefined,
+          Code: newUser.employeeId || undefined,
+        };
 
-            // Include password fields only if a new password is provided
-            if (newUser.password && newUser.password.trim()) {
-                updatePayload.Password = newUser.password;
-                updatePayload.ConfirmPassword = newUser.confirmPassword;
-            }
-            
-            await updateUserMutation.mutateAsync({ id: editingUser.id, payload: updatePayload });
+        // Update user info first
+        await updateUserMutation.mutateAsync({
+          id: editingUser.id,
+          payload: updatePayload,
+        });
 
-        } else {
-            // Create new user
-            const createUserPayload: CreateUserRequest = {
-                FullName: newUser.fullName!,
-                Email: newUser.email!,
-                Password: newUser.password!,
-                ConfirmPassword: newUser.confirmPassword!,
-                RoleId: selectedRole.id,
-                IdCard: newUser.idCard,
-                NumberPhone: newUser.numberPhone,
-                PositionId: newUser.position ? parseInt(newUser.position, 10) : undefined,
-                DepartmentId: newUser.department ? parseInt(newUser.department, 10) : undefined,
-                StatusId: newUser.statusId ? parseInt(newUser.statusId, 10) : undefined,
-                Code: newUser.employeeId || undefined,
-            };
-            await createUserMutation.mutateAsync(createUserPayload);
+        // If password is provided, call resetPassword separately
+        if (newUser.password && newUser.password.trim()) {
+          await usersService.resetPassword(editingUser.id, {
+            newPassword: newUser.password,
+            confirmNewPassword: newUser.confirmPassword,
+          });
         }
+      } else {
+        // Create new user
+        const createUserPayload: CreateUserRequest = {
+          FullName: newUser.fullName!,
+          Email: newUser.email!,
+          Password: newUser.password!,
+          ConfirmPassword: newUser.confirmPassword!,
+          RoleId: selectedRole.id,
+          IdCard: newUser.idCard,
+          NumberPhone: newUser.numberPhone,
+          PositionId: newUser.position
+            ? parseInt(newUser.position, 10)
+            : undefined,
+          DepartmentId: newUser.department
+            ? parseInt(newUser.department, 10)
+            : undefined,
+          StatusId: newUser.statusId
+            ? parseInt(newUser.statusId, 10)
+            : undefined,
+          Code: newUser.employeeId || undefined,
+        };
+        await createUserMutation.mutateAsync(createUserPayload);
+      }
 
-        setIsFormOpen(false); // Close dialog on success
-
+      setIsFormOpen(false); // Close dialog on success
     } catch (error) {
-        // Errors from mutations are handled by the hooks themselves (toast).
-        console.error("Failed to save user:", error);
+      // Errors from mutations are handled by the hooks themselves (toast).
+      console.error("Failed to save user:", error);
     }
   };
 
@@ -416,8 +436,8 @@ export default function UsersPage() {
               {extractErrorMessage(usersError)}
             </p>
           ) : (
-            <DataTable 
-              columns={columns} 
+            <DataTable
+              columns={columns}
               data={sortedUsers}
               isLoading={isUsersLoading}
               pageCount={pageCount}
@@ -758,7 +778,9 @@ export default function UsersPage() {
             </div>
             <div className="grid gap-2">
               <Label htmlFor="password">
-                {editingUser ? "Mật khẩu mới (để trống nếu không đổi)" : "Mật khẩu *"}
+                {editingUser
+                  ? "Mật khẩu mới (để trống nếu không đổi)"
+                  : "Mật khẩu *"}
               </Label>
               <div className="relative">
                 <Input
