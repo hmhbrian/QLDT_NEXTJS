@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useMemo, useCallback } from "react";
@@ -75,6 +74,10 @@ import {
 import { getColumns } from "./columns";
 import { useDebounce } from "@/hooks/use-debounce";
 import { useError } from "@/hooks/use-error";
+import type { PaginationState } from "@tanstack/react-table";
+import { useQuery } from "@tanstack/react-query";
+import { coursesService } from "@/lib/services";
+import { mapCourseApiToUi } from "@/lib/mappers/course.mapper";
 
 const CourseFormDialog = dynamic(
   () =>
@@ -145,6 +148,13 @@ export default function CoursesPage() {
   const updateCourseMutation = useUpdateCourse();
   const deleteCourseMutation = useDeleteCourse();
 
+  const [pagination, setPagination] = useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: 10,
+  });
+  const [searchTerm, setSearchTerm] = useState("");
+  const debouncedSearchTerm = useDebounce(searchTerm, 300);
+
   const [isFormDialogOpen, setIsFormDialogOpen] = useState(false);
   const [editingCourse, setEditingCourse] = useState<Course | null>(null);
   const [deletingCourse, setDeletingCourse] = useState<Course | null>(null);
@@ -177,7 +187,7 @@ export default function CoursesPage() {
     setCurrentPage(1);
   }, [filters, viewMode]);
 
-  const paginatedCourses = useMemo(() => {
+  const cardViewCourses = useMemo(() => {
     if (viewMode === "card") {
       const startIndex = (currentPage - 1) * itemsPerPage;
       return courses.slice(startIndex, startIndex + itemsPerPage);
@@ -206,6 +216,30 @@ export default function CoursesPage() {
     setEditingCourse(course);
     setIsFormDialogOpen(true);
   };
+
+  const { data: paginatedCoursesData } = useQuery({
+    queryKey: [
+      "courses-paginated",
+      debouncedSearchTerm,
+      pagination.pageIndex,
+      pagination.pageSize,
+    ],
+    queryFn: () =>
+      coursesService.getCoursesWithPagination({
+        search: debouncedSearchTerm,
+        page: pagination.pageIndex + 1,
+        limit: pagination.pageSize,
+      }),
+    placeholderData: (previousData) => previousData,
+  });
+  const paginatedCourses = useMemo(
+    () => paginatedCoursesData?.items?.map(mapCourseApiToUi) ?? [],
+    [paginatedCoursesData]
+  );
+  const pageCount = useMemo(
+    () => paginatedCoursesData?.pagination?.totalPages ?? 0,
+    [paginatedCoursesData]
+  );
 
   const handleSaveCourse = async (
     courseData: Course,
@@ -330,7 +364,13 @@ export default function CoursesPage() {
         departments || [],
         positions || []
       ),
-    [canManageCourses, departments, positions, handleOpenEditDialog, handleDuplicateCourse]
+    [
+      canManageCourses,
+      departments,
+      positions,
+      handleOpenEditDialog,
+      handleDuplicateCourse,
+    ]
   );
 
   if (statusesError) {
@@ -469,11 +509,18 @@ export default function CoursesPage() {
               </p>
             </div>
           ) : viewMode === "table" ? (
-            <DataTable columns={columns} data={courses} />
+            <DataTable
+              columns={columns}
+              data={paginatedCourses}
+              isLoading={isLoading}
+              pageCount={pageCount}
+              pagination={pagination}
+              onPaginationChange={setPagination}
+            />
           ) : (
             <>
               <div className="grid gap-6 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                {paginatedCourses.map((course) => (
+                {cardViewCourses.map((course) => (
                   <Card
                     key={course.id}
                     className="overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 flex flex-col"
@@ -609,8 +656,8 @@ export default function CoursesPage() {
                 totalPages > 1 && (
                   <div className="flex items-center justify-between pt-6">
                     <div className="flex-1 text-sm text-muted-foreground">
-                      Hiển thị {paginatedCourses.length} trên{" "}
-                      {courses.length} khóa học.
+                      Hiển thị {cardViewCourses.length} trên {courses.length}{" "}
+                      khóa học.
                     </div>
                     <div className="flex items-center space-x-6 lg:space-x-8">
                       <div className="flex items-center space-x-2">

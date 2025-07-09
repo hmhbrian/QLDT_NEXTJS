@@ -191,6 +191,42 @@ export class CoursesService extends BaseService<
 
     await Promise.all(deletePromises);
   }
+  
+  async getCoursesWithPagination(
+      params?: QueryParams
+    ): Promise<PaginatedResponse<CourseApiResponse>> {
+      const isSearch = params?.search && String(params.search).trim() !== "";
+      const endpoint = isSearch
+        ? API_CONFIG.endpoints.courses.search
+        : this.endpoint;
+  
+      const backendParams: Record<string, any> = {};
+      if (params) {
+        if (params.page) backendParams.Page = params.page;
+        if (params.limit) backendParams.Limit = params.limit;
+        if (params.sortBy) backendParams.SortField = params.sortBy;
+        if (params.sortOrder) backendParams.SortType = params.sortOrder;
+  
+        // The search endpoint expects 'keyword' for the search term.
+        if (isSearch) {
+          backendParams.keyword = params.search;
+        }
+      }
+  
+      const response = await this.get<PaginatedResponse<CourseApiResponse>>(endpoint, {
+        params: backendParams,
+      });
+  
+      return {
+        items: response.items || [],
+        pagination: response.pagination || {
+          totalItems: response.items?.length || 0,
+          itemsPerPage: backendParams.Limit || 10,
+          currentPage: backendParams.Page || 1,
+          totalPages: 1,
+        },
+      };
+    }
 }
 
 export const coursesService = new CoursesService();

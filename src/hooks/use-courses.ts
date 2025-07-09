@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -31,6 +30,7 @@ export function useCourses(params?: CourseSearchParams) {
     },
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
+    placeholderData: (previousData) => previousData,
   });
 
   return {
@@ -113,7 +113,7 @@ export function useDeleteCourse() {
     mutationFn: (id) => coursesService.softDeleteCourses([id]),
     onSuccess: (response) => {
       queryClient.invalidateQueries({ queryKey: [COURSES_QUERY_KEY] });
-      showError(response || { success: true, message: "Đã xóa khóa học."});
+      showError(response || { success: true, message: "Đã xóa khóa học." });
     },
     onError: (error) => {
       showError(error);
