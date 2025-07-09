@@ -51,16 +51,14 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
-import { useToast } from "@/components/ui/use-toast";
 import type { Course, CourseSearchParams } from "@/lib/types/course.types";
-import type { Status } from "@/lib/types/status.types";
 import type { DepartmentInfo } from "@/lib/types/department.types";
-import type { Position, User } from "@/lib/types/user.types";
+import type { Position } from "@/lib/types/user.types";
 import NextImage from "next/image";
 import {
   useCreateCourse,
   useUpdateCourse,
-  useDeleteCourses,
+  useDeleteCourse,
   useCourses,
 } from "@/hooks/use-courses";
 import { useDepartments } from "@/hooks/use-departments";
@@ -72,9 +70,11 @@ import { extractErrorMessage } from "@/lib/core";
 import { getStatusBadgeVariant } from "@/lib/helpers";
 import {
   mapCourseUiToCreatePayload,
+  mapCourseUiToUpdatePayload,
 } from "@/lib/mappers/course.mapper";
 import { getColumns } from "./columns";
 import { useDebounce } from "@/hooks/use-debounce";
+import { useError } from "@/hooks/use-error";
 
 const CourseFormDialog = dynamic(
   () =>
@@ -93,7 +93,7 @@ interface CourseFilters {
 
 export default function CoursesPage() {
   const { user: currentUser } = useAuth();
-  const { toast } = useToast();
+  const { showError } = useError();
 
   const [viewMode, setViewMode] = useState<"table" | "card">("table");
   const [filters, setFilters] = useState<CourseFilters>({
@@ -143,8 +143,8 @@ export default function CoursesPage() {
 
   const createCourseMutation = useCreateCourse();
   const updateCourseMutation = useUpdateCourse();
-  const deleteCourseMutation = useDeleteCourses();
-  
+  const deleteCourseMutation = useDeleteCourse();
+
   const [isFormDialogOpen, setIsFormDialogOpen] = useState(false);
   const [editingCourse, setEditingCourse] = useState<Course | null>(null);
   const [deletingCourse, setDeletingCourse] = useState<Course | null>(null);
@@ -208,56 +208,44 @@ export default function CoursesPage() {
   };
 
   const handleSaveCourse = async (
-    courseData:
-      | Course
-      | Omit<
-          Course,
-          "id" | "createdAt" | "modifiedAt" | "createdBy" | "modifiedBy"
-        >,
+    courseData: Course,
     isEditing: boolean,
     imageFile?: File | null
-  ): Promise<Course | void> => {
+  ) => {
     if (!canManageCourses || !currentUser) {
-      toast({
-        title: "Không có quyền",
-        description: "Bạn không có quyền thực hiện thao tác này.",
-        variant: "destructive",
-      });
+      showError("COURSE003");
       return;
     }
-  
+
     try {
       const courseWithFile = {
         ...courseData,
         imageFile: imageFile || undefined,
       };
-  
+
       if (isDuplicating || !isEditing) {
-        const createPayload = mapCourseUiToCreatePayload(
-          courseWithFile as Course
-        );
-        return await createCourseMutation.mutateAsync(createPayload);
+        const createPayload = mapCourseUiToCreatePayload(courseWithFile);
+        await createCourseMutation.mutateAsync(createPayload);
       } else {
         const courseToUpdate = editingCourse!;
-        return await updateCourseMutation.mutateAsync({
+        const updatePayload = mapCourseUiToUpdatePayload(
+          courseWithFile as Course
+        );
+        await updateCourseMutation.mutateAsync({
           courseId: courseToUpdate.id,
-          payload: courseWithFile as Partial<Course>,
+          payload: updatePayload,
         });
       }
     } catch (error) {
-      console.error("Lưu khóa học thất bại:", error);
-      // Re-throw the error so the dialog can catch it and not close
-      throw error;
+      console.error("Save course failed:", error);
+      // The mutation hook will show the error toast
+      throw error; // Re-throw to keep the dialog open
     }
   };
 
   const handleDuplicateCourse = (course: Course) => {
     if (!canManageCourses) {
-      toast({
-        title: "Không có quyền",
-        description: "Bạn không có quyền thực hiện thao tác này.",
-        variant: "destructive",
-      });
+      showError("COURSE003");
       return;
     }
 
@@ -300,52 +288,35 @@ export default function CoursesPage() {
 
     const cancelledStatus = courseStatuses.find((s) => s.name === "Hủy");
     if (!cancelledStatus) {
-      toast({
-        title: "Lỗi cấu hình",
-        description:
+      showError({
+        success: false,
+        message:
           "Không tìm thấy trạng thái 'Hủy'. Vui lòng kiểm tra lại hệ thống.",
-        variant: "destructive",
       });
       return;
     }
 
-    try {
-      await updateCourseMutation.mutateAsync({
+    updateCourseMutation.mutate(
+      {
         courseId: archivingCourse.id,
         payload: {
           statusId: cancelledStatus.id,
           status: cancelledStatus.name,
-        },
-      });
-
-      setArchivingCourse(null);
-    } catch (error) {
-      console.error("Lưu trữ thất bại:", error);
-    }
+        } as any,
+      },
+      {
+        onSuccess: () => setArchivingCourse(null),
+        // onError is handled by the hook
+      }
+    );
   };
 
   const handleDeleteCourse = async () => {
     if (!canManageCourses || !deletingCourse) return;
-  
-    const registrationStarted = deletingCourse.registrationStartDate && new Date(deletingCourse.registrationStartDate) <= new Date();
-  
-    if (deletingCourse.status === "Đang mở" || registrationStarted) {
-        toast({
-            title: "Thao tác bị từ chối",
-            description: "Không thể xóa khóa học đã xuất bản hoặc đã bắt đầu cho đăng ký. Vui lòng lưu trữ trước.",
-            variant: "destructive",
-        });
-        setDeletingCourse(null);
-        return;
-    }
-  
-    try {
-        await deleteCourseMutation.mutateAsync([deletingCourse.id]);
-        setDeletingCourse(null);
-    } catch (error) {
-        console.error("Xóa thất bại:", error);
-        // Toast is handled by the mutation hook
-    }
+    deleteCourseMutation.mutate(deletingCourse.id, {
+      onSuccess: () => setDeletingCourse(null),
+      // onError is handled by the hook
+    });
   };
 
   const columns = useMemo(
@@ -356,12 +327,10 @@ export default function CoursesPage() {
         setArchivingCourse,
         setDeletingCourse,
         canManageCourses,
-        courseStatuses,
-        getStatusBadgeVariant,
         departments || [],
         positions || []
       ),
-    [canManageCourses, courseStatuses, departments, positions, handleOpenEditDialog, handleDuplicateCourse]
+    [canManageCourses, departments, positions, handleOpenEditDialog, handleDuplicateCourse]
   );
 
   if (statusesError) {
@@ -385,10 +354,11 @@ export default function CoursesPage() {
 
   const canDeleteCourse = (course: Course | null): boolean => {
     if (!course) return false;
-    const registrationStarted = course.registrationStartDate && new Date(course.registrationStartDate) <= new Date();
+    const registrationStarted =
+      course.registrationStartDate &&
+      new Date(course.registrationStartDate) <= new Date();
     return course.status !== "Đang mở" && !registrationStarted;
   };
-  
 
   return (
     <>
@@ -725,10 +695,16 @@ export default function CoursesPage() {
               <Button
                 variant="outline"
                 onClick={() => setArchivingCourse(null)}
+                disabled={updateCourseMutation.isPending}
               >
                 Hủy
               </Button>
-              <Button onClick={handleArchiveCourse}>Xác nhận</Button>
+              <Button
+                onClick={handleArchiveCourse}
+                disabled={updateCourseMutation.isPending}
+              >
+                Xác nhận
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -757,13 +733,20 @@ export default function CoursesPage() {
               </DialogDescription>
             </DialogHeader>
             <DialogFooter className="mt-4">
-              <Button variant="outline" onClick={() => setDeletingCourse(null)}>
+              <Button
+                variant="outline"
+                onClick={() => setDeletingCourse(null)}
+                disabled={deleteCourseMutation.isPending}
+              >
                 Hủy
               </Button>
               <Button
                 variant="destructive"
                 onClick={handleDeleteCourse}
-                disabled={!canDeleteCourse(deletingCourse)}
+                disabled={
+                  !canDeleteCourse(deletingCourse) ||
+                  deleteCourseMutation.isPending
+                }
               >
                 Xác nhận xóa
               </Button>
