@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from "react";
@@ -18,7 +19,7 @@ export function useLogin() {
       setIsLoading(true);
       const response = await authService.login({ email, password });
 
-      if (response.statusCode === 200 && response.data) {
+      if (response && response.data) {
         const userWithMissingProps = {
           ...response.data,
           idCard: response.data.idCard || "",
@@ -29,7 +30,7 @@ export function useLogin() {
 
         toast({
           title: "Thành công",
-          description: response.message,
+          description: response.message || "Đăng nhập thành công!",
         });
 
         router.push("/dashboard");

@@ -1,3 +1,4 @@
+
 /**
  * Enhanced Error Hook
  * Modern error handling with better user experience
@@ -6,9 +7,10 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { ErrorHandler, AppError, ErrorType } from "@/lib/utils/error.utils";
+import { AppError, ErrorType } from "@/lib/utils/error.utils";
 import { useToast } from "@/components/ui/use-toast";
 import { errorMessages, type ErrorMessage } from "@/lib/error-messages";
+import { extractErrorMessage } from "@/lib/core";
 
 export type ErrorCode = keyof typeof errorMessages;
 
@@ -18,7 +20,7 @@ export interface UseErrorReturn {
   clearError: () => void;
   handleError: (error: unknown) => AppError;
   setError: (error: AppError | string) => void;
-  showError: (error: ErrorCode | Error | unknown) => void;
+  showError: (payload: unknown) => void;
 }
 
 // Định nghĩa cấu trúc cho phản hồi từ backend
@@ -31,25 +33,8 @@ interface BackendResponse {
 }
 
 // Type guard để kiểm tra xem một đối tượng có phải là BackendResponse không
-function isBackendResponse(error: any): error is BackendResponse {
-  return error && typeof error.success === "boolean";
-}
-
-// Định nghĩa cấu trúc cho lỗi nghiệp vụ từ backend (legacy format)
-interface BusinessError {
-  title: string;
-  detail: string;
-  success: boolean;
-}
-
-// Type guard để kiểm tra xem một đối tượng có phải là BusinessError không
-function isBusinessError(error: any): error is BusinessError {
-  return (
-    error &&
-    typeof error.title === "string" &&
-    typeof error.detail === "string" &&
-    typeof error.success === "boolean"
-  );
+function isBackendResponse(payload: any): payload is BackendResponse {
+  return payload && typeof payload.success === "boolean";
 }
 
 export function useError(): UseErrorReturn {
@@ -61,7 +46,8 @@ export function useError(): UseErrorReturn {
   }, []);
 
   const handleError = useCallback((error: unknown) => {
-    const appError = ErrorHandler.handle(error, true);
+    const message = extractErrorMessage(error);
+    const appError = new AppError(message, ErrorType.UNKNOWN);
     setErrorState(appError);
     return appError;
   }, []);
@@ -73,51 +59,37 @@ export function useError(): UseErrorReturn {
   }, []);
 
   const showError = useCallback(
-    (error: ErrorCode | Error | unknown) => {
+    (payload: unknown) => {
       let title = "Đã có lỗi xảy ra";
       let description = "Vui lòng thử lại sau.";
       let variant: "default" | "destructive" | "success" = "destructive";
 
-      if (typeof error === "string" && error in errorMessages) {
-        // Xử lý lỗi theo mã lỗi đã định nghĩa
-        const errorDetails: ErrorMessage = errorMessages[error as ErrorCode];
+      if (typeof payload === "string" && payload in errorMessages) {
+        const errorDetails: ErrorMessage = errorMessages[payload as ErrorCode];
         title = errorDetails.title;
         description = errorDetails.message;
         variant = errorDetails.variant || "destructive";
-      } else if (isBackendResponse(error)) {
-        // Xử lý phản hồi từ backend (format mới)
-        title = error.success ? "Thành công" : "Đã có lỗi xảy ra";
-
-        // Ưu tiên message từ backend, fallback sang detail, rồi mới dùng default
-        if (error.message && error.message.trim()) {
-          description = error.message;
-        } else if (error.detail && error.detail.trim()) {
-          description = error.detail;
-        } else {
-          description = error.success
+      } else if (isBackendResponse(payload)) {
+        title = payload.title || (payload.success ? "Thành công" : "Lỗi");
+        description =
+          payload.message ||
+          payload.detail ||
+          (payload.success
             ? "Thao tác thành công."
-            : "Vui lòng thử lại sau.";
-        }
-
-        variant = error.success ? "success" : "destructive";
-      } else if (isBusinessError(error)) {
-        // Xử lý lỗi nghiệp vụ từ backend (format cũ)
-        title = error.title; // "Lỗi nghiệp vụ"
-        description = error.detail || "Thao tác thành công."; // Fallback message
-        variant = error.success === false ? "destructive" : "success";
-      } else if (error instanceof Error) {
-        // Xử lý lỗi JavaScript thông thường
-        description = error.message;
-      } else if (error === undefined || error === null) {
-        // Xử lý trường hợp không có response (có thể là thành công)
-        console.log("No response received, assuming success");
-        title = "Thành công";
-        description = "Thao tác thành công.";
-        variant = "success";
+            : "Đã có lỗi xảy ra.");
+        variant = payload.success ? "success" : "destructive";
+      } else if (payload instanceof Error) {
+        description = extractErrorMessage(payload);
+      } else if (
+        typeof payload === "object" &&
+        payload !== null &&
+        "response" in payload
+      ) {
+        description = extractErrorMessage((payload as any).response.data);
       } else {
-        // Fallback cho các trường hợp khác
-        console.log("Unknown error type, using default message");
-        // Giữ nguyên giá trị mặc định đã set ở trên
+        description = "Thao tác thành công.";
+        title = "Thành công";
+        variant = "success";
       }
 
       toast({

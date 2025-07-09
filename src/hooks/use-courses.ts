@@ -8,23 +8,15 @@ import type {
   Course,
   CreateCourseRequest,
   CourseSearchParams,
-  CourseApiResponse,
+  UpdateCourseRequest,
 } from "@/lib/types/course.types";
-import type { QueryParams } from "@/lib/core";
-import { extractErrorMessage } from "@/lib/core";
-import {
-  mapCourseApiToUi,
-  mapCourseUiToUpdatePayload,
-} from "@/lib/mappers/course.mapper";
-import { useAuth } from "./useAuth";
+import { useError } from "./use-error";
+import { mapCourseApiToUi } from "@/lib/mappers/course.mapper";
 
 export const COURSES_QUERY_KEY = "courses";
 
 export function useCourses(params?: CourseSearchParams) {
-  const { user } = useAuth(); // Get current user
-  // The query key includes all relevant filter parameters.
-  // React Query will automatically refetch when any part of this key changes.
-  const queryKey = [COURSES_QUERY_KEY, params, user?.id];
+  const queryKey = [COURSES_QUERY_KEY, params];
 
   const {
     data,
@@ -34,11 +26,10 @@ export function useCourses(params?: CourseSearchParams) {
   } = useQuery<Course[], Error>({
     queryKey,
     queryFn: async () => {
-      // Pass params directly to the service
       const apiCourses = await coursesService.getCourses(params);
       return apiCourses.map(mapCourseApiToUi);
     },
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
   });
 
@@ -51,8 +42,7 @@ export function useCourses(params?: CourseSearchParams) {
 }
 
 export function useCourse(courseId: string) {
-  const { user } = useAuth(); // Also make single course fetch user-aware
-  const queryKey = [COURSES_QUERY_KEY, courseId, user?.id];
+  const queryKey = [COURSES_QUERY_KEY, courseId];
 
   const {
     data,
@@ -80,120 +70,53 @@ export function useCourse(courseId: string) {
 
 export function useCreateCourse() {
   const queryClient = useQueryClient();
-  const { toast } = useToast();
+  const { showError } = useError();
 
-  return useMutation<Course, Error, CreateCourseRequest>({
-    mutationFn: async (courseData) => {
-      const apiCourse = await coursesService.createCourse(courseData);
-      return mapCourseApiToUi(apiCourse);
-    },
-    onSuccess: (newCourse) => {
+  return useMutation<any, Error, CreateCourseRequest>({
+    mutationFn: (courseData) => coursesService.createCourse(courseData),
+    onSuccess: (response) => {
       queryClient.invalidateQueries({ queryKey: [COURSES_QUERY_KEY] });
-      toast({
-        title: "Thành công",
-        description: `Khóa học "${newCourse.title}" đã được tạo.`,
-        variant: "success",
-      });
+      showError(response); // Backend returns success message
     },
     onError: (error) => {
-      toast({
-        title: "Tạo khóa học thất bại",
-        description: extractErrorMessage(error),
-        variant: "destructive",
-      });
+      showError(error);
     },
   });
 }
 
 export function useUpdateCourse() {
   const queryClient = useQueryClient();
-  const { toast } = useToast();
+  const { showError } = useError();
 
   return useMutation<
-    Course,
+    any,
     Error,
-    { courseId: string; payload: Partial<Course> }
+    { courseId: string; payload: UpdateCourseRequest }
   >({
-    mutationFn: async ({ courseId, payload }) => {
-      // Fetch all courses with a generic key to find the original course,
-      // as the user-specific key might not have this course if it's being newly assigned.
-      const allCourses =
-        queryClient.getQueryData<Course[]>([COURSES_QUERY_KEY, undefined]) ||
-        [];
-      const originalCourse = allCourses.find((c) => c.id === courseId);
-
-      // If not in the generic cache, try the user-specific cache
-      const userSpecificCourses =
-        queryClient.getQueryData<Course[]>([
-          COURSES_QUERY_KEY,
-          undefined,
-          payload.enrolledTrainees?.[0], // A bit of a hack, but might work
-        ]) || [];
-      const finalOriginalCourse =
-        originalCourse || userSpecificCourses.find((c) => c.id === courseId);
-
-      if (!finalOriginalCourse) {
-        // As a last resort, fetch the course directly
-        const fetchedCourse = await coursesService.getCourseById(courseId);
-        if (fetchedCourse) {
-          const uiCourse = mapCourseApiToUi(fetchedCourse);
-          const mergedCourse = { ...uiCourse, ...payload };
-          const apiPayload = mapCourseUiToUpdatePayload(mergedCourse);
-          const apiCourse = await coursesService.updateCourse(
-            courseId,
-            apiPayload
-          );
-          return mapCourseApiToUi(apiCourse);
-        }
-        throw new Error(
-          `Không tìm thấy khóa học gốc với ID: ${courseId} trong cache hoặc API.`
-        );
-      }
-
-      const mergedCourse = { ...finalOriginalCourse, ...payload };
-      const apiPayload = mapCourseUiToUpdatePayload(mergedCourse);
-      const apiCourse = await coursesService.updateCourse(courseId, apiPayload);
-
-      return mapCourseApiToUi(apiCourse);
-    },
-    onSuccess: (data) => {
+    mutationFn: ({ courseId, payload }) =>
+      coursesService.updateCourse(courseId, payload),
+    onSuccess: (response) => {
       queryClient.invalidateQueries({ queryKey: [COURSES_QUERY_KEY] });
-      toast({
-        title: "Thành công",
-        description: `Khóa học "${data.title}" đã được cập nhật thành công.`,
-        variant: "success",
-      });
+      showError(response);
     },
     onError: (error) => {
-      toast({
-        title: "Cập nhật khóa học thất bại",
-        description: extractErrorMessage(error),
-        variant: "destructive",
-      });
+      showError(error);
     },
   });
 }
 
-export function useDeleteCourses() {
+export function useDeleteCourse() {
   const queryClient = useQueryClient();
-  const { toast } = useToast();
+  const { showError } = useError();
 
-  return useMutation<void, Error, string[]>({
-    mutationFn: (ids) => coursesService.softDeleteCourses(ids),
-    onSuccess: (data, variables) => {
+  return useMutation<any, Error, string>({
+    mutationFn: (id) => coursesService.softDeleteCourses([id]),
+    onSuccess: (response) => {
       queryClient.invalidateQueries({ queryKey: [COURSES_QUERY_KEY] });
-      toast({
-        title: "Thành công",
-        description: `Đã xóa ${variables.length} khóa học.`,
-        variant: "success",
-      });
+      showError(response || { success: true, message: "Đã xóa khóa học."});
     },
     onError: (error) => {
-      toast({
-        title: "Xóa khóa học thất bại",
-        description: extractErrorMessage(error),
-        variant: "destructive",
-      });
+      showError(error);
     },
   });
 }

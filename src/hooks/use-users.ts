@@ -4,8 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { usersService } from "@/lib/services";
 import type { User, CreateUserRequest } from "@/lib/types/user.types";
 import type { QueryParams, PaginatedResponse } from "@/lib/core";
-import { toast } from "@/components/ui/use-toast";
-import { extractErrorMessage } from "@/lib/core";
+import { useError } from "./use-error";
 
 export const USERS_QUERY_KEY = "users";
 
@@ -40,30 +39,23 @@ export function useUsers(params?: QueryParams) {
 
 export function useCreateUserMutation() {
   const queryClient = useQueryClient();
+  const { showError } = useError();
   return useMutation({
     mutationFn: (payload: CreateUserRequest) =>
       usersService.createUser(payload),
-    onSuccess: () => {
-      toast({
-        title: "Thành công",
-        description: "Người dùng mới đã được tạo thành công.",
-        variant: "success",
-      });
-      // Invalidate the users query to refetch the list
+    onSuccess: (response) => {
+      showError(response);
       queryClient.invalidateQueries({ queryKey: [USERS_QUERY_KEY] });
     },
     onError: (error) => {
-      toast({
-        title: "Tạo người dùng thất bại",
-        description: extractErrorMessage(error),
-        variant: "destructive",
-      });
+      showError(error);
     },
   });
 }
 
 export function useUpdateUserMutation() {
   const queryClient = useQueryClient();
+  const { showError } = useError();
   return useMutation({
     mutationFn: ({
       id,
@@ -72,44 +64,27 @@ export function useUpdateUserMutation() {
       id: string;
       payload: Partial<CreateUserRequest>;
     }) => usersService.updateUserByAdmin(id, payload),
-    onSuccess: (data, variables) => {
-      toast({
-        title: "Thành công",
-        description: "Thông tin người dùng đã được cập nhật.",
-        variant: "success",
-      });
-      // Invalidate the main users list query to get fresh data
+    onSuccess: (response) => {
+      showError(response);
       queryClient.invalidateQueries({ queryKey: [USERS_QUERY_KEY] });
     },
     onError: (error) => {
-      toast({
-        title: "Cập nhật người dùng thất bại",
-        description: extractErrorMessage(error),
-        variant: "destructive",
-      });
+      showError(error);
     },
   });
 }
 
 export function useDeleteUserMutation() {
   const queryClient = useQueryClient();
+  const { showError } = useError();
   return useMutation({
     mutationFn: (userId: string) => usersService.deleteUser(userId),
-    onSuccess: () => {
-      toast({
-        title: "Thành công",
-        description: "Người dùng đã được xóa.",
-        variant: "success",
-      });
-      // Invalidate the users query to refetch the list
+    onSuccess: (response) => {
+      showError(response);
       queryClient.invalidateQueries({ queryKey: [USERS_QUERY_KEY] });
     },
     onError: (error) => {
-      toast({
-        title: "Xóa người dùng thất bại",
-        description: extractErrorMessage(error),
-        variant: "destructive",
-      });
+      showError(error);
     },
   });
 }
