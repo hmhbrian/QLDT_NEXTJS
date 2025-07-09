@@ -204,7 +204,7 @@ export function DraggableDepartmentTree({
           key={`${dept.departmentId}-${currentDept.name}-${currentDept.code}`}
         >
           <Tooltip
-            delayDuration={300}
+            delayDuration={200}
             key={`tooltip-${dept.departmentId}-${currentDept.name}`}
           >
             <TooltipTrigger asChild>

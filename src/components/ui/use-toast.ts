@@ -9,7 +9,7 @@ import type {
 } from "@/components/ui/toast"
 
 const TOAST_LIMIT = 1 // Giới hạn số lượng toast hiển thị cùng lúc
-const TOAST_REMOVE_DELAY = 2000 // Thời gian chờ trước khi xóa toast khỏi DOM (ms)
+const TOAST_REMOVE_DELAY = 1000 // Thời gian chờ trước khi xóa toast khỏi DOM (ms)
 
 type ToasterToast = ToastProps & {
     id: string
