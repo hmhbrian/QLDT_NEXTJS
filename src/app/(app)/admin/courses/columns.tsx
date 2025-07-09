@@ -1,3 +1,4 @@
+
 "use client";
 
 import { ColumnDef } from "@tanstack/react-table";
@@ -18,13 +19,10 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import type { Course, TraineeLevel } from "@/lib/types/course.types";
-import { Status } from "@/lib/types/status.types";
+import type { Course } from "@/lib/types/course.types";
 import { DepartmentInfo } from "@/lib/types/department.types";
 import { Position } from "@/lib/types/user.types";
-
-// Kiểu này được sử dụng để định nghĩa hình dạng dữ liệu của chúng ta.
-// Bạn có thể sử dụng Zod schema ở đây nếu muốn.
+import { getStatusBadgeVariant } from "@/lib/helpers";
 
 export const getColumns = (
   handleOpenEditDialog: (course: Course) => void,
@@ -32,14 +30,6 @@ export const getColumns = (
   setArchivingCourse: (course: Course | null) => void,
   setDeletingCourse: (course: Course | null) => void,
   canManageCourses: boolean,
-  courseStatuses: Status[],
-  getStatusBadgeVariant: (
-    status: string
-  ) =>
-    | "default"
-    | "secondary"
-    | "destructive"
-    | "outline" | null,
   departments: DepartmentInfo[],
   positions: Position[]
 ): ColumnDef<Course>[] => [
@@ -104,12 +94,6 @@ export const getColumns = (
     header: "Trạng thái",
     cell: ({ row }) => {
       const statusName = row.original.status;
-      if (statusName === "N/A") {
-        console.warn(
-          "[Columns] Cell render for status is 'N/A'. Full row data:",
-          row.original
-        );
-      }
       return (
         <Badge variant={getStatusBadgeVariant(statusName)}>
           {statusName || "N/A"}

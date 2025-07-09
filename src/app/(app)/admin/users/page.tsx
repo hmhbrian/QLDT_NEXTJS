@@ -279,15 +279,7 @@ export default function UsersPage() {
 
     try {
         if (isEdit && editingUser) {
-            // Sequential Operations: Reset Password, then Update User Info
-            if (newUser.password && newUser.password.trim()) {
-                await usersService.resetPassword(editingUser.id, {
-                    newPassword: newUser.password,
-                    confirmNewPassword: newUser.confirmPassword!,
-                });
-                toast({ title: "Thành công", description: "Mật khẩu người dùng đã được đặt lại.", variant: "success" });
-            }
-
+            // Build the update payload in one go
             const updatePayload: Partial<CreateUserRequest> = {
                 FullName: newUser.fullName,
                 Email: newUser.email,
@@ -299,6 +291,12 @@ export default function UsersPage() {
                 StatusId: newUser.statusId ? parseInt(newUser.statusId, 10) : undefined,
                 Code: newUser.employeeId || undefined,
             };
+
+            // Include password fields only if a new password is provided
+            if (newUser.password && newUser.password.trim()) {
+                updatePayload.Password = newUser.password;
+                updatePayload.ConfirmPassword = newUser.confirmPassword;
+            }
             
             await updateUserMutation.mutateAsync({ id: editingUser.id, payload: updatePayload });
 
@@ -880,4 +878,3 @@ export default function UsersPage() {
     </>
   );
 }
- 

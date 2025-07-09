@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Card,
   CardContent,
@@ -46,12 +45,13 @@ import type {
   UpdateDepartmentPayload,
 } from "@/lib/types/department.types";
 import type { User, Position } from "@/lib/types/user.types";
+import { usersService, positionsService } from "@/lib/services";
 import {
-  departmentsService,
-  usersService,
-  positionsService,
-} from "@/lib/services";
-import { DEPARTMENTS_QUERY_KEY } from "@/hooks/use-departments";
+  useDepartments,
+  useCreateDepartment,
+  useUpdateDepartment,
+  useDeleteDepartment,
+} from "@/hooks/use-departments";
 import { useUserStatuses } from "@/hooks/use-statuses";
 import { DraggableDepartmentTree } from "@/components/departments/DraggableDepartmentTree";
 import { DepartmentFormDialog } from "@/components/departments/DepartmentFormDialog";
@@ -62,25 +62,24 @@ import { extractErrorMessage } from "@/lib/core";
 import { Label } from "@/components/ui/label";
 import { DataTable } from "@/components/ui/data-table";
 import { getColumns } from "./columns";
+import { useQuery } from "@tanstack/react-query";
 
 export default function DepartmentsPage() {
   const { toast } = useToast();
-  const queryClient = useQueryClient();
 
-  // Lấy dữ liệu
+  // Custom Hooks for data fetching and mutations
   const {
-    data: departments = [],
+    departments,
     isLoading: isDepartmentsLoading,
     error: departmentsError,
-  } = useQuery<DepartmentInfo[]>({
-    queryKey: [DEPARTMENTS_QUERY_KEY],
-    queryFn: () => departmentsService.getDepartments(),
-  });
+  } = useDepartments();
 
-  const { data: users = [], isLoading: isUsersLoading } = useQuery<
-    User[],
-    Error
-  >({
+  const createDeptMutation = useCreateDepartment();
+  const updateDeptMutation = useUpdateDepartment();
+  const deleteDeptMutation = useDeleteDepartment();
+
+  // Fetching related data
+  const { data: users = [], isLoading: isUsersLoading } = useQuery<User[], Error>({
     queryKey: ["users"],
     queryFn: () => usersService.getUsers(),
   });
@@ -96,34 +95,16 @@ export default function DepartmentsPage() {
   const { userStatuses, isLoading: isStatusesLoading } = useUserStatuses();
 
   const managers = useMemo(() => {
-    // Chờ cho đến khi cả dữ liệu users và positions đều có sẵn
     if (isUsersLoading || isPositionsLoading || !users || !positions) {
       return [];
     }
-
-    // Tìm object position cho "Quản lý cấp trung" để lấy ID của nó.
     const managerPosition = positions.find(
       (p) => p.positionName === "Quản lý cấp trung"
     );
-
-    // Nếu không tìm thấy cấp quản lý cơ sở, chúng ta không thể xác định đáng tin cậy các quản lý.
-    if (!managerPosition) {
-      console.warn(
-        "Could not find 'Quản lý cấp trung' position to identify managers."
-      );
-      return [];
-    }
-
+    if (!managerPosition) return [];
     const managerBaseLevelId = managerPosition.positionId;
-
-    // Lọc users có positionId ở cấp quản lý cơ sở trở lên.
     return users.filter((user) => {
-      // Kiểm tra xem user có object position và positionId không
-      if (
-        user.position &&
-        typeof user.position === "object" &&
-        user.position.positionId !== null
-      ) {
+      if (user.position && typeof user.position === "object" && user.position.positionId !== null) {
         const userLevelId = user.position.positionId;
         return userLevelId >= managerBaseLevelId;
       }
@@ -131,7 +112,7 @@ export default function DepartmentsPage() {
     });
   }, [users, positions, isUsersLoading, isPositionsLoading]);
 
-  // Trạng thái Component
+  // Component State
   const [selectedDepartment, setSelectedDepartment] =
     useState<DepartmentInfo | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -139,117 +120,27 @@ export default function DepartmentsPage() {
     useState<DepartmentInfo | null>(null);
   const [deletingDepartment, setDeletingDepartment] =
     useState<DepartmentInfo | null>(null);
-
-  // Trạng thái cho tab và tìm kiếm
   const [activeTab, setActiveTab] = useState<"tree" | "table">("tree");
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
 
-  // Mutations
-  const createDeptMutation = useMutation({
-    mutationFn: (payload: CreateDepartmentPayload) =>
-      departmentsService.createDepartment(payload),
-    onSuccess: () => {
-      toast({
-        title: "Thành công",
-        description: "Phòng ban mới đã được tạo thành công.",
-        variant: "success",
-      });
-      queryClient.invalidateQueries({ queryKey: [DEPARTMENTS_QUERY_KEY] });
-      setIsFormOpen(false);
-    },
-    onError: (error) =>
-      toast({
-        title: "Tạo phòng ban thất bại",
-        description: extractErrorMessage(error),
-        variant: "destructive",
-      }),
-  });
+  const validation = useMemo(() => validateDepartmentTree(departments), [departments]);
 
-  const updateDeptMutation = useMutation<
-    void,
-    Error,
-    { id: string; payload: UpdateDepartmentPayload }
-  >({
-    mutationFn: ({ id, payload }) =>
-      departmentsService.updateDepartment(id, payload),
-    onSuccess: () => {
-      toast({
-        title: "Thành công",
-        description: "Thông tin phòng ban đã được cập nhật.",
-        variant: "success",
-      });
-      queryClient.invalidateQueries({ queryKey: [DEPARTMENTS_QUERY_KEY] });
-      setIsFormOpen(false);
-    },
-    onError: (error) =>
-      toast({
-        title: "Cập nhật phòng ban thất bại",
-        description: extractErrorMessage(error),
-        variant: "destructive",
-      }),
-  });
-
-  const deleteDeptMutation = useMutation({
-    mutationFn: (id: string) => departmentsService.deleteDepartment(id),
-    onSuccess: () => {
-      toast({
-        title: "Thành công",
-        description: "Phòng ban đã được xóa.",
-        variant: "success",
-      });
-      queryClient.invalidateQueries({ queryKey: [DEPARTMENTS_QUERY_KEY] });
-      setDeletingDepartment(null);
-      if (
-        selectedDepartment?.departmentId === deletingDepartment?.departmentId
-      ) {
-        setSelectedDepartment(null);
-      }
-    },
-    onError: (error) =>
-      toast({
-        title: "Xóa phòng ban thất bại",
-        description: extractErrorMessage(error),
-        variant: "destructive",
-      }),
-  });
-
-  const validation = useMemo(
-    () => validateDepartmentTree(departments || []),
-    [departments]
-  );
-
-  // Lọc dữ liệu phòng ban cho table view
   const filteredDepartments = useMemo(() => {
     return departments.filter((dept) => {
       const matchesSearch =
         dept.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         dept.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (dept.description || "")
-          .toLowerCase()
-          .includes(searchTerm.toLowerCase()) ||
-        (dept.managerName || "")
-          .toLowerCase()
-          .includes(searchTerm.toLowerCase());
-
-      const statusIdToFilter = userStatuses.find(
-        (s) => s.name === statusFilter
-      )?.id;
-      const matchesStatus =
-        statusFilter === "all" || dept.statusId === statusIdToFilter;
-
+        (dept.description || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (dept.managerName || "").toLowerCase().includes(searchTerm.toLowerCase());
+      const statusIdToFilter = userStatuses.find((s) => s.name === statusFilter)?.id;
+      const matchesStatus = statusFilter === "all" || dept.statusId === statusIdToFilter;
       return matchesSearch && matchesStatus;
     });
   }, [departments, searchTerm, statusFilter, userStatuses]);
 
   useEffect(() => {
-    // Nếu phòng ban được chọn bị xóa, bỏ chọn nó
-    if (
-      selectedDepartment &&
-      !departments.some(
-        (d) => d.departmentId === selectedDepartment.departmentId
-      )
-    ) {
+    if (selectedDepartment && !departments.some((d) => d.departmentId === selectedDepartment.departmentId)) {
       setSelectedDepartment(null);
     }
   }, [departments, selectedDepartment]);
@@ -264,51 +155,51 @@ export default function DepartmentsPage() {
     setIsFormOpen(true);
   };
 
-  // Columns cho DataTable - Khai báo sau khi đã có handleOpenEditDialog
   const columns = useMemo(
-    () =>
-      getColumns(
-        handleOpenEditDialog,
-        setDeletingDepartment,
-        departments,
-        userStatuses
-      ),
+    () => getColumns(handleOpenEditDialog, setDeletingDepartment, departments, userStatuses),
     [departments, userStatuses]
   );
 
-  const handleSaveDepartment = (
+  const handleSaveDepartment = async (
     payload: CreateDepartmentPayload | UpdateDepartmentPayload,
     isEditing: boolean,
     deptId?: string
   ) => {
-    if (isEditing && deptId) {
-      updateDeptMutation.mutate({ id: deptId, payload });
-    } else {
-      createDeptMutation.mutate(payload as CreateDepartmentPayload);
+    try {
+      if (isEditing && deptId) {
+        await updateDeptMutation.mutateAsync({ id: deptId, payload });
+      } else {
+        await createDeptMutation.mutateAsync(payload as CreateDepartmentPayload);
+      }
+      setIsFormOpen(false); // Close dialog on success
+    } catch (error) {
+      // Error is already handled by the mutation hook's toast
+      console.error("Save department failed:", error);
     }
   };
 
   const handleDeleteDepartmentSubmit = () => {
     if (deletingDepartment) {
-      deleteDeptMutation.mutate(deletingDepartment.departmentId);
+      deleteDeptMutation.mutate(deletingDepartment.departmentId, {
+        onSuccess: () => {
+          setDeletingDepartment(null);
+          if (selectedDepartment?.departmentId === deletingDepartment?.departmentId) {
+            setSelectedDepartment(null);
+          }
+        },
+      });
     }
   };
 
   const handleUpdateDepartments = (updatedDepartments: DepartmentInfo[]) => {
     updatedDepartments.forEach((dept) => {
-      const originalDept = departments.find(
-        (d) => d.departmentId === dept.departmentId
-      );
-      if (
-        originalDept &&
-        (originalDept.parentId !== dept.parentId ||
-          originalDept.level !== dept.level)
-      ) {
+      const originalDept = departments.find((d) => d.departmentId === dept.departmentId);
+      if (originalDept && (originalDept.parentId !== dept.parentId || originalDept.level !== dept.level)) {
         updateDeptMutation.mutate({
           id: dept.departmentId,
           payload: {
-            name: originalDept.name, // Bao gồm các trường bắt buộc
-            code: originalDept.code, // Bao gồm các trường bắt buộc
+            name: originalDept.name,
+            code: originalDept.code,
             description: originalDept.description,
             statusId: String(originalDept.statusId),
             managerId: originalDept.managerId,
@@ -327,21 +218,17 @@ export default function DepartmentsPage() {
         </div>
       );
     }
-
     if (departmentsError) {
       return (
         <div className="p-4">
           <Alert variant="destructive">
             <AlertCircle className="h-4 w-4" />
             <AlertTitle>Lỗi tải dữ liệu</AlertTitle>
-            <AlertDescription>
-              {extractErrorMessage(departmentsError)}
-            </AlertDescription>
+            <AlertDescription>{extractErrorMessage(departmentsError)}</AlertDescription>
           </Alert>
         </div>
       );
     }
-
     return (
       <DraggableDepartmentTree
         departments={departments}
@@ -363,15 +250,9 @@ export default function DepartmentsPage() {
       );
     }
 
-    const parent = departments.find(
-      (d) => d.departmentId === selectedDepartment.parentId
-    );
-    const children = departments.filter(
-      (d) => d.parentId === selectedDepartment.departmentId
-    );
-    const status = userStatuses.find(
-      (s) => s.id === selectedDepartment.statusId
-    );
+    const parent = departments.find((d) => d.departmentId === selectedDepartment.parentId);
+    const children = departments.filter((d) => d.parentId === selectedDepartment.departmentId);
+    const status = userStatuses.find((s) => s.id === selectedDepartment.statusId);
 
     return (
       <>
@@ -382,18 +263,10 @@ export default function DepartmentsPage() {
               <CardDescription>Mã: {selectedDepartment.code}</CardDescription>
             </div>
             <div className="flex space-x-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handleOpenEditDialog(selectedDepartment)}
-              >
+              <Button variant="outline" size="sm" onClick={() => handleOpenEditDialog(selectedDepartment)}>
                 <Pencil className="h-4 w-4 mr-2" /> Sửa
               </Button>
-              <Button
-                variant="destructive"
-                size="sm"
-                onClick={() => setDeletingDepartment(selectedDepartment)}
-              >
+              <Button variant="destructive" size="sm" onClick={() => setDeletingDepartment(selectedDepartment)}>
                 <Trash2 className="h-4 w-4 mr-2" /> Xóa
               </Button>
             </div>
@@ -402,61 +275,41 @@ export default function DepartmentsPage() {
         <CardContent className="space-y-4">
           <div className="space-y-1">
             <Label>Mô tả</Label>
-            <p className="text-sm text-muted-foreground">
-              {selectedDepartment.description || "Không có mô tả"}
-            </p>
+            <p className="text-sm text-muted-foreground">{selectedDepartment.description || "Không có mô tả"}</p>
           </div>
           <div className="space-y-1">
             <Label>Quản lý</Label>
-            <p className="text-sm text-muted-foreground">
-              {selectedDepartment.managerName || "Chưa có quản lý"}
-            </p>
+            <p className="text-sm text-muted-foreground">{selectedDepartment.managerName || "Chưa có quản lý"}</p>
           </div>
           <div className="space-y-1">
             <Label>Trạng thái</Label>
             <div>
-              <Badge
-                variant={
-                  status?.name === "Đang hoạt động" ? "default" : "secondary"
-                }
-              >
+              <Badge variant={status?.name === "Đang hoạt động" ? "default" : "secondary"}>
                 {status?.name || "N/A"}
               </Badge>
             </div>
           </div>
           <div className="space-y-1">
             <Label>Phòng ban cha</Label>
-            <p className="text-sm text-muted-foreground">
-              {parent ? parent.name : "Không có (Cấp cao nhất)"}
-            </p>
+            <p className="text-sm text-muted-foreground">{parent ? parent.name : "Không có (Cấp cao nhất)"}</p>
           </div>
           <div className="space-y-1">
             <Label>Phòng ban con</Label>
             <div>
               {children.length > 0 ? (
                 children.map((child) => (
-                  <Badge
-                    key={child.departmentId}
-                    variant="outline"
-                    className="mr-2 mb-2"
-                  >
+                  <Badge key={child.departmentId} variant="outline" className="mr-2 mb-2">
                     {child.name}
                   </Badge>
                 ))
               ) : (
-                <p className="text-sm text-muted-foreground">
-                  Không có phòng ban con
-                </p>
+                <p className="text-sm text-muted-foreground">Không có phòng ban con</p>
               )}
             </div>
           </div>
         </CardContent>
         <CardFooter>
-          <Button
-            variant="secondary"
-            className="w-full"
-            onClick={() => handleOpenAddDialog(selectedDepartment.departmentId)}
-          >
+          <Button variant="secondary" className="w-full" onClick={() => handleOpenAddDialog(selectedDepartment.departmentId)}>
             <PlusCircle className="mr-2 h-4 w-4" /> Thêm phòng ban con
           </Button>
         </CardFooter>
@@ -465,10 +318,7 @@ export default function DepartmentsPage() {
   };
 
   const departmentStatuses = useMemo(
-    () =>
-      userStatuses.filter(
-        (s) => s.name === "Đang hoạt động" || s.name === "Không hoạt động"
-      ),
+    () => userStatuses.filter((s) => s.name === "Đang hoạt động" || s.name === "Không hoạt động"),
     [userStatuses]
   );
 
@@ -492,26 +342,14 @@ export default function DepartmentsPage() {
         <CardHeader>
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
             <div>
-              <CardTitle className="text-2xl font-headline">
-                Quản lý Phòng ban
-              </CardTitle>
-              <CardDescription>
-                Tạo, chỉnh sửa và quản lý tất cả phòng ban trong tổ chức.
-              </CardDescription>
+              <CardTitle className="text-2xl font-headline">Quản lý Phòng ban</CardTitle>
+              <CardDescription>Tạo, chỉnh sửa và quản lý tất cả phòng ban trong tổ chức.</CardDescription>
             </div>
             <div className="flex items-center gap-2">
-              <Button
-                variant={activeTab === "tree" ? "default" : "outline"}
-                size="icon"
-                onClick={() => setActiveTab("tree")}
-              >
+              <Button variant={activeTab === "tree" ? "default" : "outline"} size="icon" onClick={() => setActiveTab("tree")}>
                 <TreePine className="h-4 w-4" />
               </Button>
-              <Button
-                variant={activeTab === "table" ? "default" : "outline"}
-                size="icon"
-                onClick={() => setActiveTab("table")}
-              >
+              <Button variant={activeTab === "table" ? "default" : "outline"} size="icon" onClick={() => setActiveTab("table")}>
                 <List className="h-4 w-4" />
               </Button>
               <Button onClick={() => handleOpenAddDialog()} className="ml-2">
@@ -520,7 +358,6 @@ export default function DepartmentsPage() {
             </div>
           </div>
         </CardHeader>
-
         <CardContent>
           {activeTab === "tree" ? (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
@@ -529,14 +366,9 @@ export default function DepartmentsPage() {
                   <CardTitle>Cấu trúc</CardTitle>
                   <CardDescription>Kéo-thả để sắp xếp.</CardDescription>
                 </CardHeader>
-                <CardContent className="min-h-[400px]">
-                  {renderLeftPanelContent()}
-                </CardContent>
+                <CardContent className="min-h-[400px]">{renderLeftPanelContent()}</CardContent>
               </Card>
-
-              <Card className="shadow-sm min-h-[580px]">
-                {renderRightPanelContent()}
-              </Card>
+              <Card className="shadow-sm min-h-[580px]">{renderRightPanelContent()}</Card>
             </div>
           ) : (
             <>
@@ -544,38 +376,25 @@ export default function DepartmentsPage() {
                 <div className="flex flex-col sm:flex-row gap-4">
                   <div className="relative flex-grow">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10" />
-                    <Input
-                      placeholder="Tìm kiếm phòng ban..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-9"
-                    />
+                    <Input placeholder="Tìm kiếm phòng ban..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-9" />
                   </div>
-                  <Select
-                    value={statusFilter}
-                    onValueChange={(v) => setStatusFilter(v)}
-                  >
+                  <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v)}>
                     <SelectTrigger className="w-full sm:w-[180px]">
                       <SelectValue placeholder="Trạng thái" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">Tất cả trạng thái</SelectItem>
                       {departmentStatuses.map((status) => (
-                        <SelectItem key={status.id} value={status.name}>
-                          {status.name}
-                        </SelectItem>
+                        <SelectItem key={status.id} value={status.name}>{status.name}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
               </div>
-
               {isDepartmentsLoading || isStatusesLoading ? (
                 <div className="flex h-60 w-full items-center justify-center">
                   <Loader2 className="h-10 w-10 animate-spin text-primary" />
-                  <p className="ml-3 text-muted-foreground">
-                    Đang tải danh sách phòng ban...
-                  </p>
+                  <p className="ml-3 text-muted-foreground">Đang tải danh sách phòng ban...</p>
                 </div>
               ) : (
                 <DataTable columns={columns} data={filteredDepartments} />
@@ -597,31 +416,19 @@ export default function DepartmentsPage() {
         userStatuses={userStatuses}
       />
 
-      <Dialog
-        open={deletingDepartment !== null}
-        onOpenChange={() => setDeletingDepartment(null)}
-      >
+      <Dialog open={deletingDepartment !== null} onOpenChange={() => setDeletingDepartment(null)}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Xóa phòng ban</DialogTitle>
             <DialogDescription>
-              Bạn có chắc muốn xóa phòng ban "{deletingDepartment?.name}"? Hành
-              động này không thể hoàn tác.
+              Bạn có chắc muốn xóa phòng ban "{deletingDepartment?.name}"? Hành động này không thể hoàn tác.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setDeletingDepartment(null)}
-              disabled={deleteDeptMutation.isPending}
-            >
+            <Button variant="outline" onClick={() => setDeletingDepartment(null)} disabled={deleteDeptMutation.isPending}>
               Hủy
             </Button>
-            <LoadingButton
-              variant="destructive"
-              onClick={handleDeleteDepartmentSubmit}
-              isLoading={deleteDeptMutation.isPending}
-            >
+            <LoadingButton variant="destructive" onClick={handleDeleteDepartmentSubmit} isLoading={deleteDeptMutation.isPending}>
               Xóa
             </LoadingButton>
           </DialogFooter>

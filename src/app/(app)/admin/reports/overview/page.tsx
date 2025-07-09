@@ -48,7 +48,7 @@ import {
   mockEvaluations as initialMockEvaluations,
   mockUsers,
 } from "@/lib/mock";
-import { departmentOptions as globalDepartmentOptions } from "@/lib/constants";
+import { departmentOptions as globalDepartmentOptions } from "@/lib/config/constants";
 import {
   startOfMonth,
   endOfMonth,
