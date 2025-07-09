@@ -1,3 +1,4 @@
+
 /**
  * Course Domain Types
  * All course-related interfaces and types
@@ -166,6 +167,7 @@ export interface CreateCourseRequest {
   StatusId?: number;
   DepartmentIds?: number[];
   PositionIds?: number[];
+  TraineeIds?: string[];
   imageFile?: File | null;
 }
 
@@ -244,6 +246,7 @@ export interface ApiTest {
   title: string;
   passThreshold: number;
   timeTest: number;
+  position?: number;
   questions?: ApiQuestion[]; // Note: This might be null or not present in list views
   countQuestion?: number; // Add this field for list views
 }
