@@ -1,3 +1,4 @@
+
 import {
   BaseService,
   PaginatedResponse,
@@ -13,6 +14,7 @@ import {
 } from "@/lib/types/course.types";
 import { API_CONFIG } from "@/lib/config";
 import { getApiToken } from "@/lib/utils/form.utils";
+import { PaginationParams } from "@/lib/core";
 
 export class CoursesService extends BaseService<
   CourseApiResponse,
@@ -23,37 +25,52 @@ export class CoursesService extends BaseService<
     super(API_CONFIG.endpoints.courses.base);
   }
 
-  async getCourses(params?: CourseSearchParams): Promise<CourseApiResponse[]> {
-    const filterKeys: (keyof CourseSearchParams)[] = [
-      "keyword",
-      "StatusIds",
-      "DepartmentIds",
-      "PositionIds",
-    ];
-    const hasFilters = filterKeys.some(
-      (key) => params && params[key] && params[key] !== "all"
-    );
+  async getCourses(
+    params?: CourseSearchParams & PaginationParams
+  ): Promise<PaginatedResponse<CourseApiResponse>> {
+    const backendParams: Record<string, any> = {};
 
-    if (hasFilters) {
-      const searchParams: Record<string, any> = { ...params };
-      // Rename frontend 'keyword' to backend 'Keyword'
-      if (searchParams.keyword) {
-        searchParams.Keyword = searchParams.keyword;
-        delete searchParams.keyword;
-      }
-      const response = await this.get<PaginatedResponse<CourseApiResponse>>(
-        API_CONFIG.endpoints.courses.search,
-        { params: searchParams }
-      );
-      return response.items || [];
+    // Map frontend params to backend params
+    if (params) {
+      if (params.keyword) backendParams.Keyword = params.keyword;
+      if (params.StatusIds && params.StatusIds !== "all")
+        backendParams.StatusIds = params.StatusIds;
+      if (params.DepartmentIds && params.DepartmentIds !== "all")
+        backendParams.DepartmentIds = params.DepartmentIds;
+      if (params.PositionIds && params.PositionIds !== "all")
+        backendParams.PositionIds = params.PositionIds;
+      if (params.page) backendParams.Page = params.page;
+      if (params.limit) backendParams.Limit = params.limit;
+      if (params.sortBy) backendParams.SortField = params.sortBy;
+      if (params.sortOrder) backendParams.SortType = params.sortOrder;
     }
 
-    // If no filters, call the general get all endpoint, but still pass pagination/sorting params
+    const hasFilters =
+      backendParams.Keyword ||
+      backendParams.StatusIds ||
+      backendParams.DepartmentIds ||
+      backendParams.PositionIds;
+
+    const endpoint = hasFilters
+      ? API_CONFIG.endpoints.courses.search
+      : this.endpoint;
+
     const response = await this.get<PaginatedResponse<CourseApiResponse>>(
-      API_CONFIG.endpoints.courses.getAll,
-      { params: params as Record<string, unknown> }
+      endpoint,
+      {
+        params: backendParams,
+      }
     );
-    return response.items || [];
+
+    return {
+      items: response.items || [],
+      pagination: response.pagination || {
+        totalItems: response.items?.length || 0,
+        itemsPerPage: backendParams.Limit || 10,
+        currentPage: backendParams.Page || 1,
+        totalPages: 1,
+      },
+    };
   }
 
   async getCourseById(id: string): Promise<CourseApiResponse> {
@@ -103,6 +120,11 @@ export class CoursesService extends BaseService<
     if (payload.imageFile) {
       formData.append("ThumbUrl", payload.imageFile);
     }
+    
+    // Append TraineeIds
+    payload.TraineeIds?.forEach((id) =>
+        formData.append("TraineeIds", id)
+    );
 
     payload.DepartmentIds?.forEach((id) =>
       formData.append("DepartmentIds", id.toString())
@@ -180,53 +202,8 @@ export class CoursesService extends BaseService<
       return;
     }
 
-    // The API endpoint /api/Courses/soft-delete expects a single 'id' as a query parameter.
-    // We will process deletions one by one. The UI currently only deletes one at a time anyway.
-    const deletePromises = courseIds.map((id) => {
-      // Pass the config object with `params` as the third argument (config), not second (data)
-      return this.delete(API_CONFIG.endpoints.courses.softDelete, undefined, {
-        params: { id },
-      });
-    });
-
-    await Promise.all(deletePromises);
+    await this.delete(API_CONFIG.endpoints.courses.softDelete, courseIds);
   }
-  
-  async getCoursesWithPagination(
-      params?: QueryParams
-    ): Promise<PaginatedResponse<CourseApiResponse>> {
-      const isSearch = params?.search && String(params.search).trim() !== "";
-      const endpoint = isSearch
-        ? API_CONFIG.endpoints.courses.search
-        : this.endpoint;
-  
-      const backendParams: Record<string, any> = {};
-      if (params) {
-        if (params.page) backendParams.Page = params.page;
-        if (params.limit) backendParams.Limit = params.limit;
-        if (params.sortBy) backendParams.SortField = params.sortBy;
-        if (params.sortOrder) backendParams.SortType = params.sortOrder;
-  
-        // The search endpoint expects 'keyword' for the search term.
-        if (isSearch) {
-          backendParams.keyword = params.search;
-        }
-      }
-  
-      const response = await this.get<PaginatedResponse<CourseApiResponse>>(endpoint, {
-        params: backendParams,
-      });
-  
-      return {
-        items: response.items || [],
-        pagination: response.pagination || {
-          totalItems: response.items?.length || 0,
-          itemsPerPage: backendParams.Limit || 10,
-          currentPage: backendParams.Page || 1,
-          totalPages: 1,
-        },
-      };
-    }
 }
 
 export const coursesService = new CoursesService();

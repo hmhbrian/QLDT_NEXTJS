@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -8,13 +9,15 @@ import type {
   CreateCourseRequest,
   CourseSearchParams,
   UpdateCourseRequest,
+  CourseApiResponse,
 } from "@/lib/types/course.types";
 import { useError } from "./use-error";
 import { mapCourseApiToUi } from "@/lib/mappers/course.mapper";
+import type { PaginatedResponse, PaginationParams } from "@/lib/core";
 
 export const COURSES_QUERY_KEY = "courses";
 
-export function useCourses(params?: CourseSearchParams) {
+export function useCourses(params?: CourseSearchParams & PaginationParams) {
   const queryKey = [COURSES_QUERY_KEY, params];
 
   const {
@@ -22,11 +25,14 @@ export function useCourses(params?: CourseSearchParams) {
     isLoading,
     error,
     refetch: reloadCourses,
-  } = useQuery<Course[], Error>({
+  } = useQuery<PaginatedResponse<Course>, Error>({
     queryKey,
     queryFn: async () => {
-      const apiCourses = await coursesService.getCourses(params);
-      return apiCourses.map(mapCourseApiToUi);
+      const apiResponse = await coursesService.getCourses(params);
+      return {
+          items: (apiResponse.items || []).map(mapCourseApiToUi),
+          pagination: apiResponse.pagination,
+      };
     },
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
@@ -34,12 +40,14 @@ export function useCourses(params?: CourseSearchParams) {
   });
 
   return {
-    courses: data ?? [],
+    courses: data?.items ?? [],
+    paginationInfo: data?.pagination,
     isLoading,
     error,
     reloadCourses,
   };
 }
+
 
 export function useCourse(courseId: string) {
   const queryKey = [COURSES_QUERY_KEY, courseId];
@@ -95,8 +103,10 @@ export function useUpdateCourse() {
   >({
     mutationFn: ({ courseId, payload }) =>
       coursesService.updateCourse(courseId, payload),
-    onSuccess: (response) => {
+    onSuccess: (response, variables) => {
       queryClient.invalidateQueries({ queryKey: [COURSES_QUERY_KEY] });
+      // Invalidate the specific course query as well
+      queryClient.invalidateQueries({ queryKey: [COURSES_QUERY_KEY, variables.courseId] });
       showError(response);
     },
     onError: (error) => {
@@ -109,8 +119,8 @@ export function useDeleteCourse() {
   const queryClient = useQueryClient();
   const { showError } = useError();
 
-  return useMutation<any, Error, string>({
-    mutationFn: (id) => coursesService.softDeleteCourses([id]),
+  return useMutation<any, Error, string[]>({
+    mutationFn: (ids) => coursesService.softDeleteCourses(ids),
     onSuccess: (response) => {
       queryClient.invalidateQueries({ queryKey: [COURSES_QUERY_KEY] });
       showError(response || { success: true, message: "Đã xóa khóa học." });

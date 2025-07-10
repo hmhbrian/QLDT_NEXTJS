@@ -239,7 +239,7 @@ export const useCourseStore = create<CourseStore>()(
             if (API_CONFIG.useApi) {
               console.log("Fetching courses from API...");
               const apiCourses = await coursesService.getCourses();
-              const transformedCourses = apiCourses.map((apiCourse) =>
+              const transformedCourses = (apiCourses.items || []).map((apiCourse) =>
                 mapCourseApiToUi(apiCourse)
               );
 
