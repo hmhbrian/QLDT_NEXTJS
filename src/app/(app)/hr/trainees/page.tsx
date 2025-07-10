@@ -34,7 +34,6 @@ import {
   UserCircle2,
   Calendar,
   Award,
-  AlertCircle,
   Loader2,
   Eye,
   EyeOff,
@@ -51,10 +50,8 @@ import { useToast } from "@/components/ui/use-toast";
 import { useError } from "@/hooks/use-error";
 import { DataTable } from "@/components/ui/data-table";
 import { getColumns } from "./columns";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { usersService, rolesService } from "@/lib/services";
 import { useDebounce } from "@/hooks/use-debounce";
-import { LoadingButton, Spinner } from "@/components/ui/loading";
+import { LoadingButton } from "@/components/ui/loading";
 import { useDepartments } from "@/hooks/use-departments";
 import { usePositions } from "@/hooks/use-positions";
 import { useUserStatuses } from "@/hooks/use-statuses";
@@ -63,8 +60,12 @@ import {
   useCreateUserMutation,
   useDeleteUserMutation,
   useUpdateUserMutation,
+  useUsers,
 } from "@/hooks/use-users";
 import { extractErrorMessage } from "@/lib/core";
+import { rolesService } from "@/lib/services";
+import { useQuery } from "@tanstack/react-query";
+import type { PaginationState } from "@tanstack/react-table";
 
 const initialNewTraineeState: Omit<User, "id"> & { password?: string } = {
   fullName: "",
@@ -86,10 +87,14 @@ const initialNewTraineeState: Omit<User, "id"> & { password?: string } = {
 export default function TraineesPage() {
   const { toast } = useToast();
   const { showError } = useError();
-  const queryClient = useQueryClient();
 
   const [searchQuery, setSearchQuery] = useState("");
   const debouncedSearchTerm = useDebounce(searchQuery, 300);
+
+  const [pagination, setPagination] = useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: 10,
+  });
 
   const [selectedTrainee, setSelectedTrainee] = useState<User | null>(null);
   const [editingTrainee, setEditingTrainee] = useState<User | null>(null);
@@ -104,20 +109,23 @@ export default function TraineesPage() {
     Partial<User & { password?: string; confirmPassword?: string }>
   >({});
 
-  // Data fetching with TanStack Query
+  // Data fetching with TanStack Query and custom hook
   const {
-    data: trainees = [],
+    paginatedUsers,
     isLoading: isTraineesLoading,
     error: traineesError,
-  } = useQuery<User[]>({
-    queryKey: ["trainees", debouncedSearchTerm],
-    queryFn: () =>
-      usersService.getUsers({
-        role: "HOCVIEN",
-        search: debouncedSearchTerm,
-        limit: 50,
-      }),
+  } = useUsers({
+    role: "HOCVIEN",
+    search: debouncedSearchTerm,
+    page: pagination.pageIndex + 1,
+    limit: pagination.pageSize,
   });
+
+  const trainees = useMemo(() => paginatedUsers?.items ?? [], [paginatedUsers]);
+  const pageCount = useMemo(
+    () => paginatedUsers?.pagination?.totalPages ?? 0,
+    [paginatedUsers]
+  );
 
   const { data: roles = [], isLoading: isRolesLoading } = useQuery({
     queryKey: ["roles"],
@@ -158,7 +166,7 @@ export default function TraineesPage() {
 
   const handleDeleteTrainee = () => {
     if (deletingTrainee) {
-      deleteTraineeMutation.mutate(deletingTrainee.id, {
+      deleteTraineeMutation.mutate([deletingTrainee.id], {
         onSuccess: () => {
           setDeletingTrainee(null);
         },
@@ -272,14 +280,6 @@ export default function TraineesPage() {
     [toast, handleOpenEditDialog]
   );
 
-  if (isTraineesLoading || isStatusesLoading) {
-    return (
-      <div className="flex justify-center items-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row justify-between items-center gap-4">
@@ -310,16 +310,19 @@ export default function TraineesPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {isTraineesLoading ? (
-            <div className="flex justify-center items-center h-64">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            </div>
-          ) : traineesError ? (
+          {traineesError ? (
             <p className="text-destructive text-center py-10">
               {extractErrorMessage(traineesError)}
             </p>
           ) : (
-            <DataTable columns={columns} data={trainees} />
+            <DataTable
+              columns={columns}
+              data={trainees}
+              isLoading={isTraineesLoading}
+              pageCount={pageCount}
+              pagination={pagination}
+              onPaginationChange={setPagination}
+            />
           )}
         </CardContent>
       </Card>
