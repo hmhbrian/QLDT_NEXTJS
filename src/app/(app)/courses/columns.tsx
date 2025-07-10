@@ -1,3 +1,4 @@
+
 "use client";
 
 import { ColumnDef } from "@tanstack/react-table";
@@ -49,7 +50,14 @@ export const getColumns = (
         <ArrowUpDown className="ml-2 h-4 w-4" />
       </Button>
     ),
-    cell: ({ row }) => <div className="font-medium">{row.original.title}</div>,
+    cell: ({ row }) => (
+      <div
+        className="font-medium cursor-pointer hover:underline"
+        onClick={() => handleViewDetails(row.original.id)}
+      >
+        {row.original.title}
+      </div>
+    ),
   },
   {
     accessorKey: "category",
@@ -62,6 +70,10 @@ export const getColumns = (
   {
     accessorKey: "duration",
     header: "Thời lượng",
+    cell: ({ row }) => {
+      const { sessions, hoursPerSession } = row.original.duration;
+      return `${sessions} buổi (${hoursPerSession}h/buổi)`;
+    },
   },
   {
     accessorKey: "enrollmentType",
