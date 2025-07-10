@@ -1,3 +1,4 @@
+
 import {
   BaseService,
   PaginatedResponse,
@@ -74,6 +75,7 @@ export class UsersService extends BaseService<
       if (params.limit) backendParams.Limit = params.limit;
       if (params.sortBy) backendParams.SortField = params.sortBy;
       if (params.sortOrder) backendParams.SortType = params.sortOrder;
+      if (params.role) backendParams.RoleName = params.role;
 
       // The search endpoint expects 'keyword' for the search term.
       if (isSearch) {
@@ -135,6 +137,12 @@ export class UsersService extends BaseService<
   async deleteUser(userId: string): Promise<any> {
     const url = API_CONFIG.endpoints.users.softDelete(userId);
     return await this.delete(url);
+  }
+
+  async deleteUsers(userIds: string[]): Promise<any> {
+    const url = API_CONFIG.endpoints.users.softDelete(''); // Base endpoint, IDs will be in body
+    // Assuming backend supports DELETE with body for bulk actions
+    return await this.delete(url, userIds);
   }
 
   async resetPassword(
