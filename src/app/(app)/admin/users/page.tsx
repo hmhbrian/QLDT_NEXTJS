@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useMemo, useCallback } from "react";
@@ -68,7 +69,7 @@ import {
   Eye,
   EyeOff,
 } from "lucide-react";
-import { NO_DEPARTMENT_VALUE } from "@/lib/constants";
+import { NO_DEPARTMENT_VALUE } from "@/lib/config/constants";
 import type { PaginationState } from "@tanstack/react-table";
 
 // Define a specific type for the form state to avoid conflicts
@@ -356,7 +357,7 @@ export default function UsersPage() {
       });
       return;
     }
-    deleteUserMutation.mutate(deletingUser.id);
+    deleteUserMutation.mutate([deletingUser.id]);
     setDeletingUser(null);
   };
 
