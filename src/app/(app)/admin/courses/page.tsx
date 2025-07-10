@@ -1,7 +1,8 @@
+
 "use client";
 
 import { useState, useEffect, useMemo, useCallback } from "react";
-import dynamic from "next/dynamic";
+import { useRouter } from "next/navigation";
 import {
   Card,
   CardContent,
@@ -51,41 +52,19 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import type { Course, CourseSearchParams } from "@/lib/types/course.types";
-import type { DepartmentInfo } from "@/lib/types/department.types";
-import type { Position } from "@/lib/types/user.types";
 import NextImage from "next/image";
-import {
-  useCreateCourse,
-  useUpdateCourse,
-  useDeleteCourse,
-  useCourses,
-} from "@/hooks/use-courses";
+import { useCourses, useUpdateCourse, useDeleteCourse } from "@/hooks/use-courses";
 import { useDepartments } from "@/hooks/use-departments";
 import { usePositions } from "@/hooks/use-positions";
-import { useUsers } from "@/hooks/use-users";
 import { useCourseStatuses } from "@/hooks/use-statuses";
 import { DataTable } from "@/components/ui/data-table";
 import { extractErrorMessage } from "@/lib/core";
 import { getStatusBadgeVariant } from "@/lib/helpers";
-import {
-  mapCourseUiToCreatePayload,
-  mapCourseUiToUpdatePayload,
-} from "@/lib/mappers/course.mapper";
 import { getColumns } from "./columns";
 import { useDebounce } from "@/hooks/use-debounce";
 import { useError } from "@/hooks/use-error";
 import type { PaginationState } from "@tanstack/react-table";
-import { useQuery } from "@tanstack/react-query";
-import { coursesService } from "@/lib/services";
-import { mapCourseApiToUi } from "@/lib/mappers/course.mapper";
-
-const CourseFormDialog = dynamic(
-  () =>
-    import("@/components/courses/dialogs/CourseFormDialog").then(
-      (mod) => mod.CourseFormDialog
-    ),
-  { ssr: false }
-);
+import type { PaginationParams } from "@/lib/core";
 
 interface CourseFilters {
   keyword: string;
@@ -97,6 +76,7 @@ interface CourseFilters {
 export default function CoursesPage() {
   const { user: currentUser } = useAuth();
   const { showError } = useError();
+  const router = useRouter();
 
   const [viewMode, setViewMode] = useState<"table" | "card">("table");
   const [filters, setFilters] = useState<CourseFilters>({
@@ -105,10 +85,18 @@ export default function CoursesPage() {
     departmentId: "all",
     levelId: "all",
   });
+  const [pagination, setPagination] = useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: 10,
+  });
+
   const debouncedFilters = useDebounce(filters, 500);
 
-  const apiParams: CourseSearchParams = useMemo(() => {
-    const params: CourseSearchParams = {};
+  const apiParams: CourseSearchParams & PaginationParams = useMemo(() => {
+    const params: CourseSearchParams & PaginationParams = {
+        page: pagination.pageIndex + 1,
+        limit: pagination.pageSize,
+    };
     if (debouncedFilters.keyword) {
       params.keyword = debouncedFilters.keyword;
     }
@@ -122,9 +110,14 @@ export default function CoursesPage() {
       params.PositionIds = debouncedFilters.levelId;
     }
     return params;
-  }, [debouncedFilters]);
+  }, [debouncedFilters, pagination]);
 
-  const { courses, isLoading, error: coursesError } = useCourses(apiParams);
+  const {
+    courses,
+    paginationInfo,
+    isLoading: isLoadingCourses,
+    error: coursesError,
+  } = useCourses(apiParams);
 
   const {
     courseStatuses,
@@ -134,40 +127,22 @@ export default function CoursesPage() {
 
   const { departments, isLoading: isLoadingDepts } = useDepartments();
   const { positions, loading: isLoadingPositions } = usePositions();
-  const { users: trainees, isLoading: isLoadingTrainees } = useUsers({
-    role: "HOCVIEN",
-  });
 
-  const isLoadingDependencies =
-    isLoadingStatuses ||
-    isLoadingDepts ||
-    isLoadingPositions ||
-    isLoadingTrainees;
+  const isLoading =
+    isLoadingCourses || isLoadingStatuses || isLoadingDepts || isLoadingPositions;
+  
+  const pageCount = paginationInfo?.totalPages ?? 0;
 
-  const createCourseMutation = useCreateCourse();
   const updateCourseMutation = useUpdateCourse();
   const deleteCourseMutation = useDeleteCourse();
 
-  const [pagination, setPagination] = useState<PaginationState>({
-    pageIndex: 0,
-    pageSize: 10,
-  });
-  const [searchTerm, setSearchTerm] = useState("");
-  const debouncedSearchTerm = useDebounce(searchTerm, 300);
-
-  const [isFormDialogOpen, setIsFormDialogOpen] = useState(false);
-  const [editingCourse, setEditingCourse] = useState<Course | null>(null);
   const [deletingCourse, setDeletingCourse] = useState<Course | null>(null);
   const [archivingCourse, setArchivingCourse] = useState<Course | null>(null);
-  const [isDuplicating, setIsDuplicating] = useState(false);
-
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(8);
-
+  
   const departmentOptions = useMemo(() => {
     if (!departments) return [];
     return departments.map((d) => ({
-      value: d.departmentId,
+      value: String(d.departmentId),
       label: d.name || "N/A",
     }));
   }, [departments]);
@@ -184,97 +159,19 @@ export default function CoursesPage() {
     currentUser?.role === "ADMIN" || currentUser?.role === "HR";
 
   useEffect(() => {
-    setCurrentPage(1);
+    setPagination(p => ({ ...p, pageIndex: 0 }));
   }, [filters, viewMode]);
 
-  const cardViewCourses = useMemo(() => {
-    if (viewMode === "card") {
-      const startIndex = (currentPage - 1) * itemsPerPage;
-      return courses.slice(startIndex, startIndex + itemsPerPage);
-    }
-    return courses;
-  }, [courses, currentPage, itemsPerPage, viewMode]);
-
-  const totalPages = Math.ceil(courses.length / itemsPerPage);
-
-  const handleFormDialogOpenChange = (isOpen: boolean) => {
-    if (!isOpen) {
-      setEditingCourse(null);
-      setIsDuplicating(false);
-    }
-    setIsFormDialogOpen(isOpen);
-  };
-
   const handleOpenAddDialog = () => {
-    setEditingCourse(null);
-    setIsDuplicating(false);
-    setIsFormDialogOpen(true);
+    router.push("/admin/courses/edit/new");
   };
 
-  const handleOpenEditDialog = (course: Course) => {
-    setIsDuplicating(false);
-    setEditingCourse(course);
-    setIsFormDialogOpen(true);
+  const handleEditCourse = (courseId: string) => {
+    router.push(`/admin/courses/edit/${courseId}`);
   };
 
-  const { data: paginatedCoursesData } = useQuery({
-    queryKey: [
-      "courses-paginated",
-      debouncedSearchTerm,
-      pagination.pageIndex,
-      pagination.pageSize,
-    ],
-    queryFn: () =>
-      coursesService.getCoursesWithPagination({
-        search: debouncedSearchTerm,
-        page: pagination.pageIndex + 1,
-        limit: pagination.pageSize,
-      }),
-    placeholderData: (previousData) => previousData,
-  });
-  const paginatedCourses = useMemo(
-    () => paginatedCoursesData?.items?.map(mapCourseApiToUi) ?? [],
-    [paginatedCoursesData]
-  );
-  const pageCount = useMemo(
-    () => paginatedCoursesData?.pagination?.totalPages ?? 0,
-    [paginatedCoursesData]
-  );
-
-  const handleSaveCourse = async (
-    courseData: Course,
-    isEditing: boolean,
-    imageFile?: File | null
-  ) => {
-    if (!canManageCourses || !currentUser) {
-      showError("COURSE003");
-      return;
-    }
-
-    try {
-      const courseWithFile = {
-        ...courseData,
-        imageFile: imageFile || undefined,
-      };
-
-      if (isDuplicating || !isEditing) {
-        const createPayload = mapCourseUiToCreatePayload(courseWithFile);
-        await createCourseMutation.mutateAsync(createPayload);
-      } else {
-        const courseToUpdate = editingCourse!;
-        const updatePayload = mapCourseUiToUpdatePayload(
-          courseWithFile as Course
-        );
-        await updateCourseMutation.mutateAsync({
-          courseId: courseToUpdate.id,
-          payload: updatePayload,
-        });
-      }
-    } catch (error) {
-      console.error("Save course failed:", error);
-      // The mutation hook will show the error toast
-      throw error; // Re-throw to keep the dialog open
-    }
+  const handleViewDetails = (courseId: string) => {
+    router.push(`/courses/${courseId}`);
   };
 
   const handleDuplicateCourse = (course: Course) => {
@@ -282,39 +179,7 @@ export default function CoursesPage() {
       showError("COURSE003");
       return;
     }
-
-    const duplicatedCourseForForm: Course = {
-      ...course,
-      id: crypto.randomUUID(),
-      title: `${course.title} (Bản sao)`,
-      courseCode: `${course.courseCode}-COPY-${Date.now()
-        .toString()
-        .slice(-4)}`,
-      status: "Lưu nháp",
-      statusId: courseStatuses.find((status) => status.name === "Lưu nháp")?.id,
-      isPublic: false,
-      enrolledTrainees: [],
-      lessons: (course.lessons || []).map((l) => ({
-        ...l,
-        id: crypto.randomUUID(),
-      })),
-      tests: (course.tests || []).map((t) => ({
-        ...t,
-        id: crypto.randomUUID(),
-        questions: (t.questions || []).map((q) => ({
-          ...q,
-          id: crypto.randomUUID(),
-        })),
-      })),
-      materials: (course.materials || []).map((m) => ({
-        ...m,
-        id: crypto.randomUUID(),
-      })),
-    };
-
-    setIsDuplicating(true);
-    setEditingCourse(duplicatedCourseForForm);
-    setIsFormDialogOpen(true);
+    router.push(`/admin/courses/edit/new?duplicateFrom=${course.id}`);
   };
 
   const handleArchiveCourse = async () => {
@@ -334,29 +199,27 @@ export default function CoursesPage() {
       {
         courseId: archivingCourse.id,
         payload: {
-          statusId: cancelledStatus.id,
-          status: cancelledStatus.name,
-        } as any,
+          StatusId: cancelledStatus.id,
+        },
       },
       {
         onSuccess: () => setArchivingCourse(null),
-        // onError is handled by the hook
       }
     );
   };
 
   const handleDeleteCourse = async () => {
     if (!canManageCourses || !deletingCourse) return;
-    deleteCourseMutation.mutate(deletingCourse.id, {
+    deleteCourseMutation.mutate([deletingCourse.id], {
       onSuccess: () => setDeletingCourse(null),
-      // onError is handled by the hook
     });
   };
 
   const columns = useMemo(
     () =>
       getColumns(
-        handleOpenEditDialog,
+        handleViewDetails,
+        handleEditCourse,
         handleDuplicateCourse,
         setArchivingCourse,
         setDeletingCourse,
@@ -364,13 +227,7 @@ export default function CoursesPage() {
         departments || [],
         positions || []
       ),
-    [
-      canManageCourses,
-      departments,
-      positions,
-      handleOpenEditDialog,
-      handleDuplicateCourse,
-    ]
+    [canManageCourses, departments, positions, handleEditCourse, handleDuplicateCourse]
   );
 
   if (statusesError) {
@@ -501,7 +358,7 @@ export default function CoursesPage() {
             </div>
           </div>
 
-          {isLoading || isLoadingDependencies ? (
+          {isLoading ? (
             <div className="flex h-60 w-full items-center justify-center">
               <Loader2 className="h-10 w-10 animate-spin text-primary" />
               <p className="ml-3 text-muted-foreground">
@@ -511,7 +368,7 @@ export default function CoursesPage() {
           ) : viewMode === "table" ? (
             <DataTable
               columns={columns}
-              data={paginatedCourses}
+              data={courses}
               isLoading={isLoading}
               pageCount={pageCount}
               pagination={pagination}
@@ -520,13 +377,14 @@ export default function CoursesPage() {
           ) : (
             <>
               <div className="grid gap-6 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                {cardViewCourses.map((course) => (
+                {courses.map((course) => (
                   <Card
                     key={course.id}
                     className="overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 flex flex-col"
                   >
                     <div
-                      className="relative h-40 w-full"
+                      className="relative h-40 w-full cursor-pointer"
+                      onClick={() => handleViewDetails(course.id)}
                       data-ai-id="card-image-container"
                     >
                       <NextImage
@@ -550,7 +408,7 @@ export default function CoursesPage() {
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
                               <DropdownMenuItem
-                                onClick={() => handleOpenEditDialog(course)}
+                                onClick={() => handleEditCourse(course.id)}
                               >
                                 <Pencil className="mr-2 h-4 w-4" /> Chỉnh sửa
                               </DropdownMenuItem>
@@ -580,7 +438,8 @@ export default function CoursesPage() {
                     </div>
                     <CardHeader className="pb-2">
                       <CardTitle
-                        className="font-headline text-lg truncate"
+                        className="font-headline text-lg truncate cursor-pointer hover:underline"
+                        onClick={() => handleViewDetails(course.id)}
                         title={course.title}
                       >
                         {course.title}
@@ -639,7 +498,7 @@ export default function CoursesPage() {
                       <Button
                         variant="outline"
                         className="w-full"
-                        onClick={() => handleOpenEditDialog(course)}
+                        onClick={() => handleEditCourse(course.id)}
                       >
                         Xem & Chỉnh sửa chi tiết
                       </Button>
@@ -653,57 +512,56 @@ export default function CoursesPage() {
                   Không tìm thấy khóa học nào.
                 </div>
               ) : (
-                totalPages > 1 && (
+                pageCount > 1 && (
                   <div className="flex items-center justify-between pt-6">
                     <div className="flex-1 text-sm text-muted-foreground">
-                      Hiển thị {cardViewCourses.length} trên {courses.length}{" "}
+                      Hiển thị {courses.length} trên {paginationInfo?.totalItems ?? 0}{" "}
                       khóa học.
                     </div>
                     <div className="flex items-center space-x-6 lg:space-x-8">
-                      <div className="flex items-center space-x-2">
-                        <p className="text-sm font-medium">Số mục mỗi trang</p>
-                        <Select
-                          value={`${itemsPerPage}`}
-                          onValueChange={(value) => {
-                            setItemsPerPage(Number(value));
-                            setCurrentPage(1);
-                          }}
-                        >
-                          <SelectTrigger className="h-8 w-[70px]">
-                            <SelectValue placeholder={itemsPerPage} />
-                          </SelectTrigger>
-                          <SelectContent side="top">
-                            {[8, 12, 16, 24].map((pageSize) => (
-                              <SelectItem key={pageSize} value={`${pageSize}`}>
-                                {pageSize}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="flex w-[100px] items-center justify-center text-sm font-medium">
-                        Trang {currentPage} của {totalPages}
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Button
-                          variant="outline"
-                          className="h-8 w-8 p-0"
-                          onClick={() => setCurrentPage((p) => p - 1)}
-                          disabled={currentPage === 1}
-                        >
-                          <span className="sr-only">Go to previous page</span>
-                          <ChevronLeft className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="outline"
-                          className="h-8 w-8 p-0"
-                          onClick={() => setCurrentPage((p) => p + 1)}
-                          disabled={currentPage === totalPages}
-                        >
-                          <span className="sr-only">Go to next page</span>
-                          <ChevronRight className="h-4 w-4" />
-                        </Button>
-                      </div>
+                       <div className="flex items-center space-x-2">
+                         <p className="text-sm font-medium">Số mục mỗi trang</p>
+                         <Select
+                           value={`${pagination.pageSize}`}
+                           onValueChange={(value) => {
+                             setPagination(p => ({...p, pageSize: Number(value), pageIndex: 0 }));
+                           }}
+                         >
+                           <SelectTrigger className="h-8 w-[70px]">
+                             <SelectValue placeholder={pagination.pageSize} />
+                           </SelectTrigger>
+                           <SelectContent side="top">
+                             {[10, 20, 30, 40, 50].map((pageSize) => (
+                               <SelectItem key={pageSize} value={`${pageSize}`}>
+                                 {pageSize}
+                               </SelectItem>
+                             ))}
+                           </SelectContent>
+                         </Select>
+                       </div>
+                       <div className="flex w-[100px] items-center justify-center text-sm font-medium">
+                         Trang {pagination.pageIndex + 1} của {pageCount}
+                       </div>
+                       <div className="flex items-center space-x-2">
+                         <Button
+                           variant="outline"
+                           className="h-8 w-8 p-0"
+                           onClick={() => setPagination(p => ({...p, pageIndex: p.pageIndex - 1}))}
+                           disabled={pagination.pageIndex === 0}
+                         >
+                           <span className="sr-only">Go to previous page</span>
+                           <ChevronLeft className="h-4 w-4" />
+                         </Button>
+                         <Button
+                           variant="outline"
+                           className="h-8 w-8 p-0"
+                           onClick={() => setPagination(p => ({...p, pageIndex: p.pageIndex + 1}))}
+                           disabled={pagination.pageIndex + 1 >= pageCount}
+                         >
+                           <span className="sr-only">Go to next page</span>
+                           <ChevronRight className="h-4 w-4" />
+                         </Button>
+                       </div>
                     </div>
                   </div>
                 )
@@ -712,18 +570,6 @@ export default function CoursesPage() {
           )}
         </CardContent>
       </Card>
-
-      <CourseFormDialog
-        isOpen={isFormDialogOpen}
-        onOpenChange={handleFormDialogOpenChange}
-        courseToEdit={editingCourse}
-        isDuplicating={isDuplicating}
-        onSave={handleSaveCourse}
-        courseStatuses={courseStatuses}
-        departmentOptions={departmentOptions}
-        levelOptions={levelOptions}
-        trainees={trainees}
-      />
 
       {archivingCourse && (
         <Dialog

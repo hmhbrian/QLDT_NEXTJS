@@ -25,7 +25,8 @@ import { Position } from "@/lib/types/user.types";
 import { getStatusBadgeVariant } from "@/lib/helpers";
 
 export const getColumns = (
-  handleOpenEditDialog: (course: Course) => void,
+  handleViewDetails: (courseId: string) => void,
+  handleEdit: (courseId: string) => void,
   handleDuplicateCourse: (course: Course) => void,
   setArchivingCourse: (course: Course | null) => void,
   setDeletingCourse: (course: Course | null) => void,
@@ -71,7 +72,14 @@ export const getColumns = (
         </Button>
       );
     },
-    cell: ({ row }) => <div className="font-medium">{row.original.title}</div>,
+    cell: ({ row }) => (
+      <div
+        className="font-medium cursor-pointer hover:underline"
+        onClick={() => handleViewDetails(row.original.id)}
+      >
+        {row.original.title}
+      </div>
+    ),
   },
   {
     accessorKey: "courseCode",
@@ -157,7 +165,7 @@ export const getColumns = (
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => handleOpenEditDialog(course)}>
+            <DropdownMenuItem onClick={() => handleEdit(course.id)}>
               <Pencil className="mr-2 h-4 w-4" /> Chỉnh sửa
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => handleDuplicateCourse(course)}>
