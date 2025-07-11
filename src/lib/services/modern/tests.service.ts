@@ -21,6 +21,13 @@ class TestsService extends BaseService<ApiTest, CreateTestPayload, any> {
       if (error?.message?.includes("Không tìm thấy bài kiểm tra")) {
         return [];
       }
+      
+      // Handle 403 Forbidden error - user doesn't have permission to view tests
+      if (error?.response?.status === 403 || error?.message?.includes("403") || error?.message?.includes("Forbidden")) {
+        console.warn("User doesn't have permission to view tests for course:", courseId);
+        return [];
+      }
+      
       // For all other errors, re-throw them to be handled by the query's error state.
       this.handleError("GET", endpoint, error);
     }
