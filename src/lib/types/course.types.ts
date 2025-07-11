@@ -217,8 +217,7 @@ export interface CourseSearchParams {
   StatusIds?: string;
   DepartmentIds?: string;
   PositionIds?: string;
-  page?: number;
-  limit?: number;
+  isPublic?: boolean;
 }
 
 // Lesson API Payloads
