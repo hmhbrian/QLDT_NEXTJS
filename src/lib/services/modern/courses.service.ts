@@ -1,4 +1,3 @@
-
 import {
   BaseService,
   PaginatedResponse,
@@ -13,7 +12,6 @@ import {
   CourseSearchParams,
 } from "@/lib/types/course.types";
 import { API_CONFIG } from "@/lib/config";
-import { getApiToken } from "@/lib/utils/form.utils";
 import { PaginationParams } from "@/lib/core";
 
 export class CoursesService extends BaseService<
@@ -120,11 +118,9 @@ export class CoursesService extends BaseService<
     if (payload.imageFile) {
       formData.append("ThumbUrl", payload.imageFile);
     }
-    
+
     // Append TraineeIds
-    payload.TraineeIds?.forEach((id) =>
-        formData.append("TraineeIds", id)
-    );
+    payload.TraineeIds?.forEach((id) => formData.append("TraineeIds", id));
 
     payload.DepartmentIds?.forEach((id) =>
       formData.append("DepartmentIds", id.toString())
@@ -138,33 +134,12 @@ export class CoursesService extends BaseService<
 
   async createCourse(payload: CreateCourseRequest): Promise<CourseApiResponse> {
     const formData = this.buildFormDataFromPayload(payload);
-    const token = getApiToken();
 
-    const response = await fetch(
-      `${API_CONFIG.baseURL}${API_CONFIG.endpoints.courses.create}`,
-      {
-        method: "POST",
-        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-        body: formData,
-      }
+    // Use BaseService's post method which handles auth headers automatically
+    return this.post<CourseApiResponse>(
+      API_CONFIG.endpoints.courses.create,
+      formData
     );
-
-    const data = await response.json();
-    if (!response.ok) {
-      const errorMessage =
-        data.detail ||
-        data.title ||
-        (data.errors ? JSON.stringify(data.errors) : "Failed to create course");
-      throw new Error(errorMessage);
-    }
-
-    // API returns a wrapper with success and data properties
-    if (data.success && data.data) {
-      return data.data;
-    }
-
-    // Fallback if the response is the course object directly
-    return data;
   }
 
   async updateCourse(
@@ -172,29 +147,12 @@ export class CoursesService extends BaseService<
     payload: UpdateCourseRequest
   ): Promise<CourseApiResponse> {
     const formData = this.buildFormDataFromPayload(payload);
-    const token = getApiToken();
 
-    const response = await fetch(
-      `${API_CONFIG.baseURL}${API_CONFIG.endpoints.courses.update(courseId)}`,
-      {
-        method: "PUT",
-        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-        body: formData,
-      }
+    // Use BaseService's put method which handles auth headers automatically
+    return this.put<CourseApiResponse>(
+      API_CONFIG.endpoints.courses.update(courseId),
+      formData
     );
-
-    const data = await response.json();
-    if (!response.ok) {
-      throw new Error(data.detail || data.title || "Failed to update course");
-    }
-
-    if (data.success && data.data?.id) {
-      return await this.getCourseById(data.data.id);
-    } else if (data.data) {
-      return data.data;
-    }
-
-    return await this.getCourseById(courseId);
   }
 
   async softDeleteCourses(courseIds: string[]): Promise<void> {
