@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useMemo } from "react";
@@ -14,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
+import { Progress } from "@/components/ui/progress";
 import {
   PlusCircle,
   Edit,
@@ -67,10 +67,14 @@ function SortableLessonItem({
   lesson,
   onEdit,
   onDelete,
+  isCompleted,
+  onToggleComplete,
 }: {
   lesson: Lesson;
   onEdit: (l: Lesson) => void;
   onDelete: (l: Lesson) => void;
+  isCompleted: boolean;
+  onToggleComplete: (lessonId: string | number) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition } =
     useSortable({ id: lesson.id });
@@ -84,9 +88,9 @@ function SortableLessonItem({
     <div
       ref={setNodeRef}
       style={style}
-      className="flex items-center justify-between p-2 border rounded-md bg-background"
+      className="flex items-center justify-between p-3 border rounded-md bg-background hover:bg-muted/50 transition-colors"
     >
-      <div className="flex items-center gap-2 flex-grow min-w-0">
+      <div className="flex items-center gap-3 flex-grow min-w-0">
         <button
           {...listeners}
           {...attributes}
@@ -94,9 +98,34 @@ function SortableLessonItem({
         >
           <GripVertical className="h-5 w-5" />
         </button>
-        <span className="text-sm truncate">{lesson.title}</span>
+        <div className="flex-grow min-w-0">
+          <div className="flex items-center gap-2">
+            <span className={`text-sm truncate ${isCompleted ? 'line-through text-muted-foreground' : ''}`}>
+              {lesson.title}
+            </span>
+            {isCompleted && (
+              <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
+                Đã hoàn thành
+              </span>
+            )}
+          </div>
+          {lesson.duration && (
+            <p className="text-xs text-muted-foreground mt-1">
+              Thời lượng: {lesson.duration}
+            </p>
+          )}
+        </div>
       </div>
-      <div className="space-x-1 flex-shrink-0">
+      <div className="space-x-1 flex-shrink-0 flex items-center">
+        <Button
+          type="button"
+          variant={isCompleted ? "default" : "outline"}
+          size="sm"
+          onClick={() => onToggleComplete(lesson.id)}
+          className="text-xs"
+        >
+          {isCompleted ? "Đã xong" : "Đánh dấu hoàn thành"}
+        </Button>
         <Button
           type="button"
           variant="ghost"
@@ -129,6 +158,9 @@ export function LessonManager({ courseId }: LessonManagerProps) {
     reloadLessons
   } = useLessons(courseId ?? undefined);
 
+  // Mock data for lesson completion - in real app, this would come from API
+  const [completedLessons, setCompletedLessons] = useState<Set<string | number>>(new Set());
+
   const [isLessonDialogOpen, setIsLessonDialogOpen] = useState(false);
   const [currentEditingLesson, setCurrentEditingLesson] = useState<Lesson | null>(null);
   const [lessonFormData, setLessonFormData] = useState<Partial<Lesson & { file: File | null }>>({
@@ -143,6 +175,12 @@ export function LessonManager({ courseId }: LessonManagerProps) {
   const updateLessonMutation = useUpdateLesson();
   const deleteLessonMutation = useDeleteLesson();
   const reorderLessonMutation = useReorderLesson();
+
+  // Calculate progress
+  const lessonProgress = useMemo(() => {
+    if (!lessons.length) return 0;
+    return Math.round((completedLessons.size / lessons.length) * 100);
+  }, [lessons.length, completedLessons.size]);
 
   const sensors = useSensors(useSensor(PointerSensor));
 
@@ -229,6 +267,18 @@ export function LessonManager({ courseId }: LessonManagerProps) {
     });
     setDeletingItem(null);
   };
+
+  const handleToggleComplete = (lessonId: string | number) => {
+    setCompletedLessons(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(lessonId)) {
+        newSet.delete(lessonId);
+      } else {
+        newSet.add(lessonId);
+      }
+      return newSet;
+    });
+  };
   
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
@@ -262,7 +312,7 @@ export function LessonManager({ courseId }: LessonManagerProps) {
   };
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-4">
         <div className="flex items-center justify-between">
         <Label className="text-base font-semibold flex items-center">
             <Library className="mr-2 h-5 w-5 text-primary" /> Bài học
@@ -277,6 +327,24 @@ export function LessonManager({ courseId }: LessonManagerProps) {
             <PlusCircle className="mr-2 h-4 w-4" /> Thêm bài học
         </Button>
         </div>
+
+        {/* Progress Section */}
+        {lessons.length > 0 && (
+          <div className="space-y-2 p-3 bg-muted/30 rounded-lg">
+            <div className="flex items-center justify-between text-sm">
+              <span className="font-medium">Tiến độ hoàn thành</span>
+              <span className="text-primary font-semibold">{lessonProgress}%</span>
+            </div>
+            <Progress value={lessonProgress} className="h-2" />
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
+              <span>Đã hoàn thành: {completedLessons.size}/{lessons.length} bài học</span>
+              {lessonProgress === 100 && (
+                <span className="text-green-600 font-medium">🎉 Hoàn thành!</span>
+              )}
+            </div>
+          </div>
+        )}
+
         {isLoadingLessons ? (
         <div className="flex justify-center items-center py-4">
             <Loader2 className="h-6 w-6 animate-spin text-primary" />
@@ -302,6 +370,8 @@ export function LessonManager({ courseId }: LessonManagerProps) {
                     lesson={lesson}
                     onEdit={handleOpenEditLesson}
                     onDelete={() => handleDeleteLesson(lesson)}
+                    isCompleted={completedLessons.has(lesson.id)}
+                    onToggleComplete={handleToggleComplete}
                 />
                 ))}
             </div>
