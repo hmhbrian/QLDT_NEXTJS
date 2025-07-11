@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState, useMemo, useCallback } from "react";
@@ -18,6 +17,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
 import {
   Dialog,
   DialogContent,
@@ -129,6 +129,9 @@ export default function CourseDetailPage() {
   const [hasSubmittedEvaluation, setHasSubmittedEvaluation] = useState(false);
   const [activeTab, setActiveTab] = useState("content");
   const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null);
+  
+  // Lesson progress tracking - will be loaded from localStorage in useEffect
+  const [completedLessons, setCompletedLessons] = useState<Set<string | number>>(new Set());
 
   // Hooks
   const { user: currentUser } = useAuth();
@@ -182,6 +185,9 @@ export default function CourseDetailPage() {
 
   const isEnrolled = useMemo(() => {
     if (!currentUser || !course) return false;
+    // For mandatory courses, all users are considered enrolled
+    if (course.enrollmentType === "mandatory") return true;
+    // For optional courses, check if user is in the enrolled list
     return course.enrolledTrainees?.includes(currentUser.id) || false;
   }, [currentUser, course]);
 
@@ -193,6 +199,18 @@ export default function CourseDetailPage() {
       course.enrollmentType === "optional",
     [currentUser, course, isEnrolled]
   );
+
+  // Calculate lesson progress - always show for enrolled students
+  const lessonProgress = useMemo(() => {
+    if (!lessons || lessons.length === 0) return 0;
+    return Math.round((completedLessons.size / lessons.length) * 100);
+  }, [lessons, completedLessons.size]);
+
+  // Show progress bar for enrolled students or those in mandatory courses
+  const shouldShowProgress = useMemo(() => {
+    return currentUser?.role === "HOCVIEN" && 
+           (isEnrolled || course?.enrollmentType === "mandatory");
+  }, [currentUser, isEnrolled, course]);
 
   const getTraineeNameById = useCallback(
     (traineeId: string) => {
@@ -213,6 +231,21 @@ export default function CourseDetailPage() {
       setHasSubmittedEvaluation(false);
     }
   }, [currentUser, courseIdFromParams, allEvaluations]);
+
+  // Load progress from localStorage when user or course changes
+  useEffect(() => {
+    if (typeof window !== 'undefined' && currentUser && courseIdFromParams) {
+      const savedProgress = localStorage.getItem(`course_progress_${currentUser.id}_${courseIdFromParams}`);
+      if (savedProgress) {
+        try {
+          const parsed = JSON.parse(savedProgress);
+          setCompletedLessons(new Set(parsed));
+        } catch (e) {
+          console.warn('Failed to parse saved progress:', e);
+        }
+      }
+    }
+  }, [currentUser, courseIdFromParams]);
 
   const handleEnroll = useCallback(() => {
     if (!course || !currentUser) {
@@ -280,6 +313,27 @@ export default function CourseDetailPage() {
     }
     setActiveTab(value);
   };
+
+  const handleToggleLessonComplete = useCallback((lessonId: string | number) => {
+    setCompletedLessons(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(lessonId)) {
+        newSet.delete(lessonId);
+      } else {
+        newSet.add(lessonId);
+      }
+      
+      // Save to localStorage
+      if (typeof window !== 'undefined' && currentUser && courseIdFromParams) {
+        localStorage.setItem(
+          `course_progress_${currentUser.id}_${courseIdFromParams}`,
+          JSON.stringify(Array.from(newSet))
+        );
+      }
+      
+      return newSet;
+    });
+  }, [currentUser, courseIdFromParams]);
 
   if (isLoading) {
     return (
@@ -576,6 +630,23 @@ export default function CourseDetailPage() {
                 <CardDescription>Chọn một bài học để xem nội dung chi tiết trong tab "Nội dung chính".</CardDescription>
               </CardHeader>
               <CardContent>
+                {/* Progress Section */}
+                {lessons && lessons.length > 0 && shouldShowProgress && (
+                  <div className="mb-6 space-y-3 p-4 bg-muted/30 rounded-lg">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="font-medium">Tiến độ học tập</span>
+                      <span className="text-primary font-semibold">{lessonProgress}%</span>
+                    </div>
+                    <Progress value={lessonProgress} className="h-2" />
+                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                      <span>Đã hoàn thành: {completedLessons.size}/{lessons.length} bài học</span>
+                      {lessonProgress === 100 && (
+                        <span className="text-green-600 font-medium">🎉 Hoàn thành!</span>
+                      )}
+                    </div>
+                  </div>
+                )}
+
                 {isLoadingLessons ? (
                   <div className="flex items-center justify-center p-6"><Loader2 className="h-6 w-6 animate-spin mr-2" /><span>Đang tải bài học...</span></div>
                 ) : lessonsError ? (
@@ -586,22 +657,42 @@ export default function CourseDetailPage() {
                   </div>
                 ) : lessons && lessons.length > 0 ? (
                   <div className="space-y-2">
-                    {lessons.map((lesson) => (
-                      <button
-                        key={lesson.id}
-                        onClick={() => handleSelectLesson(lesson)}
-                        className="w-full text-left flex items-center gap-3 p-4 border rounded-lg hover:bg-muted/50 transition-colors focus:outline-none focus:ring-2 focus:ring-primary"
-                        disabled={showRegisterGate}
-                      >
-                        {renderLessonIcon(lesson.contentType as LessonContentType)}
-                        <div className="flex-grow">
-                          <p className="font-semibold">{lesson.title}</p>
-                          {lesson.duration && <p className="text-xs text-muted-foreground">Thời lượng: {lesson.duration}</p>}
+                    {lessons.map((lesson) => {
+                      const isCompleted = completedLessons.has(lesson.id);
+                      return (
+                        <div
+                          key={lesson.id}
+                          className="flex items-center gap-3 p-4 border rounded-lg hover:bg-muted/50 transition-colors"
+                        >
+                          <button
+                            onClick={() => handleSelectLesson(lesson)}
+                            className="flex-grow text-left flex items-center gap-3 focus:outline-none focus:ring-2 focus:ring-primary"
+                            disabled={showRegisterGate}
+                          >
+                            {renderLessonIcon(lesson.contentType as LessonContentType)}
+                            <div className="flex-grow">
+                              <p className={`font-semibold ${isCompleted ? 'line-through text-muted-foreground' : ''}`}>
+                                {lesson.title}
+                              </p>
+                              {lesson.duration && <p className="text-xs text-muted-foreground">Thời lượng: {lesson.duration}</p>}
+                            </div>
+                            <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                          </button>
+                          {shouldShowProgress && (
+                            <Button
+                              variant={isCompleted ? "default" : "outline"}
+                              size="sm"
+                              onClick={() => handleToggleLessonComplete(lesson.id)}
+                              className="text-xs whitespace-nowrap"
+                            >
+                              {isCompleted ? "Đã xong" : "Hoàn thành"}
+                            </Button>
+                          )}
                         </div>
-                        <ChevronRight className="h-5 w-5 text-muted-foreground" />
-                      </button>
-                    ))}
+                      );
+                    })}
                   </div>
+                  
                 ) : (
                   <p className="text-muted-foreground text-center py-4">Chưa có bài học nào được thêm cho khóa học này.</p>
                 )}
