@@ -2,7 +2,7 @@
 import { create } from "zustand";
 import { persist, createJSONStorage, StateStorage } from "zustand/middleware";
 import { devtools } from "zustand/middleware";
-import type { Course, CourseApiResponse } from "@/lib/types/course.types";
+import { Course, CourseApiResponse, CreateCourseRequest, UpdateCourseRequest } from "@/lib/types/course.types";
 import { mockCourses } from "@/lib/mock";
 import Cookies from "js-cookie";
 import { API_CONFIG } from "@/lib/config";
@@ -225,7 +225,6 @@ export const useCourseStore = create<CourseStore>()(
           const { force = false } = options;
           const state = get();
 
-          // Check cache validity unless force refresh
           if (!force && state.isCacheValid() && state.courses.length > 0) {
             return;
           }
@@ -237,11 +236,8 @@ export const useCourseStore = create<CourseStore>()(
 
           try {
             if (API_CONFIG.useApi) {
-              console.log("Fetching courses from API...");
-              const apiCourses = await coursesService.getCourses();
-              const transformedCourses = (apiCourses.items || []).map((apiCourse) =>
-                mapCourseApiToUi(apiCourse)
-              );
+              const apiCoursesResponse = await coursesService.getCourses();
+              const transformedCourses = (apiCoursesResponse.items || []).map(mapCourseApiToUi);
 
               set((prev) => ({
                 courses: ensureDateStrings(transformedCourses),
@@ -273,7 +269,7 @@ export const useCourseStore = create<CourseStore>()(
                 error
               ),
               loadingStates: { ...prev.loadingStates, fetching: false },
-              courses: mockCourses, // Fallback to mock data
+              courses: mockCourses, 
             }));
             throw error;
           }
@@ -283,7 +279,6 @@ export const useCourseStore = create<CourseStore>()(
         addCourse: async (course, options = {}) => {
           const { optimistic = true } = options;
 
-          // Validation - kiểm tra các field bắt buộc
           const requiredFields = [
             "title",
             "courseCode",
@@ -333,37 +328,9 @@ export const useCourseStore = create<CourseStore>()(
               // API call
               async () => {
                 if (API_CONFIG.useApi) {
-                  console.log("Creating course via API...");
-                  const completeCourse = {
-                    ...course,
-                    category: course.category || "programming",
-                    instructor: course.instructor || "Giảng viên",
-                    duration: course.duration || {
-                      sessions: 1,
-                      hoursPerSession: 1,
-                    },
-                    learningType: "online" as const,
-                    location: course.location || "Trực tuyến",
-                    image: course.image || "https://placehold.co/600x400.png",
-                    status: course.status || "draft",
-                    department: course.department || [],
-                    level: course.level || [],
-                    materials: course.materials || [],
-                    enrollmentType: course.enrollmentType || "optional",
-                    isPublic:
-                      course.isPublic !== undefined ? course.isPublic : true,
-                    maxParticipants: course.maxParticipants || 25,
-                    createdAt: new Date().toISOString(),
-                    modifiedAt: new Date().toISOString(),
-                    createdBy: course.createdBy || "Admin",
-                    modifiedBy: course.modifiedBy || "Admin",
-                  };
-                  const apiPayload = mapCourseUiToCreatePayload(completeCourse);
-                  console.log("API Payload being sent:", apiPayload);
-                  
+                  const apiPayload = mapCourseUiToCreatePayload(course);
                   await coursesService.createCourse(apiPayload);
                   await get().fetchCourses({ force: true });
-
                 } else {
                   const newCourse = { ...course, id: `course-${Date.now()}` };
                   set((prev) => ({
@@ -381,7 +348,6 @@ export const useCourseStore = create<CourseStore>()(
             set((prev) => ({
               loadingStates: { ...prev.loadingStates, creating: false },
             }));
-            // Invalidate cache after successful operation
             get().invalidateCache();
           } catch (error: any) {
             console.error("Failed to add course:", error);
@@ -417,7 +383,6 @@ export const useCourseStore = create<CourseStore>()(
 
           try {
             await withOptimisticUpdate(
-              // Optimistic action
               () => {
                 if (optimistic) {
                   set((prev) => ({
@@ -427,7 +392,6 @@ export const useCourseStore = create<CourseStore>()(
                   }));
                 }
               },
-              // Revert action
               () => {
                 set((prev) => ({
                   courses: prev.courses.map((c) =>
@@ -435,10 +399,8 @@ export const useCourseStore = create<CourseStore>()(
                   ),
                 }));
               },
-              // API call
               async () => {
                 if (API_CONFIG.useApi) {
-                  console.log("Updating course via API...");
                   const apiPayload =
                     mapCourseUiToUpdatePayload(courseData as Course);
                   const updatedApiCourse = await coursesService.updateCourse(
@@ -475,8 +437,6 @@ export const useCourseStore = create<CourseStore>()(
                 updating: { ...prev.loadingStates.updating, [courseId]: false },
               },
             }));
-
-            // Invalidate cache after successful operation
             get().invalidateCache();
           } catch (error: any) {
             console.error("Failed to update course:", error);
@@ -495,7 +455,6 @@ export const useCourseStore = create<CourseStore>()(
           }
         },
 
-        // Enhanced delete with optimistic updates
         deleteCourse: async (courseId, options = {}) => {
           const { optimistic = true } = options;
           const state = get();
@@ -515,7 +474,6 @@ export const useCourseStore = create<CourseStore>()(
 
           try {
             await withOptimisticUpdate(
-              // Optimistic action
               () => {
                 if (optimistic) {
                   set((prev) => ({
@@ -523,16 +481,13 @@ export const useCourseStore = create<CourseStore>()(
                   }));
                 }
               },
-              // Revert action
               () => {
                 set((prev) => ({
                   courses: [...prev.courses, originalCourse],
                 }));
               },
-              // API call
               async () => {
                 if (API_CONFIG.useApi) {
-                  console.log("Deleting course via API...");
                   await coursesService.softDeleteCourses([courseId]);
                 }
 
@@ -551,8 +506,6 @@ export const useCourseStore = create<CourseStore>()(
                 deleting: { ...prev.loadingStates.deleting, [courseId]: false },
               },
             }));
-
-            // Invalidate cache after successful operation
             get().invalidateCache();
           } catch (error: any) {
             console.error("Failed to delete course:", error);
@@ -571,7 +524,6 @@ export const useCourseStore = create<CourseStore>()(
           }
         },
 
-        // Batch operations
         deleteCourses: async (courseIds) => {
           const state = get();
           const originalCourses = state.courses.filter((c) =>
@@ -590,7 +542,6 @@ export const useCourseStore = create<CourseStore>()(
           }));
 
           try {
-            // Optimistic update
             set((prev) => ({
               courses: prev.courses.filter((c) => !courseIds.includes(c.id)),
             }));
@@ -608,11 +559,8 @@ export const useCourseStore = create<CourseStore>()(
                 ),
               },
             }));
-
-            // Invalidate cache after successful operation
             get().invalidateCache();
           } catch (error: any) {
-            // Revert optimistic update
             set((prev) => ({
               courses: [...prev.courses, ...originalCourses],
               error: createError(
@@ -632,7 +580,6 @@ export const useCourseStore = create<CourseStore>()(
           }
         },
 
-        // Refresh individual course
         refreshCourse: async (courseId) => {
           try {
             if (API_CONFIG.useApi) {
@@ -674,346 +621,12 @@ export const useCourseStore = create<CourseStore>()(
       }
     ),
     {
-      name: "course-store", // DevTools name
+      name: "course-store",
       enabled: process.env.NODE_ENV === "development",
     }
   )
 );
 
-// Auto-rehydrate on client side
 if (typeof window !== "undefined") {
   useCourseStore.persist.rehydrate();
 }
-
-// ==================================================
-// UTILITY HOOKS & SELECTORS
-// ==================================================
-
-// Performance-optimized selectors to prevent unnecessary re-renders
-export const useCourses = () => useCourseStore((state) => state.courses);
-export const useCoursesLoading = () =>
-  useCourseStore((state) => state.isLoading);
-export const useCoursesError = () => useCourseStore((state) => state.error);
-
-// Specific loading states
-export const useIsFetchingCourses = () =>
-  useCourseStore((state) => state.loadingStates.fetching);
-export const useIsCreatingCourse = () =>
-  useCourseStore((state) => state.loadingStates.creating);
-export const useIsUpdatingCourse = (courseId: string) =>
-  useCourseStore((state) => state.loadingStates.updating[courseId] || false);
-export const useIsDeletingCourse = (courseId: string) =>
-  useCourseStore((state) => state.loadingStates.deleting[courseId] || false);
-
-// Computed selectors
-export const useCourseById = (id: string) =>
-  useCourseStore((state) => state.getCourseById(id));
-
-export const useCoursesByCategory = (category: string) =>
-  useCourseStore((state) => state.getCoursesByCategory(category));
-
-export const useActiveCourses = () =>
-  useCourseStore((state) => state.getActiveCourses());
-
-// Actions hooks
-export const useCourseActions = () =>
-  useCourseStore((state) => ({
-    fetchCourses: state.fetchCourses,
-    addCourse: state.addCourse,
-    updateCourse: state.updateCourse,
-    deleteCourse: state.deleteCourse,
-    deleteCourses: state.deleteCourses,
-    refreshCourse: state.refreshCourse,
-    clearError: state.clearError,
-    invalidateCache: state.invalidateCache,
-  }));
-
-// Cache status hook
-export const useCacheStatus = () =>
-  useCourseStore((state) => ({
-    isValid: state.isCacheValid(),
-    lastFetch: state.cacheMetadata.lastFetch,
-    version: state.cacheMetadata.version,
-  }));
-
-// ==================================================
-// ADVANCED UTILITY FUNCTIONS
-// ==================================================
-
-/**
- * Custom hook for handling course operations with proper error handling
- * and loading states. Includes retry mechanism and validation.
- */
-export const useCourseOperations = () => {
-  const actions = useCourseActions();
-  const error = useCoursesError();
-  const { validateBeforeSubmit } = useCourseValidation();
-
-  const withErrorHandling = async <T>(
-    operation: () => Promise<T>,
-    errorMessage: string,
-    retries: number = 2
-  ): Promise<T | null> => {
-    let lastError: Error | null = null;
-
-    for (let attempt = 0; attempt <= retries; attempt++) {
-      try {
-        return await operation();
-      } catch (err) {
-        lastError = err as Error;
-        console.warn(`Attempt ${attempt + 1} failed:`, err);
-
-        if (attempt < retries) {
-          // Exponential backoff
-          await new Promise((resolve) =>
-            setTimeout(resolve, Math.pow(2, attempt) * 1000)
-          );
-        }
-      }
-    }
-
-    console.error(`${errorMessage} after ${retries + 1} attempts:`, lastError);
-    throw lastError;
-  };
-
-  // Enhanced add course with validation
-  const addCourseWithValidation = async (
-    course: Course,
-    options?: { optimistic?: boolean }
-  ) => {
-    try {
-      // Validate trước khi gửi
-      validateBeforeSubmit(course);
-      return await actions.addCourse(course, options);
-    } catch (error) {
-      console.error("Course validation failed:", error);
-      throw error;
-    }
-  };
-
-  // Enhanced update course with validation
-  const updateCourseWithValidation = async (
-    courseId: string,
-    courseData: Partial<Course>,
-    options?: { optimistic?: boolean }
-  ) => {
-    try {
-      // Chỉ validate các field được cập nhật
-      if (
-        courseData.title ||
-        courseData.courseCode ||
-        courseData.description ||
-        courseData.objectives
-      ) {
-        validateBeforeSubmit(courseData);
-      }
-      return await actions.updateCourse(courseId, courseData, options);
-    } catch (error) {
-      console.error("Course update validation failed:", error);
-      throw error;
-    }
-  };
-
-  return {
-    ...actions,
-    withErrorHandling,
-    addCourseWithValidation,
-    updateCourseWithValidation,
-    hasError: !!error,
-    errorMessage: error?.message,
-    errorType: error?.type,
-  };
-};
-
-/**
- * Hook for bulk operations with progress tracking
- */
-export const useBulkCourseOperations = () => {
-  const actions = useCourseActions();
-
-  const bulkUpdate = async (
-    updates: Array<{ id: string; data: Partial<Course> }>,
-    onProgress?: (completed: number, total: number) => void
-  ) => {
-    const results: Array<{ id: string; success: boolean; error?: Error }> = [];
-
-    for (let i = 0; i < updates.length; i++) {
-      const { id, data } = updates[i];
-      try {
-        await actions.updateCourse(id, data, { optimistic: false });
-        results.push({ id, success: true });
-      } catch (error) {
-        results.push({ id, success: false, error: error as Error });
-      }
-
-      onProgress?.(i + 1, updates.length);
-    }
-
-    return results;
-  };
-
-  const bulkDelete = async (
-    courseIds: string[],
-    onProgress?: (completed: number, total: number) => void
-  ) => {
-    // Use the optimized batch delete
-    try {
-      await actions.deleteCourses(courseIds);
-      onProgress?.(courseIds.length, courseIds.length);
-      return courseIds.map((id) => ({ id, success: true }));
-    } catch (error) {
-      // Fallback to individual deletions
-      const results: Array<{ id: string; success: boolean; error?: Error }> =
-        [];
-
-      for (let i = 0; i < courseIds.length; i++) {
-        const id = courseIds[i];
-        try {
-          await actions.deleteCourse(id, { optimistic: false });
-          results.push({ id, success: true });
-        } catch (err) {
-          results.push({ id, success: false, error: err as Error });
-        }
-
-        onProgress?.(i + 1, courseIds.length);
-      }
-
-      return results;
-    }
-  };
-
-  return {
-    bulkUpdate,
-    bulkDelete,
-  };
-};
-
-/**
- * Development utilities for debugging and testing
- */
-export const useCourseStoreDevtools = () => {
-  if (process.env.NODE_ENV !== "development") {
-    return null;
-  }
-
-  return {
-    getState: useCourseStore.getState,
-    setState: useCourseStore.setState,
-    subscribe: useCourseStore.subscribe,
-    // Debug helpers
-    logState: () =>
-      console.log("Course Store State:", useCourseStore.getState()),
-    clearCache: () => {
-      useCourseStore.getState().invalidateCache();
-      useCourseStore.persist.clearStorage();
-    },
-    simulateError: (type: CourseStoreError["type"], message: string) => {
-      useCourseStore.setState({
-        error: createError(type, message, "Simulated error for testing"),
-      });
-    },
-  };
-};
-
-/**
- * Hook for validating course data before submission
- */
-export const useCourseValidation = () => {
-  const validateCourse = (course: Partial<Course>) => {
-    const errors: Record<string, string> = {};
-
-    // Kiểm tra các field bắt buộc
-    if (!course.title?.trim()) {
-      errors.title = "Tên khóa học là bắt buộc";
-    }
-
-    if (!course.courseCode?.trim()) {
-      errors.courseCode = "Mã khóa học là bắt buộc";
-    }
-
-    if (!course.description?.trim()) {
-      errors.description = "Mô tả khóa học là bắt buộc";
-    }
-
-    if (!course.objectives?.trim()) {
-      errors.objectives = "Mục tiêu khóa học là bắt buộc";
-    }
-
-    // Kiểm tra format
-    if (
-      course.courseCode &&
-      !/^[A-Z0-9_-]{2,20}$/i.test(course.courseCode.trim())
-    ) {
-      errors.courseCode =
-        "Mã khóa học phải từ 2-20 ký tự, chỉ chứa chữ, số, gạch ngang và gạch dưới";
-    }
-
-    // Kiểm tra độ dài
-    if (course.title && course.title.trim().length > 200) {
-      errors.title = "Tên khóa học không được vượt quá 200 ký tự";
-    }
-
-    if (course.description && course.description.trim().length > 1000) {
-      errors.description = "Mô tả không được vượt quá 1000 ký tự";
-    }
-
-    // Kiểm tra ngày tháng
-    if (course.startDate && course.endDate) {
-      const startDate = new Date(course.startDate);
-      const endDate = new Date(course.endDate);
-
-      if (startDate >= endDate) {
-        errors.endDate = "Ngày kết thúc phải sau ngày bắt đầu";
-      }
-    }
-
-    if (course.registrationDeadline && course.startDate) {
-      const regDeadline = new Date(course.registrationDeadline);
-      const startDate = new Date(course.startDate);
-
-      if (regDeadline >= startDate) {
-        errors.registrationDeadline =
-          "Hạn đăng ký phải trước ngày bắt đầu khóa học";
-      }
-    }
-
-    // Kiểm tra số lượng
-    if (course.maxParticipants && course.maxParticipants < 1) {
-      errors.maxParticipants = "Số lượng học viên tối đa phải lớn hơn 0";
-    }
-
-    if (course.duration) {
-      if (course.duration.sessions && course.duration.sessions < 1) {
-        errors.sessions = "Số buổi học phải lớn hơn 0";
-      }
-
-      if (
-        course.duration.hoursPerSession &&
-        course.duration.hoursPerSession < 0.5
-      ) {
-        errors.hoursPerSession = "Số giờ mỗi buổi phải ít nhất 0.5 giờ";
-      }
-    }
-
-    return {
-      isValid: Object.keys(errors).length === 0,
-      errors,
-    };
-  };
-
-  const validateBeforeSubmit = (course: Partial<Course>) => {
-    const validation = validateCourse(course);
-
-    if (!validation.isValid) {
-      const errorMessages = Object.values(validation.errors).join("\n");
-      throw new Error(`Dữ liệu không hợp lệ:\n${errorMessages}`);
-    }
-
-    return validation;
-  };
-
-  return {
-    validateCourse,
-    validateBeforeSubmit,
-  };
-};

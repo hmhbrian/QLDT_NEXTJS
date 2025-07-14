@@ -1,28 +1,16 @@
-import { BaseService, ApiResponse, BaseCreatePayload } from "../../core";
-import type { User, LoginDTO } from "../../types/user.types";
+
+import { BaseService } from "../../core";
+import type { UserApiResponse, LoginDTO, ChangePasswordRequest, UserProfileUpdateRequest } from "@/lib/types/user.types";
 import { API_CONFIG } from "@/lib/config";
 
-export interface LoginResponse extends ApiResponse<User> { }
 
-export interface ChangePasswordPayload extends BaseCreatePayload {
-  oldPassword: string;
-  newPassword: string;
-  confirmNewPassword: string;
-}
-
-export interface UserUpdateDTO {
-  id: string;
-  urlAvatar?: string; // string($binary)
-  // Add other fields that can be updated if necessary
-}
-
-export class AuthService extends BaseService<User> {
+export class AuthService extends BaseService<UserApiResponse> {
   constructor() {
-    super(API_CONFIG.endpoints.auth.login); // Endpoint isn't really used for this service
+    super(API_CONFIG.endpoints.auth.login);
   }
 
-  async login(credentials: LoginDTO): Promise<LoginResponse> {
-    const response = await this.post<LoginResponse>(
+  async login(credentials: LoginDTO): Promise<UserApiResponse> {
+    const response = await this.post<UserApiResponse>(
       API_CONFIG.endpoints.auth.login,
       credentials
     );
@@ -30,30 +18,30 @@ export class AuthService extends BaseService<User> {
   }
 
   async logout(): Promise<void> {
-    // Optional: Call logout endpoint if it exists
-    // await this.post<void>('/Account/logout');
+    // Implement if backend provides a logout endpoint
   }
 
-  async changePassword(payload: ChangePasswordPayload): Promise<void> {
-    // For change password, we don't need to extract data, just ensure the request succeeds
-    await this.post<any>(API_CONFIG.endpoints.auth.changePassword, payload);
+  async changePassword(payload: ChangePasswordRequest): Promise<void> {
+    await this.patch<any>(API_CONFIG.endpoints.auth.changePassword, payload);
   }
 
-  async updateUser(userId: string, payload: FormData): Promise<ApiResponse<User>> {
-    const response = await this.put<ApiResponse<User>>(`${API_CONFIG.endpoints.users.updateUsers}`, payload);
-    return response;
+  async updateUserProfile(payload: UserProfileUpdateRequest): Promise<UserApiResponse> {
+      return await this.put<UserApiResponse>(
+        API_CONFIG.endpoints.users.update,
+        payload
+      );
   }
 
-  async getCurrentUser(): Promise<User> {
-    const response = await this.get<ApiResponse<User>>(
-      API_CONFIG.endpoints.auth.me
+  async getCurrentUser(): Promise<UserApiResponse> {
+    const response = await this.get<UserApiResponse>(
+      API_CONFIG.endpoints.users.me
     );
-    return this.extractData(response);
+    return response;
   }
 
   async validateToken(): Promise<boolean> {
     try {
-      await this.get<void>(API_CONFIG.endpoints.auth.validate);
+      await this.get<void>(API_CONFIG.endpoints.users.me);
       return true;
     } catch {
       return false;

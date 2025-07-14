@@ -8,8 +8,8 @@ import type {
 } from "@/lib/types/course.types";
 
 export interface ReorderLessonPayload {
-  lessonId: number;
-  previousLessonId?: number | null;
+  LessonId: number;
+  PreviousLessonId?: number | null;
 }
 
 class LessonsService extends BaseService<
@@ -18,16 +18,15 @@ class LessonsService extends BaseService<
   UpdateLessonPayload
 > {
   constructor() {
-    super(API_CONFIG.endpoints.courses.base); // Base endpoint for context, specific paths used in methods
+    super(API_CONFIG.endpoints.courses.base); 
   }
 
   async getLessons(courseId: string): Promise<ApiLesson[]> {
-    const endpoint = `${this.endpoint}/${courseId}/lessons`;
+    const endpoint = API_CONFIG.endpoints.lessons.base(courseId);
     try {
       const response = await this.get<ApiLesson[]>(endpoint);
-      return response || []; // Ensure it returns an array even if API gives null
+      return response || []; 
     } catch (error: any) {
-      // Gracefully handle 404 as an empty array, not a critical error.
       if (
         error.message &&
         (error.message.includes("404") ||
@@ -36,7 +35,6 @@ class LessonsService extends BaseService<
       ) {
         return [];
       }
-      // For all other errors (e.g., 500, 401), re-throw them to be handled by the query's error state.
       this.handleError("GET", endpoint, error);
     }
   }
@@ -46,12 +44,18 @@ class LessonsService extends BaseService<
     payload: CreateLessonPayload
   ): Promise<ApiLesson> {
     const formData = new FormData();
-    formData.append("Title", payload.title);
-    if (payload.file) {
-      formData.append("FilePdf", payload.file);
+    formData.append("Title", payload.Title);
+    if (payload.FilePdf) {
+      formData.append("FilePdf", payload.FilePdf);
+    }
+    if (payload.Link) {
+      formData.append("Link", payload.Link);
+    }
+    if (payload.TotalDurationSeconds) {
+        formData.append("TotalDurationSeconds", payload.TotalDurationSeconds.toString());
     }
 
-    const endpoint = `${this.endpoint}/${courseId}/lessons`;
+    const endpoint = API_CONFIG.endpoints.lessons.create(courseId);
     return this.post<ApiLesson>(endpoint, formData);
   }
 
@@ -61,37 +65,37 @@ class LessonsService extends BaseService<
     payload: UpdateLessonPayload
   ): Promise<ApiLesson> {
     const formData = new FormData();
-    formData.append("Title", payload.title);
-    if (payload.file) {
-      formData.append("FilePdf", payload.file);
+    if(payload.Title) formData.append("Title", payload.Title);
+    if (payload.FilePdf) {
+      formData.append("FilePdf", payload.FilePdf);
     }
-    const endpoint = `${this.endpoint}/${courseId}/lessons/${lessonId}`;
+    if (payload.Link) {
+        formData.append("Link", payload.Link);
+    }
+    if (payload.TotalDurationSeconds) {
+        formData.append("TotalDurationSeconds", payload.TotalDurationSeconds.toString());
+    }
+
+    const endpoint = API_CONFIG.endpoints.lessons.update(courseId, lessonId);
     return this.put<ApiLesson>(endpoint, formData);
   }
 
-  async deleteLesson(courseId: string, lessonIds: number[]): Promise<void> {
-    const endpoint = `${this.endpoint}/${courseId}/lessons`;
-    // Backend expects an array of IDs in the body for the DELETE request.
-    await this.delete<void>(endpoint, lessonIds);
+  async deleteLessons(courseId: string, lessonIds: number[]): Promise<void> {
+    const endpoint = API_CONFIG.endpoints.lessons.delete(courseId);
+    await this.delete<void>(endpoint, { ids: lessonIds });
   }
 
   async reorderLesson(
     courseId: string,
     payload: ReorderLessonPayload
   ): Promise<void> {
+    const endpoint = API_CONFIG.endpoints.lessons.reorder(courseId);
     const formData = new FormData();
-    formData.append("LessonId", payload.lessonId.toString());
-
-    // Only append PreviousLessonId if it's not null.
-    // Backend should handle the absence of this field as moving to the first position.
-    if (payload.previousLessonId) {
-      formData.append(
-        "PreviousLessonId",
-        payload.previousLessonId.toString()
-      );
+    formData.append('LessonId', String(payload.LessonId));
+    if (payload.PreviousLessonId !== undefined) {
+        formData.append('PreviousLessonId', String(payload.PreviousLessonId));
     }
-
-    const endpoint = `${this.endpoint}/${courseId}/lessons/reorder`;
+    
     await this.put<void>(endpoint, formData);
   }
 }

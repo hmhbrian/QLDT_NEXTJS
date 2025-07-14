@@ -4,46 +4,47 @@ import type {
   CourseApiResponse,
   CreateCourseRequest,
   UpdateCourseRequest,
+  UserEnrollCourseDto,
 } from "@/lib/types/course.types";
-import { getStatusNameFromId } from "../helpers";
 import { API_CONFIG } from "../config";
 
-/**
- * Transforms a raw API course object into a standardized UI-friendly Course object.
- * @param apiCourse - The course object from the API response.
- * @returns A standardized `Course` object for the UI.
- */
-export function mapCourseApiToUi(apiCourse: CourseApiResponse): Course {
-  const defaultImageUrl = `https://placehold.co/600x400/f97316/white?text=${encodeURIComponent(
-    apiCourse.name || "Course"
-  )}`;
-  let imageUrl = apiCourse.thumbUrl || defaultImageUrl;
+function getAbsoluteImageUrl(thumbUrl: string | undefined | null, name?: string): string {
+    const defaultImageUrl = `https://placehold.co/600x400/f97316/white?text=${encodeURIComponent(
+      name || "Course"
+    )}`;
+    
+    if (!thumbUrl) return defaultImageUrl;
+    
+    if (thumbUrl.toLowerCase().includes("formfile")) {
+        return defaultImageUrl;
+    }
+    
+    if (thumbUrl.startsWith("http") || thumbUrl.startsWith("data:")) {
+        return thumbUrl;
+    }
 
-  // Handle invalid image URL string from API
-  if (imageUrl && imageUrl.toLowerCase().includes("formfile")) {
-    imageUrl = defaultImageUrl;
-  } else if (
-    imageUrl &&
-    !imageUrl.startsWith("http") &&
-    !imageUrl.startsWith("data:")
-  ) {
     const baseUrl = API_CONFIG.baseURL.replace("/api", "");
-    imageUrl = `${baseUrl}${imageUrl.startsWith("/") ? "" : "/"}${imageUrl}`;
-  }
+    return `${baseUrl}${thumbUrl.startsWith("/") ? "" : "/"}${thumbUrl}`;
+}
+
+
+export function mapCourseApiToUi(apiCourse: CourseApiResponse): Course {
+  const imageUrl = getAbsoluteImageUrl(apiCourse.thumbUrl, apiCourse.name);
 
   return {
     id: apiCourse.id,
     title: apiCourse.name || "N/A",
-    courseCode: apiCourse.code,
+    courseCode: apiCourse.code || "N/A",
     description: apiCourse.description || "",
     objectives: apiCourse.objectives || "",
     image: imageUrl,
     location: apiCourse.location || "",
-    status: apiCourse.status?.name || getStatusNameFromId(apiCourse.statusId) || "N/A",
-    statusId: apiCourse.statusId,
-    enrollmentType: apiCourse.optional === "Bắt buộc" ? "mandatory" : "optional",
+    status: apiCourse.status?.name || "N/A",
+    statusId: apiCourse.status?.id,
+    enrollmentType:
+      apiCourse.optional === "Bắt buộc" ? "mandatory" : "optional",
     isPublic: apiCourse.optional !== "Bắt buộc",
-    instructor: "N/A", // This field is missing from the API response
+    instructor: apiCourse.lecturer?.name || "N/A",
     duration: {
       sessions: apiCourse.sessions || 0,
       hoursPerSession: apiCourse.hoursPerSessions || 0,
@@ -52,30 +53,68 @@ export function mapCourseApiToUi(apiCourse: CourseApiResponse): Course {
     maxParticipants: apiCourse.maxParticipant,
     startDate: apiCourse.startDate || null,
     endDate: apiCourse.endDate || null,
-    registrationStartDate: apiCourse.registrationStartDate,
-    registrationDeadline: apiCourse.registrationClosingDate,
+    registrationStartDate: apiCourse.registrationStartDate || null,
+    registrationDeadline: apiCourse.registrationClosingDate || null,
     department: (apiCourse.departments || []).map((d) =>
       String(d.departmentId)
     ),
     level: (apiCourse.positions || []).map((p) => String(p.positionId)),
-    category: "programming", // Default category
-    materials: [], // Default empty array
+    userIds: (apiCourse.users || []).map((u) => u.id),
+    category: apiCourse.category?.name || "Chung",
+    materials: [],
+    lessons: [],
+    tests: [],
     createdAt: apiCourse.createdAt || new Date().toISOString(),
     modifiedAt: apiCourse.modifiedAt || new Date().toISOString(),
-    createdBy: "API",
-    modifiedBy: "API",
+    createdBy: apiCourse.createdBy || "Không có",
+    modifiedBy: apiCourse.updatedBy || "Không có",
   };
 }
 
-/**
- * Transforms a frontend Course object into a payload for the 'create' API endpoint.
- * @param course - The frontend course object.
- * @returns A `CreateCourseRequest` object.
- */
+export function mapUserEnrollCourseDtoToCourse(dto: UserEnrollCourseDto): Course {
+    const imageUrl = getAbsoluteImageUrl(dto.thumbUrl, dto.name);
+    return {
+        id: dto.id,
+        title: dto.name,
+        courseCode: dto.code,
+        description: dto.description || '',
+        objectives: dto.objectives || '',
+        image: imageUrl,
+        location: dto.location || '',
+        status: 'Đang mở',
+        enrollmentType: dto.optional === 'Bắt buộc' ? 'mandatory' : 'optional',
+        isPublic: dto.optional !== 'Bắt buộc',
+        instructor: 'N/A', 
+        duration: {
+            sessions: dto.sessions || 0,
+            hoursPerSession: dto.hoursPerSessions || 0,
+        },
+        learningType: dto.format === 'offline' ? 'offline' : 'online',
+        maxParticipants: dto.maxParticipant,
+        startDate: dto.startDate || null,
+        endDate: dto.endDate || null,
+        registrationStartDate: dto.registrationStartDate || null,
+        registrationDeadline: dto.registrationClosingDate || null,
+        department: [],
+        level: [],
+        category: 'N/A',
+        materials: [],
+        lessons: [],
+        tests: [],
+        userIds: [],
+        createdAt: new Date().toISOString(),
+        modifiedAt: new Date().toISOString(),
+        createdBy: '',
+        modifiedBy: '',
+        progressPercentage: dto.progressPercentage ? Math.round(dto.progressPercentage) : 0,
+    };
+}
+
+
 export function mapCourseUiToCreatePayload(
   course: Partial<Course>
 ): CreateCourseRequest {
-  return {
+  const payload: CreateCourseRequest = {
     Code: course.courseCode || "",
     Name: course.title || "",
     Description: course.description || "",
@@ -88,7 +127,9 @@ export function mapCourseUiToCreatePayload(
     StartDate: course.startDate
       ? new Date(course.startDate).toISOString()
       : undefined,
-    EndDate: course.endDate ? new Date(course.endDate).toISOString() : undefined,
+    EndDate: course.endDate
+      ? new Date(course.endDate).toISOString()
+      : undefined,
     RegistrationStartDate: course.registrationStartDate
       ? new Date(course.registrationStartDate).toISOString()
       : undefined,
@@ -103,17 +144,18 @@ export function mapCourseUiToCreatePayload(
     PositionIds: course.level
       ?.map((id) => parseInt(id, 10))
       .filter((id) => !isNaN(id)),
-    imageFile: course.imageFile,
+    UserIds: course.userIds || [],
   };
+
+  if (course.imageFile) {
+    payload.ThumbUrl = course.imageFile;
+  }
+
+  return payload;
 }
 
-/**
- * Transforms a complete frontend Course object into a payload for the 'update' API endpoint.
- * @param course - The complete frontend course object.
- * @returns An `UpdateCourseRequest` object.
- */
 export function mapCourseUiToUpdatePayload(
-  course: Course
+  course: Partial<Course>
 ): UpdateCourseRequest {
   const payload: UpdateCourseRequest = {
     Code: course.courseCode,
@@ -121,14 +163,16 @@ export function mapCourseUiToUpdatePayload(
     Description: course.description,
     Objectives: course.objectives,
     Format: course.learningType,
-    Sessions: course.duration.sessions,
-    HoursPerSessions: course.duration.hoursPerSession,
+    Sessions: course.duration?.sessions,
+    HoursPerSessions: course.duration?.hoursPerSession,
     Optional: course.enrollmentType === "mandatory" ? "Bắt buộc" : "Tùy chọn",
     MaxParticipant: course.maxParticipants,
     StartDate: course.startDate
       ? new Date(course.startDate).toISOString()
       : undefined,
-    EndDate: course.endDate ? new Date(course.endDate).toISOString() : undefined,
+    EndDate: course.endDate
+      ? new Date(course.endDate).toISOString()
+      : undefined,
     RegistrationStartDate: course.registrationStartDate
       ? new Date(course.registrationStartDate).toISOString()
       : undefined,
@@ -138,13 +182,21 @@ export function mapCourseUiToUpdatePayload(
     Location: course.location,
     StatusId: course.statusId,
     DepartmentIds: course.department
-      .map((id) => parseInt(id, 10))
+      ?.map((id) => parseInt(id, 10))
       .filter((id) => !isNaN(id)),
     PositionIds: course.level
-      .map((id) => parseInt(id, 10))
+      ?.map((id) => parseInt(id, 10))
       .filter((id) => !isNaN(id)),
-    imageFile: course.imageFile,
+    UserIds: course.userIds,
   };
+
+  if (course.imageFile) {
+    payload.ThumbUrl = course.imageFile;
+  }
+
+  Object.keys(payload).forEach(
+    (key) => (payload as any)[key] === undefined && delete (payload as any)[key]
+  );
 
   return payload;
 }

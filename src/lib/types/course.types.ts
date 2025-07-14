@@ -1,88 +1,55 @@
+
 /**
  * Course Domain Types
- * All course-related interfaces and types
+ * All course-related interfaces and types, aligned with backend DTOs.
  */
 
-// Forward declarations to avoid circular dependencies
-export type Department =
-  | "it"
-  | "hr"
-  | "marketing"
-  | "sales"
-  | "finance"
-  | "operations";
+import type { DepartmentInfo } from "./department.types";
+import type { Position, User } from "./user.types";
+import type { Status } from "./status.types";
 
-export type TraineeLevel =
-  | "intern"
-  | "probation"
-  | "employee"
-  | "middle_manager"
-  | "senior_manager";
-
-// Course category enumeration
-export type CourseCategory =
-  | "programming"
-  | "business"
-  | "design"
-  | "marketing"
-  | "soft_skills";
-
-// Enrollment type enumeration
+// --- Enums and Unions ---
+export type LearningFormat = "online" | "offline";
 export type EnrollmentType = "optional" | "mandatory";
+export type CourseMaterialType = "PDF" | "Link";
+export type LessonContentType = 'video_url' | 'pdf_url' | 'slide_url' | 'text' | 'external_link';
 
-// Question interface for tests
+
+// --- Frontend UI Models ---
+
+export interface Lesson {
+  id: number;
+  title: string;
+  type: LessonContentType;
+  content?: string | null;
+  fileUrl?: string | null;
+  link?: string | null;
+  duration?: string;
+  totalDurationSeconds?: number;
+}
+
 export interface Question {
-  id: string | number;
-  questionCode?: string; // Mã câu hỏi
+  id: number;
+  questionCode?: string;
   text: string;
   options: string[];
-  correctAnswerIndex: number; // Vị trí đáp án đúng trong mảng options (backward compatibility)
-  correctAnswerIndexes?: number[]; // Nhiều đáp án đúng (new feature)
-  explanation?: string; // Lời giải
+  correctAnswerIndex: number;
+  correctAnswerIndexes: number[];
+  explanation?: string;
   position?: number;
 }
 
-// Test interface
 export interface Test {
-  id: string | number;
+  id: number;
   title: string;
   questions: Question[];
   passingScorePercentage: number;
-  time?: number;
-  countQuestion?: number; // Add this field
+  time: number;
+  countQuestion: number;
 }
 
-// Lesson content type enumeration
-export type LessonContentType =
-  | "video_url"
-  | "pdf_url"
-  | "slide_url"
-  | "text"
-  | "external_link";
-
-// API-facing Lesson type
-export interface ApiLesson {
-  id: number;
-  title: string;
-  urlPdf: string;
-}
-
-// UI-facing Lesson type
-export interface Lesson {
-  id: number | string;
-  title: string;
-  content?: string;
-  contentType?: LessonContentType;
-  duration?: string;
-  urlPdf?: string;
-  link?: string;
-}
-
-export type CourseMaterialType = "PDF" | "Link";
-
-// Course material interface from API
 export interface CourseMaterial {
-  id: number | string;
+  id: number;
   courseId: string;
   title: string;
   type: CourseMaterialType;
@@ -91,74 +58,79 @@ export interface CourseMaterial {
   modifiedAt: string | null;
 }
 
-// Student Course Evaluation interface
-export interface StudentCourseEvaluation {
-  id: string;
-  courseId: string;
-  traineeId: string;
-  submissionDate: string; // ISO string
-  ratings: {
-    contentRelevance: number; // 1-5
-    clarity: number; // 1-5
-    structureLogic: number; // 1-5
-    durationAppropriateness: number; // 1-5
-    materialsEffectiveness: number; // 1-5
-  };
-  suggestions?: string;
-}
-
-// Main Course interface for Frontend
 export interface Course {
   id: string;
   title: string;
   courseCode: string;
   description: string;
   objectives: string;
-  category: CourseCategory;
+  image: string;
+  location: string;
+  status: string;
+  statusId?: number;
+  enrollmentType: EnrollmentType;
+  isPublic: boolean;
   instructor: string;
   duration: {
     sessions: number;
     hoursPerSession: number;
   };
-  learningType: "online" | "offline";
+  learningType: LearningFormat;
+  maxParticipants?: number;
   startDate: string | null;
   endDate: string | null;
-  location: string;
-  image: string;
-  status: string;
-  statusId?: number;
+  registrationStartDate: string | null;
+  registrationDeadline: string | null;
   department: string[];
   level: string[];
-  materials: CourseMaterial[]; // This will now hold the fetched attached files
-  lessons?: Lesson[];
-  tests?: Test[];
+  category: string; 
+  materials: CourseMaterial[];
+  lessons: Lesson[];
+  tests: Test[];
+  userIds: string[];
   createdAt: string;
   modifiedAt: string;
   createdBy: string;
   modifiedBy: string;
-  enrollmentType: EnrollmentType;
-  registrationDeadline?: string | null;
-  enrolledTrainees?: string[];
-  isPublic?: boolean;
-  maxParticipants?: number;
-  prerequisites?: string[];
-  syllabus?: { title: string; content: string; duration: string }[];
-  slides?: { title: string; url: string; type: "pdf" | "image" }[];
-  registrationStartDate?: string | null;
-  registrationClosingDate?: string | null;
   imageFile?: File | null;
+  progressPercentage?: number; // Add this to UI model
 }
 
-// Courses API Types - Match backend exactly
+export interface Feedback {
+    id: number;
+    userId: string;
+    courseId: string;
+    q1_relevance: number;
+    q2_clarity: number;
+    q3_structure: number;
+    q4_duration: number;
+    q5_material: number;
+    comment: string;
+}
+
+export interface ApiLessonProgress {
+  id: number;
+  title: string;
+  urlPdf?: string | null;
+  progressPercentage: number;
+  type: "PDF" | "LINK";
+  currentPage?: number;
+  currentTimeSecond?: number;
+}
+
+
+// --- API Request Payloads ---
+
 export interface CreateCourseRequest {
   Code: string;
   Name: string;
-  Description: string;
+  Description?: string;
   Objectives: string;
-  Format?: string; // "online" hoặc "offline"
+  ThumbUrl?: File;
+  Format?: LearningFormat; 
   Sessions?: number;
   HoursPerSessions?: number;
-  Optional?: string; // "tùy chọn" hoặc "bắt buộc"
+  Optional?: string; 
   MaxParticipant?: number;
   StartDate?: string;
   EndDate?: string;
@@ -170,25 +142,76 @@ export interface CreateCourseRequest {
   LecturerId?: number;
   DepartmentIds?: number[];
   PositionIds?: number[];
-  TraineeIds?: string[];
-  imageFile?: File | null;
+  UserIds?: string[];
 }
 
 export interface UpdateCourseRequest extends Partial<CreateCourseRequest> {}
 
-// Course API response
+export interface CreateLessonPayload {
+  Title: string;
+  FilePdf?: File | null;
+  Link?: string | null;
+  TotalDurationSeconds?: number;
+}
+
+export interface UpdateLessonPayload extends Partial<CreateLessonPayload> {}
+
+export interface CreateQuestionPayload {
+  QuestionText: string;
+  CorrectOption?: string;
+  QuestionType?: number;
+  Explanation?: string;
+  A?: string;
+  B?: string;
+  C?: string;
+  D?: string;
+  Position?: number;
+}
+
+export interface UpdateQuestionPayload extends Partial<CreateQuestionPayload> {}
+
+export interface CreateTestPayload {
+  Title: string;
+  PassThreshold: number;
+  TimeTest: number;
+  Questions: CreateQuestionPayload[];
+}
+
+export interface UpdateTestPayload {
+  Title: string;
+  PassThreshold: number;
+  TimeTest: number;
+}
+
+export interface UpsertLessonProgressPayload {
+    lessonId: number;
+    currentPage?: number;
+    currentTimeSecond?: number;
+}
+
+
+// --- API Response DTOs ---
+
+export interface CourseCategoryDto {
+  id: number;
+  name?: string;
+  description?: string;
+}
+
 export interface CourseApiResponse {
   id: string;
-  code: string;
-  name: string;
-  description: string;
-  objectives: string;
+  code?: string;
+  name?: string;
+  description?: string;
+  objectives?: string;
   thumbUrl?: string;
   format?: string;
   sessions?: number;
   hoursPerSessions?: number;
   optional?: string;
   maxParticipant?: number;
+  createdBy?: string;
+  updatedBy?: string;
   startDate?: string;
   endDate?: string;
   registrationStartDate?: string;
@@ -196,51 +219,54 @@ export interface CourseApiResponse {
   location?: string;
   createdAt?: string;
   modifiedAt?: string;
-  statusId?: number;
-  status?: {
-    id: number;
+  status?: Status;
+  category?: CourseCategoryDto;
+  lecturer?: any; // Define LecturerDto if needed
+  departments?: DepartmentInfo[];
+  positions?: Position[];
+  users?: User[]; // For enrolled users
+}
+
+export interface UserEnrollCourseDto {
+    id: string;
+    code: string;
     name: string;
-  };
-  departments?: Array<{
-    departmentId: number;
-    departmentName: string;
-  }>;
-  positions?: Array<{
-    positionId: number;
-    positionName: string;
-  }>;
+    description?: string;
+    objectives?: string;
+    thumbUrl?: string;
+    format?: string;
+    sessions?: number;
+    hoursPerSessions?: number;
+    optional?: string;
+    maxParticipant?: number;
+    startDate?: string | null;
+    endDate?: string | null;
+    registrationStartDate?: string | null;
+    registrationClosingDate?: string | null;
+    location?: string;
+    progressPercentage?: number;
 }
 
-// Course search parameters for API
-export interface CourseSearchParams {
-  keyword?: string;
-  StatusIds?: string;
-  DepartmentIds?: string;
-  PositionIds?: string;
-  isPublic?: boolean;
-}
-
-// Lesson API Payloads
-export interface CreateLessonPayload {
+export interface ApiLesson {
+  id: number;
   title: string;
-  file: File;
+  fileUrl?: string | null;
+  link?: string | null;
+  type?: string; 
+  totalDurationSeconds?: number;
 }
 
-export interface UpdateLessonPayload extends Partial<CreateLessonPayload> {}
-
-// Test and Question API Types
 export interface ApiQuestion {
   id: number;
-  questionCode?: string;
   questionText: string;
   correctOption: string;
   questionType: number;
   explanation: string;
+  position: number;
   a: string;
   b: string;
   c?: string;
   d?: string;
-  position?: number;
 }
 
 export interface ApiTest {
@@ -248,36 +274,17 @@ export interface ApiTest {
   title: string;
   passThreshold: number;
   timeTest: number;
-  position?: number;
-  questions?: ApiQuestion[]; // Note: This might be null or not present in list views
-  countQuestion?: number; // Add this field for list views
+  countQuestion: number;
+  questions?: ApiQuestion[];
 }
 
-export interface CreateTestPayload {
-  title: string;
-  passThreshold: number;
-  timeTest: number;
-  questions: Array<Omit<ApiQuestion, "id" | "questionCode">>;
+export interface ApiCourseAttachedFile {
+    id: number;
+    courseId?: string;
+    title?: string;
+    type?: string;
+    link?: string;
+    publicIdUrlPdf?: string;
+    createdAt?: string;
+    modifiedAt?: string;
 }
-
-export interface UpdateTestPayload {
-  title: string;
-  passThreshold: number;
-  time_test: number;
-  position?: number;
-  questions?: Array<Omit<ApiQuestion, "id" | "questionCode">>;
-}
-
-export interface CreateQuestionPayload {
-  questionText: string;
-  correctOption: string;
-  questionType: number;
-  explanation: string;
-  a: string;
-  b: string;
-  c: string;
-  d: string;
-  position?: number;
-}
-
-export interface UpdateQuestionPayload extends CreateQuestionPayload {}

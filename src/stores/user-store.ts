@@ -1,21 +1,17 @@
+
 import { create } from "zustand";
 import { persist, createJSONStorage, StateStorage } from "zustand/middleware";
-import type { User, CreateUserRequest } from "@/lib/types/user.types";
+import { User, CreateUserRequest } from "@/lib/types/user.types";
 import { mockUsers } from "@/lib/mock";
 import Cookies from "js-cookie";
 import { usersService } from "@/lib/services";
 import { API_CONFIG } from "@/lib/config";
 
-// Store này hiện tại chủ yếu để giữ trạng thái của user đã đăng nhập
-// và cung cấp quản lý trạng thái đơn giản qua các component.
-// Dữ liệu cụ thể theo trang như danh sách users nên được xử lý bởi TanStack Query trong chính các component.
-
 interface UserStore {
-  users: User[]; // Có thể được sử dụng như cache đơn giản hoặc cho các trường hợp không phân trang
+  users: User[];
   isLoading: boolean;
   error: string | null;
   setUsers: (users: User[]) => void;
-  // fetchUsers đã được loại bỏ để ngăn việc fetch không phụ thuộc vào component. Việc fetch giờ được thực hiện trong components.
   addUser: (user: User) => void;
   updateUser: (userId: string, userData: Partial<User>) => void;
   deleteUser: (userId: string) => void;
@@ -39,18 +35,18 @@ const cookieStorage: StateStorage = {
 const deserializeDates = (users: User[]): User[] => {
   return users.map((user) => ({
     ...user,
-    startWork: user.startWork ? new Date(user.startWork) : undefined,
-    endWork: user.endWork ? new Date(user.endWork) : undefined,
-    createdAt: user.createdAt ? new Date(user.createdAt) : new Date(),
-    modifiedAt: user.modifiedAt ? new Date(user.modifiedAt) : new Date(),
+    startWork: user.startWork ? user.startWork : undefined,
+    endWork: user.endWork ? user.endWork : undefined,
+    createdAt: user.createdAt ? user.createdAt : new Date().toISOString(),
+    modifiedAt: user.modifiedAt ? user.modifiedAt : new Date().toISOString(),
   }));
 };
 
 export const useUserStore = create<UserStore>()(
   persist(
     (set, get) => ({
-      users: mockUsers, // Khởi tạo với dữ liệu mock như fallback
-      isLoading: false, // Mặc định là false, các component sẽ quản lý trạng thái loading của riêng chúng
+      users: mockUsers, 
+      isLoading: false, 
       error: null,
       _hasHydrated: false,
       setHasHydrated: (hydrated) => set({ _hasHydrated: hydrated }),

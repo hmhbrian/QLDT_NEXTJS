@@ -1,3 +1,4 @@
+
 import { BaseService } from "@/lib/core";
 import { API_CONFIG } from "@/lib/config";
 import type { CourseMaterial } from "@/lib/types/course.types";
@@ -10,12 +11,11 @@ export interface CourseAttachedFilePayload {
 
 class CourseAttachedFilesService extends BaseService<CourseMaterial> {
   constructor() {
-    super(API_CONFIG.endpoints.courses.base); // Endpoint base is not used directly here
+    super(API_CONFIG.endpoints.courseAttachedFiles.base); 
   }
 
   async getAttachedFiles(courseId: string): Promise<CourseMaterial[]> {
     try {
-      // The get method already handles extracting the `data` property from the response wrapper.
       const response = await this.get<CourseMaterial[]>(
         API_CONFIG.endpoints.courseAttachedFiles.getByCourseId(courseId)
       );
@@ -25,7 +25,7 @@ class CourseAttachedFilesService extends BaseService<CourseMaterial> {
         `Failed to fetch attached files for course ${courseId}:`,
         error
       );
-      return []; // Return empty array on error to prevent UI crash
+      return []; 
     }
   }
 
@@ -41,7 +41,6 @@ class CourseAttachedFilesService extends BaseService<CourseMaterial> {
         formData.append(`request[${index}].File`, item.file);
       }
       if (item.link) {
-        // Backend might expect 'Link' or 'link'
         formData.append(`request[${index}].Link`, item.link);
       }
     });

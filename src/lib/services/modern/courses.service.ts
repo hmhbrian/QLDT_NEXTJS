@@ -1,18 +1,13 @@
+"use client";
+
+import { BaseService, PaginatedResponse, QueryParams } from "@/lib/core";
 import {
-  BaseService,
-  PaginatedResponse,
-  QueryParams,
-  ApiResponse,
-} from "@/lib/core";
-import {
-  Course,
+  CourseApiResponse,
   CreateCourseRequest,
   UpdateCourseRequest,
-  CourseApiResponse,
-  CourseSearchParams,
+  UserEnrollCourseDto,
 } from "@/lib/types/course.types";
 import { API_CONFIG } from "@/lib/config";
-import { PaginationParams } from "@/lib/core";
 
 export class CoursesService extends BaseService<
   CourseApiResponse,
@@ -24,34 +19,34 @@ export class CoursesService extends BaseService<
   }
 
   async getCourses(
-    params?: CourseSearchParams & PaginationParams
+    params?: QueryParams
   ): Promise<PaginatedResponse<CourseApiResponse>> {
-    const backendParams: Record<string, any> = {};
+    // Luôn sử dụng endpoint search nếu có bất kỳ tham số nào ngoài phân trang và sắp xếp
+    const hasSearchParams =
+      params &&
+      Object.keys(params).some(
+        (key) =>
+          !["Page", "Limit", "SortField", "SortType"].includes(key) &&
+          params[key]
+      );
 
-    // Map frontend params to backend params
-    if (params) {
-      if (params.keyword) backendParams.Keyword = params.keyword;
-      if (params.StatusIds && params.StatusIds !== "all")
-        backendParams.StatusIds = params.StatusIds;
-      if (params.DepartmentIds && params.DepartmentIds !== "all")
-        backendParams.DepartmentIds = params.DepartmentIds;
-      if (params.PositionIds && params.PositionIds !== "all")
-        backendParams.PositionIds = params.PositionIds;
-      if (params.page) backendParams.Page = params.page;
-      if (params.limit) backendParams.Limit = params.limit;
-      if (params.sortBy) backendParams.SortField = params.sortBy;
-      if (params.sortOrder) backendParams.SortType = params.sortOrder;
-    }
-
-    const hasFilters =
-      backendParams.Keyword ||
-      backendParams.StatusIds ||
-      backendParams.DepartmentIds ||
-      backendParams.PositionIds;
-
-    const endpoint = hasFilters
+    const endpoint = hasSearchParams
       ? API_CONFIG.endpoints.courses.search
       : this.endpoint;
+
+    // Chuyển đổi tên tham số để khớp với backend
+    const backendParams: Record<string, any> = {};
+    if (params) {
+      if (params.Page) backendParams.Page = params.Page;
+      if (params.Limit) backendParams.Limit = params.Limit;
+      if (params.SortField) backendParams.SortField = params.SortField;
+      if (params.SortType) backendParams.SortType = params.SortType;
+      if (params.keyword) backendParams.Keyword = params.keyword;
+      if (params.statusIds) backendParams.StatusIds = params.statusIds;
+      if (params.departmentIds)
+        backendParams.DepartmentIds = params.departmentIds;
+      if (params.positionIds) backendParams.PositionIds = params.positionIds;
+    }
 
     const response = await this.get<PaginatedResponse<CourseApiResponse>>(
       endpoint,
@@ -64,8 +59,8 @@ export class CoursesService extends BaseService<
       items: response.items || [],
       pagination: response.pagination || {
         totalItems: response.items?.length || 0,
-        itemsPerPage: backendParams.Limit || 10,
-        currentPage: backendParams.Page || 1,
+        itemsPerPage: (params?.Limit as number) || 10,
+        currentPage: (params?.Page as number) || 1,
         totalPages: 1,
       },
     };
@@ -78,64 +73,49 @@ export class CoursesService extends BaseService<
     return response;
   }
 
+  async getEnrolledCourses(): Promise<PaginatedResponse<UserEnrollCourseDto>> {
+    const response = await this.get<PaginatedResponse<UserEnrollCourseDto>>(
+      API_CONFIG.endpoints.courses.getEnrolled
+    );
+    return (
+      response ?? {
+        items: [],
+        pagination: {
+          totalItems: 0,
+          itemsPerPage: 10,
+          currentPage: 1,
+          totalPages: 0,
+        },
+      }
+    );
+  }
+
+  async enrollCourse(courseId: string): Promise<any> {
+    return this.post<any>(API_CONFIG.endpoints.courses.enroll(courseId));
+  }
+
   private buildFormDataFromPayload(
     payload: CreateCourseRequest | UpdateCourseRequest
   ): FormData {
     const formData = new FormData();
-    // Use PascalCase for backend compatibility
-    formData.append("Code", payload.Code || "");
-    formData.append("Name", payload.Name || "");
-    formData.append("Description", payload.Description || "");
-    formData.append("Objectives", payload.Objectives || "");
-    formData.append("Format", payload.Format || "online");
-    formData.append("Sessions", (payload.Sessions || 0).toString());
-    formData.append(
-      "HoursPerSessions",
-      (payload.HoursPerSessions || 0).toString()
-    );
-    formData.append("Optional", payload.Optional || "Tùy chọn");
-    formData.append("MaxParticipant", (payload.MaxParticipant || 0).toString());
-    formData.append("Location", payload.Location || "");
-    formData.append("StatusId", (payload.StatusId || "").toString());
 
-    if (payload.CategoryId) {
-      formData.append("CategoryId", payload.CategoryId.toString());
-    }
-    if (payload.LecturerId) {
-      formData.append("LecturerId", payload.LecturerId.toString());
-    }
+    Object.entries(payload).forEach(([key, value]) => {
+      if (value === undefined || value === null) return;
 
-    if (payload.StartDate) formData.append("StartDate", payload.StartDate);
-    if (payload.EndDate) formData.append("EndDate", payload.EndDate);
-    if (payload.RegistrationStartDate)
-      formData.append("RegistrationStartDate", payload.RegistrationStartDate);
-    if (payload.RegistrationClosingDate)
-      formData.append(
-        "RegistrationClosingDate",
-        payload.RegistrationClosingDate
-      );
-
-    if (payload.imageFile) {
-      formData.append("ThumbUrl", payload.imageFile);
-    }
-
-    // Append TraineeIds
-    payload.TraineeIds?.forEach((id) => formData.append("TraineeIds", id));
-
-    payload.DepartmentIds?.forEach((id) =>
-      formData.append("DepartmentIds", id.toString())
-    );
-    payload.PositionIds?.forEach((id) =>
-      formData.append("PositionIds", id.toString())
-    );
+      if (key === "ThumbUrl" && value instanceof File) {
+        formData.append("ThumbUrl", value);
+      } else if (Array.isArray(value)) {
+        value.forEach((item) => formData.append(key, String(item)));
+      } else {
+        formData.append(key, String(value));
+      }
+    });
 
     return formData;
   }
 
   async createCourse(payload: CreateCourseRequest): Promise<CourseApiResponse> {
     const formData = this.buildFormDataFromPayload(payload);
-
-    // Use BaseService's post method which handles auth headers automatically
     return this.post<CourseApiResponse>(
       API_CONFIG.endpoints.courses.create,
       formData
@@ -147,8 +127,6 @@ export class CoursesService extends BaseService<
     payload: UpdateCourseRequest
   ): Promise<CourseApiResponse> {
     const formData = this.buildFormDataFromPayload(payload);
-
-    // Use BaseService's put method which handles auth headers automatically
     return this.put<CourseApiResponse>(
       API_CONFIG.endpoints.courses.update(courseId),
       formData
@@ -159,8 +137,9 @@ export class CoursesService extends BaseService<
     if (courseIds.length === 0) {
       return;
     }
-
-    await this.delete(API_CONFIG.endpoints.courses.softDelete, courseIds);
+    await this.delete(API_CONFIG.endpoints.courses.softDelete, {
+      ids: courseIds,
+    });
   }
 }
 

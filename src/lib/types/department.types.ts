@@ -1,40 +1,54 @@
-
 /**
  * Department Domain Types
  * All department-related interfaces and types
  */
 
-// Frontend model for a department
+import type { Status } from "./status.types";
+
+// --- Frontend UI Model ---
 export interface DepartmentInfo {
   departmentId: string;
-  name: string; 
+  name: string;
   code: string;
   description?: string;
   parentId?: string | null;
   parentName?: string | null;
   managerId?: string | null;
   managerName?: string | null;
-  status: string;
-  statusId?: number;
+  status: Status; // Now an object
   level: number;
-  path?: string[] | null;
+  path: string[];
   createdAt: string;
   updatedAt: string;
   children?: DepartmentInfo[];
 }
 
-// Department creation payload
+// --- API Request Payloads ---
 export interface CreateDepartmentPayload {
-  name: string;
-  code: string;
-  description?: string;
-  statusId?: string;
-  managerId?: string;
-  parentId?: string | null;
+  DepartmentName: string;
+  DepartmentCode: string;
+  Description?: string;
+  StatusId?: number;
+  ManagerId?: string;
+  ParentId?: number | null;
 }
 
-// Department update payload
 export type UpdateDepartmentPayload = Partial<CreateDepartmentPayload>;
 
-// Alias for service-specific types for consistency
-export type ServiceDepartment = DepartmentInfo;
+// --- API Response DTO ---
+export interface DepartmentApiResponse {
+  departmentId: number;
+  departmentName?: string;
+  departmentCode?: string;
+  description?: string;
+  parentId?: number | null;
+  parentName?: string | null;
+  managerId?: string | null;
+  managerName?: string | null;
+  status?: Status;
+  level: number;
+  path: string[];
+  createdAt: string;
+  updatedAt: string;
+  children?: DepartmentApiResponse[];
+}

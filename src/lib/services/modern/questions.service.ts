@@ -1,3 +1,4 @@
+
 import { BaseService, PaginatedResponse, QueryParams } from "@/lib/core";
 import { API_CONFIG } from "@/lib/config";
 import type {
@@ -8,14 +9,16 @@ import type {
 
 class QuestionsService extends BaseService<ApiQuestion> {
   constructor() {
-    super(API_CONFIG.endpoints.tests.base);
+    // This service operates on a sub-resource of tests.
+    // The base endpoint is not directly used.
+    super(API_CONFIG.endpoints.courses.base); 
   }
 
   async getQuestions(
     testId: number,
     params?: QueryParams
   ): Promise<PaginatedResponse<ApiQuestion>> {
-    const endpoint = `${this.endpoint}/${testId}/questions`;
+    const endpoint = API_CONFIG.endpoints.tests.questions(testId);
     return this.get<PaginatedResponse<ApiQuestion>>(endpoint, { params });
   }
 
@@ -23,7 +26,7 @@ class QuestionsService extends BaseService<ApiQuestion> {
     testId: number,
     payload: CreateQuestionPayload
   ): Promise<ApiQuestion> {
-    const endpoint = `${this.endpoint}/${testId}/questions`;
+    const endpoint = API_CONFIG.endpoints.tests.questions(testId);
     return this.post<ApiQuestion>(endpoint, payload);
   }
 
@@ -31,9 +34,7 @@ class QuestionsService extends BaseService<ApiQuestion> {
     testId: number,
     questions: CreateQuestionPayload[]
   ): Promise<void> {
-    const endpoint = `${this.endpoint}/${testId}/questions`;
-    // Backend expects the questions array directly, not wrapped in a 'request' field
-    // API returns success message, not array of questions
+    const endpoint = API_CONFIG.endpoints.tests.questions(testId);
     await this.post<void>(endpoint, questions);
   }
 
@@ -42,19 +43,13 @@ class QuestionsService extends BaseService<ApiQuestion> {
     questionId: number,
     payload: UpdateQuestionPayload
   ): Promise<ApiQuestion> {
-    const endpoint = `${this.endpoint}/${testId}/questions/${questionId}`;
+    const endpoint = API_CONFIG.endpoints.tests.questionById(testId, questionId);
     return this.put<ApiQuestion>(endpoint, payload);
   }
 
-  async deleteQuestion(testId: number, questionId: number): Promise<void> {
-    const endpoint = `${this.endpoint}/${testId}/questions/${questionId}`;
-    await this.delete<void>(endpoint);
-  }
-
   async deleteQuestions(testId: number, questionIds: number[]): Promise<void> {
-    const endpoint = `${this.endpoint}/${testId}/questions`;
-    // API expects the array of IDs in the request body for bulk delete
-    await this.delete<void>(endpoint, questionIds);
+    const endpoint = API_CONFIG.endpoints.tests.questions(testId);
+    await this.delete<void>(endpoint, { ids: questionIds });
   }
 }
 

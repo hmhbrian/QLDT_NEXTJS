@@ -15,6 +15,7 @@ export * from "./modern/course-attached-files.service";
 export * from "./modern/lessons.service";
 export * from "./modern/tests.service";
 export * from "./modern/questions.service";
+export * from "./modern/lesson-progress.service";
 
 
 // Import services to create a single `services` object
@@ -28,6 +29,7 @@ import { courseAttachedFilesService } from "./modern/course-attached-files.servi
 import { lessonsService } from "./modern/lessons.service";
 import { testsService } from "./modern/tests.service";
 import { questionsService } from "./modern/questions.service";
+import { lessonProgressService } from "./modern/lesson-progress.service";
 
 
 // Export a single object containing all services for convenience
@@ -42,6 +44,7 @@ export const services = {
   lessons: lessonsService,
   tests: testsService,
   questions: questionsService,
+  lessonProgress: lessonProgressService,
 } as const;
 
 // Default export for backward compatibility or alternative import style

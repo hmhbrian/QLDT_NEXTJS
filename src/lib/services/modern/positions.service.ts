@@ -1,14 +1,13 @@
-
-import { BaseService, ApiResponse, QueryParams } from "../../core";
+import { BaseService, QueryParams } from "../../core";
 import { API_CONFIG } from "@/lib/config";
 import type { Position } from "@/lib/types/user.types";
 
 export interface CreatePositionPayload {
-  positionName: string;
+  PositionName: string;
 }
 
 export interface UpdatePositionPayload {
-  positionName?: string;
+  PositionName?: string;
 }
 
 export interface PositionQueryParams extends QueryParams {

@@ -1,5 +1,4 @@
-
-import { BaseService, ApiResponse, QueryParams } from "@/lib/core";
+import { BaseService, QueryParams } from "@/lib/core";
 import { Status, CreateStatusRequest, UpdateStatusRequest } from "@/lib/types/status.types";
 import { API_CONFIG } from "@/lib/config";
 

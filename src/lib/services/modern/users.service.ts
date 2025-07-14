@@ -1,70 +1,24 @@
-
 import {
   BaseService,
   PaginatedResponse,
   QueryParams,
-  ApiResponse,
-  extractErrorMessage,
 } from "@/lib/core";
-import { User, CreateUserRequest } from "@/lib/types/user.types";
+import { User, CreateUserRequest, UpdateUserRequest, UserApiResponse, ResetPasswordRequest } from "@/lib/types/user.types";
 import { API_CONFIG } from "@/lib/config";
 
-export type UpdateUserPayload = Partial<CreateUserRequest> & {
-  UrlAvatar?: File | null;
-};
-
-export interface ResetPasswordPayload {
-  newPassword: string;
-  confirmNewPassword: string;
-}
-
 export class UsersService extends BaseService<
-  User,
+  UserApiResponse,
   CreateUserRequest,
-  UpdateUserPayload
+  UpdateUserRequest
 > {
   constructor() {
     super(API_CONFIG.endpoints.users.base);
   }
 
-  private async _updateWithFormData(
-    url: string,
-    payload: UpdateUserPayload
-  ): Promise<User> {
-    const formData = new FormData();
-    Object.entries(payload).forEach(([key, value]) => {
-      if (value instanceof File) {
-        formData.append(key, value);
-      } else if (value !== undefined && value !== null) {
-        formData.append(key, String(value));
-      }
-    });
-
-    const headers = this.getAuthHeaders() as Record<string, string>;
-    // When sending FormData with fetch, we must not set the 'Content-Type' header.
-    // The browser automatically sets it to 'multipart/form-data' with the correct boundary.
-    // Manually setting it (e.g., to 'application/json' from a default header function)
-    // prevents the server from parsing the form data correctly.
-    delete headers["Content-Type"];
-
-    const response = await fetch(`${API_CONFIG.baseURL}${url}`, {
-      method: "PUT",
-      headers,
-      body: formData,
-    });
-
-    const data = await response.json();
-    if (!response.ok) {
-      throw new Error(extractErrorMessage(data));
-    }
-
-    return this.extractData(data);
-  }
-
   async getUsersWithPagination(
     params?: QueryParams
-  ): Promise<PaginatedResponse<User>> {
-    const isSearch = params?.search && String(params.search).trim() !== "";
+  ): Promise<PaginatedResponse<UserApiResponse>> {
+    const isSearch = params?.keyword && String(params.keyword).trim() !== "";
     const endpoint = isSearch
       ? API_CONFIG.endpoints.users.search
       : this.endpoint;
@@ -76,78 +30,53 @@ export class UsersService extends BaseService<
       if (params.sortBy) backendParams.SortField = params.sortBy;
       if (params.sortOrder) backendParams.SortType = params.sortOrder;
       if (params.role) backendParams.RoleName = params.role;
-
-      // The search endpoint expects 'keyword' for the search term.
       if (isSearch) {
-        backendParams.keyword = params.search;
+        backendParams.keyword = params.keyword;
       }
     }
 
-    const response = await this.get<PaginatedResponse<User>>(endpoint, {
+    const response = await this.get<PaginatedResponse<UserApiResponse>>(endpoint, {
       params: backendParams,
     });
 
     return {
       items: response.items || [],
-      pagination: response.pagination || {
-        totalItems: response.items?.length || 0,
-        itemsPerPage: backendParams.Limit || 10,
-        currentPage: backendParams.Page || 1,
-        totalPages: 1,
-      },
+      pagination: response.pagination,
     };
   }
 
-  async getUsers(params?: QueryParams): Promise<User[]> {
-    const response = await this.getUsersWithPagination(params);
-    return response.items || [];
+  async getUserById(id: string): Promise<UserApiResponse> {
+    const response = await this.get<UserApiResponse>(`${this.endpoint}/${id}`);
+    return response;
   }
 
-  async getUserById(id: string): Promise<User> {
-    return super.getById(id);
-  }
-
-  async createUser(payload: CreateUserRequest): Promise<User> {
-    return this.post<User>(API_CONFIG.endpoints.users.create, payload);
+  async createUser(payload: CreateUserRequest): Promise<UserApiResponse> {
+    const response = await this.post<UserApiResponse>(API_CONFIG.endpoints.users.create, payload);
+    return response;
   }
 
   async updateUserByAdmin(
     userId: string,
-    payload: UpdateUserPayload
-  ): Promise<User> {
+    payload: UpdateUserRequest
+  ): Promise<UserApiResponse> {
     const url = API_CONFIG.endpoints.users.updateAdmin(userId);
-    if (payload.UrlAvatar instanceof File) {
-      return this._updateWithFormData(url, payload);
-    }
-    return this.put<User>(url, payload);
+    const response = await this.put<UserApiResponse>(url, payload);
+    return response;
   }
-
-  async update(userId: string, payload: UpdateUserPayload): Promise<User> {
-    return this.updateUserByAdmin(userId, payload);
-  }
-
-  async updateProfile(payload: UpdateUserPayload): Promise<User> {
-    const url = API_CONFIG.endpoints.users.updateUsers;
-    if (payload.UrlAvatar instanceof File) {
-      return this._updateWithFormData(url, payload);
-    }
-    return this.put<User>(url, payload);
-  }
-
-  async deleteUser(userId: string): Promise<any> {
-    const url = API_CONFIG.endpoints.users.softDelete(userId);
-    return await this.delete(url);
-  }
-
+  
   async deleteUsers(userIds: string[]): Promise<any> {
-    const url = API_CONFIG.endpoints.users.softDelete(''); // Base endpoint, IDs will be in body
-    // Assuming backend supports DELETE with body for bulk actions
-    return await this.delete(url, userIds);
+    if (userIds.length === 0) return;
+    
+    // Backend expects array of strings in the body for bulk delete.
+    const promises = userIds.map(id => 
+        this.delete(API_CONFIG.endpoints.users.softDelete(id))
+    );
+    return Promise.all(promises);
   }
 
   async resetPassword(
     userId: string,
-    payload: ResetPasswordPayload
+    payload: ResetPasswordRequest
   ): Promise<void> {
     const url = API_CONFIG.endpoints.users.resetPassword(userId);
     await this.patch<void>(url, payload);

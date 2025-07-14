@@ -1,52 +1,96 @@
 
 import { BaseService } from "@/lib/core";
 import { API_CONFIG } from "@/lib/config";
-import type { ApiLesson, CreateLessonPayload, UpdateLessonPayload } from "@/lib/types/course.types";
+import type {
+  ApiLesson,
+  CreateLessonPayload,
+  UpdateLessonPayload,
+} from "@/lib/types/course.types";
 
-class LessonsService extends BaseService<ApiLesson, CreateLessonPayload, UpdateLessonPayload> {
+export interface ReorderLessonPayload {
+  lessonId: number;
+  previousLessonId?: number | null;
+}
+
+class LessonsService extends BaseService<
+  ApiLesson,
+  CreateLessonPayload,
+  UpdateLessonPayload
+> {
   constructor() {
-    super(API_CONFIG.endpoints.courses.base); // Base endpoint for context, specific paths used in methods
+    super(API_CONFIG.endpoints.courses.base); 
   }
 
   async getLessons(courseId: string): Promise<ApiLesson[]> {
-    const endpoint = `${this.endpoint}/${courseId}/lessons`;
+    const endpoint = API_CONFIG.endpoints.lessons.base(courseId);
     try {
       const response = await this.get<ApiLesson[]>(endpoint);
-      return response || []; // Ensure it returns an array even if API gives null
+      return response || []; 
     } catch (error: any) {
-      // If the API returns 404 for "not found", treat it as an empty list, not a critical error.
-      if (error?.response?.status === 404) {
+      if (
+        error.message &&
+        (error.message.includes("404") ||
+          error.message.includes("không tồn tại") ||
+          error.message.includes("not found"))
+      ) {
         return [];
       }
-      // For all other errors (e.g., 500, 401), re-throw them to be handled by the query's error state.
       this.handleError("GET", endpoint, error);
     }
   }
 
-  async createLesson(courseId: string, payload: CreateLessonPayload): Promise<ApiLesson> {
+  async createLesson(
+    courseId: string,
+    payload: CreateLessonPayload
+  ): Promise<ApiLesson> {
     const formData = new FormData();
-    formData.append("Title", payload.title);
-    if (payload.file) {
-      formData.append("FilePdf", payload.file);
+    formData.append("Title", payload.Title);
+    if (payload.FilePdf) {
+      formData.append("FilePdf", payload.FilePdf);
     }
-    
-    const endpoint = `${this.endpoint}/${courseId}/lessons`;
+    if (payload.Link) {
+      formData.append("Link", payload.Link);
+    }
+    if (payload.TotalDurationSeconds) {
+        formData.append("TotalDurationSeconds", payload.TotalDurationSeconds.toString());
+    }
+
+    const endpoint = API_CONFIG.endpoints.lessons.create(courseId);
     return this.post<ApiLesson>(endpoint, formData);
   }
 
-  async updateLesson(courseId: string, lessonId: number, payload: UpdateLessonPayload): Promise<ApiLesson> {
+  async updateLesson(
+    courseId: string,
+    lessonId: number,
+    payload: UpdateLessonPayload
+  ): Promise<ApiLesson> {
     const formData = new FormData();
-    formData.append("Title", payload.title);
-    if (payload.file) {
-      formData.append("FilePdf", payload.file);
+    if(payload.Title) formData.append("Title", payload.Title);
+    if (payload.FilePdf) {
+      formData.append("FilePdf", payload.FilePdf);
     }
-    const endpoint = `${this.endpoint}/${courseId}/lessons/${lessonId}`;
+    if (payload.Link) {
+        formData.append("Link", payload.Link);
+    }
+    if (payload.TotalDurationSeconds) {
+        formData.append("TotalDurationSeconds", payload.TotalDurationSeconds.toString());
+    }
+
+    const endpoint = API_CONFIG.endpoints.lessons.update(courseId, lessonId);
     return this.put<ApiLesson>(endpoint, formData);
   }
 
-  async deleteLesson(courseId: string, lessonId: number): Promise<void> {
-    const endpoint = `${this.endpoint}/${courseId}/lessons/${lessonId}`;
-    await this.delete<void>(endpoint);
+  async deleteLessons(courseId: string, lessonIds: number[]): Promise<void> {
+    const endpoint = API_CONFIG.endpoints.lessons.delete(courseId);
+    await this.delete<void>(endpoint, { ids: lessonIds });
+  }
+
+  async reorderLesson(
+    courseId: string,
+    payload: ReorderLessonPayload
+  ): Promise<void> {
+    const endpoint = API_CONFIG.endpoints.lessons.reorder(courseId);
+    await this.put<void>(endpoint, payload);
   }
 }
 

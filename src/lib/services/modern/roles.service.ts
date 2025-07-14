@@ -1,16 +1,13 @@
-
-import { BaseService, ApiResponse, QueryParams } from "../../core";
+import { BaseService, QueryParams } from "../../core";
 import { API_CONFIG } from "@/lib/config";
 import type { ServiceRole } from "@/lib/types/user.types";
 
 export interface CreateRolePayload {
-  name: string;
-  description?: string;
+  RoleName: string;
 }
 
 export interface UpdateRolePayload {
-  name?: string;
-  description?: string;
+  RoleName?: string;
 }
 
 export interface RoleQueryParams extends QueryParams {
@@ -27,7 +24,9 @@ export class RolesService extends BaseService<
   }
 
   async getRoles(params?: RoleQueryParams): Promise<ServiceRole[]> {
-    return this.get<ServiceRole[]>(this.endpoint, { params });
+    const response = await this.get<ServiceRole[]>(this.endpoint, { params });
+    // The backend returns an array of roles, not a paginated response.
+    return Array.isArray(response) ? response : [];
   }
 
   async getRoleById(id: string): Promise<ServiceRole> {
@@ -47,11 +46,6 @@ export class RolesService extends BaseService<
 
   async deleteRole(id: string): Promise<void> {
     await this.delete<void>(`${this.endpoint}/${id}`);
-  }
-
-  async getRoleByName(name: string): Promise<ServiceRole> {
-    const url = API_CONFIG.endpoints.roles.byName(name);
-    return this.get<ServiceRole>(url);
   }
 }
 
