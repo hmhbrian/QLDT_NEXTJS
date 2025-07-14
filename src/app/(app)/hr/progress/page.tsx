@@ -1,3 +1,4 @@
+
 "use client";
 
 import {
@@ -7,7 +8,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -16,111 +16,158 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  LineChart as LineChartIcon,
   Users,
   BookOpen,
-  Download,
+  Loader2,
+  BarChart2,
+  Activity,
 } from "lucide-react";
 import dynamic from "next/dynamic";
+import { useCourses } from "@/hooks/use-courses";
+import { useUsers } from "@/hooks/use-users";
+import { useMemo } from "react";
 
 const ProgressCharts = dynamic(
-  () =>
-    import("@/components/hr/ProgressCharts").then((mod) => mod.ProgressCharts),
+  () => import("@/components/hr/ProgressCharts").then((mod) => mod.ProgressCharts),
   {
     ssr: false,
     loading: () => (
-      <div className="h-[300px] w-full flex items-center justify-center">
-        <p>Đang tải biểu đồ...</p>
+      <div className="h-[300px] w-full flex items-center justify-center col-span-1 md:col-span-2">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <p className="ml-2">Đang tải biểu đồ...</p>
       </div>
     ),
   }
 );
 
 export default function ProgressPage() {
+  const { courses, isLoading: isLoadingCourses } = useCourses({ Limit: 1000 });
+  const { users: allUsers, isLoading: isLoadingUsers } = useUsers({ RoleName: "HOCVIEN", Limit: 1000 });
+
+  const isLoading = isLoadingCourses || isLoadingUsers;
+
+  const reportData = useMemo(() => {
+    if (isLoading) {
+      return {
+        totalCourses: 0,
+        totalTrainees: 0,
+        completedCourses: 0,
+        completionRate: 0,
+        courseStats: [],
+      };
+    }
+
+    const totalCourses = courses.length;
+    const totalTrainees = allUsers.length;
+
+    // Simplified completion logic: a course is "completed" if its status is "Đã kết thúc"
+    const completedCourses = courses.filter(
+      (c) => c.status === "Đã kết thúc"
+    ).length;
+    
+    const completionRate = totalCourses > 0 ? Math.round((completedCourses / totalCourses) * 100) : 0;
+
+    const courseStats = courses.map(course => ({
+      name: course.title,
+      trainees: course.userIds?.length || 0,
+      status: course.status,
+    })).sort((a, b) => b.trainees - a.trainees).slice(0, 10); // Top 10 courses by enrollment
+
+    return {
+      totalCourses,
+      totalTrainees,
+      completedCourses,
+      completionRate,
+      courseStats,
+    };
+  }, [courses, allUsers, isLoading]);
+
+  const statCards = [
+    {
+      title: "Tổng số Khóa học",
+      value: reportData.totalCourses,
+      icon: BookOpen,
+      description: "Tổng số khóa học trong hệ thống.",
+    },
+    {
+      title: "Tổng số Học viên",
+      value: reportData.totalTrainees,
+      icon: Users,
+      description: "Tổng số tài khoản học viên.",
+    },
+    {
+      title: "Tỷ lệ Hoàn thành (Ước tính)",
+      value: `${reportData.completionRate}%`,
+      icon: Activity,
+      description: `Dựa trên ${reportData.completedCourses} khóa học "Đã kết thúc".`,
+    },
+  ];
+
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight">Tiến độ Học tập</h2>
-          <p className="text-muted-foreground">
-            Theo dõi tiến độ học tập của nhân viên
+          <h1 className="text-2xl md:text-3xl font-headline font-semibold">
+            Báo cáo Tiến độ Học tập
+          </h1>
+          <p className="text-muted-foreground mt-1">
+            Tổng quan về hoạt động đào tạo và tiến độ của học viên.
           </p>
         </div>
-        <div className="flex items-center gap-4">
-          <Select defaultValue="all">
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Chọn phòng ban" />
+        <div className="w-full md:w-auto">
+          <Select defaultValue="all_time">
+            <SelectTrigger className="w-full md:w-[240px] bg-background shadow-sm">
+              <SelectValue placeholder="Chọn Giai đoạn" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Tất cả phòng ban</SelectItem>
-              <SelectItem value="it">Công nghệ thông tin</SelectItem>
-              <SelectItem value="hr">Nhân sự</SelectItem>
-              <SelectItem value="sales">Kinh doanh</SelectItem>
+              <SelectItem value="all_time">Toàn bộ thời gian</SelectItem>
+              {/* Add other time ranges later if needed */}
             </SelectContent>
           </Select>
-          <Button variant="outline" size="icon">
-            <Download className="h-4 w-4" />
-          </Button>
         </div>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Users className="h-5 w-5" />
-              Học viên Đang học
-            </CardTitle>
-            <CardDescription>
-              Tổng số học viên đang tham gia khóa học
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">140</div>
-            <p className="text-xs text-muted-foreground">
-              +12% so với tháng trước
-            </p>
-          </CardContent>
-        </Card>
+      {isLoading ? (
+        <div className="flex items-center justify-center p-10">
+          <Loader2 className="h-10 w-10 animate-spin text-primary" />
+        </div>
+      ) : (
+        <>
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {statCards.map((stat, index) => (
+              <Card key={index} className="shadow-lg hover:shadow-xl transition-shadow">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">
+                    {stat.title}
+                  </CardTitle>
+                  <stat.icon className="h-5 w-5 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-3xl font-bold">{stat.value}</div>
+                  <p className="text-xs text-muted-foreground">
+                    {stat.description}
+                  </p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <BookOpen className="h-5 w-5" />
-              Khóa học Hoàn thành
-            </CardTitle>
-            <CardDescription>
-              Số khóa học đã hoàn thành trong tháng
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">90</div>
-            <p className="text-xs text-muted-foreground">
-              +5% so với tháng trước
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <LineChartIcon className="h-5 w-5" />
-              Tỷ lệ Hoàn thành
-            </CardTitle>
-            <CardDescription>
-              Tỷ lệ hoàn thành khóa học trung bình
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">85%</div>
-            <p className="text-xs text-muted-foreground">
-              +3% so với tháng trước
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
-      <ProgressCharts />
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <BarChart2 className="h-5 w-5" />
+                Thống kê Học viên theo Khóa học
+              </CardTitle>
+              <CardDescription>
+                Hiển thị 10 khóa học có nhiều học viên tham gia nhất.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ProgressCharts data={reportData.courseStats} />
+            </CardContent>
+          </Card>
+        </>
+      )}
     </div>
   );
 }

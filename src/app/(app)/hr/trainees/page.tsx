@@ -39,13 +39,14 @@ import {
   EyeOff,
 } from "lucide-react";
 import { useState, useMemo, useCallback } from "react";
-import type {
+import {
   User,
   Role,
-  CreateUserRequest,
   Position,
+  CreateUserRequest,
+  UpdateUserRequest,
 } from "@/lib/types/user.types";
-import type { DepartmentInfo } from "@/lib/types/department.types";
+import { DepartmentInfo } from "@/lib/types/department.types";
 import { useToast } from "@/components/ui/use-toast";
 import { useError } from "@/hooks/use-error";
 import { DataTable } from "@/components/ui/data-table";
@@ -64,29 +65,31 @@ import {
 } from "@/hooks/use-users";
 import { extractErrorMessage } from "@/lib/core";
 import { rolesService } from "@/lib/services";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { PaginationState } from "@tanstack/react-table";
+import { mapUserApiToUi } from "@/lib/mappers/user.mapper";
 
-const initialNewTraineeState: Omit<User, "id"> & { password?: string } = {
+const initialNewTraineeState: Partial<
+  User & { password?: string; confirmPassword?: string }
+> = {
   fullName: "",
   employeeId: "",
   email: "",
   phoneNumber: "",
-  department: "",
-  position: "",
-  level: "intern",
-  joinDate: "",
-  manager: "",
+  department: undefined,
+  position: undefined,
   userStatus: { id: 2, name: "Đang hoạt động" },
   idCard: "",
   role: "HOCVIEN",
   urlAvatar: "https://placehold.co/40x40.png",
   password: "",
+  confirmPassword: "",
 };
 
 export default function TraineesPage() {
   const { toast } = useToast();
   const { showError } = useError();
+  const queryClient = useQueryClient();
 
   const [searchQuery, setSearchQuery] = useState("");
   const debouncedSearchTerm = useDebounce(searchQuery, 300);
@@ -111,20 +114,20 @@ export default function TraineesPage() {
 
   // Data fetching with TanStack Query and custom hook
   const {
-    paginatedUsers,
+    users: trainees,
+    paginationInfo,
     isLoading: isTraineesLoading,
     error: traineesError,
   } = useUsers({
-    role: "HOCVIEN",
-    search: debouncedSearchTerm,
+    RoleName: "HOCVIEN",
+    keyword: debouncedSearchTerm,
     page: pagination.pageIndex + 1,
     limit: pagination.pageSize,
   });
 
-  const trainees = useMemo(() => paginatedUsers?.items ?? [], [paginatedUsers]);
   const pageCount = useMemo(
-    () => paginatedUsers?.pagination?.totalPages ?? 0,
-    [paginatedUsers]
+    () => paginationInfo?.totalPages ?? 0,
+    [paginationInfo]
   );
 
   const { data: roles = [], isLoading: isRolesLoading } = useQuery({
@@ -132,8 +135,8 @@ export default function TraineesPage() {
     queryFn: () => rolesService.getRoles(),
   });
 
-  const { activeDepartments, isLoading: isDepartmentsLoading } =
-    useDepartments();
+  const { departments: activeDepartments, isLoading: isDepartmentsLoading } =
+    useDepartments({ status: "active" });
   const { positions, loading: isPositionsLoading } = usePositions();
   const { userStatuses, isLoading: isStatusesLoading } = useUserStatuses();
 
@@ -152,14 +155,8 @@ export default function TraineesPage() {
     setEditingTrainee(trainee);
     setFormData({
       ...trainee,
-      department:
-        typeof trainee.department === "object"
-          ? trainee.department.departmentId
-          : trainee.department,
-      position:
-        trainee.position && typeof trainee.position === "object"
-          ? String((trainee.position as Position).positionId)
-          : "",
+      department: trainee.department,
+      position: trainee.position,
     });
     setIsFormOpen(true);
   }, []);
@@ -174,7 +171,7 @@ export default function TraineesPage() {
     }
   };
 
-  const handleSaveTrainee = () => {
+  const handleSaveTrainee = async () => {
     if (!formData.fullName || !formData.email) {
       showError("FORM001");
       return;
@@ -189,67 +186,47 @@ export default function TraineesPage() {
       });
       return;
     }
-
+    
     const onMutationSuccess = () => {
-      setIsFormOpen(false);
+        setIsFormOpen(false);
     };
 
     if (editingTrainee) {
-      const updatePayload: Partial<CreateUserRequest> = {
+      const updatePayload: UpdateUserRequest = {
         FullName: formData.fullName,
         Email: formData.email,
         IdCard: formData.idCard,
         NumberPhone: formData.phoneNumber,
-        PositionId: formData.position
-          ? parseInt(formData.position as string)
-          : undefined,
-        DepartmentId: formData.department
-          ? parseInt(formData.department as string)
-          : undefined,
+        PositionId: formData.position?.positionId,
+        DepartmentId: formData.department?.departmentId ? parseInt(formData.department.departmentId) : undefined,
+        RoleId: hocvienRole.id,
       };
-      if (formData.password) {
-        updatePayload.Password = formData.password;
-        updatePayload.ConfirmPassword = formData.confirmPassword;
-      }
-      updateTraineeMutation.mutate(
-        {
+      await updateTraineeMutation.mutateAsync({
           id: editingTrainee.id,
           payload: updatePayload,
-        },
-        { onSuccess: onMutationSuccess }
-      );
+        }, {
+            onSuccess: onMutationSuccess
+        });
     } else {
       const createPayload: CreateUserRequest = {
         FullName: formData.fullName!,
         Email: formData.email!,
         Password: formData.password!,
         ConfirmPassword: formData.confirmPassword!,
-        RoleId: hocvienRole.id,
         IdCard: formData.idCard,
         NumberPhone: formData.phoneNumber,
-        PositionId: formData.position
-          ? parseInt(formData.position as string)
-          : undefined,
-        DepartmentId: formData.department
-          ? parseInt(formData.department as string)
-          : undefined,
+        PositionId: formData.position?.positionId,
+        DepartmentId: formData.department?.departmentId ? parseInt(formData.department.departmentId) : undefined,
+        RoleId: hocvienRole.id,
       };
-      createTraineeMutation.mutate(createPayload, {
+      await createTraineeMutation.mutateAsync(createPayload, {
         onSuccess: onMutationSuccess,
       });
     }
   };
 
-  const renderDepartmentName = (
-    department: string | DepartmentInfo | undefined
-  ): string => {
+  const renderDepartmentName = (department?: DepartmentInfo): string => {
     if (!department) return "N/A";
-    if (typeof department === "string") {
-      const foundDept = activeDepartments.find(
-        (d) => d.departmentId === department
-      );
-      return foundDept ? foundDept.name : "Không xác định";
-    }
     return department.name || "Không xác định";
   };
 
@@ -380,17 +357,17 @@ export default function TraineesPage() {
             <div className="grid gap-2">
               <Label htmlFor="department">Phòng ban</Label>
               <Select
-                value={
-                  (typeof formData.department === "object"
-                    ? formData.department.departmentId
-                    : formData.department) || NO_DEPARTMENT_VALUE
-                }
-                onValueChange={(value) =>
+                value={formData.department?.departmentId || NO_DEPARTMENT_VALUE}
+                onValueChange={(value) => {
+                  const selectedDept = activeDepartments.find(
+                    (d) => d.departmentId === value
+                  );
                   setFormData({
                     ...formData,
-                    department: value === NO_DEPARTMENT_VALUE ? "" : value,
-                  })
-                }
+                    department:
+                      value === NO_DEPARTMENT_VALUE ? undefined : selectedDept,
+                  });
+                }}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Chọn phòng ban" />
@@ -423,10 +400,15 @@ export default function TraineesPage() {
             <div className="grid gap-2">
               <Label htmlFor="position">Cấp bậc</Label>
               <Select
-                value={formData.position ? String(formData.position) : ""}
-                onValueChange={(value) =>
-                  setFormData({ ...formData, position: value })
+                value={
+                  formData.position ? String(formData.position.positionId) : ""
                 }
+                onValueChange={(value) => {
+                  const selectedPos = positions.find(
+                    (p) => String(p.positionId) === value
+                  );
+                  setFormData({ ...formData, position: selectedPos });
+                }}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Chọn cấp bậc" />

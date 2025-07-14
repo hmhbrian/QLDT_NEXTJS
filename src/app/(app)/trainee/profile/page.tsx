@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
@@ -38,7 +39,6 @@ import {
 import { useToast } from "@/components/ui/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { useError } from "@/hooks/use-error";
-import { mockUsers } from "@/lib/mock";
 import type { User, Position } from "@/lib/types/user.types";
 import type { DepartmentInfo } from "@/lib/types/department.types";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -84,21 +84,16 @@ export default function UserProfilePage() {
       setDialogFullName(profileData.fullName || "");
       setDialogEmail(profileData.email || "");
       setDialogPhone(profileData.phoneNumber || "");
-      // Không cập nhật avatarPreview ở đây, vì nó được quản lý bởi avatarFile và updateAvatar
-      // setAvatarPreview(profileData.urlAvatar || null);
     } else if (user) {
-      // Dự phòng về người dùng từ useAuth nếu profileData chưa được đặt
       setDialogFullName(user.fullName || "");
       setDialogEmail(user.email || "");
       setDialogPhone(user.phoneNumber || "");
-      // setAvatarPreview(user.urlAvatar || null);
     }
   }, [profileData, user, isEditing]);
 
   useEffect(() => {
     return () => {
       if (avatarPreview && avatarPreview.startsWith("blob:")) {
-        // Kiểm tra nếu avatarPreview là một blob URL
         URL.revokeObjectURL(avatarPreview);
       }
     };
@@ -203,18 +198,15 @@ export default function UserProfilePage() {
       setAvatarFile(null); // Xóa file avatar đã chọn
       if (avatarInputRef.current) avatarInputRef.current.value = ""; // Đặt lại input file avatar
     } catch (error: unknown) {
-      // Loại bỏ thông báo lỗi chung ở đây. Các lỗi cụ thể đã được xử lý bởi updateAvatar/changePassword.
-      // Mục đích chính của khối catch này bây giờ là đảm bảo setIsSubmitting được đặt thành false.
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const renderDepartment = (
-    department: string | DepartmentInfo | undefined
+    department: DepartmentInfo | undefined
   ) => {
     if (!department) return "N/A";
-    if (typeof department === "string") return department;
     return department.name;
   };
 
@@ -250,7 +242,7 @@ export default function UserProfilePage() {
             <CardHeader className="items-center text-center border-b pb-6">
               <Avatar className="h-24 w-24 mb-4 ring-4 ring-primary ring-offset-2 ring-offset-background">
                 <AvatarImage
-                  src={profileData.urlAvatar}
+                  src={profileData.urlAvatar || undefined}
                   alt={profileData.fullName}
                 />
                 <AvatarFallback>
@@ -265,7 +257,7 @@ export default function UserProfilePage() {
                 {profileData.role === "HOCVIEN" && profileData.position && (
                   <Badge
                       className={getLevelBadgeColor(
-                      (profileData.position as Position).positionName as any
+                      (profileData.position as Position).positionName
                     )}
                   >
                     {getPositionName(profileData)}
@@ -350,7 +342,6 @@ export default function UserProfilePage() {
                       <p className="text-sm">
                         <strong>Vai trò:</strong> {profileData.role}
                       </p>
-                      {/* Thêm các trường liên quan khác cho Admin/HR nếu có trong kiểu User */}
                       <p className="text-sm">
                         <strong>Ngày bắt đầu:</strong>{" "}
                         {profileData.startWork
@@ -380,7 +371,7 @@ export default function UserProfilePage() {
           </Card>
         </TabsContent>
 
-        {user.role === "HOCVIEN" && profileData.completedCourses && (
+        {user.role === "HOCVIEN" && (
           <TabsContent value="courses">
             <Card>
               <CardHeader>
@@ -390,56 +381,15 @@ export default function UserProfilePage() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-6">
-                  {profileData.completedCourses.length ? (
-                    profileData.completedCourses.map((course) => (
-                      <div
-                        key={course.courseId}
-                        className="border rounded-lg p-4"
-                      >
-                        <div className="flex items-center justify-between mb-2">
-                          <h4 className="font-semibold">{course.courseName}</h4>
-                          <Badge
-                            variant="outline"
-                            className="bg-green-100 text-green-800"
-                          >
-                            Hoàn thành
-                          </Badge>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                          <div className="flex items-center gap-2">
-                            <Calendar className="h-4 w-4 text-muted-foreground" />
-                            <span className="text-sm">
-                              {new Date(
-                                course.completionDate
-                              ).toLocaleDateString("vi-VN")}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Star className="h-4 w-4 text-muted-foreground" />
-                            <span className="text-sm">
-                              Điểm số: {course.grade}/100
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-                            <span className="text-sm">{course.feedback}</span>
-                          </div>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="text-muted-foreground">
-                      Chưa có khóa học nào hoàn thành.
-                    </p>
-                  )}
-                </div>
+                <p className="text-muted-foreground">
+                  Chức năng đang được phát triển.
+                </p>
               </CardContent>
             </Card>
           </TabsContent>
         )}
 
-        {user.role === "HOCVIEN" && profileData.certificates && (
+        {user.role === "HOCVIEN" && (
           <TabsContent value="certificates">
             <Card>
               <CardHeader>
@@ -449,50 +399,15 @@ export default function UserProfilePage() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-6">
-                  {profileData.certificates.length ? (
-                    profileData.certificates.map((cert) => (
-                      <div key={cert.id} className="border rounded-lg p-4">
-                        <div className="flex items-center justify-between mb-2">
-                          <h4 className="font-semibold">{cert.name}</h4>
-                          <Badge
-                            variant="outline"
-                            className="bg-blue-100 text-blue-800"
-                          >
-                            {cert.issuingOrganization}
-                          </Badge>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div className="flex items-center gap-2">
-                            <Calendar className="h-4 w-4 text-muted-foreground" />
-                            <span className="text-sm">
-                              Ngày cấp:{" "}
-                              {new Date(cert.issueDate).toLocaleDateString(
-                                "vi-VN"
-                              )}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Award className="h-4 w-4 text-muted-foreground" />
-                            <span className="text-sm">
-                              ID: {cert.credentialId}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="text-muted-foreground">
-                      Chưa có chứng chỉ nào.
-                    </p>
-                  )}
-                </div>
+                 <p className="text-muted-foreground">
+                  Chưa có chứng chỉ nào.
+                </p>
               </CardContent>
             </Card>
           </TabsContent>
         )}
 
-        {user.role === "HOCVIEN" && profileData.evaluations && (
+        {user.role === "HOCVIEN" && (
           <TabsContent value="evaluations">
             <Card>
               <CardHeader>
@@ -502,35 +417,9 @@ export default function UserProfilePage() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-6">
-                  {profileData.evaluations.length ? (
-                    profileData.evaluations.map((evaluation) => (
-                      <div
-                        key={evaluation.id}
-                        className="border rounded-lg p-4"
-                      >
-                        <div className="flex items-center justify-between mb-4">
-                          <h4 className="font-semibold">
-                            Đánh giá ngày{" "}
-                            {new Date(
-                              evaluation.evaluationDate
-                            ).toLocaleDateString("vi-VN")}
-                          </h4>
-                          <Badge
-                            variant="outline"
-                            className="bg-purple-100 text-purple-800"
-                          >
-                            Điểm: {evaluation.overallScore}/5
-                          </Badge>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="text-muted-foreground">
-                      Chưa có đánh giá nào.
-                    </p>
-                  )}
-                </div>
+                <p className="text-muted-foreground">
+                  Chưa có đánh giá nào.
+                </p>
               </CardContent>
             </Card>
           </TabsContent>
@@ -571,7 +460,7 @@ export default function UserProfilePage() {
               <div className="flex items-center gap-4">
                 <Avatar className="h-20 w-20">
                   <AvatarImage
-                    src={avatarPreview || profileData.urlAvatar}
+                    src={avatarPreview || profileData.urlAvatar || undefined}
                     alt={profileData.fullName}
                   />
                   <AvatarFallback>

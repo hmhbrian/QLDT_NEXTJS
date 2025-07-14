@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo } from 'react';
@@ -8,8 +9,8 @@ import { GraduationCap, BookOpenCheck, PlayCircle, Loader2 } from "lucide-react"
 import Image from "next/image";
 import Link from "next/link";
 import { useAuth } from '@/hooks/useAuth';
-import { useCourses } from '@/hooks/use-courses';
-import type { Course } from '@/lib/types/course.types';
+import { useEnrolledCourses } from '@/hooks/use-courses';
+import type { Course } from "@/lib/types/course.types";
 
 interface DisplayCourse {
   id: string;
@@ -18,49 +19,25 @@ interface DisplayCourse {
   progress: number;
   image: string;
   dataAiHint?: string;
-  nextLesson?: string;
 }
 
 export default function MyCoursesPage() {
   const { user: currentUser, loadingAuth } = useAuth();
-  const { courses: allCourses, isLoading: isLoadingCourses } = useCourses();
+  const { enrolledCourses, isLoadingEnrolled } = useEnrolledCourses(!!currentUser);
 
   const myDisplayCourses = useMemo(() => {
-    if (!currentUser || !allCourses) {
-      return [];
-    }
-
-    // Filter courses where the current user is enrolled.
-    const enrolledCourses = allCourses.filter(course =>
-      course.enrolledTrainees?.includes(currentUser.id)
-    );
-
-    // Map to the display format.
-    return enrolledCourses.map((course: Course): DisplayCourse => {
-      // Find if the course is completed to calculate progress.
-      const completedCourse = currentUser.completedCourses?.find(c => c.courseId === course.id);
-      // Dummy progress for in-progress courses, assuming 0 if not started.
-      const progress = completedCourse ? 100 : 0;
-
-      // Determine the next lesson. This is a simplification.
-      const nextLesson = course.lessons && course.lessons.length > 0
-        ? course.lessons[0].title
-        : 'Bắt đầu học';
-
-      return {
+    return enrolledCourses.map((course: Course): DisplayCourse => ({
         id: course.id,
         title: course.title,
         description: course.description,
-        progress: progress,
+        progress: course.progressPercentage || 0,
         image: course.image,
         dataAiHint: course.category,
-        nextLesson: completedCourse ? 'Khóa học đã hoàn thành' : nextLesson,
-      };
-    });
-  }, [currentUser, allCourses]);
+      }));
+  }, [enrolledCourses]);
 
 
-  if (loadingAuth || isLoadingCourses) {
+  if (loadingAuth || isLoadingEnrolled) {
     return (
       <div className="flex h-60 w-full items-center justify-center">
         <Loader2 className="h-10 w-10 animate-spin text-primary" />
@@ -78,38 +55,33 @@ export default function MyCoursesPage() {
       {myDisplayCourses.length > 0 ? (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {myDisplayCourses.map((course) => (
-            <Card key={course.id} className="flex flex-col overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300">
+            <Card key={course.id} className="flex flex-col overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 group">
               <CardHeader className="flex-none p-0">
                 <div className="relative aspect-video w-full overflow-hidden">
                   <Image
                     src={course.image}
                     alt={course.title}
-                    className="object-cover"
+                    className="object-cover group-hover:scale-105 transition-transform duration-300"
                     fill
                     sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                     data-ai-hint={course.dataAiHint}
                   />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
                 </div>
               </CardHeader>
               <CardContent className="flex-grow p-4 md:p-6">
-                <CardTitle className="line-clamp-1 font-headline text-lg md:text-xl">{course.title}</CardTitle>
+                <CardTitle className="line-clamp-2 font-headline text-lg md:text-xl">{course.title}</CardTitle>
                 <CardDescription className="line-clamp-2 mt-1.5 text-sm">{course.description}</CardDescription>
                 <div className="mt-4 space-y-2">
                   <div className="flex items-center justify-between text-xs md:text-sm">
                     <span className="font-medium">Tiến độ</span>
-                    <span className="font-semibold text-primary">{course.progress}%</span>
+                    <span className="font-semibold text-primary">{Math.round(course.progress)}%</span>
                   </div>
                   <Progress value={course.progress} className="h-2" aria-label={`Tiến độ ${course.progress}%`} />
-                  {course.nextLesson && (
-                    <p className="text-xs text-muted-foreground mt-2">
-                      <span className="font-medium">Bài tiếp theo:</span> {course.nextLesson}
-                    </p>
-                  )}
                 </div>
               </CardContent>
               <CardFooter className="flex-none p-4 md:p-6 pt-0 border-t">
-                <div className="flex w-full items-center gap-2 md:gap-4">
-                  {course.progress === 100 ? (
+                  {course.progress >= 100 ? (
                     <Button className="w-full" variant="outline" asChild>
                        <Link href={`/courses/${course.id}`}>
                         <BookOpenCheck className="mr-2 h-4 w-4" />
@@ -124,7 +96,6 @@ export default function MyCoursesPage() {
                       </Link>
                     </Button>
                   )}
-                </div>
               </CardFooter>
             </Card>
           ))}

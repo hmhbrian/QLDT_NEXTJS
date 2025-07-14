@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
@@ -38,7 +39,6 @@ import {
   List,
   TreePine,
 } from "lucide-react";
-import { useToast } from "@/components/ui/use-toast";
 import type {
   DepartmentInfo,
   CreateDepartmentPayload,
@@ -62,11 +62,10 @@ import { extractErrorMessage } from "@/lib/core";
 import { Label } from "@/components/ui/label";
 import { DataTable } from "@/components/ui/data-table";
 import { getColumns } from "./columns";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 export default function DepartmentsPage() {
-  const { toast } = useToast();
-
+  const queryClient = useQueryClient();
   // Custom Hooks for data fetching and mutations
   const {
     departments,
@@ -79,10 +78,11 @@ export default function DepartmentsPage() {
   const deleteDeptMutation = useDeleteDepartment();
 
   // Fetching related data
-  const { data: users = [], isLoading: isUsersLoading } = useQuery<User[], Error>({
+  const { data: usersData = { items: [] }, isLoading: isUsersLoading } = useQuery({
     queryKey: ["users"],
-    queryFn: () => usersService.getUsers(),
+    queryFn: () => usersService.getUsersWithPagination(),
   });
+  const users = usersData.items;
 
   const { data: positions = [], isLoading: isPositionsLoading } = useQuery<
     Position[],
@@ -134,7 +134,7 @@ export default function DepartmentsPage() {
         (dept.description || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
         (dept.managerName || "").toLowerCase().includes(searchTerm.toLowerCase());
       const statusIdToFilter = userStatuses.find((s) => s.name === statusFilter)?.id;
-      const matchesStatus = statusFilter === "all" || dept.statusId === statusIdToFilter;
+      const matchesStatus = statusFilter === "all" || dept.status.id === statusIdToFilter;
       return matchesSearch && matchesStatus;
     });
   }, [departments, searchTerm, statusFilter, userStatuses]);
@@ -165,17 +165,14 @@ export default function DepartmentsPage() {
     isEditing: boolean,
     deptId?: string
   ) => {
-    try {
-      if (isEditing && deptId) {
-        await updateDeptMutation.mutateAsync({ id: deptId, payload });
-      } else {
-        await createDeptMutation.mutateAsync(payload as CreateDepartmentPayload);
+    const mutation = isEditing ? updateDeptMutation : createDeptMutation;
+    const mutationPayload = isEditing ? { id: deptId!, payload } : payload;
+  
+    await mutation.mutateAsync(mutationPayload as any, {
+      onSuccess: () => {
+        setIsFormOpen(false);
       }
-      setIsFormOpen(false); // Close dialog on success
-    } catch (error) {
-      // Error is already handled by the mutation hook's toast
-      console.error("Save department failed:", error);
-    }
+    });
   };
 
   const handleDeleteDepartmentSubmit = () => {
@@ -198,12 +195,12 @@ export default function DepartmentsPage() {
         updateDeptMutation.mutate({
           id: dept.departmentId,
           payload: {
-            name: originalDept.name,
-            code: originalDept.code,
-            description: originalDept.description,
-            statusId: String(originalDept.statusId),
-            managerId: originalDept.managerId,
-            parentId: dept.parentId || null,
+            DepartmentName: originalDept.name,
+            DepartmentCode: originalDept.code,
+            Description: originalDept.description,
+            StatusId: originalDept.status.id,
+            ManagerId: originalDept.managerId,
+            ParentId: dept.parentId ? parseInt(dept.parentId) : null,
           },
         });
       }
@@ -252,7 +249,7 @@ export default function DepartmentsPage() {
 
     const parent = departments.find((d) => d.departmentId === selectedDepartment.parentId);
     const children = departments.filter((d) => d.parentId === selectedDepartment.departmentId);
-    const status = userStatuses.find((s) => s.id === selectedDepartment.statusId);
+    const status = userStatuses.find((s) => s.id === selectedDepartment.status.id);
 
     return (
       <>

@@ -51,9 +51,14 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
-import type { Course, CourseSearchParams } from "@/lib/types/course.types";
+import type { Course } from "@/lib/types/course.types";
+import type { QueryParams } from "@/lib/core/types";
 import NextImage from "next/image";
-import { useCourses, useUpdateCourse, useDeleteCourse } from "@/hooks/use-courses";
+import {
+  useCourses,
+  useUpdateCourse,
+  useDeleteCourse,
+} from "@/hooks/use-courses";
 import { useDepartments } from "@/hooks/use-departments";
 import { usePositions } from "@/hooks/use-positions";
 import { useCourseStatuses } from "@/hooks/use-statuses";
@@ -64,7 +69,6 @@ import { getColumns } from "./columns";
 import { useDebounce } from "@/hooks/use-debounce";
 import { useError } from "@/hooks/use-error";
 import type { PaginationState } from "@tanstack/react-table";
-import type { PaginationParams } from "@/lib/core";
 
 interface CourseFilters {
   keyword: string;
@@ -92,22 +96,22 @@ export default function CoursesPage() {
 
   const debouncedFilters = useDebounce(filters, 500);
 
-  const apiParams: CourseSearchParams & PaginationParams = useMemo(() => {
-    const params: CourseSearchParams & PaginationParams = {
-        page: pagination.pageIndex + 1,
-        limit: pagination.pageSize,
+  const apiParams: QueryParams = useMemo(() => {
+    const params: QueryParams = {
+      Page: pagination.pageIndex + 1,
+      Limit: pagination.pageSize,
     };
     if (debouncedFilters.keyword) {
       params.keyword = debouncedFilters.keyword;
     }
     if (debouncedFilters.statusId !== "all") {
-      params.StatusIds = debouncedFilters.statusId;
+      params.statusIds = debouncedFilters.statusId;
     }
     if (debouncedFilters.departmentId !== "all") {
-      params.DepartmentIds = debouncedFilters.departmentId;
+      params.departmentIds = debouncedFilters.departmentId;
     }
     if (debouncedFilters.levelId !== "all") {
-      params.PositionIds = debouncedFilters.levelId;
+      params.positionIds = debouncedFilters.levelId;
     }
     return params;
   }, [debouncedFilters, pagination]);
@@ -125,12 +129,15 @@ export default function CoursesPage() {
     error: statusesError,
   } = useCourseStatuses();
 
-  const { departments, isLoading: isLoadingDepts } = useDepartments();
+  const { departments: allDepartments, isLoading: isLoadingDepts } = useDepartments();
   const { positions, loading: isLoadingPositions } = usePositions();
 
   const isLoading =
-    isLoadingCourses || isLoadingStatuses || isLoadingDepts || isLoadingPositions;
-  
+    isLoadingCourses ||
+    isLoadingStatuses ||
+    isLoadingDepts ||
+    isLoadingPositions;
+
   const pageCount = paginationInfo?.totalPages ?? 0;
 
   const updateCourseMutation = useUpdateCourse();
@@ -138,29 +145,33 @@ export default function CoursesPage() {
 
   const [deletingCourse, setDeletingCourse] = useState<Course | null>(null);
   const [archivingCourse, setArchivingCourse] = useState<Course | null>(null);
-  
+
   const departmentOptions = useMemo(() => {
-    if (!departments) return [];
-    return departments.map((d) => ({
-      value: String(d.departmentId),
-      label: d.name || "N/A",
-    }));
-  }, [departments]);
+    if (!allDepartments) return [];
+    return allDepartments
+      .filter(d => d.name && d.name !== "N/A")
+      .map((d) => ({
+        value: String(d.departmentId),
+        label: d.name,
+      }));
+  }, [allDepartments]);
 
   const levelOptions = useMemo(() => {
     if (!positions) return [];
-    return positions.map((p) => ({
-      value: String(p.positionId),
-      label: p.positionName,
-    }));
+    return positions
+      .filter(p => p.positionName && p.positionName !== "N/A")
+      .map((p) => ({
+        value: String(p.positionId),
+        label: p.positionName,
+      }));
   }, [positions]);
 
   const canManageCourses =
     currentUser?.role === "ADMIN" || currentUser?.role === "HR";
 
   useEffect(() => {
-    setPagination(p => ({ ...p, pageIndex: 0 }));
-  }, [filters, viewMode]);
+    setPagination((p) => ({ ...p, pageIndex: 0 }));
+  }, [filters, viewMode, pagination.pageSize]);
 
   const handleOpenAddDialog = () => {
     router.push("/admin/courses/edit/new");
@@ -224,10 +235,15 @@ export default function CoursesPage() {
         setArchivingCourse,
         setDeletingCourse,
         canManageCourses,
-        departments || [],
+        allDepartments || [],
         positions || []
       ),
-    [canManageCourses, departments, positions, handleEditCourse, handleDuplicateCourse]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [
+      canManageCourses,
+      allDepartments,
+      positions,
+    ]
   );
 
   if (statusesError) {
@@ -358,7 +374,7 @@ export default function CoursesPage() {
             </div>
           </div>
 
-          {isLoading ? (
+          {isLoading && courses.length === 0 ? (
             <div className="flex h-60 w-full items-center justify-center">
               <Loader2 className="h-10 w-10 animate-spin text-primary" />
               <p className="ml-3 text-muted-foreground">
@@ -515,53 +531,67 @@ export default function CoursesPage() {
                 pageCount > 1 && (
                   <div className="flex items-center justify-between pt-6">
                     <div className="flex-1 text-sm text-muted-foreground">
-                      Hiển thị {courses.length} trên {paginationInfo?.totalItems ?? 0}{" "}
-                      khóa học.
+                      Hiển thị {courses.length} trên{" "}
+                      {paginationInfo?.totalItems ?? 0} khóa học.
                     </div>
                     <div className="flex items-center space-x-6 lg:space-x-8">
-                       <div className="flex items-center space-x-2">
-                         <p className="text-sm font-medium">Số mục mỗi trang</p>
-                         <Select
-                           value={`${pagination.pageSize}`}
-                           onValueChange={(value) => {
-                             setPagination(p => ({...p, pageSize: Number(value), pageIndex: 0 }));
-                           }}
-                         >
-                           <SelectTrigger className="h-8 w-[70px]">
-                             <SelectValue placeholder={pagination.pageSize} />
-                           </SelectTrigger>
-                           <SelectContent side="top">
-                             {[10, 20, 30, 40, 50].map((pageSize) => (
-                               <SelectItem key={pageSize} value={`${pageSize}`}>
-                                 {pageSize}
-                               </SelectItem>
-                             ))}
-                           </SelectContent>
-                         </Select>
-                       </div>
-                       <div className="flex w-[100px] items-center justify-center text-sm font-medium">
-                         Trang {pagination.pageIndex + 1} của {pageCount}
-                       </div>
-                       <div className="flex items-center space-x-2">
-                         <Button
-                           variant="outline"
-                           className="h-8 w-8 p-0"
-                           onClick={() => setPagination(p => ({...p, pageIndex: p.pageIndex - 1}))}
-                           disabled={pagination.pageIndex === 0}
-                         >
-                           <span className="sr-only">Go to previous page</span>
-                           <ChevronLeft className="h-4 w-4" />
-                         </Button>
-                         <Button
-                           variant="outline"
-                           className="h-8 w-8 p-0"
-                           onClick={() => setPagination(p => ({...p, pageIndex: p.pageIndex + 1}))}
-                           disabled={pagination.pageIndex + 1 >= pageCount}
-                         >
-                           <span className="sr-only">Go to next page</span>
-                           <ChevronRight className="h-4 w-4" />
-                         </Button>
-                       </div>
+                      <div className="flex items-center space-x-2">
+                        <p className="text-sm font-medium">Số mục mỗi trang</p>
+                        <Select
+                          value={`${pagination.pageSize}`}
+                          onValueChange={(value) => {
+                            setPagination((p) => ({
+                              ...p,
+                              pageSize: Number(value),
+                              pageIndex: 0,
+                            }));
+                          }}
+                        >
+                          <SelectTrigger className="h-8 w-[70px]">
+                            <SelectValue placeholder={pagination.pageSize} />
+                          </SelectTrigger>
+                          <SelectContent side="top">
+                            {[10, 20, 30, 40, 50].map((pageSize) => (
+                              <SelectItem key={pageSize} value={`${pageSize}`}>
+                                {pageSize}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="flex w-[100px] items-center justify-center text-sm font-medium">
+                        Trang {pagination.pageIndex + 1} của {pageCount}
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Button
+                          variant="outline"
+                          className="h-8 w-8 p-0"
+                          onClick={() =>
+                            setPagination((p) => ({
+                              ...p,
+                              pageIndex: p.pageIndex - 1,
+                            }))
+                          }
+                          disabled={pagination.pageIndex === 0}
+                        >
+                          <span className="sr-only">Go to previous page</span>
+                          <ChevronLeft className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          className="h-8 w-8 p-0"
+                          onClick={() =>
+                            setPagination((p) => ({
+                              ...p,
+                              pageIndex: p.pageIndex + 1,
+                            }))
+                          }
+                          disabled={pagination.pageIndex + 1 >= pageCount}
+                        >
+                          <span className="sr-only">Go to next page</span>
+                          <ChevronRight className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 )
@@ -571,82 +601,80 @@ export default function CoursesPage() {
         </CardContent>
       </Card>
 
-      {archivingCourse && (
-        <Dialog
-          open={!!archivingCourse}
-          onOpenChange={() => setArchivingCourse(null)}
-        >
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Xác nhận lưu trữ</DialogTitle>
-              <DialogDescription>
-                Bạn có chắc chắn muốn lưu trữ khóa học &quot;
-                {archivingCourse.title}&quot;?
-              </DialogDescription>
-            </DialogHeader>
-            <DialogFooter className="mt-4">
-              <Button
-                variant="outline"
-                onClick={() => setArchivingCourse(null)}
-                disabled={updateCourseMutation.isPending}
-              >
-                Hủy
-              </Button>
-              <Button
-                onClick={handleArchiveCourse}
-                disabled={updateCourseMutation.isPending}
-              >
-                Xác nhận
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      )}
+      <Dialog
+        open={!!archivingCourse}
+        onOpenChange={() => setArchivingCourse(null)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Xác nhận lưu trữ</DialogTitle>
+            <DialogDescription>
+              Bạn có chắc chắn muốn lưu trữ khóa học &quot;
+              {archivingCourse?.title}&quot;? Hành động này sẽ chuyển trạng thái khóa học thành 'Hủy'.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="mt-4">
+            <Button
+              variant="outline"
+              onClick={() => setArchivingCourse(null)}
+              disabled={updateCourseMutation.isPending}
+            >
+              Hủy bỏ
+            </Button>
+            <Button
+              onClick={handleArchiveCourse}
+              disabled={updateCourseMutation.isPending}
+            >
+              {updateCourseMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Xác nhận
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-      {deletingCourse && (
-        <Dialog
-          open={!!deletingCourse}
-          onOpenChange={() => setDeletingCourse(null)}
-        >
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Xác nhận xóa</DialogTitle>
-              <DialogDescription>
-                <span>
-                  Bạn có chắc chắn muốn xóa khóa học &quot;
-                  {deletingCourse.title}
-                  &quot;? Hành động này không thể hoàn tác.
-                </span>
-                {!canDeleteCourse(deletingCourse) && (
-                  <div className="mt-2 flex items-center text-destructive">
-                    <AlertCircle className="h-4 w-4 mr-2" />
-                    Không thể xóa khóa học đã xuất bản hoặc đã bắt đầu đăng ký.
-                  </div>
-                )}
-              </DialogDescription>
-            </DialogHeader>
-            <DialogFooter className="mt-4">
-              <Button
-                variant="outline"
-                onClick={() => setDeletingCourse(null)}
-                disabled={deleteCourseMutation.isPending}
-              >
-                Hủy
-              </Button>
-              <Button
-                variant="destructive"
-                onClick={handleDeleteCourse}
-                disabled={
-                  !canDeleteCourse(deletingCourse) ||
-                  deleteCourseMutation.isPending
-                }
-              >
-                Xác nhận xóa
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      )}
+      <Dialog
+        open={!!deletingCourse}
+        onOpenChange={() => setDeletingCourse(null)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Xác nhận xóa</DialogTitle>
+            <DialogDescription>
+              <span>
+                Bạn có chắc chắn muốn xóa vĩnh viễn khóa học &quot;
+                {deletingCourse?.title}
+                &quot;? Hành động này không thể hoàn tác.
+              </span>
+              {!canDeleteCourse(deletingCourse) && (
+                <div className="mt-2 flex items-center text-destructive">
+                  <AlertCircle className="h-4 w-4 mr-2" />
+                  Không thể xóa khóa học đã xuất bản hoặc đã bắt đầu đăng ký.
+                </div>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="mt-4">
+            <Button
+              variant="outline"
+              onClick={() => setDeletingCourse(null)}
+              disabled={deleteCourseMutation.isPending}
+            >
+              Hủy bỏ
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteCourse}
+              disabled={
+                !canDeleteCourse(deletingCourse) ||
+                deleteCourseMutation.isPending
+              }
+            >
+              {deleteCourseMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Xác nhận xóa
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

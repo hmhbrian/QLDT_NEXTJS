@@ -32,14 +32,16 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/hooks/useAuth";
 import { useError } from "@/hooks/use-error";
 import { useDebounce } from "@/hooks/use-debounce";
-import type {
+import {
   User,
   Role,
   CreateUserRequest,
-  RegisterDTO,
+  UpdateUserRequest,
   Position,
+  ResetPasswordRequest,
+  UserApiResponse,
 } from "@/lib/types/user.types";
-import type { DepartmentInfo } from "@/lib/types/department.types";
+import { DepartmentInfo } from "@/lib/types/department.types";
 import { useToast } from "@/components/ui/use-toast";
 import { DataTable } from "@/components/ui/data-table";
 import { getColumns } from "./columns";
@@ -47,10 +49,10 @@ import { cn } from "@/lib/utils";
 import { extractErrorMessage } from "@/lib/core";
 import { generateEmployeeId } from "@/lib/utils/code-generator";
 import {
-  usersService,
   rolesService,
   departmentsService,
   positionsService,
+  usersService,
 } from "@/lib/services";
 import {
   useUsers,
@@ -71,12 +73,16 @@ import {
 } from "lucide-react";
 import { NO_DEPARTMENT_VALUE } from "@/lib/config/constants";
 import type { PaginationState } from "@tanstack/react-table";
+import { mapUserApiToUi } from "@/lib/mappers/user.mapper";
 
-// Define a specific type for the form state to avoid conflicts
-// This resolves the 'is not assignable to type never' error
-type UserFormState = Omit<Partial<RegisterDTO>, "statusId"> & {
-  statusId?: string;
-};
+type UserFormState = Partial<
+  Omit<User, "department" | "position"> & {
+    password?: string;
+    confirmPassword?: string;
+    department?: string; // Storing as ID
+    position?: string; // Storing as ID
+  }
+>;
 
 export default function UsersPage() {
   const { user: currentUser } = useAuth();
@@ -104,48 +110,34 @@ export default function UsersPage() {
     fullName: "",
     idCard: "",
     role: "HOCVIEN",
-    numberPhone: "",
+    phoneNumber: "",
     email: "",
     password: "",
     confirmPassword: "",
     department: "",
     position: "",
-    level: "",
-    statusId: "",
+    userStatus: { id: 0, name: "" },
     employeeId: "",
   };
   const [newUser, setNewUser] = useState<UserFormState>(initialNewUserState);
   const [errors, setErrors] = useState<
-    Partial<Record<keyof RegisterDTO, string>>
+    Partial<Record<keyof CreateUserRequest, string>>
   >({});
 
   // Data Fetching with TanStack Query
   const {
-    data: paginatedUsers,
+    users,
+    paginationInfo,
     isLoading: isUsersLoading,
     isError: isUsersError,
     error: usersError,
-  } = useQuery({
-    queryKey: [
-      "users",
-      debouncedSearchTerm,
-      pagination.pageIndex,
-      pagination.pageSize,
-    ],
-    queryFn: () =>
-      usersService.getUsersWithPagination({
-        search: debouncedSearchTerm,
-        page: pagination.pageIndex + 1,
-        limit: pagination.pageSize,
-      }),
-    placeholderData: (previousData) => previousData,
+  } = useUsers({
+    keyword: debouncedSearchTerm,
+    page: pagination.pageIndex + 1,
+    limit: pagination.pageSize,
   });
 
-  const users = useMemo(() => paginatedUsers?.items ?? [], [paginatedUsers]);
-  const pageCount = useMemo(
-    () => paginatedUsers?.pagination?.totalPages ?? 0,
-    [paginatedUsers]
-  );
+  const pageCount = paginationInfo?.totalPages ?? 0;
 
   const { data: roles = [], isLoading: isRolesLoading } = useQuery<
     any[],
@@ -203,32 +195,19 @@ export default function UsersPage() {
   const handleOpenEditDialog = useCallback((userToEdit: User) => {
     setEditingUser(userToEdit);
 
-    let departmentValue = "";
-    if (userToEdit.department) {
-      if (typeof userToEdit.department === "object") {
-        departmentValue = String(userToEdit.department.departmentId);
-      } else {
-        departmentValue = userToEdit.department;
-      }
-    }
-
     setNewUser({
       fullName: userToEdit.fullName || "",
       idCard: userToEdit.idCard || "",
       role: userToEdit.role || "HOCVIEN",
-      numberPhone: userToEdit.phoneNumber || "",
+      phoneNumber: userToEdit.phoneNumber || "",
       email: userToEdit.email || "",
       password: "",
       confirmPassword: "",
-      department: departmentValue,
-      position:
-        userToEdit.position && typeof userToEdit.position === "object"
-          ? String((userToEdit.position as Position).positionId)
-          : "",
-      level: userToEdit.level || "",
-      statusId: userToEdit.userStatus?.id
-        ? String(userToEdit.userStatus.id)
+      department: userToEdit.department?.departmentId,
+      position: userToEdit.position
+        ? String(userToEdit.position.positionId)
         : "",
+      userStatus: userToEdit.userStatus,
       employeeId: userToEdit.employeeId || (userToEdit as any).code || "",
     });
     setErrors({});
@@ -237,26 +216,26 @@ export default function UsersPage() {
 
   const validateForm = (isEdit: boolean) => {
     const data = newUser;
-    const newErrors: Partial<Record<keyof RegisterDTO, string>> = {};
+    const newErrors: Partial<Record<keyof CreateUserRequest, string>> = {};
 
-    if (!data.fullName) newErrors.fullName = "Họ và tên là bắt buộc!";
-    if (!data.idCard) newErrors.idCard = "CMND/CCCD là bắt buộc!";
-    if (!data.email) newErrors.email = "Email là bắt buộc!";
+    if (!data.fullName) newErrors.FullName = "Họ và tên là bắt buộc!";
+    if (!data.idCard) newErrors.IdCard = "CMND/CCCD là bắt buộc!";
+    if (!data.email) newErrors.Email = "Email là bắt buộc!";
     else if (!/^[a-zA-Z0-9._%+-]+@becamex\.com$/.test(data.email)) {
-      newErrors.email = "Email phải có domain @becamex.com.";
+      newErrors.Email = "Email phải có domain @becamex.com.";
     }
 
     if (!isEdit) {
-      if (!data.password) newErrors.password = "Mật khẩu là bắt buộc!";
+      if (!data.password) newErrors.Password = "Mật khẩu là bắt buộc!";
       else if (data.password.length < 6)
-        newErrors.password = "Mật khẩu phải có ít nhất 6 ký tự.";
+        newErrors.Password = "Mật khẩu phải có ít nhất 6 ký tự.";
       if (data.confirmPassword !== data.password)
-        newErrors.confirmPassword = "Mật khẩu xác nhận không khớp.";
+        newErrors.ConfirmPassword = "Mật khẩu xác nhận không khớp.";
     } else if (data.password && data.password.trim()) {
       if (data.password.length < 6)
-        newErrors.password = "Mật khẩu phải có ít nhất 6 ký tự.";
+        newErrors.Password = "Mật khẩu phải có ít nhất 6 ký tự.";
       if (data.confirmPassword !== data.password)
-        newErrors.confirmPassword = "Mật khẩu xác nhận không khớp.";
+        newErrors.ConfirmPassword = "Mật khẩu xác nhận không khớp.";
     }
 
     setErrors(newErrors);
@@ -285,11 +264,11 @@ export default function UsersPage() {
     try {
       if (isEdit && editingUser) {
         // Build the update payload in one go
-        const updatePayload: Partial<CreateUserRequest> = {
+        const updatePayload: UpdateUserRequest = {
           FullName: newUser.fullName,
           Email: newUser.email,
           IdCard: newUser.idCard,
-          NumberPhone: newUser.numberPhone,
+          NumberPhone: newUser.phoneNumber,
           DepartmentId: newUser.department
             ? parseInt(newUser.department, 10)
             : undefined,
@@ -297,9 +276,7 @@ export default function UsersPage() {
           PositionId: newUser.position
             ? parseInt(newUser.position, 10)
             : undefined,
-          StatusId: newUser.statusId
-            ? parseInt(newUser.statusId, 10)
-            : undefined,
+          StatusId: newUser.userStatus?.id,
           Code: newUser.employeeId || undefined,
         };
 
@@ -311,10 +288,11 @@ export default function UsersPage() {
 
         // If password is provided, call resetPassword separately
         if (newUser.password && newUser.password.trim()) {
-          await usersService.resetPassword(editingUser.id, {
-            newPassword: newUser.password,
-            confirmNewPassword: newUser.confirmPassword,
-          });
+          const resetPayload: ResetPasswordRequest = {
+            NewPassword: newUser.password,
+            ConfirmNewPassword: newUser.confirmPassword!,
+          };
+          await usersService.resetPassword(editingUser.id, resetPayload);
         }
       } else {
         // Create new user
@@ -325,16 +303,14 @@ export default function UsersPage() {
           ConfirmPassword: newUser.confirmPassword!,
           RoleId: selectedRole.id,
           IdCard: newUser.idCard,
-          NumberPhone: newUser.numberPhone,
+          NumberPhone: newUser.phoneNumber,
           PositionId: newUser.position
             ? parseInt(newUser.position, 10)
             : undefined,
           DepartmentId: newUser.department
             ? parseInt(newUser.department, 10)
             : undefined,
-          StatusId: newUser.statusId
-            ? parseInt(newUser.statusId, 10)
-            : undefined,
+          StatusId: newUser.userStatus?.id,
           Code: newUser.employeeId || undefined,
         };
         await createUserMutation.mutateAsync(createUserPayload);
@@ -375,11 +351,8 @@ export default function UsersPage() {
     [currentUser, handleOpenEditDialog]
   );
 
-  const renderDepartment = (
-    department: string | DepartmentInfo | undefined
-  ) => {
+  const renderDepartment = (department?: DepartmentInfo) => {
     if (!department) return "Chưa có phòng ban";
-    if (typeof department === "string") return department;
     return department.name || "Không xác định";
   };
 
@@ -439,7 +412,7 @@ export default function UsersPage() {
           ) : (
             <DataTable
               columns={columns}
-              data={sortedUsers}
+              data={users}
               isLoading={isUsersLoading}
               pageCount={pageCount}
               pagination={pagination}
@@ -517,37 +490,14 @@ export default function UsersPage() {
                 </div>
               </TabsContent>
               <TabsContent value="courses">
-                <div className="space-y-4 pt-4">
-                  {selectedUser.completedCourses &&
-                  selectedUser.completedCourses.length > 0 ? (
-                    selectedUser.completedCourses.map((course) => (
-                      <div
-                        key={course.courseId}
-                        className="p-4 border rounded-lg"
-                      >
-                        <h4 className="font-medium">{course.courseName}</h4>
-                        <p className="text-sm text-muted-foreground mt-1">
-                          Hoàn thành:{" "}
-                          {new Date(course.completionDate).toLocaleDateString(
-                            "vi-VN"
-                          )}
-                        </p>
-                        <p className="text-sm mt-2">
-                          <strong>Điểm số:</strong> {course.grade}/100
-                        </p>
-                        {course.feedback && (
-                          <p className="text-sm mt-2">
-                            <strong>Nhận xét:</strong> {course.feedback}
-                          </p>
-                        )}
-                      </div>
-                    ))
-                  ) : (
-                    <p className="text-center text-muted-foreground py-4">
-                      Chưa có khóa học nào được hoàn thành
-                    </p>
-                  )}
-                </div>
+                <p className="text-center text-muted-foreground py-4">
+                  Chức năng đang được phát triển.
+                </p>
+              </TabsContent>
+              <TabsContent value="certificates">
+                <p className="text-center text-muted-foreground py-4">
+                  Chức năng đang được phát triển.
+                </p>
               </TabsContent>
             </Tabs>
           )}
@@ -570,10 +520,10 @@ export default function UsersPage() {
                 onChange={(e) =>
                   setNewUser({ ...newUser, fullName: e.target.value })
                 }
-                className={errors.fullName ? "border-destructive" : ""}
+                className={errors.FullName ? "border-destructive" : ""}
               />
-              {errors.fullName && (
-                <p className="text-sm text-destructive">{errors.fullName}</p>
+              {errors.FullName && (
+                <p className="text-sm text-destructive">{errors.FullName}</p>
               )}
             </div>
             <div className="grid gap-2">
@@ -584,10 +534,10 @@ export default function UsersPage() {
                 onChange={(e) =>
                   setNewUser({ ...newUser, idCard: e.target.value })
                 }
-                className={errors.idCard ? "border-destructive" : ""}
+                className={errors.IdCard ? "border-destructive" : ""}
               />
-              {errors.idCard && (
-                <p className="text-sm text-destructive">{errors.idCard}</p>
+              {errors.IdCard && (
+                <p className="text-sm text-destructive">{errors.IdCard}</p>
               )}
             </div>
             <div className="grid gap-2">
@@ -626,19 +576,19 @@ export default function UsersPage() {
                 onChange={(e) =>
                   setNewUser({ ...newUser, email: e.target.value })
                 }
-                className={errors.email ? "border-destructive" : ""}
+                className={errors.Email ? "border-destructive" : ""}
               />
-              {errors.email && (
-                <p className="text-sm text-destructive">{errors.email}</p>
+              {errors.Email && (
+                <p className="text-sm text-destructive">{errors.Email}</p>
               )}
             </div>
             <div className="grid gap-2">
               <Label htmlFor="numberPhone">Số điện thoại</Label>
               <Input
                 id="numberPhone"
-                value={newUser.numberPhone}
+                value={newUser.phoneNumber}
                 onChange={(e) =>
-                  setNewUser({ ...newUser, numberPhone: e.target.value })
+                  setNewUser({ ...newUser, phoneNumber: e.target.value })
                 }
               />
             </div>
@@ -750,10 +700,19 @@ export default function UsersPage() {
             <div className="grid gap-2">
               <Label htmlFor="status">Trạng thái</Label>
               <Select
-                value={newUser.statusId}
-                onValueChange={(value: string) =>
-                  setNewUser({ ...newUser, statusId: value })
+                value={
+                  newUser.userStatus?.id
+                    ? String(newUser.userStatus.id)
+                    : ""
                 }
+                onValueChange={(value: string) => {
+                  const selectedStatus = userStatuses.find(
+                    (s) => String(s.id) === value
+                  );
+                  if (selectedStatus) {
+                    setNewUser({ ...newUser, userStatus: selectedStatus });
+                  }
+                }}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Chọn trạng thái" />
@@ -791,7 +750,7 @@ export default function UsersPage() {
                   onChange={(e) =>
                     setNewUser({ ...newUser, password: e.target.value })
                   }
-                  className={errors.password ? "border-destructive" : ""}
+                  className={errors.Password ? "border-destructive" : ""}
                 />
                 <Button
                   type="button"
@@ -807,8 +766,8 @@ export default function UsersPage() {
                   )}
                 </Button>
               </div>
-              {errors.password && (
-                <p className="text-sm text-destructive">{errors.password}</p>
+              {errors.Password && (
+                <p className="text-sm text-destructive">{errors.Password}</p>
               )}
             </div>
             <div className="grid gap-2">
@@ -823,7 +782,7 @@ export default function UsersPage() {
                   onChange={(e) =>
                     setNewUser({ ...newUser, confirmPassword: e.target.value })
                   }
-                  className={errors.confirmPassword ? "border-destructive" : ""}
+                  className={errors.ConfirmPassword ? "border-destructive" : ""}
                 />
                 <Button
                   type="button"
@@ -839,9 +798,9 @@ export default function UsersPage() {
                   )}
                 </Button>
               </div>
-              {errors.confirmPassword && (
+              {errors.ConfirmPassword && (
                 <p className="text-sm text-destructive">
-                  {errors.confirmPassword}
+                  {errors.ConfirmPassword}
                 </p>
               )}
             </div>
