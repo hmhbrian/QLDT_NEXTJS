@@ -23,14 +23,10 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/use-toast";
-import type {
-  DepartmentInfo,
-  CreateDepartmentPayload,
-  UpdateDepartmentPayload,
-} from "@/lib/types/department.types";
+import type { DepartmentInfo, CreateDepartmentPayload, UpdateDepartmentPayload } from "@/lib/types/department.types";
 import type { User } from "@/lib/types/user.types";
 import type { Status } from "@/lib/types/status.types";
-import { NO_DEPARTMENT_VALUE } from "@/lib/constants";
+import { NO_DEPARTMENT_VALUE } from "@/lib/config/constants";
 import { generateDepartmentCode } from "@/lib/utils/code-generator";
 
 interface DepartmentFormDialogProps {
@@ -50,12 +46,12 @@ interface DepartmentFormDialogProps {
 }
 
 const initialFormData: CreateDepartmentPayload = {
-  name: "",
-  code: "",
-  description: "",
-  managerId: "",
-  statusId: "2", // Default to "Đang hoạt động"
-  parentId: null,
+  DepartmentName: "",
+  DepartmentCode: "",
+  Description: "",
+  ManagerId: "",
+  StatusId: 2, // Default to "Đang hoạt động"
+  ParentId: null,
 };
 
 export function DepartmentFormDialog({
@@ -71,7 +67,7 @@ export function DepartmentFormDialog({
 }: DepartmentFormDialogProps) {
   const { toast } = useToast();
   const [formData, setFormData] =
-    useState<CreateDepartmentPayload>(initialFormData);
+    useState<CreateDepartmentPayload | UpdateDepartmentPayload>(initialFormData);
 
   const departmentStatuses = useMemo(
     () =>
@@ -83,48 +79,21 @@ export function DepartmentFormDialog({
 
   useEffect(() => {
     if (isOpen && departmentToEdit) {
-      const statusValue = departmentToEdit.status;
-      let foundStatusId = "2"; // Default to "Đang hoạt động"
-
-      if (statusValue && userStatuses.length > 0) {
-        const isId = /^\d+$/.test(statusValue);
-        if (isId) {
-          const statusId = Number(statusValue);
-          if (userStatuses.some((s) => s.id === statusId)) {
-            foundStatusId = String(statusId);
-          }
-        } else {
-          const nameMap: { [key: string]: string } = {
-            active: "Đang hoạt động",
-            ative: "Đang hoạt động",
-            inactive: "Không hoạt động",
-          };
-          const normalizedName =
-            nameMap[statusValue.toLowerCase()] || statusValue;
-          const foundStatus = userStatuses.find(
-            (s) => s.name.toLowerCase() === normalizedName.toLowerCase()
-          );
-          if (foundStatus) {
-            foundStatusId = String(foundStatus.id);
-          }
-        }
-      }
-
       setFormData({
-        name: departmentToEdit.name,
-        code: departmentToEdit.code,
-        description: departmentToEdit.description,
-        managerId: departmentToEdit.managerId || "",
-        statusId: foundStatusId,
-        parentId: departmentToEdit.parentId,
+        DepartmentName: departmentToEdit.name,
+        DepartmentCode: departmentToEdit.code,
+        Description: departmentToEdit.description,
+        ManagerId: departmentToEdit.managerId || "",
+        StatusId: departmentToEdit.status?.id || 2,
+        ParentId: departmentToEdit.parentId ? parseInt(departmentToEdit.parentId, 10) : null,
       });
     } else {
       setFormData(initialFormData);
     }
-  }, [departmentToEdit, isOpen, userStatuses]);
+  }, [departmentToEdit, isOpen]);
 
   const handleSubmit = () => {
-    if (!formData.name) {
+    if (!formData.DepartmentName) {
       toast({
         title: "Lỗi",
         description: "Vui lòng điền đầy đủ Tên phòng ban.",
@@ -133,10 +102,9 @@ export function DepartmentFormDialog({
       return;
     }
 
-    // Tự động tạo mã phòng ban nếu chưa có
     const finalFormData = {
       ...formData,
-      code: formData.code || generateDepartmentCode(),
+      DepartmentCode: formData.DepartmentCode || generateDepartmentCode(),
     };
 
     onSave(finalFormData, !!departmentToEdit, departmentToEdit?.departmentId);
@@ -160,9 +128,9 @@ export function DepartmentFormDialog({
             <Label htmlFor="name">Tên phòng ban *</Label>
             <Input
               id="name"
-              value={formData.name}
+              value={formData.DepartmentName}
               onChange={(e) =>
-                setFormData({ ...formData, name: e.target.value })
+                setFormData({ ...formData, DepartmentName: e.target.value })
               }
             />
           </div>
@@ -171,9 +139,9 @@ export function DepartmentFormDialog({
             <div className="flex gap-2">
               <Input
                 id="code"
-                value={formData.code}
+                value={formData.DepartmentCode}
                 onChange={(e) =>
-                  setFormData({ ...formData, code: e.target.value })
+                  setFormData({ ...formData, DepartmentCode: e.target.value })
                 }
                 placeholder="VD: DEPT001"
               />
@@ -182,7 +150,7 @@ export function DepartmentFormDialog({
                 variant="outline"
                 size="sm"
                 onClick={() =>
-                  setFormData({ ...formData, code: generateDepartmentCode() })
+                  setFormData({ ...formData, DepartmentCode: generateDepartmentCode() })
                 }
                 className="whitespace-nowrap"
               >
@@ -197,20 +165,20 @@ export function DepartmentFormDialog({
             <Label htmlFor="description">Mô tả</Label>
             <Textarea
               id="description"
-              value={formData.description}
+              value={formData.Description}
               onChange={(e) =>
-                setFormData({ ...formData, description: e.target.value })
+                setFormData({ ...formData, Description: e.target.value })
               }
             />
           </div>
           <div className="grid gap-2">
             <Label htmlFor="managerId">Quản lý</Label>
             <Select
-              value={formData.managerId || ""}
+              value={formData.ManagerId || ""}
               onValueChange={(value) =>
                 setFormData({
                   ...formData,
-                  managerId: value === "none" ? "" : value,
+                  ManagerId: value === "none" ? "" : value,
                 })
               }
             >
@@ -240,11 +208,11 @@ export function DepartmentFormDialog({
           <div className="grid gap-2">
             <Label htmlFor="parentId">Phòng ban cha</Label>
             <Select
-              value={formData.parentId || NO_DEPARTMENT_VALUE}
+              value={formData.ParentId ? String(formData.ParentId) : NO_DEPARTMENT_VALUE}
               onValueChange={(value) =>
                 setFormData({
                   ...formData,
-                  parentId: value === NO_DEPARTMENT_VALUE ? null : value,
+                  ParentId: value === NO_DEPARTMENT_VALUE ? null : parseInt(value, 10),
                 })
               }
             >
@@ -273,11 +241,11 @@ export function DepartmentFormDialog({
           <div className="grid gap-2">
             <Label htmlFor="status">Trạng thái</Label>
             <Select
-              value={String(formData.statusId || "")}
+              value={String(formData.StatusId || "")}
               onValueChange={(value: string) =>
                 setFormData({
                   ...formData,
-                  statusId: value,
+                  StatusId: parseInt(value, 10),
                 })
               }
             >

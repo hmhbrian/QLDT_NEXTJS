@@ -1,18 +1,26 @@
-
 "use client";
 
 import { ColumnDef } from "@tanstack/react-table";
-import { ArrowUpDown } from "lucide-react";
+import { ArrowUpDown, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import type { Course } from "@/lib/types/course.types";
 import { isRegistrationOpen } from "@/lib/helpers";
+import { LoadingButton } from "@/components/ui/loading";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 export const getColumns = (
   currentUserId: string | undefined,
   handleEnroll: (courseId: string) => void,
-  handleViewDetails: (courseId: string) => void
+  handleViewDetails: (courseId: string) => void,
+  isEnrolling: (courseId: string) => boolean,
+  isCourseAccessible: (course: Course) => boolean
 ): ColumnDef<Course>[] => [
   {
     id: "select",
@@ -93,23 +101,59 @@ export const getColumns = (
     header: "Hành động",
     cell: ({ row }) => {
       const course = row.original;
+      const isEnrolled = course.userIds?.includes(currentUserId || "");
       const canEnroll =
         currentUserId &&
         course.enrollmentType === "optional" &&
-        !course.enrolledTrainees?.includes(currentUserId);
+        !isEnrolled &&
+        isRegistrationOpen(course.registrationDeadline);
 
-      return canEnroll && isRegistrationOpen(course.registrationDeadline) ? (
-        <Button size="sm" onClick={() => handleEnroll(course.id)}>
-          Đăng ký
-        </Button>
-      ) : (
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => handleViewDetails(course.id)}
-        >
-          Xem chi tiết
-        </Button>
+      const accessible = isCourseAccessible(course);
+
+      if (canEnroll) {
+        return (
+          <LoadingButton
+            size="sm"
+            onClick={() => handleEnroll(course.id)}
+            isLoading={isEnrolling(course.id)}
+          >
+            Đăng ký
+          </LoadingButton>
+        );
+      }
+
+      if (isEnrolled) {
+        return (
+          <Button
+            variant="default"
+            size="sm"
+            onClick={() => handleViewDetails(course.id)}
+          >
+            <Eye className="mr-2 h-4 w-4" /> Vào học
+          </Button>
+        );
+      }
+
+      return (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => accessible && handleViewDetails(course.id)}
+                disabled={!accessible}
+              >
+                Xem chi tiết
+              </Button>
+            </TooltipTrigger>
+            {!accessible && (
+              <TooltipContent>
+                <p>Khóa học này là nội bộ. Bạn không có quyền truy cập.</p>
+              </TooltipContent>
+            )}
+          </Tooltip>
+        </TooltipProvider>
       );
     },
   },

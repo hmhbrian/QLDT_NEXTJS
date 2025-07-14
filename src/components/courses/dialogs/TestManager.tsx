@@ -33,6 +33,7 @@ import {
   mapUiTestToCreatePayload,
   mapUiTestToUpdatePayload,
 } from "@/lib/mappers/test.mapper";
+import { extractErrorMessage } from "@/lib/core";
 
 interface TestManagerProps {
   courseId: string | null;
@@ -42,6 +43,8 @@ const initialTestState: Omit<Test, "id"> = {
   title: "",
   questions: [],
   passingScorePercentage: 70,
+  time: 0,
+  countQuestion: 0,
 };
 
 type DeletingItem = {
@@ -138,7 +141,7 @@ export function TestManager({ courseId }: TestManagerProps) {
         </div>
       ) : testsError ? (
         <p className="text-destructive text-sm">
-          Lỗi tải bài kiểm tra: {testsError.message}
+          Lỗi tải bài kiểm tra: {extractErrorMessage(testsError)}
         </p>
       ) : tests.length > 0 ? (
         <div className="space-y-2">

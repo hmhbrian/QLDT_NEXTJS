@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useRef, useMemo } from "react";
@@ -67,9 +68,7 @@ import {
   mapCourseUiToUpdatePayload,
 } from "@/lib/mappers/course.mapper";
 
-type CourseFormData = Course;
-
-const initialNewCourseState: CourseFormData = {
+const initialNewCourseState: Course = {
   id: "",
   title: "",
   courseCode: "",
@@ -92,7 +91,7 @@ const initialNewCourseState: CourseFormData = {
   enrollmentType: "optional",
   registrationStartDate: null,
   registrationDeadline: null,
-  enrolledTrainees: [],
+  userIds: [],
   isPublic: false,
   createdAt: new Date().toISOString(),
   modifiedAt: new Date().toISOString(),
@@ -120,13 +119,13 @@ export function CourseForm({ courseId }: { courseId?: string }) {
   const updateCourseMutation = useUpdateCourse();
 
   // --- State Management ---
-  const [formData, setFormData] = useState<CourseFormData>(
-    initialNewCourseState
-  );
+  const [formData, setFormData] = useState<Course>(initialNewCourseState);
   const [courseImagePreview, setCourseImagePreview] = useState<string | null>(
     initialNewCourseState.image
   );
-  const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null);
+  const [selectedImageFile, setSelectedImageFile] = useState<File | null>(
+    null
+  );
   const courseImageInputRef = useRef<HTMLInputElement>(null);
 
   const [isSelectingTrainees, setIsSelectingTrainees] = useState(false);
@@ -137,9 +136,9 @@ export function CourseForm({ courseId }: { courseId?: string }) {
   const debouncedTraineeSearch = useDebounce(traineeSearchTerm, 500);
 
   const { users: trainees } = useUsers({
-    role: "HOCVIEN",
-    search: debouncedTraineeSearch,
-    limit: 50, // Limit the number of fetched trainees
+    RoleName: "HOCVIEN",
+    keyword: debouncedTraineeSearch,
+    Limit: 50,
   });
 
   const isSubmitting =
@@ -165,22 +164,22 @@ export function CourseForm({ courseId }: { courseId?: string }) {
     if (courseToEdit && courseId) {
       setFormData(courseToEdit);
       setCourseImagePreview(courseToEdit.image);
-      setTempSelectedTraineeIds(courseToEdit.enrolledTrainees || []);
+      setTempSelectedTraineeIds(courseToEdit.userIds || []);
     } else if (sourceCourseForDuplication && !courseId) {
       const draftStatus = courseStatuses.find(
         (status) => status.name === "Lưu nháp"
       );
-      const duplicatedCourse: CourseFormData = {
+      const duplicatedCourse: Course = {
         ...sourceCourseForDuplication,
         id: crypto.randomUUID(),
         title: `${sourceCourseForDuplication.title} (Bản sao)`,
-        courseCode: `${sourceCourseForDuplication.courseCode}-COPY-${Date.now()
-          .toString()
-          .slice(-4)}`,
+        courseCode: `${
+          sourceCourseForDuplication.courseCode
+        }-COPY-${Date.now().toString().slice(-4)}`,
         status: "Lưu nháp",
         statusId: draftStatus?.id,
         isPublic: false,
-        enrolledTrainees: [],
+        userIds: [],
       };
       setFormData(duplicatedCourse);
       setCourseImagePreview(duplicatedCourse.image);
@@ -242,12 +241,12 @@ export function CourseForm({ courseId }: { courseId?: string }) {
   };
 
   const openTraineeSelectionDialog = () => {
-    setTempSelectedTraineeIds(formData.enrolledTrainees || []);
+    setTempSelectedTraineeIds(formData.userIds || []);
     setIsSelectingTrainees(true);
   };
 
   const handleSaveTraineeSelection = () => {
-    handleInputChange("enrolledTrainees", tempSelectedTraineeIds);
+    handleInputChange("userIds", tempSelectedTraineeIds);
     setIsSelectingTrainees(false);
   };
 
@@ -404,15 +403,14 @@ export function CourseForm({ courseId }: { courseId?: string }) {
                   <Label htmlFor="learningType">Hình thức học</Label>
                   <Select
                     value={formData.learningType}
-                    onValueChange={(v: "online") =>
-                      handleInputChange("learningType", v)
-                    }
+                    onValueChange={(v) => handleInputChange("learningType", v)}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Chọn hình thức" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="online">Trực tuyến</SelectItem>
+                      <SelectItem value="offline">Ngoại tuyến</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -724,9 +722,9 @@ export function CourseForm({ courseId }: { courseId?: string }) {
                     <div>
                       <Label>Học viên được chỉ định</Label>
                       <div className="mt-1 p-3 border rounded-md bg-muted/30 min-h-[60px]">
-                        {(formData.enrolledTrainees || []).length > 0 ? (
+                        {(formData.userIds || []).length > 0 ? (
                           <ul className="list-disc list-inside text-sm space-y-1">
-                            {(formData.enrolledTrainees || []).map((id) => (
+                            {(formData.userIds || []).map((id) => (
                               <li key={id}>
                                 {getTraineeNameById(id)} (ID: {id})
                               </li>

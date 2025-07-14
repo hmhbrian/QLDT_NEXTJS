@@ -1,3 +1,4 @@
+
 "use client";
 
 import {
@@ -17,60 +18,46 @@ import {
   Tooltip,
   Legend,
 } from "recharts";
-import { mockProgressData, mockCourseCompletion } from "@/lib/mock";
 
-export function ProgressCharts() {
+interface ProgressChartsProps {
+    data: { name: string; trainees: number, status: string }[];
+}
+
+
+export function ProgressCharts({ data }: ProgressChartsProps) {
   return (
-    <div className="grid gap-6 md:grid-cols-2">
-      <Card>
-        <CardHeader>
-          <CardTitle>Tiến độ Theo Tháng</CardTitle>
-          <CardDescription>
-            Số lượng học viên đăng ký và hoàn thành khóa học
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="h-[300px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={mockProgressData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" />
-                <YAxis />
-                <Tooltip />
-                <Legend />
-                <Bar dataKey="enrolled" name="Đăng ký" fill="#93c5fd" />
-                <Bar dataKey="completed" name="Hoàn thành" fill="#22c55e" />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Tỷ lệ Hoàn thành Theo Khóa học</CardTitle>
-          <CardDescription>
-            Phần trăm học viên hoàn thành từng khóa học
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="h-[300px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={mockCourseCompletion} layout="vertical">
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis type="number" domain={[0, 100]} />
-                <YAxis dataKey="name" type="category" width={150} />
-                <Tooltip />
-                <Bar
-                  dataKey="completion"
-                  name="Tỷ lệ hoàn thành"
-                  fill="#22c55e"
-                />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </CardContent>
-      </Card>
+    <div className="h-[400px]">
+      <ResponsiveContainer width="100%" height="100%">
+        <BarChart
+          data={data}
+          layout="vertical"
+          margin={{
+            top: 5,
+            right: 30,
+            left: 100,
+            bottom: 5,
+          }}
+        >
+          <CartesianGrid strokeDasharray="3 3" />
+          <XAxis type="number" />
+          <YAxis
+            dataKey="name"
+            type="category"
+            width={200}
+            tick={{ fontSize: 12 }}
+            tickLine={false}
+            axisLine={false}
+          />
+          <Tooltip
+            contentStyle={{
+              background: "hsl(var(--background))",
+              border: "1px solid hsl(var(--border))",
+            }}
+          />
+          <Legend />
+          <Bar dataKey="trainees" name="Số học viên" fill="hsl(var(--primary))" />
+        </BarChart>
+      </ResponsiveContainer>
     </div>
   );
 }

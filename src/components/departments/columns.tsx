@@ -12,14 +12,14 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { DepartmentInfo } from "@/lib/types/department.types";
-import type { Status } from "@/lib/types/status.types";
+import type { DepartmentInfo } from "@/lib/types/department.types";
 import {
   TooltipProvider,
   Tooltip,
   TooltipTrigger,
   TooltipContent,
 } from "@/components/ui/tooltip";
+import type { Status } from "@/lib/types/status.types";
 import { getStatusColor } from "@/lib/helpers";
 import { cn } from "@/lib/utils";
 

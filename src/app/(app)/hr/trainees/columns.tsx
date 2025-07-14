@@ -22,7 +22,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Checkbox } from "@/components/ui/checkbox";
 import type { User } from "@/lib/types/user.types";
 import type { DepartmentInfo } from "@/lib/types/department.types";
-import type { TraineeLevel } from "@/lib/types/course.types";
+import type { Position } from "@/lib/types/user.types";
 import { cn } from "@/lib/utils";
 import { getLevelBadgeColor, getStatusColor } from "@/lib/helpers";
 
@@ -72,7 +72,7 @@ export const getColumns = (
       <div className="flex items-center gap-3">
         <Avatar>
           <AvatarImage
-            src={row.original.urlAvatar}
+            src={row.original.urlAvatar || undefined}
             alt={row.original.fullName || "User Avatar"}
           />
           <AvatarFallback>
@@ -110,25 +110,24 @@ export const getColumns = (
     cell: ({ row }) => {
       const department = row.original.department;
       if (!department) return "N/A";
-      if (typeof department === "string") return department;
       return (department as DepartmentInfo).name || "Không xác định";
     },
   },
   {
-    accessorKey: "level",
+    accessorKey: "position",
     header: "Cấp bậc",
     cell: ({ row }) => {
-      const level = row.original.level as TraineeLevel;
-      if (!level) return null;
+      const position = row.original.position;
+      if (!position) return "N/A";
       return (
-        <Badge variant="outline" className={cn(getLevelBadgeColor(level))}>
-          {level.replace("_", " ").toUpperCase()}
+        <Badge variant="outline" className={cn(getLevelBadgeColor(position.positionName))}>
+          {position.positionName}
         </Badge>
       );
     },
   },
   {
-    accessorKey: "status",
+    accessorKey: "userStatus",
     header: "Trạng thái",
     cell: ({ row }) => {
       const statusName = row.original.userStatus?.name || "N/A";

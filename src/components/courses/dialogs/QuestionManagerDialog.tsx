@@ -148,7 +148,7 @@ export function QuestionManagerDialog({
     }
 
     // "Instant Save" logic for existing tests
-    if (isEditingExistingTest) {
+    if (isEditingExistingTest && testId) {
       const payload = mapUiQuestionToApiPayload(questionFormData as Question);
       if (
         currentEditingQuestion &&
@@ -178,7 +178,7 @@ export function QuestionManagerDialog({
           }
         } else {
           newQuestions.push({
-            id: crypto.randomUUID(),
+            id: Date.now(), // Use timestamp for temporary unique ID
             ...questionFormData,
             position: newQuestions.length,
           });
@@ -207,7 +207,7 @@ export function QuestionManagerDialog({
     if (!deletingItem || deletingItem.type !== "question") return;
     const { id } = deletingItem;
 
-    if (isEditingExistingTest && typeof id === "number") {
+    if (isEditingExistingTest && typeof id === "number" && testId) {
       await deleteQuestionMutation.mutateAsync({
         testId: testId,
         questionIds: [id],
@@ -342,7 +342,7 @@ export function QuestionManagerDialog({
           if (correctAnswerIndexes.length === 0) continue;
 
           newQuestions.push({
-            id: crypto.randomUUID(),
+            id: Date.now() + i,
             text: questionText,
             options: options,
             correctAnswerIndex: correctAnswerIndexes[0],
@@ -360,7 +360,7 @@ export function QuestionManagerDialog({
           return;
         }
 
-        if (isEditingExistingTest) {
+        if (isEditingExistingTest && testId) {
           await createQuestionsSilentMutation.mutateAsync({
             testId,
             questions: newQuestions.map(mapUiQuestionToApiPayload),

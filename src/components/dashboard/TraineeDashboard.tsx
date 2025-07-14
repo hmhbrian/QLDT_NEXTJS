@@ -2,7 +2,7 @@
 'use client';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { GraduationCap, BookMarked, Percent, CalendarClock, CalendarDays } from 'lucide-react';
+import { GraduationCap, BookMarked, Percent, CalendarDays } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '../ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -21,16 +21,18 @@ export function TraineeDashboard() {
     }
 
     const enrolled = allCourses.filter(course =>
-        course.enrolledTrainees?.includes(currentUser.id)
+        course.userIds?.includes(currentUser.id)
     );
-    const completed = currentUser.completedCourses?.length || 0;
+    
+    // This part needs real data to be meaningful.
+    // For now, we'll keep it simple.
+    const completed = 0; // Placeholder
     const progress = enrolled.length > 0 ? Math.round((completed / enrolled.length) * 100) : 0;
     
     const now = new Date();
     const upcoming = enrolled
         .filter(course => {
             const endDate = course.endDate ? new Date(course.endDate) : null;
-            // Get courses that have not yet ended
             return endDate && endDate >= now;
         })
         .sort((a, b) => {
@@ -38,7 +40,7 @@ export function TraineeDashboard() {
             const dateB = b.startDate ? new Date(b.startDate).getTime() : Infinity;
             return dateA - dateB;
         })
-        .slice(0, 3); // Get the 3 nearest upcoming courses
+        .slice(0, 3);
 
     return {
         enrolledCoursesCount: enrolled.length,
@@ -118,7 +120,7 @@ export function TraineeDashboard() {
             </ul>
           ) : (
             <div className="flex flex-col items-center justify-center h-40 border-2 border-dashed rounded-md text-center p-4">
-              <CalendarClock className="h-12 w-12 text-muted-foreground" />
+              <CalendarDays className="h-12 w-12 text-muted-foreground" />
               <p className="ml-0 md:ml-4 mt-2 md:mt-0 text-muted-foreground">Hiện tại không có lớp học nào sắp diễn ra.</p>
             </div>
           )}

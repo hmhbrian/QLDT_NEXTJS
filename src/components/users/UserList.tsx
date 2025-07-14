@@ -1,8 +1,10 @@
+
 import { usersService } from "@/lib/services";
 import { useAuth } from "@/hooks/useAuth";
 import { useEffect, useState } from "react";
 import { ErrorHandler } from "@/lib/utils/error.utils";
-import type { User } from "@/lib/types/user.types";
+import type { User, UserApiResponse } from "@/lib/types/user.types";
+import { mapUserApiToUi } from "@/lib/mappers/user.mapper";
 
 export default function UserList() {
   const { user, loadingAuth } = useAuth();
@@ -16,10 +18,11 @@ export default function UserList() {
     }
     if (user) {
       usersService
-        .getUsers({ Page: 1, Limit: 50, SortField: "fullName", SortType: "asc" })
+        .getUsersWithPagination({ Page: 1, Limit: 50, SortField: "fullName", SortType: "asc" })
         .then((res) => {
           console.log("UserList fetchUsers response:", res);
-          setUsers(res || []); // res is already User[]
+          const uiUsers = (res.items || []).map(mapUserApiToUi);
+          setUsers(uiUsers); 
           setLoading(false);
         })
         .catch((err) => {

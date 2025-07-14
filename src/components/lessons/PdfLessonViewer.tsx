@@ -1,209 +1,259 @@
+
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import React, { useState, useCallback, useRef, useEffect, memo } from "react";
 import { Document, Page, pdfjs } from "react-pdf";
 import "react-pdf/dist/esm/Page/AnnotationLayer.css";
 import "react-pdf/dist/esm/Page/TextLayer.css";
 
+import { useInView } from "react-intersection-observer";
+
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Input } from "@/components/ui/input";
 import {
   ChevronLeft,
   ChevronRight,
+  ZoomIn,
+  ZoomOut,
+  Download,
   Loader2,
   AlertTriangle,
-  RefreshCw,
+  PanelLeft,
+  Printer,
 } from "lucide-react";
-import { useToast } from "@/components/ui/use-toast";
+import { Skeleton } from "@/components/ui/skeleton";
 
-// Cấu hình PDF.js worker - đảm bảo chỉ chạy trong trình duyệt
-if (typeof window !== "undefined") {
-  pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
-}
+pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
 interface PdfLessonViewerProps {
+  lessonId: string | number;
   pdfUrl: string;
-  onLessonComplete?: () => void; // Callback khi xem trang cuối cùng
+  initialPage?: number;
+  onVisiblePageChange: (page: number) => void;
 }
+
+const MemoizedPage = memo(Page);
+
+function PageWithObserver({
+  pageNumber,
+  scale,
+  onInView,
+  setRef,
+}: {
+  pageNumber: number;
+  scale: number;
+  onInView: () => void;
+  setRef: (el: HTMLDivElement | null) => void;
+}) {
+  const { ref } = useInView({
+    threshold: 0.2,
+    onChange: (inView) => {
+      if (inView) {
+        onInView();
+      }
+    },
+  });
+
+  const combinedRef = useCallback(
+    (node: HTMLDivElement | null) => {
+      setRef(node);
+      ref(node);
+    },
+    [setRef, ref]
+  );
+
+  return (
+    <div ref={combinedRef} className="mb-4 shadow-lg">
+      <MemoizedPage
+        pageNumber={pageNumber}
+        scale={scale}
+        renderAnnotationLayer={false}
+        renderTextLayer={false}
+        loading={<Skeleton className="w-[891px] h-[1260px]" style={{width: `${891 * scale}px`, height: `${1260 * scale}px`}}/>}
+      />
+    </div>
+  );
+}
+
 
 export function PdfLessonViewer({
   pdfUrl,
-  onLessonComplete,
+  initialPage = 1,
+  onVisiblePageChange,
 }: PdfLessonViewerProps) {
-  const [numPages, setNumPages] = useState<number | null>(null);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [isLoading, setIsLoading] = useState(true);
+  const [numPages, setNumPages] = useState<number>(0);
+  const [currentPage, setCurrentPage] = useState<number>(initialPage);
+  const [scale, setScale] = useState(1.5);
   const [pdfError, setPdfError] = useState<string | null>(null);
-  const { toast } = useToast();
+  const [isThumbnailsOpen, setIsThumbnailsOpen] = useState(true);
 
-  const onDocumentLoadSuccess = useCallback(
-    ({ numPages: nextNumPages }: { numPages: number }) => {
-      setNumPages(nextNumPages);
-      setCurrentPage(1); // Đặt lại về trang đầu tiên khi có tài liệu mới
-      setIsLoading(false);
-      setPdfError(null);
-    },
-    []
-  );
+  const mainContainerRef = useRef<HTMLDivElement>(null);
+  const pageRefs = useRef<(HTMLDivElement | null)[]>([]);
 
-  const onDocumentLoadError = useCallback(
-    (error: Error) => {
-      console.error("Lỗi khi tải PDF cho bài học:", error);
-      setPdfError(
-        `Không thể tải tài liệu PDF. Lỗi: ${error.message}. Vui lòng thử lại.`
-      );
-      setNumPages(null);
-      setIsLoading(false);
-      toast({
-        variant: "destructive",
-        title: "Lỗi tải PDF",
-        description: `Không thể tải tài liệu PDF. Lỗi: ${error.message}`,
-      });
-    },
-    [toast]
-  );
-
-  const handlePrevPage = () => {
-    setCurrentPage((prev) => (prev > 1 ? prev - 1 : prev));
+  const onDocumentLoadSuccess = ({ numPages }: { numPages: number }) => {
+    setNumPages(numPages);
+    setPdfError(null);
+    pageRefs.current = Array(numPages).fill(null);
+    
+    // Defer scrolling to allow DOM to update
+    setTimeout(() => {
+        const pageRef = pageRefs.current[initialPage - 1];
+        if (pageRef) {
+            pageRef.scrollIntoView({ behavior: 'auto', block: 'start' });
+        }
+        setCurrentPage(initialPage);
+        onVisiblePageChange(initialPage);
+    }, 100);
   };
 
-  const handleNextPage = () => {
-    if (numPages && currentPage < numPages) {
-      setCurrentPage((prev) => prev + 1);
-    } else if (numPages && currentPage === numPages) {
-      // Đã đến trang cuối cùng
-      if (onLessonComplete) {
-        onLessonComplete();
-      }
-      // Tùy chọn, bạn có thể vô hiệu hóa nút "Tiếp theo" hoặc hiển thị thông báo hoàn thành ở đây.
-      // Hiện tại, nó chỉ gọi callback.
+  const onDocumentLoadError = (error: Error) => {
+    console.error("PDF load error:", error);
+    setPdfError(
+      `Không thể tải tài liệu. Lỗi: ${
+        error.message || "Unknown error"
+      }. Vui lòng kiểm tra lại đường dẫn hoặc thử tải lại trang.`
+    );
+  };
+
+  const goToPage = (pageNumber: number) => {
+    const page = Math.max(1, Math.min(pageNumber, numPages));
+    const pageRef = pageRefs.current[page - 1];
+    if (pageRef) {
+      pageRef.scrollIntoView({ behavior: "smooth", block: "start" });
     }
   };
 
+  const handlePageInView = useCallback((page: number) => {
+    setCurrentPage(page);
+    onVisiblePageChange(page);
+  }, [onVisiblePageChange]);
+  
   useEffect(() => {
-    setIsLoading(true);
-    setNumPages(null);
-    setCurrentPage(1);
+    setCurrentPage(initialPage);
+  }, [initialPage]);
+
+  // Reset state when the PDF URL changes
+  useEffect(() => {
+    setNumPages(0);
+    setCurrentPage(initialPage);
+    setScale(1.5);
     setPdfError(null);
-  }, [pdfUrl]);
-
-  if (isLoading && !pdfError) {
-    return (
-      <div className="flex flex-col items-center justify-center p-6 min-h-[300px] border rounded-md bg-muted/30">
-        <Loader2 className="h-10 w-10 animate-spin text-primary mb-3" />
-        <p className="text-sm text-muted-foreground">
-          Đang tải nội dung PDF...
-        </p>
-      </div>
-    );
-  }
-
-  if (pdfError) {
-    return (
-      <div className="p-6 text-center text-destructive space-y-3 border border-destructive/50 bg-destructive/10 rounded-md min-h-[300px] flex flex-col items-center justify-center">
-        <AlertTriangle className="mx-auto h-10 w-10" />
-        <p className="font-semibold">Lỗi tải PDF</p>
-        <p className="text-sm">{pdfError}</p>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => {
-            setPdfError(null);
-            setIsLoading(true);
-            // Cố gắng kích hoạt lại việc tải, mặc dù react-pdf chủ yếu xử lý logic thử lại của riêng nó.
-            // Điều này có thể liên quan đến việc đặt lại key trên Document component nếu cần thử lại trực tiếp.
-            // Hiện tại, chỉ xóa lỗi và đặt trạng thái đang tải.
-          }}
-        >
-          <RefreshCw className="mr-2 h-4 w-4" /> Thử lại
-        </Button>
-      </div>
-    );
-  }
-
-  if (!numPages) {
-    return (
-      <div className="flex flex-col items-center justify-center p-6 min-h-[300px] border rounded-md bg-muted/30">
-        <BookOpen className="h-10 w-10 text-muted-foreground mb-3" />
-        <p className="text-sm text-muted-foreground">
-          Không có nội dung PDF để hiển thị.
-        </p>
-      </div>
-    );
-  }
+    pageRefs.current = [];
+  }, [pdfUrl, initialPage]);
 
   return (
-    <div className="space-y-4 border rounded-lg overflow-hidden shadow-sm">
-      <div className="p-2 bg-background border-b sticky top-0 z-10">
-        {" "}
-        {/* Đã thêm header cố định cho các nút điều khiển */}
-        <div className="flex items-center justify-between">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handlePrevPage}
-            disabled={currentPage <= 1}
-          >
-            <ChevronLeft className="h-4 w-4 mr-1" />
-            Trang trước
+    <div className="w-full h-[85vh] flex flex-col bg-background dark:bg-zinc-900 rounded-lg shadow-lg border">
+      <div className="flex-shrink-0 h-14 bg-card border-b flex items-center justify-between gap-2 px-4 sticky top-0 z-20">
+        <div className="flex items-center gap-2">
+            <Button variant="ghost" size="icon" onClick={() => setIsThumbnailsOpen(prev => !prev)}>
+                <PanelLeft className="h-5 w-5" />
+            </Button>
+            <span className="text-sm font-medium text-muted-foreground hidden sm:inline">{pdfUrl.split('/').pop()}</span>
+        </div>
+        
+        <div className="flex items-center gap-1.5">
+          <Button variant="ghost" size="icon" onClick={() => goToPage(currentPage - 1)} disabled={currentPage <= 1}>
+            <ChevronLeft className="h-5 w-5" />
           </Button>
-          <span className="text-sm font-medium text-muted-foreground">
-            Trang {currentPage} / {numPages}
-          </span>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleNextPage}
-            disabled={currentPage >= numPages}
-          >
-            {currentPage === numPages ? "Hoàn thành" : "Trang sau"}
-            <ChevronRight className="h-4 w-4 ml-1" />
+          <Input
+            type="number"
+            value={currentPage > 0 ? currentPage : ""}
+            onChange={(e) => setCurrentPage(parseInt(e.target.value, 10) || 1)}
+            onKeyDown={(e) => { if(e.key === 'Enter') goToPage(currentPage) }}
+            className="w-12 h-8 text-center"
+          />
+          <span className="text-sm text-muted-foreground">/ {numPages || "..."}</span>
+          <Button variant="ghost" size="icon" onClick={() => goToPage(currentPage + 1)} disabled={currentPage >= numPages}>
+            <ChevronRight className="h-5 w-5" />
           </Button>
         </div>
+
+        <div className="flex items-center gap-2">
+            <div className="h-6 w-px bg-border mx-2 hidden sm:block"></div>
+            <Button variant="ghost" size="icon" onClick={() => setScale(s => Math.max(0.5, s - 0.2))}>
+                <ZoomOut className="h-5 w-5" />
+            </Button>
+            <Button variant="ghost" size="icon" onClick={() => setScale(s => Math.min(3, s + 0.2))}>
+                <ZoomIn className="h-5 w-5" />
+            </Button>
+            <div className="h-6 w-px bg-border mx-2 hidden sm:block"></div>
+            <a href={pdfUrl} download target="_blank" rel="noopener noreferrer">
+                <Button variant="ghost" size="icon">
+                    <Download className="h-5 w-5" />
+                </Button>
+            </a>
+            <Button variant="ghost" size="icon" onClick={() => window.print()}>
+                <Printer className="h-5 w-5" />
+            </Button>
+        </div>
       </div>
-      <div className="min-h-[400px] md:min-h-[500px] lg:min-h-[600px] flex items-center justify-center bg-gray-100 dark:bg-gray-800 p-1">
-        {/* Component Document của react-pdf */}
+
+      <div className="flex-grow flex overflow-hidden">
         <Document
-          file={pdfUrl} // URL của file PDF
-          onLoadSuccess={onDocumentLoadSuccess} // Callback khi tải thành công
-          onLoadError={onDocumentLoadError} // Callback khi tải lỗi
-          loading={<Skeleton className="w-full h-[500px]" />} // Hiển thị skeleton khi đang tải
-          options={{
-            StandardFontDataFactory: `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/standard_fonts/`,
-          }} // Tùy chọn cho react-pdf
+          key={pdfUrl}
+          file={pdfUrl}
+          onLoadSuccess={onDocumentLoadSuccess}
+          onLoadError={onDocumentLoadError}
+          loading={
+            <div className="flex flex-col items-center justify-center w-full h-full">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <p className="mt-2 text-muted-foreground">Đang tải tài liệu...</p>
+            </div>
+          }
+          error={
+            <div className="flex flex-col items-center justify-center w-full h-full text-destructive p-4">
+              <AlertTriangle className="h-8 w-8 mb-2" />
+              <p className="font-semibold">Lỗi tải PDF</p>
+              <p className="text-sm text-center">{pdfError}</p>
+            </div>
+          }
+          className="flex-grow flex overflow-hidden"
         >
-          {/* Component Page của react-pdf */}
-          <Page
-            pageNumber={currentPage} // Số trang hiện tại để hiển thị
-            renderTextLayer={true} // Cho phép chọn văn bản
-            renderAnnotationLayer={false}
-            className="flex justify-center items-center"
-            width={Math.min(800, window.innerWidth - 40)} // Chiều rộng đáp ứng
-            loading={<Skeleton className="w-full h-[500px]" />} // Hiển thị skeleton khi trang đang tải
-          />
+          {isThumbnailsOpen && numPages > 0 && (
+            <div className="w-48 bg-muted/40 border-r overflow-y-auto p-2 space-y-2">
+                 {Array.from(new Array(numPages), (_, index) => (
+                    <div 
+                        key={`thumb-${index + 1}`} 
+                        onClick={() => goToPage(index + 1)}
+                        className={cn(
+                            "cursor-pointer border-2 p-1 rounded-sm transition-all",
+                            currentPage === index + 1 ? "border-primary" : "border-transparent hover:border-muted-foreground/50"
+                        )}
+                    >
+                        <MemoizedPage
+                            pageNumber={index + 1}
+                            width={150}
+                            renderAnnotationLayer={false}
+                            renderTextLayer={false}
+                            loading={<Skeleton className="w-full h-[212px]" />}
+                        />
+                        <p className="text-center text-xs mt-1">{index + 1}</p>
+                    </div>
+                ))}
+            </div>
+          )}
+
+          <div ref={mainContainerRef} className="flex-grow overflow-auto p-4 bg-muted/20">
+              {numPages > 0 && (
+                  <div className="flex flex-col items-center">
+                    {Array.from({ length: numPages }, (_, index) => (
+                        <PageWithObserver
+                            key={`page-${index + 1}`}
+                            pageNumber={index + 1}
+                            scale={scale}
+                            onInView={() => handlePageInView(index + 1)}
+                            setRef={(el) => (pageRefs.current[index] = el)}
+                        />
+                    ))}
+                  </div>
+              )}
+          </div>
         </Document>
       </div>
     </div>
   );
 }
 
-// Icon trợ giúp khi không có nội dung, không được sử dụng ở đây nhưng hữu ích nếu cần
-function BookOpen({ className }: { className?: string }) {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-    >
-      <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
-      <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
-    </svg>
-  );
-}
+
+export default PdfLessonViewer;

@@ -133,7 +133,7 @@ export const getColumns = (
           <Tooltip>
             <TooltipTrigger asChild>
               <div className="flex flex-col text-xs">
-                <span className="truncate">Tạo bởi: <strong>{course.createdBy}</strong></span>
+                {course.createdBy && <span className="truncate">Tạo bởi: <strong>{course.createdBy}</strong></span>}
                 {course.modifiedBy && <span className="truncate">Sửa bởi: <strong>{course.modifiedBy}</strong></span>}
               </div>
             </TooltipTrigger>
