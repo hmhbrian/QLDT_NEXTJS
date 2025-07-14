@@ -56,10 +56,8 @@ export const isRegistrationOpen = (
   return new Date(deadline) >= new Date();
 };
 
-export const getCategoryLabel = (categoryValue: string | undefined): string => {
-  return categoryValue
-    ? categoryValue.charAt(0).toUpperCase() + categoryValue.slice(1)
-    : "Chung";
+export const getCategoryLabel = (category: { name?: string } | null | undefined): string => {
+  return category?.name || "Chưa phân loại";
 };
 
 export const getLevelBadgeColor = (
