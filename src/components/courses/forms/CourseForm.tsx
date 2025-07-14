@@ -74,7 +74,7 @@ const initialNewCourseState: Course = {
   courseCode: "",
   description: "",
   objectives: "",
-  category: "programming",
+  category: null,
   instructor: "",
   duration: { sessions: 1, hoursPerSession: 2 },
   learningType: "online",
@@ -346,10 +346,15 @@ export function CourseForm({ courseId }: { courseId?: string }) {
                     Danh mục <span className="text-destructive">*</span>
                   </Label>
                   <Select
-                    value={formData.category}
-                    onValueChange={(v: Course["category"]) =>
-                      handleInputChange("category", v)
-                    }
+                    value={formData.category?.id ? String(formData.category.id) : ""}
+                    onValueChange={(value: string) => {
+                      if (value) {
+                        const selectedOption = categoryOptions.find(o => o.value === value);
+                        handleInputChange("category", selectedOption ? { id: 0, name: selectedOption.label } : null);
+                      } else {
+                        handleInputChange("category", null);
+                      }
+                    }}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Chọn danh mục" />

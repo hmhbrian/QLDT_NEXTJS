@@ -235,7 +235,7 @@ export default function CoursesPage() {
                   <CardHeader className="pt-4 pb-2">
                     <div className="flex items-center gap-2 mb-1">
                       <Badge variant="outline" className="text-xs">
-                        {course.category}
+                        {course.category?.name || "Chưa phân loại"}
                       </Badge>
                       <Badge
                         variant={

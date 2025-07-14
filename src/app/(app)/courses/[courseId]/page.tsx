@@ -448,7 +448,7 @@ export default function CourseDetailPage() {
               <div className="text-xs text-muted-foreground mt-2 space-x-4">
                 {course.createdBy && (
                   <span>
-                    Tạo bởi <b>{course.createdBy}</b> vào{" "}
+                    Tạo bởi <b>{typeof course.createdBy === 'object' ? course.createdBy.name : course.createdBy}</b> vào{" "}
                     {formatDistanceToNow(new Date(course.createdAt), {
                       addSuffix: true,
                       locale: vi,
@@ -457,7 +457,7 @@ export default function CourseDetailPage() {
                 )}
                 {course.modifiedBy && (
                   <span>
-                    Cập nhật bởi <b>{course.modifiedBy}</b> vào{" "}
+                    Cập nhật bởi <b>{typeof course.modifiedBy === 'object' ? course.modifiedBy.name : course.modifiedBy}</b> vào{" "}
                     {formatDistanceToNow(new Date(course.modifiedAt), {
                       addSuffix: true,
                       locale: vi,

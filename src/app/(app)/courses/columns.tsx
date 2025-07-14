@@ -70,6 +70,10 @@ export const getColumns = (
   {
     accessorKey: "category",
     header: "Danh mục",
+    cell: ({ row }) => {
+      const category = row.original.category;
+      return category ? category.name : "Chưa phân loại";
+    },
   },
   {
     accessorKey: "instructor",

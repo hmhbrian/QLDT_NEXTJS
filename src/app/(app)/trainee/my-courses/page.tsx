@@ -32,7 +32,7 @@ export default function MyCoursesPage() {
         description: course.description,
         progress: course.progressPercentage || 0,
         image: course.image,
-        dataAiHint: course.category,
+        dataAiHint: course.category?.name || "Chưa phân loại",
       }));
   }, [enrolledCourses]);
 
