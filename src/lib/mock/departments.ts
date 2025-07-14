@@ -1,4 +1,9 @@
-import type { DepartmentInfo } from "../types/department.types";
+
+import type { DepartmentInfo } from "@/lib/types/department.types";
+import type { Status } from "@/lib/types/status.types";
+
+const activeStatus: Status = { id: 1, name: "Hoạt động" };
+const inactiveStatus: Status = { id: 2, name: "Không hoạt động" };
 
 // Mock Departments List
 export const mockDepartments: DepartmentInfo[] = [
@@ -8,7 +13,7 @@ export const mockDepartments: DepartmentInfo[] = [
     code: "it",
     description: "Phòng phát triển và quản lý hệ thống công nghệ thông tin",
     managerId: "1",
-    status: "active",
+    status: activeStatus,
     level: 1,
     path: ["Công nghệ thông tin"],
     createdAt: "2024-01-01",
@@ -20,7 +25,7 @@ export const mockDepartments: DepartmentInfo[] = [
     code: "hr",
     description: "Phòng quản lý nhân sự và tuyển dụng",
     managerId: "2",
-    status: "active",
+    status: activeStatus,
     level: 1,
     path: ["Nhân sự"],
     createdAt: "2024-01-01",
@@ -32,7 +37,7 @@ export const mockDepartments: DepartmentInfo[] = [
     code: "sales",
     description: "Phòng phát triển kinh doanh và bán hàng",
     managerId: "3",
-    status: "active",
+    status: activeStatus,
     level: 1,
     path: ["Kinh doanh"],
     createdAt: "2024-01-01",
@@ -44,7 +49,7 @@ export const mockDepartments: DepartmentInfo[] = [
     code: "marketing",
     description: "Phòng tiếp thị và truyền thông",
     managerId: "4",
-    status: "active",
+    status: activeStatus,
     level: 1,
     path: ["Marketing"],
     createdAt: "2024-01-01",
@@ -58,7 +63,7 @@ export const mockDepartments: DepartmentInfo[] = [
     description: "Phòng phát triển ứng dụng và phần mềm",
     managerId: "5",
     parentId: "d1", // Con của IT
-    status: "active",
+    status: activeStatus,
     level: 2,
     path: ["Công nghệ thông tin", "Phát triển phần mềm"],
     createdAt: "2024-01-01",
@@ -71,7 +76,7 @@ export const mockDepartments: DepartmentInfo[] = [
     description: "Phòng quản lý hạ tầng CNTT và vận hành hệ thống",
     managerId: "6",
     parentId: "d1", // Con của IT
-    status: "active",
+    status: activeStatus,
     level: 2,
     path: ["Công nghệ thông tin", "Hạ tầng & Vận hành"],
     createdAt: "2024-01-01",
@@ -85,7 +90,7 @@ export const mockDepartments: DepartmentInfo[] = [
     description: "Nhóm phát triển ứng dụng web",
     managerId: "7",
     parentId: "d5", // Con của Phát triển phần mềm
-    status: "active",
+    status: activeStatus,
     level: 3,
     path: ["Công nghệ thông tin", "Phát triển phần mềm", "Phát triển Web"],
     createdAt: "2024-01-01",
@@ -98,7 +103,7 @@ export const mockDepartments: DepartmentInfo[] = [
     description: "Nhóm phát triển ứng dụng di động",
     managerId: "8",
     parentId: "d5", // Con của Phát triển phần mềm
-    status: "active",
+    status: activeStatus,
     level: 3,
     path: ["Công nghệ thông tin", "Phát triển phần mềm", "Phát triển Mobile"],
     createdAt: "2024-01-01",
@@ -112,7 +117,7 @@ export const mockDepartments: DepartmentInfo[] = [
     description: "Phòng tuyển dụng nhân sự",
     managerId: "9",
     parentId: "d2", // Con của HR
-    status: "active",
+    status: activeStatus,
     level: 2,
     path: ["Nhân sự", "Tuyển dụng"],
     createdAt: "2024-01-01",
@@ -125,7 +130,7 @@ export const mockDepartments: DepartmentInfo[] = [
     description: "Phòng phát triển và đào tạo nhân sự",
     managerId: "10",
     parentId: "d2", // Con của HR
-    status: "active",
+    status: inactiveStatus,
     level: 2,
     path: ["Nhân sự", "Phát triển nhân sự"],
     createdAt: "2024-01-01",
