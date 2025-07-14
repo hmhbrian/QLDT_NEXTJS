@@ -1,24 +1,40 @@
-
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { coursesService } from "@/lib/services/modern/courses.service";
-import { useToast } from "@/components/ui/use-toast";
 import type {
   Course,
   CreateCourseRequest,
-  CourseSearchParams,
   UpdateCourseRequest,
   CourseApiResponse,
+  UserEnrollCourseDto,
 } from "@/lib/types/course.types";
 import { useError } from "./use-error";
-import { mapCourseApiToUi } from "@/lib/mappers/course.mapper";
-import type { PaginatedResponse, PaginationParams } from "@/lib/core";
+import {
+  mapCourseApiToUi,
+  mapUserEnrollCourseDtoToCourse,
+} from "@/lib/mappers/course.mapper";
+import type { PaginatedResponse, QueryParams } from "@/lib/core";
+import { useAuth } from "./useAuth";
 
 export const COURSES_QUERY_KEY = "courses";
+export const ENROLLED_COURSES_QUERY_KEY = "enrolledCourses";
 
-export function useCourses(params?: CourseSearchParams & PaginationParams) {
-  const queryKey = [COURSES_QUERY_KEY, params];
+export function useCourses(
+  params: QueryParams & { publicOnly?: boolean } = {}
+) {
+  const { publicOnly = false, ...apiParams } = params;
+  const { user } = useAuth();
+  const { enrolledCourses, isLoadingEnrolled } = useEnrolledCourses(
+    !!user && publicOnly
+  );
+
+  const queryKey = [
+    COURSES_QUERY_KEY,
+    "public",
+    apiParams,
+    enrolledCourses.map((c) => c.id).join(","),
+  ];
 
   const {
     data,
@@ -28,12 +44,33 @@ export function useCourses(params?: CourseSearchParams & PaginationParams) {
   } = useQuery<PaginatedResponse<Course>, Error>({
     queryKey,
     queryFn: async () => {
-      const apiResponse = await coursesService.getCourses(params);
+      const apiResponse = await coursesService.getCourses(apiParams);
+      const allCourses = (apiResponse.items || []).map(mapCourseApiToUi);
+
+      if (publicOnly && user) {
+        const enrolledIds = new Set(enrolledCourses.map((c) => c.id));
+        const publicOnlyCourses = allCourses.filter(
+          (c) => !enrolledIds.has(c.id)
+        );
+
+        return {
+          items: publicOnlyCourses,
+          pagination: {
+            ...apiResponse.pagination,
+            totalItems: publicOnlyCourses.length,
+            totalPages: Math.ceil(
+              publicOnlyCourses.length / Number(params?.Limit || 10)
+            ),
+          },
+        };
+      }
+
       return {
-          items: (apiResponse.items || []).map(mapCourseApiToUi),
-          pagination: apiResponse.pagination,
+        items: allCourses,
+        pagination: apiResponse.pagination,
       };
     },
+    enabled: publicOnly ? !isLoadingEnrolled : true,
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
     placeholderData: (previousData) => previousData,
@@ -42,12 +79,34 @@ export function useCourses(params?: CourseSearchParams & PaginationParams) {
   return {
     courses: data?.items ?? [],
     paginationInfo: data?.pagination,
-    isLoading,
+    isLoading: isLoading || (publicOnly && isLoadingEnrolled),
     error,
     reloadCourses,
   };
 }
 
+export function useEnrolledCourses(enabled: boolean = true) {
+  const queryClient = useQueryClient();
+  const queryKey = [ENROLLED_COURSES_QUERY_KEY];
+
+  const { data, isLoading, error, refetch } = useQuery<Course[], Error>({
+    queryKey,
+    queryFn: async () => {
+      const enrolledResponse = await coursesService.getEnrolledCourses();
+      return (enrolledResponse.items || []).map(mapUserEnrollCourseDtoToCourse);
+    },
+    enabled: enabled,
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: true,
+  });
+
+  return {
+    enrolledCourses: data ?? [],
+    isLoadingEnrolled: isLoading,
+    errorEnrolled: error,
+    reloadEnrolledCourses: refetch,
+  };
+}
 
 export function useCourse(courseId: string) {
   const queryKey = [COURSES_QUERY_KEY, courseId];
@@ -84,7 +143,7 @@ export function useCreateCourse() {
     mutationFn: (courseData) => coursesService.createCourse(courseData),
     onSuccess: (response) => {
       queryClient.invalidateQueries({ queryKey: [COURSES_QUERY_KEY] });
-      showError(response); // Backend returns success message
+      showError({ success: true, message: "Đã tạo khóa học thành công." });
     },
     onError: (error) => {
       showError(error);
@@ -104,10 +163,12 @@ export function useUpdateCourse() {
     mutationFn: ({ courseId, payload }) =>
       coursesService.updateCourse(courseId, payload),
     onSuccess: (response, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: [COURSES_QUERY_KEY, variables.courseId],
+      });
       queryClient.invalidateQueries({ queryKey: [COURSES_QUERY_KEY] });
-      // Invalidate the specific course query as well
-      queryClient.invalidateQueries({ queryKey: [COURSES_QUERY_KEY, variables.courseId] });
-      showError(response);
+      queryClient.invalidateQueries({ queryKey: [ENROLLED_COURSES_QUERY_KEY] });
+      showError({ success: true, message: "Đã cập nhật khóa học thành công." });
     },
     onError: (error) => {
       showError(error);
@@ -123,7 +184,34 @@ export function useDeleteCourse() {
     mutationFn: (ids) => coursesService.softDeleteCourses(ids),
     onSuccess: (response) => {
       queryClient.invalidateQueries({ queryKey: [COURSES_QUERY_KEY] });
-      showError(response || { success: true, message: "Đã xóa khóa học." });
+      showError(
+        response || { success: true, message: "Đã xóa khóa học thành công." }
+      );
+    },
+    onError: (error) => {
+      showError(error);
+    },
+  });
+}
+
+export function useEnrollCourse() {
+  const queryClient = useQueryClient();
+  const { showError } = useError();
+
+  return useMutation<any, Error, string>({
+    mutationFn: (courseId) => coursesService.enrollCourse(courseId),
+    onSuccess: (response, courseId) => {
+      queryClient.invalidateQueries({ queryKey: [ENROLLED_COURSES_QUERY_KEY] });
+      queryClient.invalidateQueries({
+        queryKey: [COURSES_QUERY_KEY, "public"],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [COURSES_QUERY_KEY, courseId],
+      });
+      queryClient.invalidateQueries({ queryKey: [COURSES_QUERY_KEY] });
+      showError(
+        response || { success: true, message: "Đăng ký khóa học thành công!" }
+      );
     },
     onError: (error) => {
       showError(error);

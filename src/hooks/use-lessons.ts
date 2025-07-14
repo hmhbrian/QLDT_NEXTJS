@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -7,14 +8,16 @@ import type {
   CreateLessonPayload,
   UpdateLessonPayload,
   ApiLesson,
+  LessonContentType,
 } from "@/lib/types/course.types";
 import { useToast } from "@/components/ui/use-toast";
 import { extractErrorMessage } from "@/lib/core";
 import { ReorderLessonPayload } from "@/lib/services/modern/lessons.service";
+import { mapApiLessonToUi } from "@/lib/mappers/lesson.mapper";
 
 export const LESSONS_QUERY_KEY = "lessons";
 
-export function useLessons(courseId: string | undefined) {
+export function useLessons(courseId: string | undefined, enabled: boolean = true) {
   const queryKey = [LESSONS_QUERY_KEY, courseId];
 
   const {
@@ -27,19 +30,9 @@ export function useLessons(courseId: string | undefined) {
     queryFn: async () => {
       if (!courseId) return [];
       const apiLessons = await lessonsService.getLessons(courseId);
-      // Map API response to UI Lesson type
-      return (apiLessons || []).map(
-        (apiLesson: ApiLesson): Lesson => ({
-          ...apiLesson,
-          id: apiLesson.id,
-          content: apiLesson.urlPdf,
-          contentType: "pdf_url",
-          duration: "N/A", // Add default or map from API if available
-          link: apiLesson.urlPdf,
-        })
-      );
+      return (apiLessons || []).map(mapApiLessonToUi);
     },
-    enabled: !!courseId,
+    enabled: !!courseId && enabled,
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
   });
@@ -69,7 +62,7 @@ export function useCreateLesson() {
       });
       toast({
         title: "Thành công",
-        description: `Bài học "${variables.title}" đã được tạo.`,
+        description: `Bài học "${variables.Title}" đã được tạo.`,
         variant: "success",
       });
     },
@@ -108,7 +101,7 @@ export function useUpdateLesson() {
       });
       toast({
         title: "Thành công",
-        description: `Bài học "${variables.payload.title}" đã được cập nhật.`,
+        description: `Bài học "${variables.payload.Title}" đã được cập nhật.`,
         variant: "success",
       });
     },
@@ -128,7 +121,7 @@ export function useDeleteLesson() {
 
   return useMutation<void, Error, { courseId: string; lessonIds: number[] }>({
     mutationFn: (variables) =>
-      lessonsService.deleteLesson(variables.courseId, variables.lessonIds),
+      lessonsService.deleteLessons(variables.courseId, variables.lessonIds),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({
         queryKey: [LESSONS_QUERY_KEY, variables.courseId],
@@ -161,7 +154,7 @@ export function useReorderLesson() {
     mutationFn: (variables) =>
       lessonsService.reorderLesson(variables.courseId, variables.payload),
     onSuccess: (_, variables) => {
-      // Invalidate queries to re-fetch the updated lesson order from server
+      // Optimistically update the UI, but still refetch from the server to ensure consistency
       queryClient.invalidateQueries({
         queryKey: [LESSONS_QUERY_KEY, variables.courseId],
       });
@@ -177,7 +170,7 @@ export function useReorderLesson() {
         description: extractErrorMessage(error),
         variant: "destructive",
       });
-      // On error, invalidate to revert the UI to the server's state.
+      // Invalidate to revert optimistic updates if any
       queryClient.invalidateQueries({
         queryKey: [LESSONS_QUERY_KEY, variables.courseId],
       });

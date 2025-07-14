@@ -1,6 +1,4 @@
 
-"use client";
-
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { departmentsService } from "@/lib/services";
 import type {
@@ -12,8 +10,7 @@ import { useError } from "./use-error";
 
 export const DEPARTMENTS_QUERY_KEY = "departments";
 
-// Query Hook for fetching departments
-export function useDepartments(params?: { status?: string }) {
+export function useDepartments(params?: { status?: "active" }) {
   const {
     data,
     isLoading,
@@ -22,23 +19,18 @@ export function useDepartments(params?: { status?: string }) {
   } = useQuery<DepartmentInfo[], Error>({
     queryKey: [DEPARTMENTS_QUERY_KEY, params],
     queryFn: () => departmentsService.getDepartments(params),
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 5 * 60 * 1000, 
     refetchOnWindowFocus: false,
   });
-
-  const activeDepartments =
-    data?.filter((dept) => dept.status === "active") ?? [];
 
   return {
     departments: data ?? [],
     isLoading,
     error,
-    activeDepartments,
     reloadDepartments,
   };
 }
 
-// Mutation Hook for creating a department
 export function useCreateDepartment() {
   const queryClient = useQueryClient();
   const { showError } = useError();
@@ -47,7 +39,7 @@ export function useCreateDepartment() {
     mutationFn: (payload) => departmentsService.createDepartment(payload),
     onSuccess: (response) => {
       queryClient.invalidateQueries({ queryKey: [DEPARTMENTS_QUERY_KEY] });
-      showError(response);
+      showError({ success: true, message: `Đã tạo phòng ban "${response.name}" thành công.` });
     },
     onError: (error) => {
       showError(error);
@@ -55,7 +47,6 @@ export function useCreateDepartment() {
   });
 }
 
-// Mutation Hook for updating a department
 export function useUpdateDepartment() {
   const queryClient = useQueryClient();
   const { showError } = useError();
@@ -63,9 +54,9 @@ export function useUpdateDepartment() {
   return useMutation<void, Error, { id: string; payload: UpdateDepartmentPayload }>({
     mutationFn: ({ id, payload }) =>
       departmentsService.updateDepartment(id, payload),
-    onSuccess: (response) => {
+    onSuccess: (_, { payload }) => {
       queryClient.invalidateQueries({ queryKey: [DEPARTMENTS_QUERY_KEY] });
-      showError(response);
+      showError({ success: true, message: `Đã cập nhật phòng ban "${payload.DepartmentName}" thành công.` });
     },
     onError: (error) => {
       showError(error);
@@ -73,16 +64,15 @@ export function useUpdateDepartment() {
   });
 }
 
-// Mutation Hook for deleting a department
 export function useDeleteDepartment() {
   const queryClient = useQueryClient();
   const { showError } = useError();
 
   return useMutation<void, Error, string>({
     mutationFn: (id) => departmentsService.deleteDepartment(id),
-    onSuccess: (response) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [DEPARTMENTS_QUERY_KEY] });
-      showError(response);
+      showError({ success: true, message: "Đã xóa phòng ban thành công."});
     },
     onError: (error) => {
       showError(error);

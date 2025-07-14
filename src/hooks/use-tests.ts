@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -14,7 +15,7 @@ import { useError } from "@/hooks/use-error";
 
 export const TESTS_QUERY_KEY = "tests";
 
-export function useTests(courseId: string | undefined) {
+export function useTests(courseId: string | undefined, enabled: boolean = true) {
   const queryKey = [TESTS_QUERY_KEY, courseId];
 
   const {
@@ -29,7 +30,7 @@ export function useTests(courseId: string | undefined) {
       const apiTests = await testsService.getTests(courseId);
       return apiTests.map(mapApiTestToUiTest);
     },
-    enabled: !!courseId,
+    enabled: !!courseId && enabled,
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
   });
@@ -63,10 +64,9 @@ export function useCreateTest() {
         queryKey: [TESTS_QUERY_KEY, variables.courseId],
       });
 
-      // Sử dụng thông báo frontend cho create vì backend chỉ trả về data object
       showError({
         success: true,
-        message: `Bài kiểm tra "${newTest.title}" đã được tạo.`,
+        message: `Bài kiểm tra "${newTest.title}" đã được tạo thành công.`,
       });
     },
     onError: (error) => {
@@ -101,7 +101,6 @@ export function useUpdateTest() {
         queryKey: [TESTS_QUERY_KEY, variables.courseId],
       });
 
-      // Truyền response trực tiếp cho showError để nó tự xử lý
       showError(response);
     },
     onError: (error) => {
@@ -123,7 +122,7 @@ export function useDeleteTest() {
       });
       showError({
         success: true,
-        message: "Đã xóa bài kiểm tra.",
+        message: "Đã xóa bài kiểm tra thành công.",
       });
     },
     onError: (error) => {

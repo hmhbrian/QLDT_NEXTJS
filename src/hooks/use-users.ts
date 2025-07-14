@@ -1,15 +1,19 @@
 
-"use client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { usersService } from "@/lib/services";
-import type { User, CreateUserRequest } from "@/lib/types/user.types";
-import type { QueryParams, PaginatedResponse } from "@/lib/core";
+import {
+  User,
+  UserApiResponse,
+  CreateUserRequest,
+  UpdateUserRequest,
+} from "@/lib/types/user.types";
+import type { PaginatedResponse, QueryParams } from "@/lib/core";
 import { useError } from "./use-error";
+import { mapUserApiToUi } from "@/lib/mappers/user.mapper";
 
 export const USERS_QUERY_KEY = "users";
 
 export function useUsers(params?: QueryParams) {
-  const queryClient = useQueryClient();
   const queryKey = [USERS_QUERY_KEY, params];
 
   const {
@@ -17,22 +21,26 @@ export function useUsers(params?: QueryParams) {
     isLoading,
     error,
     refetch: reloadUsers,
-  } = useQuery<PaginatedResponse<User>, Error>({
+  } = useQuery<PaginatedResponse<UserApiResponse>, Error>({
     queryKey,
     queryFn: async () => {
       const response = await usersService.getUsersWithPagination(params);
-      return response;
+      return {
+        items: response.items || [],
+        pagination: response.pagination,
+      };
     },
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
     placeholderData: (previousData) => previousData,
   });
 
   return {
-    paginatedUsers: data,
-    users: data?.items ?? [],
+    users: (data?.items ?? []).map(mapUserApiToUi),
+    paginationInfo: data?.pagination,
     isLoading,
     error,
+    isError: !!error,
     reloadUsers,
   };
 }
@@ -40,12 +48,14 @@ export function useUsers(params?: QueryParams) {
 export function useCreateUserMutation() {
   const queryClient = useQueryClient();
   const { showError } = useError();
-  return useMutation({
-    mutationFn: (payload: CreateUserRequest) =>
-      usersService.createUser(payload),
+  return useMutation<UserApiResponse, Error, CreateUserRequest>({
+    mutationFn: (payload) => usersService.createUser(payload),
     onSuccess: (response) => {
-      showError(response);
       queryClient.invalidateQueries({ queryKey: [USERS_QUERY_KEY] });
+      showError({
+        success: true,
+        message: `Đã tạo người dùng "${response.fullName}" thành công.`,
+      });
     },
     onError: (error) => {
       showError(error);
@@ -56,17 +66,19 @@ export function useCreateUserMutation() {
 export function useUpdateUserMutation() {
   const queryClient = useQueryClient();
   const { showError } = useError();
-  return useMutation({
-    mutationFn: ({
-      id,
-      payload,
-    }: {
-      id: string;
-      payload: Partial<CreateUserRequest>;
-    }) => usersService.updateUserByAdmin(id, payload),
-    onSuccess: (response) => {
-      showError(response);
+  return useMutation<
+    UserApiResponse,
+    Error,
+    { id: string; payload: UpdateUserRequest }
+  >({
+    mutationFn: ({ id, payload }) => usersService.updateUserByAdmin(id, payload),
+    onSuccess: (response, variables) => {
       queryClient.invalidateQueries({ queryKey: [USERS_QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: [USERS_QUERY_KEY, variables.id] });
+      showError({
+        success: true,
+        message: `Đã cập nhật người dùng "${response.fullName}" thành công.`,
+      });
     },
     onError: (error) => {
       showError(error);
@@ -77,11 +89,11 @@ export function useUpdateUserMutation() {
 export function useDeleteUserMutation() {
   const queryClient = useQueryClient();
   const { showError } = useError();
-  return useMutation({
+  return useMutation<any, Error, string[]>({
     mutationFn: (userIds: string[]) => usersService.deleteUsers(userIds),
     onSuccess: (response) => {
-      showError(response);
       queryClient.invalidateQueries({ queryKey: [USERS_QUERY_KEY] });
+      showError({ success: true, message: "Đã xóa người dùng thành công." });
     },
     onError: (error) => {
       showError(error);

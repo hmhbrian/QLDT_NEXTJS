@@ -1,6 +1,7 @@
+
 "use client";
 
-import { User, LoginDTO } from "@/lib/types/user.types";
+import { User, LoginDTO, UserApiResponse, ChangePasswordRequest, UserProfileUpdateRequest } from "@/lib/types/user.types";
 import React, {
   createContext,
   useContext,
@@ -16,6 +17,7 @@ import { authService } from "@/lib/services";
 import { mockUsers } from "@/lib/mock";
 import { extractErrorMessage } from "@/lib/core";
 import { useQueryClient } from "@tanstack/react-query";
+import { mapUserApiToUi } from "@/lib/mappers/user.mapper";
 
 interface AuthContextType {
   user: User | null;
@@ -84,32 +86,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = async (credentials: LoginDTO) => {
     setLoadingAuth(true);
     try {
-      // console.log("Login response 1:", Response);
       if (API_CONFIG.useApi) {
         const response = await authService.login(credentials);
-        // console.log("Login response 2:", response);
-        // console.log("Login response 3:", response.accessToken);
-        // The API response is an object { success, message, data: { user, accessToken } }
-        // We need to check for success and the presence of the data object.
         if (response && response.accessToken) {
-          // Nếu response có dạng { success, message, data: { ...user, accessToken } }
-          let userData: any = response;
-          let token: string | undefined;
-          // Nếu có response.data thì lấy user từ đó
-          if (response && response.accessToken) {
-            userData = response;
-            token = response.accessToken;
-          } else {
-            token = response.accessToken;
-          }
-          // Xoá accessToken khỏi userData trước khi lưu
-          const { accessToken, ...userToStore } = userData;
-          setUser(userToStore as User);
+          const { accessToken, ...apiUser } = response;
+          const userToStore = mapUserApiToUi(apiUser);
+          setUser(userToStore);
           localStorage.setItem(
             API_CONFIG.storage.user,
             JSON.stringify(userToStore)
           );
-          localStorage.setItem(API_CONFIG.storage.token, token!);
+          localStorage.setItem(API_CONFIG.storage.token, accessToken);
           toast({
             title: "Đăng nhập thành công",
             description: "Chào mừng bạn đã quay trở lại!",
@@ -117,9 +104,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           });
           handleRedirect(userToStore.role);
         } else {
-          throw new Error(
-            response.message || "Đăng nhập thất bại do dữ liệu không hợp lệ."
-          );
+          throw new Error("Đăng nhập thất bại do dữ liệu không hợp lệ.");
         }
       } else {
         const mockUser = mockUsers.find(
@@ -156,21 +141,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
     localStorage.removeItem(API_CONFIG.storage.user);
     localStorage.removeItem(API_CONFIG.storage.token);
-
-    // Xóa toàn bộ cache của React Query để đảm bảo dữ liệu mới được tải lại
     queryClient.clear();
 
     if (pathname !== "/login") {
       router.push("/login");
-    }
-
-    if (API_CONFIG.useApi) {
-      authService.logout().catch((err) => {
-        console.error(
-          "API logout failed, but user is logged out locally:",
-          err
-        );
-      });
     }
   };
 
@@ -184,24 +158,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       throw new Error("User not authenticated.");
     }
 
-    const formData = new FormData();
-    formData.append('UrlAvatar', newAvatarFile);
+    const payload: UserProfileUpdateRequest = {
+      UrlAvatar: newAvatarFile
+    };
 
     try {
-      const response = await authService.updateUser(user.id, formData);
-      if (response.success) {
-        // Sau khi cập nhật thành công, lấy lại thông tin người dùng từ backend
-        const updatedUser = await authService.getCurrentUser();
-        setUser(updatedUser);
-        localStorage.setItem(API_CONFIG.storage.user, JSON.stringify(updatedUser));
-        toast({
-          title: "Thành công",
-          description: "Ảnh đại diện đã được cập nhật.",
-          variant: "success",
-        });
-      } else {
-        throw new Error(response.message || "Không thể cập nhật ảnh đại diện.");
-      }
+      const response = await authService.updateUserProfile(payload);
+      // Assuming response contains the updated user data
+      const updatedUser = mapUserApiToUi(response);
+      setUser(prevUser => prevUser ? { ...prevUser, ...updatedUser } : updatedUser);
+      localStorage.setItem(API_CONFIG.storage.user, JSON.stringify(updatedUser));
+      toast({
+        title: "Thành công",
+        description: "Ảnh đại diện đã được cập nhật.",
+        variant: "success",
+      });
     } catch (error) {
       toast({
         title: "Lỗi cập nhật ảnh đại diện",
@@ -229,15 +200,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw new Error("Mật khẩu mới không được trùng với mật khẩu cũ.");
       }
 
-      if (API_CONFIG.useApi) {
-        await authService.changePassword({
-          oldPassword: oldPassword,
-          newPassword: newPassword,
-          confirmNewPassword: newPassword,
-        });
-      } else {
-        console.log("Mock password change successful.");
-      }
+      await authService.changePassword({
+        OldPassword: oldPassword,
+        NewPassword: newPassword,
+        ConfirmNewPassword: newPassword,
+      });
 
       toast({
         title: "Thành công",
