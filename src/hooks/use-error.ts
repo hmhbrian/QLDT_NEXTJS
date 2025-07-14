@@ -6,8 +6,7 @@
 
 "use client";
 
-import { useState, useCallback } from "react";
-import { AppError, ErrorType } from "@/lib/utils/error.utils";
+import { useCallback } from "react";
 import { useToast } from "@/components/ui/use-toast";
 import { errorMessages, type ErrorMessage } from "@/lib/error-messages";
 import { extractErrorMessage } from "@/lib/core";
@@ -15,11 +14,6 @@ import { extractErrorMessage } from "@/lib/core";
 export type ErrorCode = keyof typeof errorMessages;
 
 export interface UseErrorReturn {
-  error: AppError | null;
-  isError: boolean;
-  clearError: () => void;
-  handleError: (error: unknown) => AppError;
-  setError: (error: AppError | string) => void;
   showError: (payload: unknown) => void;
 }
 
@@ -38,30 +32,12 @@ function isBackendResponse(payload: any): payload is BackendResponse {
 }
 
 export function useError(): UseErrorReturn {
-  const [error, setErrorState] = useState<AppError | null>(null);
   const { toast } = useToast();
-
-  const clearError = useCallback(() => {
-    setErrorState(null);
-  }, []);
-
-  const handleError = useCallback((error: unknown) => {
-    const message = extractErrorMessage(error);
-    const appError = new AppError(message, ErrorType.UNKNOWN);
-    setErrorState(appError);
-    return appError;
-  }, []);
-
-  const setError = useCallback((error: AppError | string) => {
-    const appError =
-      typeof error === "string" ? new AppError(error, ErrorType.CLIENT) : error;
-    setErrorState(appError);
-  }, []);
 
   const showError = useCallback(
     (payload: unknown) => {
-      let title = "Đã có lỗi xảy ra";
-      let description = "Vui lòng thử lại sau.";
+      let title = "Thông báo";
+      let description = "Đã có lỗi xảy ra. Vui lòng thử lại sau.";
       let variant: "default" | "destructive" | "success" = "destructive";
 
       if (typeof payload === "string" && payload in errorMessages) {
@@ -70,43 +46,51 @@ export function useError(): UseErrorReturn {
         description = errorDetails.message;
         variant = errorDetails.variant || "destructive";
       } else if (isBackendResponse(payload)) {
-        title = payload.title || (payload.success ? "Thành công" : "Lỗi");
-        description =
-          payload.message ||
-          payload.detail ||
-          (payload.success
-            ? "Thao tác thành công."
-            : "Đã có lỗi xảy ra.");
-        variant = payload.success ? "success" : "destructive";
+        // Chỉ hiển thị toast nếu success là false, hoặc là true và có message
+        if (payload.success === false || (payload.success === true && payload.message)) {
+          variant = payload.success ? "success" : "destructive";
+          title = payload.title || (payload.success ? "Thành công!" : "Thao tác thất bại");
+          description =
+            payload.detail ||
+            payload.message ||
+            (payload.success
+              ? "Yêu cầu của bạn đã được thực hiện thành công."
+              : "Đã có lỗi xảy ra trong quá trình xử lý.");
+          
+          toast({
+            title,
+            description,
+            variant,
+            duration: 5000,
+          });
+        }
       } else if (payload instanceof Error) {
+        title = "Đã có lỗi xảy ra";
         description = extractErrorMessage(payload);
+        variant = "destructive";
+        toast({ title, description, variant, duration: 5000 });
       } else if (
         typeof payload === "object" &&
         payload !== null &&
         "response" in payload
       ) {
+        title = "Lỗi từ máy chủ";
         description = extractErrorMessage((payload as any).response.data);
-      } else {
-        description = "Thao tác thành công.";
-        title = "Thành công";
-        variant = "success";
+        variant = "destructive";
+        toast({ title, description, variant, duration: 5000 });
+      } else if (
+        typeof payload === 'object' && payload !== null && 'message' in payload && typeof (payload as any).message === 'string'
+      ) {
+        title = "Lỗi";
+        description = (payload as any).message;
+        variant = "destructive";
+        toast({ title, description, variant, duration: 5000 });
       }
-
-      toast({
-        title,
-        description,
-        variant,
-      });
     },
     [toast]
   );
 
   return {
-    error,
-    isError: error !== null,
-    clearError,
-    handleError,
-    setError,
     showError,
   };
 }

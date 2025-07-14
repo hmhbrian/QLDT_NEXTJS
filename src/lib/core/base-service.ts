@@ -236,44 +236,27 @@ export abstract class BaseService<
     throw new Error(message);
   }
 
-  protected extractData<T>(response: ApiResponse<T>): T {
-    // Check for success property first, if it exists and is false, throw error.
-    if (
-      response &&
-      typeof response.success === "boolean" &&
-      !response.success
-    ) {
-      throw new Error(
-        response.message || "An API error occurred without a message."
-      );
+  protected extractData<T>(response: any): T {
+    // New logic to handle the API response structure { success, message, data }
+    if (response && typeof response.success === "boolean") {
+      if (response.success) {
+        // For successful responses, return the 'data' field if it exists,
+        // otherwise return the whole response object for mutations (POST, PUT, DELETE)
+        // that might just return { success: true, message: '...' }.
+        return response.data !== undefined ? response.data : (response as T);
+      } else {
+        // If success is false, throw an error with the message from the backend.
+        // The `detail` field is often more descriptive for business logic errors.
+        const errorMessage = response.detail || response.message || "An API error occurred.";
+        throw new Error(errorMessage);
+      }
     }
-
-    // If 'data' property exists, return it. This is the primary success case for GET requests.
-    if (response && "data" in response && response.data !== undefined) {
-      return response.data as T;
-    }
-
-    // Handle successful mutations (POST, PUT, PATCH, DELETE) that might not return a 'data' field.
-    // Return the full response so mutations can access success, message, etc.
-    if (response && response.success === true) {
-      return response as T;
-    }
-
-    // Handle cases where the response is the data itself (no wrapper), for backward compatibility.
-    if (
-      response &&
-      typeof response.success === "undefined" &&
-      typeof response.message === "undefined"
-    ) {
-      return response as T;
-    }
-
-    // Fallback for unexpected response structures that are not explicitly errors.
-    // This could be considered a contract violation with the API.
-    throw new Error(
-      "Invalid API response format: could not determine success or find data."
-    );
+    
+    // Fallback for responses that don't match the expected structure.
+    // This maintains compatibility with endpoints that might return data directly.
+    return response as T;
   }
+
 
   protected extractItems(response: PaginatedResponse<TEntity>): TEntity[] {
     return response?.items || [];

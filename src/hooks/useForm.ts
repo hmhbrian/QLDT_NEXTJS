@@ -62,7 +62,7 @@ export function useForm<T extends Record<string, any>>(
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { handleError } = useError();
+  const { showError } = useError();
   const initialValuesRef = useRef(initialValues);
 
   // Update initial values ref when prop changes
@@ -184,12 +184,12 @@ export function useForm<T extends Record<string, any>>(
           reset();
         }
       } catch (error) {
-        handleError(error);
+        showError(error);
       } finally {
         setIsSubmitting(false);
       }
     },
-    [values, validateAllFields, onSubmit, resetOnSubmit, handleError]
+    [values, validateAllFields, onSubmit, resetOnSubmit, showError]
   );
 
   const reset = useCallback((newValues?: Partial<T>) => {

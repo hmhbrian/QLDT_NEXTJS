@@ -1,3 +1,4 @@
+
 import { API_CONFIG } from "@/lib/config";
 import { usersService } from "@/lib/services";
 
@@ -22,8 +23,8 @@ export async function testApiConnection() {
 
   try {
     console.log("🚀 Testing API connection through Next.js proxy...");
-    const result = await usersService.getUsers();
-    const users = result || [];
+    const result = await usersService.getUsersWithPagination();
+    const users = result.items || [];
     console.log("✅ API connection successful!", { userCount: users.length });
     return true;
   } catch (error: any) {

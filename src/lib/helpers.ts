@@ -1,5 +1,5 @@
+
 import type { Status } from "@/lib/types/status.types";
-import type { TraineeLevel } from "./types/course.types";
 
 export const COURSE_STATUSES: Status[] = [
   { id: 1, name: "Lưu nháp" },
@@ -63,7 +63,7 @@ export const getCategoryLabel = (categoryValue: string | undefined): string => {
 };
 
 export const getLevelBadgeColor = (
-  level: TraineeLevel
+  level: string
 ):
   | "default"
   | "secondary"

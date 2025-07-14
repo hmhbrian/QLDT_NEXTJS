@@ -1,9 +1,11 @@
+
 /**
  * Application Constants
  * Centralized constants for the entire application
  */
 
-import type { Course, TraineeLevel, Department } from "../types/course.types";
+import type { Course } from "../types/course.types";
+import type { DepartmentInfo } from "../types/department.types";
 
 // Application metadata
 export const APP_INFO = {
@@ -149,7 +151,7 @@ export const STORAGE_KEYS = {
 export const EVALUATIONS_COOKIE_KEY = STORAGE_KEYS.EVALUATIONS;
 
 // Các tùy chọn phòng ban
-export const departmentOptions: readonly { value: Department; label: string }[] = [
+export const departmentOptions: readonly { value: string; label: string }[] = [
   { value: "it", label: "IT" },
   { value: "hr", label: "HR" },
   { value: "finance", label: "Tài chính" },
@@ -159,7 +161,7 @@ export const departmentOptions: readonly { value: Department; label: string }[] 
 ] as const;
 
 // Các tùy chọn cấp độ
-export const levelOptions: readonly { value: TraineeLevel; label: string }[] = [
+export const levelOptions: readonly { value: string; label: string }[] = [
   { value: "intern", label: "Thực tập" },
   { value: "probation", label: "Thử việc" },
   { value: "employee", label: "Nhân viên" },
@@ -168,7 +170,7 @@ export const levelOptions: readonly { value: TraineeLevel; label: string }[] = [
 ] as const;
 
 // Mapping cấp độ học viên sang tiếng Việt
-export const traineeLevelLabels: Record<TraineeLevel, string> = {
+export const traineeLevelLabels: Record<string, string> = {
   intern: "Thực tập",
   probation: "Thử việc",
   employee: "Nhân viên",

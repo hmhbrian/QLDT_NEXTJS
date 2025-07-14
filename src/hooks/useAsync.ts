@@ -43,7 +43,7 @@ export function useAsync<T = any>(
   const [loading, setLoading] = useState(immediate);
   const [error, setError] = useState<Error | null>(null);
 
-  const { handleError } = useError();
+  const { showError } = useError();
   const retryCountRef = useRef(0);
   const mountedRef = useRef(true);
 
@@ -89,7 +89,7 @@ export function useAsync<T = any>(
         }
 
         setError(error);
-        handleError(error);
+        showError(error);
         onError?.(error);
         return null;
       } finally {
@@ -98,7 +98,7 @@ export function useAsync<T = any>(
         }
       }
     },
-    [asyncFunction, handleError, onSuccess, onError, retryCount, retryDelay]
+    [asyncFunction, showError, onSuccess, onError, retryCount, retryDelay]
   );
 
   const reset = useCallback(() => {
@@ -223,7 +223,7 @@ export function useOptimisticUpdate<T>(
   updateFunction: (item: Partial<T> & { id: string }) => Promise<T>
 ) {
   const [optimisticData, setOptimisticData] = useState<T[]>(data);
-  const { handleError } = useError();
+  const { showError } = useError();
 
   useEffect(() => {
     setOptimisticData(data);
@@ -250,11 +250,11 @@ export function useOptimisticUpdate<T>(
       } catch (error) {
         // Revert optimistic update on error
         setOptimisticData(data);
-        handleError(error);
+        showError(error);
         throw error;
       }
     },
-    [data, updateFunction, handleError]
+    [data, updateFunction, showError]
   );
 
   return {
