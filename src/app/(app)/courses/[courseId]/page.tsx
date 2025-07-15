@@ -456,13 +456,17 @@ export default function CourseDetailPage() {
               <div className="text-xs text-muted-foreground mt-2 space-x-4">
                 {course.createdBy && (
                   <span>
-                    Tạo bởi <b>
-                      {typeof course.createdBy === 'object' && course.createdBy && 'name' in course.createdBy 
-                        ? course.createdBy.name 
-                        : typeof course.createdBy === 'string' 
-                        ? course.createdBy 
+                    Tạo bởi{" "}
+                    <b>
+                      {typeof course.createdBy === "object" &&
+                      course.createdBy &&
+                      "name" in course.createdBy
+                        ? course.createdBy.name
+                        : typeof course.createdBy === "string"
+                        ? course.createdBy
                         : "N/A"}
-                    </b> vào{" "}
+                    </b>{" "}
+                    vào{" "}
                     {formatDistanceToNow(new Date(course.createdAt), {
                       addSuffix: true,
                       locale: vi,
@@ -471,13 +475,17 @@ export default function CourseDetailPage() {
                 )}
                 {course.modifiedBy && (
                   <span>
-                    Cập nhật bởi <b>
-                      {typeof course.modifiedBy === 'object' && course.modifiedBy && 'name' in course.modifiedBy 
-                        ? course.modifiedBy.name 
-                        : typeof course.modifiedBy === 'string' 
-                        ? course.modifiedBy 
+                    Cập nhật bởi{" "}
+                    <b>
+                      {typeof course.modifiedBy === "object" &&
+                      course.modifiedBy &&
+                      "name" in course.modifiedBy
+                        ? course.modifiedBy.name
+                        : typeof course.modifiedBy === "string"
+                        ? course.modifiedBy
                         : "N/A"}
-                    </b> vào{" "}
+                    </b>{" "}
+                    vào{" "}
                     {formatDistanceToNow(new Date(course.modifiedAt), {
                       addSuffix: true,
                       locale: vi,

@@ -94,9 +94,9 @@ export const getColumns = (
   {
     accessorKey: "department",
     header: "Phòng ban",
-    size: 200,
-    minSize: 150,
-    maxSize: 250,
+    size: 160,
+    minSize: 120,
+    maxSize: 200,
     cell: ({ row }) => {
       const departmentData = row.original.department;
       console.log("🔍 Course departments data:", departmentData);
@@ -125,30 +125,39 @@ export const getColumns = (
       });
 
       const displayText =
-        departmentNames.length > 2
-          ? `${departmentNames.slice(0, 2).join(", ")} +${
-              departmentNames.length - 2
-            }`
+        departmentNames.length > 1
+          ? `${departmentNames[0]} +${departmentNames.length - 1}`
           : departmentNames.join(", ");
 
       return (
-        <div className="max-w-[200px] overflow-hidden">
-          <span
-            className="block truncate text-sm"
-            title={departmentNames.join(", ")}
-          >
-            {displayText}
-          </span>
-        </div>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="max-w-[160px] overflow-hidden">
+                <span className="block truncate text-sm">{displayText}</span>
+              </div>
+            </TooltipTrigger>
+            <TooltipContent>
+              <div className="max-w-xs">
+                <p className="font-medium">Phòng ban:</p>
+                <div className="text-sm">
+                  {departmentNames.map((name, idx) => (
+                    <div key={idx}>• {name}</div>
+                  ))}
+                </div>
+              </div>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
       );
     },
   },
   {
     accessorKey: "level",
     header: "Cấp độ",
-    size: 150,
-    minSize: 120,
-    maxSize: 180,
+    size: 120,
+    minSize: 100,
+    maxSize: 150,
     cell: ({ row }) => {
       const levelData = row.original.level;
       console.log("🔍 Course levels data:", levelData);
@@ -177,19 +186,30 @@ export const getColumns = (
       });
 
       const displayText =
-        levelNames.length > 2
-          ? `${levelNames.slice(0, 2).join(", ")} +${levelNames.length - 2}`
+        levelNames.length > 1
+          ? `${levelNames[0]} +${levelNames.length - 1}`
           : levelNames.join(", ");
 
       return (
-        <div className="max-w-[200px] overflow-hidden">
-          <span
-            className="block truncate text-sm"
-            title={levelNames.join(", ")}
-          >
-            {displayText}
-          </span>
-        </div>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="max-w-[120px] overflow-hidden">
+                <span className="block truncate text-sm">{displayText}</span>
+              </div>
+            </TooltipTrigger>
+            <TooltipContent>
+              <div className="max-w-xs">
+                <p className="font-medium">Cấp độ:</p>
+                <div className="text-sm">
+                  {levelNames.map((name, idx) => (
+                    <div key={idx}>• {name}</div>
+                  ))}
+                </div>
+              </div>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
       );
     },
   },

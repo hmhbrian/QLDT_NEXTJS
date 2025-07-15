@@ -1,4 +1,3 @@
-
 "use client";
 
 import {
@@ -15,20 +14,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Users,
-  BookOpen,
-  Loader2,
-  BarChart2,
-  Activity,
-} from "lucide-react";
+import { Users, BookOpen, Loader2, BarChart2, Activity } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useCourses } from "@/hooks/use-courses";
 import { useUsers } from "@/hooks/use-users";
 import { useMemo } from "react";
 
 const ProgressCharts = dynamic(
-  () => import("@/components/hr/ProgressCharts").then((mod) => mod.ProgressCharts),
+  () =>
+    import("@/components/hr/ProgressCharts").then((mod) => mod.ProgressCharts),
   {
     ssr: false,
     loading: () => (
@@ -42,7 +36,10 @@ const ProgressCharts = dynamic(
 
 export default function ProgressPage() {
   const { courses, isLoading: isLoadingCourses } = useCourses({ Limit: 1000 });
-  const { users: allUsers, isLoading: isLoadingUsers } = useUsers({ RoleName: "HOCVIEN", Limit: 1000 });
+  const { users: allUsers, isLoading: isLoadingUsers } = useUsers({
+    RoleName: "HOCVIEN",
+    Limit: 1000,
+  });
 
   const isLoading = isLoadingCourses || isLoadingUsers;
 
@@ -64,18 +61,27 @@ export default function ProgressPage() {
     const completedCourses = courses.filter(
       (c) => c.status === "Đã kết thúc"
     ).length;
-    
-    const completionRate = totalCourses > 0 ? Math.round((completedCourses / totalCourses) * 100) : 0;
 
-    const courseStats = courses.map(course => ({
-      name: course.title,
-      trainees: course.userIds?.length || 0,
-      status: typeof course.status === 'object' && course.status && 'name' in course.status 
-        ? course.status.name 
-        : typeof course.status === 'string' 
-        ? course.status 
-        : "N/A",
-    })).sort((a, b) => b.trainees - a.trainees).slice(0, 10); // Top 10 courses by enrollment
+    const completionRate =
+      totalCourses > 0
+        ? Math.round((completedCourses / totalCourses) * 100)
+        : 0;
+
+    const courseStats = courses
+      .map((course) => ({
+        name: course.title,
+        trainees: course.userIds?.length || 0,
+        status:
+          typeof course.status === "object" &&
+          course.status &&
+          "name" in course.status
+            ? course.status.name
+            : typeof course.status === "string"
+            ? course.status
+            : "N/A",
+      }))
+      .sort((a, b) => b.trainees - a.trainees)
+      .slice(0, 10); // Top 10 courses by enrollment
 
     return {
       totalCourses,
@@ -139,7 +145,10 @@ export default function ProgressPage() {
         <>
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {statCards.map((stat, index) => (
-              <Card key={index} className="shadow-lg hover:shadow-xl transition-shadow">
+              <Card
+                key={index}
+                className="shadow-lg hover:shadow-xl transition-shadow"
+              >
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">
                     {stat.title}

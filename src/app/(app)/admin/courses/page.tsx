@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useMemo, useCallback } from "react";
@@ -129,7 +128,8 @@ export default function CoursesPage() {
     error: statusesError,
   } = useCourseStatuses();
 
-  const { departments: allDepartments, isLoading: isLoadingDepts } = useDepartments();
+  const { departments: allDepartments, isLoading: isLoadingDepts } =
+    useDepartments();
   const { positions, loading: isLoadingPositions } = usePositions();
 
   const isLoading =
@@ -149,7 +149,7 @@ export default function CoursesPage() {
   const departmentOptions = useMemo(() => {
     if (!allDepartments) return [];
     return allDepartments
-      .filter(d => d.name && d.name !== "N/A")
+      .filter((d) => d.name && d.name !== "N/A")
       .map((d) => ({
         value: String(d.departmentId),
         label: d.name,
@@ -159,7 +159,7 @@ export default function CoursesPage() {
   const levelOptions = useMemo(() => {
     if (!positions) return [];
     return positions
-      .filter(p => p.positionName && p.positionName !== "N/A")
+      .filter((p) => p.positionName && p.positionName !== "N/A")
       .map((p) => ({
         value: String(p.positionId),
         label: p.positionName,
@@ -239,11 +239,7 @@ export default function CoursesPage() {
         positions || []
       ),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [
-      canManageCourses,
-      allDepartments,
-      positions,
-    ]
+    [canManageCourses, allDepartments, positions]
   );
 
   if (statusesError) {
@@ -468,18 +464,22 @@ export default function CoursesPage() {
                       <div className="flex items-center gap-2">
                         <Badge
                           variant={getStatusBadgeVariant(
-                            typeof course.status === 'object' && course.status && 'name' in course.status 
-                              ? course.status.name 
-                              : typeof course.status === 'string' 
-                              ? course.status 
+                            typeof course.status === "object" &&
+                              course.status &&
+                              "name" in course.status
+                              ? course.status.name
+                              : typeof course.status === "string"
+                              ? course.status
                               : "N/A"
                           )}
                           className="whitespace-nowrap"
                         >
-                          {typeof course.status === 'object' && course.status && 'name' in course.status 
-                            ? course.status.name 
-                            : typeof course.status === 'string' 
-                            ? course.status 
+                          {typeof course.status === "object" &&
+                          course.status &&
+                          "name" in course.status
+                            ? course.status.name
+                            : typeof course.status === "string"
+                            ? course.status
                             : "N/A"}
                         </Badge>
                         <Badge
@@ -620,7 +620,8 @@ export default function CoursesPage() {
             <DialogTitle>Xác nhận lưu trữ</DialogTitle>
             <DialogDescription>
               Bạn có chắc chắn muốn lưu trữ khóa học &quot;
-              {archivingCourse?.title}&quot;? Hành động này sẽ chuyển trạng thái khóa học thành 'Hủy'.
+              {archivingCourse?.title}&quot;? Hành động này sẽ chuyển trạng thái
+              khóa học thành 'Hủy'.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="mt-4">
@@ -635,7 +636,9 @@ export default function CoursesPage() {
               onClick={handleArchiveCourse}
               disabled={updateCourseMutation.isPending}
             >
-              {updateCourseMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {updateCourseMutation.isPending && (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              )}
               Xác nhận
             </Button>
           </DialogFooter>
@@ -679,7 +682,9 @@ export default function CoursesPage() {
                 deleteCourseMutation.isPending
               }
             >
-              {deleteCourseMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {deleteCourseMutation.isPending && (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              )}
               Xác nhận xóa
             </Button>
           </DialogFooter>
