@@ -152,10 +152,7 @@ export const getColumns = (
       }
 
       return (
-        <Badge
-          variant="outline"
-          className={cn(getLevelBadgeColor(positionName))}
-        >
+        <Badge className={cn(getLevelBadgeColor(positionName))}>
           {positionName}
         </Badge>
       );
