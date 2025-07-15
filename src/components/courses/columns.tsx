@@ -103,10 +103,9 @@ export const getColumns = (
     accessorKey: "status",
     header: "Trạng thái",
     cell: ({ row }) => {
-      const status = row.original.status;
-      const statusName = typeof status === 'object' ? status.name : status;
+      const statusName = row.original.status;
       return (
-        <Badge variant={getStatusBadgeVariant(statusName || "N/A")}>
+        <Badge variant={getStatusBadgeVariant(statusName)}>
           {statusName || "N/A"}
         </Badge>
       );
@@ -134,8 +133,8 @@ export const getColumns = (
           <Tooltip>
             <TooltipTrigger asChild>
               <div className="flex flex-col text-xs">
-                {course.createdBy && <span className="truncate">Tạo bởi: <strong>{typeof course.createdBy === 'object' ? course.createdBy.name : course.createdBy}</strong></span>}
-                {course.modifiedBy && <span className="truncate">Sửa bởi: <strong>{typeof course.modifiedBy === 'object' ? course.modifiedBy.name : course.modifiedBy}</strong></span>}
+                {course.createdBy && <span className="truncate">Tạo bởi: <strong>{course.createdBy}</strong></span>}
+                {course.modifiedBy && <span className="truncate">Sửa bởi: <strong>{course.modifiedBy}</strong></span>}
               </div>
             </TooltipTrigger>
             <TooltipContent>
