@@ -59,7 +59,7 @@ export default function CoursesPage() {
   const [viewMode, setViewMode] = useState<"card" | "table">("card");
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
-    pageSize: 8,
+    pageSize: 10,
   });
 
   const {
@@ -194,239 +194,280 @@ export default function CoursesPage() {
 
       {viewMode === "card" ? (
         <>
-          <div className="grid gap-6 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {publicCourses.map((course) => {
-              const isEnrolled = course.userIds?.includes(
-                currentUser?.id || ""
-              );
-              const canEnroll =
-                currentUser?.role === "HOCVIEN" &&
-                !isEnrolled &&
-                course.enrollmentType === "optional" &&
-                isRegistrationOpen(course.registrationDeadline);
-              const accessible = isCourseAccessible(course);
-
-              return (
+          {/* Loading State */}
+          {isFetchingCourses && publicCourses.length === 0 ? (
+            <div className="grid gap-6 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {Array.from({ length: pagination.pageSize }).map((_, index) => (
                 <Card
-                  key={course.id}
-                  className="overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 flex flex-col group"
+                  key={index}
+                  className="overflow-hidden shadow-lg animate-pulse"
                 >
-                  <div
-                    className="relative h-48 w-full cursor-pointer overflow-hidden"
-                    onClick={() => router.push(`/courses/${course.id}`)}
-                  >
-                    {course.image.endsWith(".pdf") ? (
-                      <div className="h-full w-full flex items-center justify-center bg-gray-100">
-                        <BookOpen className="h-12 w-12 text-gray-400" />
-                        <span className="ml-2 text-gray-600">PDF Document</span>
-                      </div>
-                    ) : (
-                      <NextImage
-                        src={course.image}
-                        alt={course.title}
-                        fill
-                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                        className="object-cover group-hover:scale-105 transition-transform duration-300"
-                        data-ai-hint="course thumbnail"
-                      />
-                    )}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
-                  </div>
+                  <div className="h-48 w-full bg-gray-200"></div>
                   <CardHeader className="pt-4 pb-2">
-                    <div className="flex items-center gap-2 mb-1">
-                      <Badge variant="outline" className="text-xs">
-                        {course.category}
-                      </Badge>
-                      <Badge
-                        variant={
-                          course.enrollmentType === "mandatory"
-                            ? "default"
-                            : "secondary"
-                        }
-                        className="text-xs"
-                      >
-                        {course.enrollmentType === "mandatory"
-                          ? "Bắt buộc"
-                          : "Tùy chọn"}
-                      </Badge>
-                    </div>
-                    <CardTitle className="font-headline text-lg line-clamp-2 leading-snug">
-                      {course.title}
-                    </CardTitle>
+                    <div className="h-4 bg-gray-200 rounded mb-2"></div>
+                    <div className="h-6 bg-gray-200 rounded"></div>
                   </CardHeader>
-                  <CardContent className="flex-grow text-sm">
-                    <p className="text-muted-foreground mb-3 line-clamp-2">
-                      {course.description}
-                    </p>
-                    <div className="space-y-1 text-xs text-muted-foreground">
-                      <p>
-                        Giảng viên:{" "}
-                        <span className="font-medium text-foreground">
-                          {course.instructor}
-                        </span>
-                      </p>
-                      <p>
-                        Thời lượng: {course.duration.sessions} buổi (
-                        {course.duration.hoursPerSession}h/buổi)
-                      </p>
-                      {course.enrollmentType === "optional" &&
-                        course.registrationDeadline && (
-                          <div className="flex items-center">
-                            <CalendarClock className="mr-1.5 h-3 w-3" />
-                            Hạn ĐK:{" "}
-                            <span className="font-medium text-foreground ml-1">
-                              {new Date(
-                                course.registrationDeadline
-                              ).toLocaleDateString("vi-VN")}
-                            </span>
-                            {!isRegistrationOpen(
-                              course.registrationDeadline
-                            ) && (
-                              <Badge
-                                variant="destructive"
-                                className="ml-2 text-xs"
-                              >
-                                Hết hạn
-                              </Badge>
-                            )}
-                          </div>
-                        )}
-                    </div>
+                  <CardContent className="flex-grow">
+                    <div className="h-4 bg-gray-200 rounded mb-2"></div>
+                    <div className="h-4 bg-gray-200 rounded mb-2"></div>
+                    <div className="h-4 bg-gray-200 rounded w-3/4"></div>
                   </CardContent>
                   <CardFooter className="border-t mt-auto p-3">
-                    {canEnroll ? (
-                      <LoadingButton
-                        className="w-full"
-                        onClick={() => handleEnroll(course.id)}
-                        isLoading={
-                          enrollMutation.isPending &&
-                          enrollMutation.variables === course.id
-                        }
-                        disabled={enrollMutation.isPending}
-                      >
-                        {enrollMutation.isPending &&
-                        enrollMutation.variables === course.id
-                          ? "Đang đăng ký..."
-                          : "Đăng ký"}
-                      </LoadingButton>
-                    ) : isEnrolled ? (
-                      <Button
-                        variant="default"
-                        className="w-full"
-                        onClick={() => router.push(`/courses/${course.id}`)}
-                      >
-                        <Eye className="mr-2 h-4 w-4" /> Vào học
-                      </Button>
-                    ) : (
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button
-                              variant="outline"
-                              className="w-full"
-                              onClick={() =>
-                                accessible &&
-                                router.push(`/courses/${course.id}`)
-                              }
-                              disabled={!accessible}
-                            >
-                              Xem chi tiết
-                            </Button>
-                          </TooltipTrigger>
-                          {!accessible && (
-                            <TooltipContent>
-                              <p>
-                                Khóa học này là nội bộ. Bạn không có quyền truy
-                                cập.
-                              </p>
-                            </TooltipContent>
-                          )}
-                        </Tooltip>
-                      </TooltipProvider>
-                    )}
+                    <div className="h-8 bg-gray-200 rounded w-full"></div>
                   </CardFooter>
                 </Card>
-              );
-            })}
-          </div>
-          {publicCourses.length === 0 && !isFetchingCourses ? (
+              ))}
+            </div>
+          ) : (
+            <div className="grid gap-6 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {publicCourses.map((course) => {
+                const isEnrolled = course.userIds?.includes(
+                  currentUser?.id || ""
+                );
+                const canEnroll =
+                  currentUser?.role === "HOCVIEN" &&
+                  !isEnrolled &&
+                  course.enrollmentType === "optional" &&
+                  isRegistrationOpen(course.registrationDeadline);
+                const accessible = isCourseAccessible(course);
+
+                return (
+                  <Card
+                    key={course.id}
+                    className="overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 flex flex-col group"
+                  >
+                    <div
+                      className="relative h-48 w-full cursor-pointer overflow-hidden"
+                      onClick={() => router.push(`/courses/${course.id}`)}
+                    >
+                      {course.image.endsWith(".pdf") ? (
+                        <div className="h-full w-full flex items-center justify-center bg-gray-100">
+                          <BookOpen className="h-12 w-12 text-gray-400" />
+                          <span className="ml-2 text-gray-600">
+                            PDF Document
+                          </span>
+                        </div>
+                      ) : (
+                        <NextImage
+                          src={course.image}
+                          alt={course.title}
+                          fill
+                          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                          className="object-cover group-hover:scale-105 transition-transform duration-300"
+                          data-ai-hint="course thumbnail"
+                        />
+                      )}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
+                    </div>
+                    <CardHeader className="pt-4 pb-2">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Badge variant="outline" className="text-xs">
+                          {course.category}
+                        </Badge>
+                        <Badge
+                          variant={
+                            course.enrollmentType === "mandatory"
+                              ? "default"
+                              : "secondary"
+                          }
+                          className="text-xs"
+                        >
+                          {course.enrollmentType === "mandatory"
+                            ? "Bắt buộc"
+                            : "Tùy chọn"}
+                        </Badge>
+                      </div>
+                      <CardTitle className="font-headline text-lg line-clamp-2 leading-snug">
+                        {course.title}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="flex-grow text-sm">
+                      <p className="text-muted-foreground mb-3 line-clamp-2">
+                        {course.description}
+                      </p>
+                      <div className="space-y-1 text-xs text-muted-foreground">
+                        <p>
+                          Giảng viên:{" "}
+                          <span className="font-medium text-foreground">
+                            {course.instructor}
+                          </span>
+                        </p>
+                        <p>
+                          Thời lượng: {course.duration.sessions} buổi (
+                          {course.duration.hoursPerSession}h/buổi)
+                        </p>
+                        {course.enrollmentType === "optional" &&
+                          course.registrationDeadline && (
+                            <div className="flex items-center">
+                              <CalendarClock className="mr-1.5 h-3 w-3" />
+                              Hạn ĐK:{" "}
+                              <span className="font-medium text-foreground ml-1">
+                                {new Date(
+                                  course.registrationDeadline
+                                ).toLocaleDateString("vi-VN")}
+                              </span>
+                              {!isRegistrationOpen(
+                                course.registrationDeadline
+                              ) && (
+                                <Badge
+                                  variant="destructive"
+                                  className="ml-2 text-xs"
+                                >
+                                  Hết hạn
+                                </Badge>
+                              )}
+                            </div>
+                          )}
+                      </div>
+                    </CardContent>
+                    <CardFooter className="border-t mt-auto p-3">
+                      {canEnroll ? (
+                        <LoadingButton
+                          className="w-full"
+                          onClick={() => handleEnroll(course.id)}
+                          isLoading={
+                            enrollMutation.isPending &&
+                            enrollMutation.variables === course.id
+                          }
+                          disabled={enrollMutation.isPending}
+                        >
+                          {enrollMutation.isPending &&
+                          enrollMutation.variables === course.id
+                            ? "Đang đăng ký..."
+                            : "Đăng ký"}
+                        </LoadingButton>
+                      ) : isEnrolled ? (
+                        <Button
+                          variant="default"
+                          className="w-full"
+                          onClick={() => router.push(`/courses/${course.id}`)}
+                        >
+                          <Eye className="mr-2 h-4 w-4" /> Vào học
+                        </Button>
+                      ) : (
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="outline"
+                                className="w-full"
+                                onClick={() =>
+                                  accessible &&
+                                  router.push(`/courses/${course.id}`)
+                                }
+                                disabled={!accessible}
+                              >
+                                Xem chi tiết
+                              </Button>
+                            </TooltipTrigger>
+                            {!accessible && (
+                              <TooltipContent>
+                                <p>
+                                  Khóa học này là nội bộ. Bạn không có quyền
+                                  truy cập.
+                                </p>
+                              </TooltipContent>
+                            )}
+                          </Tooltip>
+                        </TooltipProvider>
+                      )}
+                    </CardFooter>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
+          {/* Pagination Controls - Always show if there are multiple pages */}
+          {pageCount > 1 && (
+            <div className="flex items-center justify-between pt-6">
+              <div className="flex-1 text-sm text-muted-foreground">
+                Hiển thị{" "}
+                {Math.min(
+                  pagination.pageIndex * pagination.pageSize +
+                    publicCourses.length,
+                  paginationInfo?.totalItems ?? 0
+                )}{" "}
+                trên {paginationInfo?.totalItems ?? 0} khóa học
+              </div>
+              <div className="flex items-center space-x-6 lg:space-x-8">
+                <div className="flex items-center space-x-2">
+                  <p className="text-sm font-medium">Số mục mỗi trang</p>
+                  <Select
+                    value={`${pagination.pageSize}`}
+                    onValueChange={(value) => {
+                      setPagination((p) => ({
+                        ...p,
+                        pageSize: Number(value),
+                        pageIndex: 0,
+                      }));
+                    }}
+                  >
+                    <SelectTrigger className="h-8 w-[70px]">
+                      <SelectValue placeholder={pagination.pageSize} />
+                    </SelectTrigger>
+                    <SelectContent side="top">
+                      {[10, 20, 30, 40, 50].map((pageSize) => (
+                        <SelectItem key={pageSize} value={`${pageSize}`}>
+                          {pageSize}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex w-[100px] items-center justify-center text-sm font-medium">
+                  Trang {pagination.pageIndex + 1} của {pageCount}
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Button
+                    variant="outline"
+                    className="h-8 w-8 p-0"
+                    onClick={() =>
+                      setPagination((p) => ({
+                        ...p,
+                        pageIndex: p.pageIndex - 1,
+                      }))
+                    }
+                    disabled={pagination.pageIndex === 0 || isFetchingCourses}
+                  >
+                    <span className="sr-only">Trang trước</span>
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="h-8 w-8 p-0"
+                    onClick={() =>
+                      setPagination((p) => ({
+                        ...p,
+                        pageIndex: p.pageIndex + 1,
+                      }))
+                    }
+                    disabled={
+                      pagination.pageIndex + 1 >= pageCount || isFetchingCourses
+                    }
+                  >
+                    <span className="sr-only">Trang sau</span>
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Empty State */}
+          {publicCourses.length === 0 && !isFetchingCourses && (
             <div className="text-center py-12">
               <BookOpen className="mx-auto h-12 w-12 text-muted-foreground" />
               <h3 className="mt-2 text-xl font-semibold">
-                Không tìm thấy khóa học nào
+                {debouncedSearchTerm
+                  ? "Không tìm thấy khóa học nào"
+                  : "Chưa có khóa học công khai"}
               </h3>
               <p className="mt-1 text-sm text-muted-foreground">
-                Vui lòng thử lại với từ khóa khác.
+                {debouncedSearchTerm
+                  ? "Vui lòng thử lại với từ khóa khác."
+                  : "Hiện tại chưa có khóa học công khai nào được phát hành."}
               </p>
             </div>
-          ) : (
-            pageCount > 1 && (
-              <div className="flex items-center justify-between pt-6">
-                <div className="flex-1 text-sm text-muted-foreground">
-                  Hiển thị {publicCourses.length} trên{" "}
-                  {paginationInfo?.totalItems ?? 0} khóa học.
-                </div>
-                <div className="flex items-center space-x-6 lg:space-x-8">
-                  <div className="flex items-center space-x-2">
-                    <p className="text-sm font-medium">Số mục mỗi trang</p>
-                    <Select
-                      value={`${pagination.pageSize}`}
-                      onValueChange={(value) => {
-                        setPagination((p) => ({
-                          ...p,
-                          pageSize: Number(value),
-                          pageIndex: 0,
-                        }));
-                      }}
-                    >
-                      <SelectTrigger className="h-8 w-[70px]">
-                        <SelectValue placeholder={pagination.pageSize} />
-                      </SelectTrigger>
-                      <SelectContent side="top">
-                        {[8, 12, 16, 20].map((pageSize) => (
-                          <SelectItem key={pageSize} value={`${pageSize}`}>
-                            {pageSize}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="flex w-[100px] items-center justify-center text-sm font-medium">
-                    Trang {pagination.pageIndex + 1} của {pageCount}
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Button
-                      variant="outline"
-                      className="h-8 w-8 p-0"
-                      onClick={() =>
-                        setPagination((p) => ({
-                          ...p,
-                          pageIndex: p.pageIndex - 1,
-                        }))
-                      }
-                      disabled={pagination.pageIndex === 0}
-                    >
-                      <span className="sr-only">Trang trước</span>
-                      <ChevronLeft className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      className="h-8 w-8 p-0"
-                      onClick={() =>
-                        setPagination((p) => ({
-                          ...p,
-                          pageIndex: p.pageIndex + 1,
-                        }))
-                      }
-                      disabled={pagination.pageIndex + 1 >= pageCount}
-                    >
-                      <span className="sr-only">Trang sau</span>
-                      <ChevronRight className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            )
           )}
         </>
       ) : (
