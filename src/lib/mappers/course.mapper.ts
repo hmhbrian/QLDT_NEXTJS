@@ -1,4 +1,3 @@
-
 import type {
   Course,
   CourseApiResponse,
@@ -8,25 +7,27 @@ import type {
 } from "@/lib/types/course.types";
 import { API_CONFIG } from "../config";
 
-function getAbsoluteImageUrl(thumbUrl: string | undefined | null, name?: string): string {
-    const defaultImageUrl = `https://placehold.co/600x400/f97316/white?text=${encodeURIComponent(
-      name || "Course"
-    )}`;
-    
-    if (!thumbUrl) return defaultImageUrl;
-    
-    if (thumbUrl.toLowerCase().includes("formfile")) {
-        return defaultImageUrl;
-    }
-    
-    if (thumbUrl.startsWith("http") || thumbUrl.startsWith("data:")) {
-        return thumbUrl;
-    }
+function getAbsoluteImageUrl(
+  thumbUrl: string | undefined | null,
+  name?: string
+): string {
+  const defaultImageUrl = `https://placehold.co/600x400/f97316/white?text=${encodeURIComponent(
+    name || "Course"
+  )}`;
 
-    const baseUrl = API_CONFIG.baseURL.replace("/api", "");
-    return `${baseUrl}${thumbUrl.startsWith("/") ? "" : "/"}${thumbUrl}`;
+  if (!thumbUrl) return defaultImageUrl;
+
+  if (thumbUrl.toLowerCase().includes("formfile")) {
+    return defaultImageUrl;
+  }
+
+  if (thumbUrl.startsWith("http") || thumbUrl.startsWith("data:")) {
+    return thumbUrl;
+  }
+
+  const baseUrl = API_CONFIG.baseURL.replace("/api", "");
+  return `${baseUrl}${thumbUrl.startsWith("/") ? "" : "/"}${thumbUrl}`;
 }
-
 
 export function mapCourseApiToUi(apiCourse: CourseApiResponse): Course {
   const imageUrl = getAbsoluteImageUrl(apiCourse.thumbUrl, apiCourse.name);
@@ -71,45 +72,48 @@ export function mapCourseApiToUi(apiCourse: CourseApiResponse): Course {
   };
 }
 
-export function mapUserEnrollCourseDtoToCourse(dto: UserEnrollCourseDto): Course {
-    const imageUrl = getAbsoluteImageUrl(dto.thumbUrl, dto.name);
-    return {
-        id: dto.id,
-        title: dto.name,
-        courseCode: dto.code,
-        description: dto.description || '',
-        objectives: dto.objectives || '',
-        image: imageUrl,
-        location: dto.location || '',
-        status: 'Đang mở',
-        enrollmentType: dto.optional === 'Bắt buộc' ? 'mandatory' : 'optional',
-        isPublic: dto.optional !== 'Bắt buộc',
-        instructor: 'N/A', 
-        duration: {
-            sessions: dto.sessions || 0,
-            hoursPerSession: dto.hoursPerSessions || 0,
-        },
-        learningType: dto.format === 'offline' ? 'offline' : 'online',
-        maxParticipants: dto.maxParticipant,
-        startDate: dto.startDate || null,
-        endDate: dto.endDate || null,
-        registrationStartDate: dto.registrationStartDate || null,
-        registrationDeadline: dto.registrationClosingDate || null,
-        department: [],
-        level: [],
-        category: 'N/A',
-        materials: [],
-        lessons: [],
-        tests: [],
-        userIds: [],
-        createdAt: new Date().toISOString(),
-        modifiedAt: new Date().toISOString(),
-        createdBy: '',
-        modifiedBy: '',
-        progressPercentage: dto.progressPercentage ? Math.round(dto.progressPercentage) : 0,
-    };
+export function mapUserEnrollCourseDtoToCourse(
+  dto: UserEnrollCourseDto
+): Course {
+  const imageUrl = getAbsoluteImageUrl(dto.thumbUrl, dto.name);
+  return {
+    id: dto.id,
+    title: dto.name,
+    courseCode: dto.code,
+    description: dto.description || "",
+    objectives: dto.objectives || "",
+    image: imageUrl,
+    location: dto.location || "",
+    status: "Đang mở",
+    enrollmentType: dto.optional === "Bắt buộc" ? "mandatory" : "optional",
+    isPublic: dto.optional !== "Bắt buộc",
+    instructor: "N/A",
+    duration: {
+      sessions: dto.sessions || 0,
+      hoursPerSession: dto.hoursPerSessions || 0,
+    },
+    learningType: dto.format === "offline" ? "offline" : "online",
+    maxParticipants: dto.maxParticipant,
+    startDate: dto.startDate || null,
+    endDate: dto.endDate || null,
+    registrationStartDate: dto.registrationStartDate || null,
+    registrationDeadline: dto.registrationClosingDate || null,
+    department: [],
+    level: [],
+    category: "N/A",
+    materials: [],
+    lessons: [],
+    tests: [],
+    userIds: [],
+    createdAt: new Date().toISOString(),
+    modifiedAt: new Date().toISOString(),
+    createdBy: "",
+    modifiedBy: "",
+    progressPercentage: dto.progressPercentage
+      ? Math.round(dto.progressPercentage)
+      : 0,
+  };
 }
-
 
 export function mapCourseUiToCreatePayload(
   course: Partial<Course>
@@ -140,15 +144,17 @@ export function mapCourseUiToCreatePayload(
     StatusId: course.statusId,
     DepartmentIds: course.department
       ?.map((item) => {
-        if (typeof item === 'string') return parseInt(item, 10);
-        if (typeof item === 'object' && item && 'id' in item) return parseInt(String(item.id), 10);
+        if (typeof item === "string") return parseInt(item, 10);
+        if (typeof item === "object" && item && "id" in item)
+          return parseInt(String(item.id), 10);
         return NaN;
       })
       .filter((id) => !isNaN(id)),
     PositionIds: course.level
       ?.map((item) => {
-        if (typeof item === 'string') return parseInt(item, 10);
-        if (typeof item === 'object' && item && 'id' in item) return parseInt(String(item.id), 10);
+        if (typeof item === "string") return parseInt(item, 10);
+        if (typeof item === "object" && item && "id" in item)
+          return parseInt(String(item.id), 10);
         return NaN;
       })
       .filter((id) => !isNaN(id)),
@@ -191,15 +197,17 @@ export function mapCourseUiToUpdatePayload(
     StatusId: course.statusId,
     DepartmentIds: course.department
       ?.map((item) => {
-        if (typeof item === 'string') return parseInt(item, 10);
-        if (typeof item === 'object' && item && 'id' in item) return parseInt(String(item.id), 10);
+        if (typeof item === "string") return parseInt(item, 10);
+        if (typeof item === "object" && item && "id" in item)
+          return parseInt(String(item.id), 10);
         return NaN;
       })
       .filter((id) => !isNaN(id)),
     PositionIds: course.level
       ?.map((item) => {
-        if (typeof item === 'string') return parseInt(item, 10);
-        if (typeof item === 'object' && item && 'id' in item) return parseInt(String(item.id), 10);
+        if (typeof item === "string") return parseInt(item, 10);
+        if (typeof item === "object" && item && "id" in item)
+          return parseInt(String(item.id), 10);
         return NaN;
       })
       .filter((id) => !isNaN(id)),
