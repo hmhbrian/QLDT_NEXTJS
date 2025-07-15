@@ -1,4 +1,3 @@
-
 import type { Course, Lesson, Test, Question } from "@/lib/types/course.types";
 import { categoryOptions } from "../config/constants";
 
@@ -7,26 +6,30 @@ const sampleLessons: Lesson[] = [
   {
     id: 1,
     title: "Bài 1: Giới thiệu về JavaScript",
-    type: 'pdf_url',
-    content: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
-    fileUrl: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
-    duration: "15 phút"
+    type: "pdf_url",
+    content:
+      "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
+    fileUrl:
+      "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
+    duration: "15 phút",
   },
   {
     id: 2,
     title: "Bài 2: Biến và Kiểu dữ liệu",
-    type: 'pdf_url',
-    content: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
-    fileUrl: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
-    duration: "20 phút"
+    type: "pdf_url",
+    content:
+      "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
+    fileUrl:
+      "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
+    duration: "20 phút",
   },
   {
     id: 3,
     title: "Bài 3: Hàm và Phạm vi",
-    type: 'text',
+    type: "text",
     content: "Đây là nội dung văn bản cho bài học về hàm và phạm vi.",
-    fileUrl: null, 
-    duration: "10 phút"
+    fileUrl: null,
+    duration: "10 phút",
   },
 ];
 
@@ -103,21 +106,21 @@ export const mockCourses: Course[] = [
     materials: [
       {
         id: 201,
-        courseId: '1',
+        courseId: "1",
         type: "PDF",
         title: "Tài liệu JavaScript căn bản",
         link: "https://mozilla.github.io/pdf.js/web/compressed.tracemonkey-pldi-09.pdf",
         createdAt: new Date().toISOString(),
-        modifiedAt: null
+        modifiedAt: null,
       },
       {
         id: 202,
-        courseId: '1',
+        courseId: "1",
         type: "Link",
         title: "Slide bài giảng tuần 1",
         link: "https://placehold.co/800x600.png?text=Slide+Tuan+1",
         createdAt: new Date().toISOString(),
-        modifiedAt: null
+        modifiedAt: null,
       },
     ],
     lessons: sampleLessons.slice(0, 2),
@@ -131,6 +134,7 @@ export const mockCourses: Course[] = [
     registrationDeadline: "2024-07-25",
     userIds: ["3"],
     isPublic: true,
+    maxParticipants: 25,
   },
   {
     id: "2",
@@ -156,12 +160,12 @@ export const mockCourses: Course[] = [
     materials: [
       {
         id: 203,
-        courseId: '2',
+        courseId: "2",
         type: "PDF",
         title: "Sổ tay quản lý dự án",
         link: "https://mozilla.github.io/pdf.js/web/compressed.tracemonkey-pldi-09.pdf",
         createdAt: new Date().toISOString(),
-        modifiedAt: null
+        modifiedAt: null,
       },
     ],
     lessons: [],
@@ -175,6 +179,7 @@ export const mockCourses: Course[] = [
     isPublic: true,
     registrationStartDate: null,
     registrationDeadline: null,
+    maxParticipants: 50,
   },
   {
     id: "3",
@@ -210,6 +215,7 @@ export const mockCourses: Course[] = [
     registrationDeadline: "2024-09-20",
     isPublic: false,
     userIds: [],
+    maxParticipants: 20,
   },
   {
     id: "4",
@@ -242,6 +248,7 @@ export const mockCourses: Course[] = [
     isPublic: true,
     registrationStartDate: null,
     registrationDeadline: null,
+    maxParticipants: 100,
   },
   {
     id: "5",
@@ -274,6 +281,7 @@ export const mockCourses: Course[] = [
     registrationDeadline: "2024-08-30",
     isPublic: true,
     userIds: ["3"],
+    maxParticipants: 30,
   },
   {
     id: "6",
@@ -311,6 +319,7 @@ export const mockCourses: Course[] = [
     registrationStartDate: null,
     registrationDeadline: null,
     userIds: [],
+    maxParticipants: 40,
   },
 ];
 
@@ -342,21 +351,21 @@ export const mockCourseDetail: Course = {
   materials: [
     {
       id: 801,
-      courseId: '1',
+      courseId: "1",
       type: "PDF",
       title: "Giáo trình JavaScript Nâng cao (PDF)",
       link: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
       createdAt: new Date().toISOString(),
-      modifiedAt: null
+      modifiedAt: null,
     },
     {
       id: 802,
-      courseId: '1',
+      courseId: "1",
       type: "Link",
       title: "Slide Bài 1: Tổng quan ES6+",
       link: "https://placehold.co/800x600.png?text=ES6+Overview+Slides",
       createdAt: new Date().toISOString(),
-      modifiedAt: null
+      modifiedAt: null,
     },
   ],
   lessons: sampleLessons,
