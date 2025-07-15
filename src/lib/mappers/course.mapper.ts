@@ -44,7 +44,7 @@ export function mapCourseApiToUi(apiCourse: CourseApiResponse): Course {
     enrollmentType:
       apiCourse.optional === "Bắt buộc" ? "mandatory" : "optional",
     isPublic: apiCourse.optional !== "Bắt buộc",
-    instructor: apiCourse.lecturer?.fullName || "N/A",
+    instructor: apiCourse.lecturer?.name || "N/A",
     duration: {
       sessions: apiCourse.sessions || 0,
       hoursPerSession: apiCourse.hoursPerSessions || 0,
@@ -60,14 +60,14 @@ export function mapCourseApiToUi(apiCourse: CourseApiResponse): Course {
     ),
     level: (apiCourse.positions || []).map((p) => String(p.positionId)),
     userIds: (apiCourse.users || []).map((u) => u.id),
-    category: apiCourse.category || null,
+    category: apiCourse.category?.name || "Chung",
     materials: [],
     lessons: [],
     tests: [],
     createdAt: apiCourse.createdAt || new Date().toISOString(),
     modifiedAt: apiCourse.modifiedAt || new Date().toISOString(),
-    createdBy: typeof apiCourse.createdBy === 'object' ? apiCourse.createdBy : (apiCourse.createdBy || "Không có"),
-    modifiedBy: typeof apiCourse.updatedBy === 'object' ? apiCourse.updatedBy : (apiCourse.updatedBy || "Không có"),
+    createdBy: apiCourse.createdBy || "Không có",
+    modifiedBy: apiCourse.updatedBy || "Không có",
   };
 }
 
@@ -97,7 +97,7 @@ export function mapUserEnrollCourseDtoToCourse(dto: UserEnrollCourseDto): Course
         registrationDeadline: dto.registrationClosingDate || null,
         department: [],
         level: [],
-        category: null,
+        category: 'N/A',
         materials: [],
         lessons: [],
         tests: [],

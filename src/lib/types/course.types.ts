@@ -66,7 +66,7 @@ export interface Course {
   objectives: string;
   image: string;
   location: string;
-  status: Status | string;
+  status: string;
   statusId?: number;
   enrollmentType: EnrollmentType;
   isPublic: boolean;
@@ -83,15 +83,15 @@ export interface Course {
   registrationDeadline: string | null;
   department: string[];
   level: string[];
-  category: CourseCategoryDto | null; 
+  category: string; 
   materials: CourseMaterial[];
   lessons: Lesson[];
   tests: Test[];
   userIds: string[];
   createdAt: string;
   modifiedAt: string;
-  createdBy: { id: string; name: string } | string;
-  modifiedBy: { id: string; name: string } | string;
+  createdBy: string;
+  modifiedBy: string;
   imageFile?: File | null;
   progressPercentage?: number; // Add this to UI model
 }
@@ -210,8 +210,8 @@ export interface CourseApiResponse {
   hoursPerSessions?: number;
   optional?: string;
   maxParticipant?: number;
-  createdBy?: { id: string; name: string } | string;
-  updatedBy?: { id: string; name: string } | string;
+  createdBy?: string;
+  updatedBy?: string;
   startDate?: string;
   endDate?: string;
   registrationStartDate?: string;
@@ -221,13 +221,7 @@ export interface CourseApiResponse {
   modifiedAt?: string;
   status?: Status;
   category?: CourseCategoryDto;
-  lecturer?: {
-    id: number;
-    fullName: string;
-    email: string;
-    phoneNumber: string;
-    profileImageUrl?: string | null;
-  } | null;
+  lecturer?: any; // Define LecturerDto if needed
   departments?: DepartmentInfo[];
   positions?: Position[];
   users?: User[]; // For enrolled users
