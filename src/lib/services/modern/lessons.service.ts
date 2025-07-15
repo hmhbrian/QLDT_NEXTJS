@@ -1,4 +1,3 @@
-
 import { BaseService } from "@/lib/core";
 import { API_CONFIG } from "@/lib/config";
 import type {
@@ -18,14 +17,14 @@ class LessonsService extends BaseService<
   UpdateLessonPayload
 > {
   constructor() {
-    super(API_CONFIG.endpoints.courses.base); 
+    super(API_CONFIG.endpoints.courses.base);
   }
 
   async getLessons(courseId: string): Promise<ApiLesson[]> {
     const endpoint = API_CONFIG.endpoints.lessons.base(courseId);
     try {
       const response = await this.get<ApiLesson[]>(endpoint);
-      return response || []; 
+      return response || [];
     } catch (error: any) {
       if (
         error.message &&
@@ -52,7 +51,10 @@ class LessonsService extends BaseService<
       formData.append("Link", payload.Link);
     }
     if (payload.TotalDurationSeconds) {
-        formData.append("TotalDurationSeconds", payload.TotalDurationSeconds.toString());
+      formData.append(
+        "TotalDurationSeconds",
+        payload.TotalDurationSeconds.toString()
+      );
     }
 
     const endpoint = API_CONFIG.endpoints.lessons.create(courseId);
@@ -65,15 +67,18 @@ class LessonsService extends BaseService<
     payload: UpdateLessonPayload
   ): Promise<ApiLesson> {
     const formData = new FormData();
-    if(payload.Title) formData.append("Title", payload.Title);
+    if (payload.Title) formData.append("Title", payload.Title);
     if (payload.FilePdf) {
       formData.append("FilePdf", payload.FilePdf);
     }
     if (payload.Link) {
-        formData.append("Link", payload.Link);
+      formData.append("Link", payload.Link);
     }
     if (payload.TotalDurationSeconds) {
-        formData.append("TotalDurationSeconds", payload.TotalDurationSeconds.toString());
+      formData.append(
+        "TotalDurationSeconds",
+        payload.TotalDurationSeconds.toString()
+      );
     }
 
     const endpoint = API_CONFIG.endpoints.lessons.update(courseId, lessonId);
@@ -90,13 +95,24 @@ class LessonsService extends BaseService<
     payload: ReorderLessonPayload
   ): Promise<void> {
     const endpoint = API_CONFIG.endpoints.lessons.reorder(courseId);
-    const formData = new FormData();
-    formData.append('LessonId', String(payload.LessonId));
-    if (payload.PreviousLessonId !== undefined) {
-        formData.append('PreviousLessonId', String(payload.PreviousLessonId));
+
+    // Use JSON instead of FormData for better null handling
+    const requestPayload = {
+      LessonId: payload.LessonId,
+      PreviousLessonId: payload.PreviousLessonId, // null is valid JSON value
+    };
+
+    try {
+      console.log("Reordering lesson with payload:", requestPayload);
+      await this.put<void>(endpoint, requestPayload);
+    } catch (error: any) {
+      console.error("Failed to reorder lesson:", {
+        courseId,
+        payload: requestPayload,
+        error: error.message || error,
+      });
+      throw error;
     }
-    
-    await this.put<void>(endpoint, formData);
   }
 }
 
