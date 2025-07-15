@@ -1,4 +1,3 @@
-
 /**
  * Course Domain Types
  * All course-related interfaces and types, aligned with backend DTOs.
@@ -12,8 +11,12 @@ import type { Status } from "./status.types";
 export type LearningFormat = "online" | "offline";
 export type EnrollmentType = "optional" | "mandatory";
 export type CourseMaterialType = "PDF" | "Link";
-export type LessonContentType = 'video_url' | 'pdf_url' | 'slide_url' | 'text' | 'external_link';
-
+export type LessonContentType =
+  | "video_url"
+  | "pdf_url"
+  | "slide_url"
+  | "text"
+  | "external_link";
 
 // --- Frontend UI Models ---
 
@@ -66,7 +69,7 @@ export interface Course {
   objectives: string;
   image: string;
   location: string;
-  status: string;
+  status: string | { id: number; name: string }; // Handle both string and object
   statusId?: number;
   enrollmentType: EnrollmentType;
   isPublic: boolean;
@@ -81,31 +84,34 @@ export interface Course {
   endDate: string | null;
   registrationStartDate: string | null;
   registrationDeadline: string | null;
-  department: string[];
-  level: string[];
-  category: string; 
+  department: (
+    | string
+    | { id: number; name: string; departmentName?: string }
+  )[]; // Handle both string and object arrays
+  level: (string | { id: number; name: string; positionName?: string })[]; // Handle both string and object arrays
+  category: string;
   materials: CourseMaterial[];
   lessons: Lesson[];
   tests: Test[];
   userIds: string[];
   createdAt: string;
   modifiedAt: string;
-  createdBy: string;
-  modifiedBy: string;
+  createdBy: string | { id: string; name: string }; // Handle both string and object
+  modifiedBy: string | { id: string; name: string } | null; // Handle both string and object
   imageFile?: File | null;
   progressPercentage?: number; // Add this to UI model
 }
 
 export interface Feedback {
-    id: number;
-    userId: string;
-    courseId: string;
-    q1_relevance: number;
-    q2_clarity: number;
-    q3_structure: number;
-    q4_duration: number;
-    q5_material: number;
-    comment: string;
+  id: number;
+  userId: string;
+  courseId: string;
+  q1_relevance: number;
+  q2_clarity: number;
+  q3_structure: number;
+  q4_duration: number;
+  q5_material: number;
+  comment: string;
 }
 
 export interface ApiLessonProgress {
@@ -118,7 +124,6 @@ export interface ApiLessonProgress {
   currentTimeSecond?: number;
 }
 
-
 // --- API Request Payloads ---
 
 export interface CreateCourseRequest {
@@ -127,10 +132,10 @@ export interface CreateCourseRequest {
   Description?: string;
   Objectives: string;
   ThumbUrl?: File;
-  Format?: LearningFormat; 
+  Format?: LearningFormat;
   Sessions?: number;
   HoursPerSessions?: number;
-  Optional?: string; 
+  Optional?: string;
   MaxParticipant?: number;
   StartDate?: string;
   EndDate?: string;
@@ -184,11 +189,10 @@ export interface UpdateTestPayload {
 }
 
 export interface UpsertLessonProgressPayload {
-    lessonId: number;
-    currentPage?: number;
-    currentTimeSecond?: number;
+  lessonId: number;
+  currentPage?: number;
+  currentTimeSecond?: number;
 }
-
 
 // --- API Response DTOs ---
 
@@ -228,23 +232,23 @@ export interface CourseApiResponse {
 }
 
 export interface UserEnrollCourseDto {
-    id: string;
-    code: string;
-    name: string;
-    description?: string;
-    objectives?: string;
-    thumbUrl?: string;
-    format?: string;
-    sessions?: number;
-    hoursPerSessions?: number;
-    optional?: string;
-    maxParticipant?: number;
-    startDate?: string | null;
-    endDate?: string | null;
-    registrationStartDate?: string | null;
-    registrationClosingDate?: string | null;
-    location?: string;
-    progressPercentage?: number;
+  id: string;
+  code: string;
+  name: string;
+  description?: string;
+  objectives?: string;
+  thumbUrl?: string;
+  format?: string;
+  sessions?: number;
+  hoursPerSessions?: number;
+  optional?: string;
+  maxParticipant?: number;
+  startDate?: string | null;
+  endDate?: string | null;
+  registrationStartDate?: string | null;
+  registrationClosingDate?: string | null;
+  location?: string;
+  progressPercentage?: number;
 }
 
 export interface ApiLesson {
@@ -252,7 +256,7 @@ export interface ApiLesson {
   title: string;
   fileUrl?: string | null;
   link?: string | null;
-  type?: string; 
+  type?: string;
   totalDurationSeconds?: number;
 }
 
@@ -279,12 +283,12 @@ export interface ApiTest {
 }
 
 export interface ApiCourseAttachedFile {
-    id: number;
-    courseId?: string;
-    title?: string;
-    type?: string;
-    link?: string;
-    publicIdUrlPdf?: string;
-    createdAt?: string;
-    modifiedAt?: string;
+  id: number;
+  courseId?: string;
+  title?: string;
+  type?: string;
+  link?: string;
+  publicIdUrlPdf?: string;
+  createdAt?: string;
+  modifiedAt?: string;
 }

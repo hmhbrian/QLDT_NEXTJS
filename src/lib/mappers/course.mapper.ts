@@ -139,10 +139,18 @@ export function mapCourseUiToCreatePayload(
     Location: course.location,
     StatusId: course.statusId,
     DepartmentIds: course.department
-      ?.map((id) => parseInt(id, 10))
+      ?.map((item) => {
+        if (typeof item === 'string') return parseInt(item, 10);
+        if (typeof item === 'object' && item && 'id' in item) return parseInt(String(item.id), 10);
+        return NaN;
+      })
       .filter((id) => !isNaN(id)),
     PositionIds: course.level
-      ?.map((id) => parseInt(id, 10))
+      ?.map((item) => {
+        if (typeof item === 'string') return parseInt(item, 10);
+        if (typeof item === 'object' && item && 'id' in item) return parseInt(String(item.id), 10);
+        return NaN;
+      })
       .filter((id) => !isNaN(id)),
     UserIds: course.userIds || [],
   };
@@ -182,10 +190,18 @@ export function mapCourseUiToUpdatePayload(
     Location: course.location,
     StatusId: course.statusId,
     DepartmentIds: course.department
-      ?.map((id) => parseInt(id, 10))
+      ?.map((item) => {
+        if (typeof item === 'string') return parseInt(item, 10);
+        if (typeof item === 'object' && item && 'id' in item) return parseInt(String(item.id), 10);
+        return NaN;
+      })
       .filter((id) => !isNaN(id)),
     PositionIds: course.level
-      ?.map((id) => parseInt(id, 10))
+      ?.map((item) => {
+        if (typeof item === 'string') return parseInt(item, 10);
+        if (typeof item === 'object' && item && 'id' in item) return parseInt(String(item.id), 10);
+        return NaN;
+      })
       .filter((id) => !isNaN(id)),
     UserIds: course.userIds,
   };
