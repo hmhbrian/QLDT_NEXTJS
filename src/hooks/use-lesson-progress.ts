@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { lessonProgressService } from "@/lib/services/modern/lesson-progress.service";
 import type {
@@ -38,30 +37,47 @@ export function useUpsertLessonProgress(courseId: string) {
   const queryClient = useQueryClient();
   const queryKey = [LESSON_PROGRESS_QUERY_KEY, courseId];
 
-  return useMutation<void, Error, UpsertLessonProgressPayload, LessonProgressContext>({
-    mutationFn: (payload) => lessonProgressService.upsertLessonProgress(payload),
+  return useMutation<
+    void,
+    Error,
+    UpsertLessonProgressPayload,
+    LessonProgressContext
+  >({
+    mutationFn: (payload) =>
+      lessonProgressService.upsertLessonProgress(payload),
+    // Retry configuration for network issues
+    retry: (failureCount, error) => {
+      // Only retry on network errors, not validation errors
+      if (failureCount >= 3) return false;
+      const errorMessage = extractErrorMessage(error);
+      return (
+        !errorMessage.includes("validation") && !errorMessage.includes("400")
+      );
+    },
     // Optimistically update the progress in the UI
     onMutate: async (newProgress) => {
       // Cancel any outgoing refetches (so they don't overwrite our optimistic update)
       await queryClient.cancelQueries({ queryKey });
 
       // Snapshot the previous value
-      const previousProgress = queryClient.getQueryData<ApiLessonProgress[]>(queryKey);
+      const previousProgress =
+        queryClient.getQueryData<ApiLessonProgress[]>(queryKey);
 
       // Optimistically update to the new value
       queryClient.setQueryData<ApiLessonProgress[]>(queryKey, (oldData) => {
-         if (!oldData) return [];
-         const newData = oldData.map(progress => {
-           if (progress.id === newProgress.lessonId) {
-             return {
-               ...progress,
-               currentPage: newProgress.currentPage ?? progress.currentPage,
-               currentTimeSecond: newProgress.currentTimeSecond ?? progress.currentTimeSecond,
-             };
-           }
-           return progress;
-         });
-         return newData;
+        if (!oldData) return [];
+        const newData = oldData.map((progress) => {
+          if (progress.id === newProgress.lessonId) {
+            return {
+              ...progress,
+              currentPage: newProgress.currentPage ?? progress.currentPage,
+              currentTimeSecond:
+                newProgress.currentTimeSecond ?? progress.currentTimeSecond,
+            };
+          }
+          return progress;
+        });
+        return newData;
       });
 
       // Return a context object with the snapshotted value
@@ -79,7 +95,10 @@ export function useUpsertLessonProgress(courseId: string) {
     },
     // Always refetch after error or success:
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey });
+      // Only invalidate after a delay to avoid too frequent refetches
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey });
+      }, 1000);
     },
   });
 }
