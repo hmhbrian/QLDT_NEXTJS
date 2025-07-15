@@ -82,10 +82,8 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useTests } from "@/hooks/use-tests";
 import { useAttachedFiles } from "@/hooks/use-course-attached-files";
 import { extractErrorMessage } from "@/lib/core";
-import {
-  useLessonProgress,
-  useUpsertLessonProgress,
-} from "@/hooks/use-lesson-progress";
+import { useLessonProgress } from "@/hooks/use-lesson-progress";
+import { useDebouncedLessonProgress } from "@/hooks/use-debounced-lesson-progress";
 import ReactPlayer from "react-player/youtube";
 import { useDebounce } from "@/hooks/use-debounce";
 import { Progress } from "@/components/ui/progress";
@@ -156,7 +154,15 @@ export default function CourseDetailPage() {
   const { toast } = useToast();
   const updateCourseMutation = useUpdateCourse();
   const enrollCourseMutation = useEnrollCourse();
-  const upsertProgressMutation = useUpsertLessonProgress(courseIdFromParams);
+
+  // Use debounced hook for better performance
+  const {
+    debouncedUpsert,
+    saveImmediately,
+    cleanup: cleanupProgress,
+    isLoading: isSavingProgress,
+    hasPendingProgress,
+  } = useDebouncedLessonProgress(courseIdFromParams);
 
   const {
     course,
@@ -211,9 +217,10 @@ export default function CourseDetailPage() {
   const lastReportedPageRef = useRef(0);
 
   const [videoProgress, setVideoProgress] = useState({ playedSeconds: 0 });
-  const debouncedVideoProgress = useDebounce(videoProgress.playedSeconds, 5000);
+  // Remove debounce for video - let our custom hook handle it
   const lastReportedTimeRef = useRef(0);
 
+  // PDF progress tracking
   useEffect(() => {
     if (
       selectedLesson?.type === "pdf_url" &&
@@ -221,25 +228,57 @@ export default function CourseDetailPage() {
       debouncedVisiblePage !== lastReportedPageRef.current
     ) {
       lastReportedPageRef.current = debouncedVisiblePage;
-      upsertProgressMutation.mutate({
+      debouncedUpsert({
         lessonId: selectedLesson.id,
         currentPage: debouncedVisiblePage,
       });
     }
-  }, [debouncedVisiblePage, selectedLesson, upsertProgressMutation]);
+  }, [debouncedVisiblePage, selectedLesson, debouncedUpsert]);
 
+  // Video progress tracking - use immediate updates for better responsiveness
   useEffect(() => {
-    if (selectedLesson?.type === "video_url" && debouncedVideoProgress > 0) {
-      const currentTime = Math.round(debouncedVideoProgress);
-      if (Math.abs(currentTime - lastReportedTimeRef.current) > 1) {
+    if (
+      selectedLesson?.type === "video_url" &&
+      videoProgress.playedSeconds > 0
+    ) {
+      const currentTime = Math.round(videoProgress.playedSeconds);
+      if (Math.abs(currentTime - lastReportedTimeRef.current) > 2) {
         lastReportedTimeRef.current = currentTime;
-        upsertProgressMutation.mutate({
+        debouncedUpsert({
           lessonId: selectedLesson.id,
           currentTimeSecond: currentTime,
         });
       }
     }
-  }, [debouncedVideoProgress, selectedLesson, upsertProgressMutation]);
+  }, [videoProgress.playedSeconds, selectedLesson, debouncedUpsert]);
+
+  // Save progress immediately when switching lessons or exiting
+  useEffect(() => {
+    return () => {
+      cleanupProgress();
+    };
+  }, [cleanupProgress]);
+
+  // Save progress when switching lessons
+  useEffect(() => {
+    if (hasPendingProgress()) {
+      // Force save before switching
+      if (
+        selectedLesson?.type === "video_url" &&
+        videoProgress.playedSeconds > 0
+      ) {
+        saveImmediately({
+          lessonId: selectedLesson.id,
+          currentTimeSecond: Math.round(videoProgress.playedSeconds),
+        });
+      } else if (selectedLesson?.type === "pdf_url" && visiblePage > 0) {
+        saveImmediately({
+          lessonId: selectedLesson.id,
+          currentPage: visiblePage,
+        });
+      }
+    }
+  }, [selectedLesson?.id]); // Trigger when lesson changes
 
   const lessonsWithProgress: LessonWithProgress[] = useMemo(() => {
     if (!lessonProgresses || !Array.isArray(lessonProgresses)) return [];
@@ -714,6 +753,14 @@ export default function CourseDetailPage() {
                       <CardTitle className="flex items-center gap-3">
                         {renderLessonIcon(selectedLesson.type)}
                         {selectedLesson.title}
+                        {isSavingProgress && (
+                          <div className="flex items-center gap-1 ml-auto">
+                            <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
+                            <span className="text-xs text-blue-500">
+                              Đang lưu...
+                            </span>
+                          </div>
+                        )}
                       </CardTitle>
                     )}
                   </div>
