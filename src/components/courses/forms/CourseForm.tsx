@@ -93,6 +93,7 @@ const initialNewCourseState: Course = {
   registrationDeadline: null,
   userIds: [],
   isPublic: false,
+  maxParticipants: 200,
   createdAt: new Date().toISOString(),
   modifiedAt: new Date().toISOString(),
   createdBy: "",
@@ -425,6 +426,21 @@ export function CourseForm({ courseId }: { courseId?: string }) {
                     onChange={(e) =>
                       handleDurationChange("sessions", e.target.value)
                     }
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="maxParticipants">
+                    Số học viên tối đa
+                  </Label>
+                  <Input
+                    id="maxParticipants"
+                    type="number"
+                    min="1"
+                    value={formData.maxParticipants}
+                    onChange={(e) =>
+                      handleInputChange("maxParticipants", parseInt(e.target.value) || 200)
+                    }
+                    placeholder="200"
                   />
                 </div>
                 <div>
