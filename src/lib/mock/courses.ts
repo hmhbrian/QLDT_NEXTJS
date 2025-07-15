@@ -1,3 +1,4 @@
+
 import type { Course, Lesson, Test, Question } from "@/lib/types/course.types";
 import { categoryOptions } from "../config/constants";
 
@@ -6,30 +7,26 @@ const sampleLessons: Lesson[] = [
   {
     id: 1,
     title: "Bài 1: Giới thiệu về JavaScript",
-    type: "pdf_url",
-    content:
-      "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
-    fileUrl:
-      "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
-    duration: "15 phút",
+    type: 'pdf_url',
+    content: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
+    fileUrl: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
+    duration: "15 phút"
   },
   {
     id: 2,
     title: "Bài 2: Biến và Kiểu dữ liệu",
-    type: "pdf_url",
-    content:
-      "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
-    fileUrl:
-      "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
-    duration: "20 phút",
+    type: 'pdf_url',
+    content: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
+    fileUrl: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
+    duration: "20 phút"
   },
   {
     id: 3,
     title: "Bài 3: Hàm và Phạm vi",
-    type: "text",
+    type: 'text',
     content: "Đây là nội dung văn bản cho bài học về hàm và phạm vi.",
-    fileUrl: null,
-    duration: "10 phút",
+    fileUrl: null, 
+    duration: "10 phút"
   },
 ];
 
@@ -89,7 +86,7 @@ export const mockCourses: Course[] = [
       "Tìm hiểu sâu về các tính năng JavaScript hiện đại và các phương pháp hay nhất.",
     objectives:
       "Nắm vững ES6+, async/await, và các pattern hiện đại. Xây dựng ứng dụng thực tế với kiến thức đã học. Hiểu rõ về tối ưu hóa hiệu suất trong JavaScript.",
-    category: { id: 1, name: "Lập trình" },
+    category: "programming",
     instructor: "TS. Code",
     duration: {
       sessions: 12,
@@ -106,21 +103,21 @@ export const mockCourses: Course[] = [
     materials: [
       {
         id: 201,
-        courseId: "1",
+        courseId: '1',
         type: "PDF",
         title: "Tài liệu JavaScript căn bản",
         link: "https://mozilla.github.io/pdf.js/web/compressed.tracemonkey-pldi-09.pdf",
         createdAt: new Date().toISOString(),
-        modifiedAt: null,
+        modifiedAt: null
       },
       {
         id: 202,
-        courseId: "1",
+        courseId: '1',
         type: "Link",
         title: "Slide bài giảng tuần 1",
         link: "https://placehold.co/800x600.png?text=Slide+Tuan+1",
         createdAt: new Date().toISOString(),
-        modifiedAt: null,
+        modifiedAt: null
       },
     ],
     lessons: sampleLessons.slice(0, 2),
@@ -142,7 +139,7 @@ export const mockCourses: Course[] = [
     description: "Học các yếu tố cần thiết để quản lý dự án hiệu quả.",
     objectives:
       "Nắm vững các nguyên tắc quản lý dự án và áp dụng vào thực tế. Lập kế hoạch, theo dõi và báo cáo tiến độ dự án. Quản lý rủi ro và các bên liên quan.",
-    category: { id: 2, name: "Kinh doanh" },
+    category: "business",
     instructor: "CN. Planner",
     duration: {
       sessions: 8,
@@ -159,12 +156,12 @@ export const mockCourses: Course[] = [
     materials: [
       {
         id: 203,
-        courseId: "2",
+        courseId: '2',
         type: "PDF",
         title: "Sổ tay quản lý dự án",
         link: "https://mozilla.github.io/pdf.js/web/compressed.tracemonkey-pldi-09.pdf",
         createdAt: new Date().toISOString(),
-        modifiedAt: null,
+        modifiedAt: null
       },
     ],
     lessons: [],
@@ -187,7 +184,7 @@ export const mockCourses: Course[] = [
       "Nắm vững các nguyên tắc cốt lõi của thiết kế giao diện và trải nghiệm người dùng.",
     objectives:
       "Hiểu và áp dụng các nguyên tắc thiết kế UI/UX vào thực tế. Tạo wireframes, prototypes và user flows. Thực hiện user testing và cải thiện thiết kế.",
-    category: { id: 3, name: "Thiết kế" },
+    category: "design",
     instructor: "KS. Pixel",
     duration: {
       sessions: 16,
@@ -222,7 +219,7 @@ export const mockCourses: Course[] = [
       "Phát triển và triển khai các chiến lược tiếp thị kỹ thuật số hiệu quả.",
     objectives:
       "Xây dựng và triển khai chiến lược marketing số hiệu quả. Phân tích đối thủ và thị trường. Đo lường và tối ưu hóa chiến dịch.",
-    category: { id: 4, name: "Tiếp thị" },
+    category: "marketing",
     instructor: "CN. Click",
     duration: { sessions: 10, hoursPerSession: 2 },
     learningType: "online",
@@ -254,7 +251,7 @@ export const mockCourses: Course[] = [
       "Khám phá Python cho phân tích dữ liệu, học máy và trực quan hóa.",
     objectives:
       "Sử dụng Pandas, NumPy, Matplotlib. Xây dựng mô hình học máy cơ bản. Trực quan hóa dữ liệu hiệu quả.",
-    category: { id: 1, name: "Lập trình" },
+    category: "programming",
     instructor: "Dr. Data",
     duration: { sessions: 15, hoursPerSession: 3 },
     learningType: "online",
@@ -285,7 +282,7 @@ export const mockCourses: Course[] = [
     description: "Nâng cao kỹ năng giao tiếp trong công việc và cuộc sống.",
     objectives:
       "Lắng nghe chủ động. Trình bày ý tưởng rõ ràng. Giải quyết xung đột hiệu quả.",
-    category: { id: 5, name: "Kỹ năng mềm" },
+    category: "soft_skills",
     instructor: "Chuyên gia Tâm lý",
     duration: { sessions: 6, hoursPerSession: 1.5 },
     learningType: "online",
@@ -331,7 +328,7 @@ export const mockCourseDetail: Course = {
 - Kỹ thuật tối ưu hóa hiệu năng và gỡ lỗi (debugging) hiệu quả.
 - Xây dựng một dự án nhỏ hoàn chỉnh để áp dụng kiến thức đã học.
 - Tự tin làm việc với các framework JavaScript hiện đại như React, Angular, hoặc Vue.js.`,
-  category: { id: 1, name: "Lập trình" },
+  category: "programming",
   instructor: "TS. Code Master",
   duration: { sessions: 20, hoursPerSession: 2.5 },
   learningType: "online",
@@ -345,21 +342,21 @@ export const mockCourseDetail: Course = {
   materials: [
     {
       id: 801,
-      courseId: "1",
+      courseId: '1',
       type: "PDF",
       title: "Giáo trình JavaScript Nâng cao (PDF)",
       link: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
       createdAt: new Date().toISOString(),
-      modifiedAt: null,
+      modifiedAt: null
     },
     {
       id: 802,
-      courseId: "1",
+      courseId: '1',
       type: "Link",
       title: "Slide Bài 1: Tổng quan ES6+",
       link: "https://placehold.co/800x600.png?text=ES6+Overview+Slides",
       createdAt: new Date().toISOString(),
-      modifiedAt: null,
+      modifiedAt: null
     },
   ],
   lessons: sampleLessons,
@@ -435,11 +432,12 @@ export const mockPublicCourses: PublicCourse[] = mockCourses
     title: course.title,
     description: course.description,
     category:
-      (course.category?.name as PublicCourse["category"]) || "Lập trình",
+      (categoryOptions.find((c) => c.value === course.category)
+        ?.label as PublicCourse["category"]) || "Lập trình",
     instructor: course.instructor,
     duration: `${course.duration.sessions} buổi (${course.duration.hoursPerSession}h/buổi)`,
     image: course.image,
-    dataAiHint: course.category?.name || "Lập trình",
+    dataAiHint: course.category,
     enrollmentType: course.enrollmentType,
     registrationDeadline: course.registrationDeadline,
     isPublic: course.isPublic,
