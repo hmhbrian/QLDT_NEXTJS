@@ -87,7 +87,8 @@ class LessonsService extends BaseService<
 
   async deleteLessons(courseId: string, lessonIds: number[]): Promise<void> {
     const endpoint = API_CONFIG.endpoints.lessons.delete(courseId);
-    await this.delete<void>(endpoint, { ids: lessonIds });
+    // Backend expects array directly, not wrapped in object
+    await this.delete<void>(endpoint, lessonIds);
   }
 
   async reorderLesson(

@@ -208,7 +208,6 @@ export function PdfLessonViewer({
             <ChevronLeft className="h-5 w-5" />
           </Button>
           <Input
-            type="number"
             value={currentPage > 0 ? currentPage : ""}
             onChange={(e) => {
               const newPage = parseInt(e.target.value, 10);
@@ -218,7 +217,7 @@ export function PdfLessonViewer({
                 goToPage(1);
               }
             }}
-            className="w-12 h-8 text-center"
+            className="w-16 h-8 text-center"
           />
           <span className="text-sm text-muted-foreground">
             / {numPages || "..."}
