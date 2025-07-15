@@ -579,7 +579,7 @@ export default function CourseDetailPage() {
                 className={cn(
                   "w-full sm:w-auto transition-all duration-300",
                   hasSubmittedEvaluation
-                    ? "bg-green-50/80 dark:bg-green-950/20 text-green-600 dark:text-green-400 border-green-200/50 dark:border-green-800/30 opacity-60 cursor-not-allowed"
+                    ? "bg-orange-50/80 dark:bg-orange-950/20 text-orange-600 dark:text-orange-400 border-orange-200/50 dark:border-orange-800/30 opacity-60 cursor-not-allowed"
                     : "bg-gray-50/80 dark:bg-gray-900/50 text-gray-700 dark:text-gray-200 border-gray-200/50 dark:border-gray-700/50 hover:bg-gray-100 dark:hover:bg-gray-800/70 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-md hover:scale-[1.02] active:scale-[0.98]"
                 )}
               >
@@ -829,7 +829,7 @@ export default function CourseDetailPage() {
                       (objective, index) =>
                         objective.trim() && (
                           <div key={index} className="flex items-start mb-2">
-                            <CheckCircle className="h-5 w-5 text-green-500 mr-3 mt-1 flex-shrink-0" />
+                            <CheckCircle className="h-5 w-5 text-orange-500 mr-3 mt-1 flex-shrink-0" />
                             <p className="text-muted-foreground">
                               {objective.replace(/^- /, "")}
                             </p>
@@ -896,7 +896,7 @@ export default function CourseDetailPage() {
                               className={cn(
                                 "flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold text-white shadow-lg",
                                 isCompleted
-                                  ? "bg-green-500"
+                                  ? "bg-orange-500"
                                   : isInProgress
                                   ? "bg-orange-500"
                                   : "bg-gray-400"
@@ -909,7 +909,7 @@ export default function CourseDetailPage() {
                           {/* Progress Ring for completed lessons */}
                           {isCompleted && (
                             <div className="absolute top-2 left-2 z-20">
-                              <CheckCircle className="h-10 w-10 text-green-500 bg-white rounded-full" />
+                              <CheckCircle className="h-10 w-10 text-orange-500 bg-white rounded-full" />
                             </div>
                           )}
 
@@ -990,7 +990,7 @@ export default function CourseDetailPage() {
                                             className={cn(
                                               "text-xs font-semibold px-2 py-1 rounded-full",
                                               isCompleted
-                                                ? "bg-green-100 text-green-700"
+                                                ? "bg-orange-100 text-orange-700"
                                                 : isInProgress
                                                 ? "bg-orange-100 text-orange-700"
                                                 : "bg-gray-100 text-gray-700"
@@ -1013,7 +1013,7 @@ export default function CourseDetailPage() {
                                 {isCompleted && (
                                   <Badge
                                     variant="secondary"
-                                    className="bg-green-100 text-green-700 hover:bg-green-100"
+                                    className="bg-orange-100 text-orange-700 hover:bg-orange-100"
                                   >
                                     <CheckCircle className="h-3 w-3 mr-1" />
                                     Hoàn thành
