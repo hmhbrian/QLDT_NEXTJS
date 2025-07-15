@@ -1,4 +1,3 @@
-
 "use client";
 
 import { ColumnDef } from "@tanstack/react-table";
@@ -24,7 +23,12 @@ import { DepartmentInfo } from "@/lib/types/department.types";
 import { Position } from "@/lib/types/user.types";
 import { getStatusBadgeVariant } from "@/lib/helpers";
 import { formatDateVN } from "@/lib/utils/date.utils";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 export const getColumns = (
   handleViewDetails: (courseId: string) => void,
@@ -86,6 +90,29 @@ export const getColumns = (
   {
     accessorKey: "courseCode",
     header: "Mã",
+    cell: ({ row }) => {
+      const courseCode = row.original.courseCode;
+      console.log("🔍 Components Course courseCode data:", courseCode);
+
+      // Handle both object and string values with proper type checking
+      if (
+        typeof courseCode === "object" &&
+        courseCode &&
+        "code" in courseCode &&
+        typeof (courseCode as any).code === "string"
+      ) {
+        return (courseCode as any).code;
+      }
+      if (
+        typeof courseCode === "object" &&
+        courseCode &&
+        "name" in courseCode &&
+        typeof (courseCode as any).name === "string"
+      ) {
+        return (courseCode as any).name;
+      }
+      return String(courseCode || "N/A");
+    },
   },
   {
     accessorKey: "enrollmentType",
@@ -103,11 +130,22 @@ export const getColumns = (
     accessorKey: "status",
     header: "Trạng thái",
     cell: ({ row }) => {
-      const statusName = row.original.status;
+      const status = row.original.status;
+      console.log("🔍 Components Course status data:", status);
+
+      // Handle case where status might be an object {id, name} or a string
+      const statusName =
+        typeof status === "object" &&
+        status &&
+        "name" in status &&
+        typeof status.name === "string"
+          ? status.name
+          : typeof status === "string"
+          ? status
+          : "N/A";
+
       return (
-        <Badge variant={getStatusBadgeVariant(statusName)}>
-          {statusName || "N/A"}
-        </Badge>
+        <Badge variant={getStatusBadgeVariant(statusName)}>{statusName}</Badge>
       );
     },
   },
@@ -133,18 +171,63 @@ export const getColumns = (
           <Tooltip>
             <TooltipTrigger asChild>
               <div className="flex flex-col text-xs">
-                {course.createdBy && <span className="truncate">Tạo bởi: <strong>{course.createdBy}</strong></span>}
-                {course.modifiedBy && <span className="truncate">Sửa bởi: <strong>{course.modifiedBy}</strong></span>}
+                {course.createdBy && (
+                  <span className="truncate">
+                    Tạo bởi:{" "}
+                    <strong>
+                      {(() => {
+                        if (
+                          typeof course.createdBy === "object" &&
+                          course.createdBy &&
+                          "name" in course.createdBy &&
+                          typeof course.createdBy.name === "string"
+                        ) {
+                          return course.createdBy.name;
+                        } else if (typeof course.createdBy === "string") {
+                          return course.createdBy;
+                        }
+                        return "N/A";
+                      })()}
+                    </strong>
+                  </span>
+                )}
+                {course.modifiedBy && (
+                  <span className="truncate">
+                    Sửa bởi:{" "}
+                    <strong>
+                      {(() => {
+                        if (
+                          typeof course.modifiedBy === "object" &&
+                          course.modifiedBy &&
+                          "name" in course.modifiedBy &&
+                          typeof course.modifiedBy.name === "string"
+                        ) {
+                          return course.modifiedBy.name;
+                        } else if (typeof course.modifiedBy === "string") {
+                          return course.modifiedBy;
+                        }
+                        return "N/A";
+                      })()}
+                    </strong>
+                  </span>
+                )}
               </div>
             </TooltipTrigger>
             <TooltipContent>
-              <p>Ngày tạo: {formatDateVN(course.createdAt, 'dd/MM/yyyy HH:mm')}</p>
-              {course.modifiedAt && <p>Ngày sửa: {formatDateVN(course.modifiedAt, 'dd/MM/yyyy HH:mm')}</p>}
+              <p>
+                Ngày tạo: {formatDateVN(course.createdAt, "dd/MM/yyyy HH:mm")}
+              </p>
+              {course.modifiedAt && (
+                <p>
+                  Ngày sửa:{" "}
+                  {formatDateVN(course.modifiedAt, "dd/MM/yyyy HH:mm")}
+                </p>
+              )}
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
-      )
-    }
+      );
+    },
   },
   {
     id: "actions",

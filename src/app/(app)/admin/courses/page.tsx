@@ -467,10 +467,20 @@ export default function CoursesPage() {
                     <CardContent className="flex-grow text-sm space-y-1.5">
                       <div className="flex items-center gap-2">
                         <Badge
-                          variant={getStatusBadgeVariant(course.status)}
+                          variant={getStatusBadgeVariant(
+                            typeof course.status === 'object' && course.status && 'name' in course.status 
+                              ? course.status.name 
+                              : typeof course.status === 'string' 
+                              ? course.status 
+                              : "N/A"
+                          )}
                           className="whitespace-nowrap"
                         >
-                          {course.status}
+                          {typeof course.status === 'object' && course.status && 'name' in course.status 
+                            ? course.status.name 
+                            : typeof course.status === 'string' 
+                            ? course.status 
+                            : "N/A"}
                         </Badge>
                         <Badge
                           variant={course.isPublic ? "default" : "outline"}

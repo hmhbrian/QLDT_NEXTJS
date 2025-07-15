@@ -1,4 +1,3 @@
-
 "use client";
 
 import { ColumnDef } from "@tanstack/react-table";
@@ -109,8 +108,23 @@ export const getColumns = (
     header: "Phòng ban",
     cell: ({ row }) => {
       const department = row.original.department;
+      console.log("🔍 Department data:", department);
+
       if (!department) return "N/A";
-      return (department as DepartmentInfo).name || "Không xác định";
+
+      // Handle both object {id, name, departmentName} and string
+      if (typeof department === "string") return department;
+      if (typeof department === "object" && department) {
+        if ("name" in department && typeof department.name === "string")
+          return department.name;
+        if (
+          "departmentName" in department &&
+          typeof department.departmentName === "string"
+        )
+          return department.departmentName;
+      }
+
+      return "Không xác định";
     },
   },
   {
@@ -118,10 +132,31 @@ export const getColumns = (
     header: "Cấp bậc",
     cell: ({ row }) => {
       const position = row.original.position;
+      console.log("🔍 Position data:", position);
+
       if (!position) return "N/A";
+
+      // Handle both object {id, name, positionName} and string
+      let positionName: string = "Không xác định";
+      if (typeof position === "string") {
+        positionName = position;
+      } else if (typeof position === "object" && position) {
+        if (
+          "positionName" in position &&
+          typeof position.positionName === "string"
+        ) {
+          positionName = position.positionName;
+        } else if ("name" in position && typeof position.name === "string") {
+          positionName = position.name;
+        }
+      }
+
       return (
-        <Badge variant="outline" className={cn(getLevelBadgeColor(position.positionName))}>
-          {position.positionName}
+        <Badge
+          variant="outline"
+          className={cn(getLevelBadgeColor(positionName))}
+        >
+          {positionName}
         </Badge>
       );
     },

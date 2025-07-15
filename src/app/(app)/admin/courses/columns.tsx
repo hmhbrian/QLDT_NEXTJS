@@ -1,4 +1,3 @@
-
 "use client";
 
 import { ColumnDef } from "@tanstack/react-table";
@@ -24,7 +23,12 @@ import { DepartmentInfo } from "@/lib/types/department.types";
 import { Position } from "@/lib/types/user.types";
 import { getStatusBadgeVariant } from "@/lib/helpers";
 import { formatDateVN } from "@/lib/utils/date.utils";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 export const getColumns = (
   handleViewDetails: (courseId: string) => void,
@@ -88,6 +92,108 @@ export const getColumns = (
     header: "Mã",
   },
   {
+    accessorKey: "department",
+    header: "Phòng ban",
+    size: 200,
+    minSize: 150,
+    maxSize: 250,
+    cell: ({ row }) => {
+      const departmentData = row.original.department;
+      console.log("🔍 Course departments data:", departmentData);
+
+      if (!departmentData || departmentData.length === 0) return "N/A";
+
+      // Handle case where department might be array of objects {id, name} or array of string IDs
+      const departmentNames = departmentData.map((dept: any, index: number) => {
+        // If it's an object with name property
+        if (typeof dept === "object" && dept) {
+          if ("name" in dept && typeof dept.name === "string") return dept.name;
+          if (
+            "departmentName" in dept &&
+            typeof dept.departmentName === "string"
+          )
+            return dept.departmentName;
+        }
+        // If it's a string ID, lookup in departments prop
+        if (typeof dept === "string") {
+          const foundDept = departments.find((d) => d.departmentId === dept);
+          if (foundDept) return foundDept.name;
+          return `Dept-${dept}`; // Fallback if not found
+        }
+        console.warn(`🚨 Invalid department at index ${index}:`, dept);
+        return String(dept);
+      });
+
+      const displayText =
+        departmentNames.length > 2
+          ? `${departmentNames.slice(0, 2).join(", ")} +${
+              departmentNames.length - 2
+            }`
+          : departmentNames.join(", ");
+
+      return (
+        <div className="max-w-[200px] overflow-hidden">
+          <span
+            className="block truncate text-sm"
+            title={departmentNames.join(", ")}
+          >
+            {displayText}
+          </span>
+        </div>
+      );
+    },
+  },
+  {
+    accessorKey: "level",
+    header: "Cấp độ",
+    size: 150,
+    minSize: 120,
+    maxSize: 180,
+    cell: ({ row }) => {
+      const levelData = row.original.level;
+      console.log("🔍 Course levels data:", levelData);
+
+      if (!levelData || levelData.length === 0) return "N/A";
+
+      // Handle case where level might be array of objects {id, name} or array of string IDs
+      const levelNames = levelData.map((level: any, index: number) => {
+        // If it's an object with name property
+        if (typeof level === "object" && level) {
+          if ("name" in level && typeof level.name === "string")
+            return level.name;
+          if ("positionName" in level && typeof level.positionName === "string")
+            return level.positionName;
+        }
+        // If it's a string ID, lookup in positions prop
+        if (typeof level === "string") {
+          const foundPosition = positions.find(
+            (p) => p.positionId.toString() === level
+          );
+          if (foundPosition) return foundPosition.positionName;
+          return `Level-${level}`; // Fallback if not found
+        }
+        console.warn(`🚨 Invalid level at index ${index}:`, level);
+        return String(level);
+      });
+
+      const displayText =
+        levelNames.length > 2
+          ? `${levelNames.slice(0, 2).join(", ")} +${levelNames.length - 2}`
+          : levelNames.join(", ");
+
+      return (
+        <div className="max-w-[200px] overflow-hidden">
+          <span
+            className="block truncate text-sm"
+            title={levelNames.join(", ")}
+          >
+            {displayText}
+          </span>
+        </div>
+      );
+    },
+  },
+  {
     accessorKey: "enrollmentType",
     header: "Loại Ghi danh",
     cell: ({ row }) => {
@@ -103,11 +209,22 @@ export const getColumns = (
     accessorKey: "status",
     header: "Trạng thái",
     cell: ({ row }) => {
-      const statusName = row.original.status;
+      const status = row.original.status;
+      console.log("🔍 Status data:", status);
+
+      // Handle case where status might be an object {id, name} or a string
+      const statusName =
+        typeof status === "object" &&
+        status &&
+        "name" in status &&
+        typeof status.name === "string"
+          ? status.name
+          : typeof status === "string"
+          ? status
+          : "N/A";
+
       return (
-        <Badge variant={getStatusBadgeVariant(statusName)}>
-          {statusName || "N/A"}
-        </Badge>
+        <Badge variant={getStatusBadgeVariant(statusName)}>{statusName}</Badge>
       );
     },
   },
@@ -126,25 +243,67 @@ export const getColumns = (
   {
     accessorKey: "createdBy",
     header: "Thông tin",
+    size: 140,
+    minSize: 120,
+    maxSize: 160,
     cell: ({ row }) => {
       const course = row.original;
+      console.log("🔍 Course createdBy/modifiedBy data:", {
+        createdBy: course.createdBy,
+        modifiedBy: course.modifiedBy,
+      });
+
+      // Handle createdBy and modifiedBy which might be objects {id, name}
+      const createdByName =
+        typeof course.createdBy === "object" &&
+        course.createdBy &&
+        "name" in course.createdBy
+          ? course.createdBy.name
+          : typeof course.createdBy === "string"
+          ? course.createdBy
+          : null;
+
+      const modifiedByName =
+        typeof course.modifiedBy === "object" &&
+        course.modifiedBy &&
+        "name" in course.modifiedBy
+          ? course.modifiedBy.name
+          : typeof course.modifiedBy === "string"
+          ? course.modifiedBy
+          : null;
+
       return (
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
-              <div className="flex flex-col text-xs">
-                <span className="truncate">Tạo bởi: <strong>{course.createdBy}</strong></span>
-                {course.modifiedBy && <span className="truncate">Sửa bởi: <strong>{course.modifiedBy}</strong></span>}
+              <div className="flex flex-col text-xs max-w-[200px] overflow-hidden">
+                {createdByName && (
+                  <span className="block truncate">
+                    Tạo bởi: <strong>{createdByName}</strong>
+                  </span>
+                )}
+                {modifiedByName && (
+                  <span className="block truncate">
+                    Sửa bởi: <strong>{modifiedByName}</strong>
+                  </span>
+                )}
               </div>
             </TooltipTrigger>
             <TooltipContent>
-              <p>Ngày tạo: {formatDateVN(course.createdAt, 'dd/MM/yyyy HH:mm')}</p>
-              {course.modifiedAt && <p>Ngày sửa: {formatDateVN(course.modifiedAt, 'dd/MM/yyyy HH:mm')}</p>}
+              <p>
+                Ngày tạo: {formatDateVN(course.createdAt, "dd/MM/yyyy HH:mm")}
+              </p>
+              {course.modifiedAt && (
+                <p>
+                  Ngày sửa:{" "}
+                  {formatDateVN(course.modifiedAt, "dd/MM/yyyy HH:mm")}
+                </p>
+              )}
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
-      )
-    }
+      );
+    },
   },
   {
     id: "actions",

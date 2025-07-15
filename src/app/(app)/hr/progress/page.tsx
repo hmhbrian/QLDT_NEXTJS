@@ -70,7 +70,11 @@ export default function ProgressPage() {
     const courseStats = courses.map(course => ({
       name: course.title,
       trainees: course.userIds?.length || 0,
-      status: course.status,
+      status: typeof course.status === 'object' && course.status && 'name' in course.status 
+        ? course.status.name 
+        : typeof course.status === 'string' 
+        ? course.status 
+        : "N/A",
     })).sort((a, b) => b.trainees - a.trainees).slice(0, 10); // Top 10 courses by enrollment
 
     return {
