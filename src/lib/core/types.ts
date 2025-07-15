@@ -35,6 +35,11 @@ export interface FilterParams {
   department?: string;
   role?: string;
   name?: string;
+  keyword?: string;
+  statusIds?: string;
+  departmentIds?: string;
+  positionIds?: string;
+  publicOnly?: boolean;
 }
 
 export interface PaginationParams {
@@ -42,6 +47,10 @@ export interface PaginationParams {
   limit?: number;
   sortBy?: string;
   sortOrder?: "asc" | "desc";
+  Page?: number;
+  Limit?: number;
+  SortField?: string;
+  SortType?: "asc" | "desc";
 }
 
 export type QueryParams = PaginationParams & FilterParams & { [key: string]: unknown };
