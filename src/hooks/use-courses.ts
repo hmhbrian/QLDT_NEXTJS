@@ -47,24 +47,10 @@ export function useCourses(
       const apiResponse = await coursesService.getCourses(apiParams);
       const allCourses = (apiResponse.items || []).map(mapCourseApiToUi);
 
-      if (publicOnly && user) {
-        const enrolledIds = new Set(enrolledCourses.map((c) => c.id));
-        const publicOnlyCourses = allCourses.filter(
-          (c) => !enrolledIds.has(c.id)
-        );
-
-        return {
-          items: publicOnlyCourses,
-          pagination: {
-            ...apiResponse.pagination,
-            totalItems: publicOnlyCourses.length,
-            totalPages: Math.ceil(
-              publicOnlyCourses.length / Number(params?.Limit || 10)
-            ),
-          },
-        };
-      }
-
+      // For public-only view, we don't filter here as it would break server-side pagination
+      // Instead, the backend should handle this filtering or we need client-side pagination
+      // For now, we'll return all courses and let the UI handle the enrolled state display
+      
       return {
         items: allCourses,
         pagination: apiResponse.pagination,
