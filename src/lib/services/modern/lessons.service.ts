@@ -96,19 +96,29 @@ class LessonsService extends BaseService<
   ): Promise<void> {
     const endpoint = API_CONFIG.endpoints.lessons.reorder(courseId);
 
-    // Use JSON instead of FormData for better null handling
-    const requestPayload = {
-      LessonId: payload.LessonId,
-      PreviousLessonId: payload.PreviousLessonId, // null is valid JSON value
-    };
+    // Backend expects multipart/form-data, not JSON
+    const formData = new FormData();
+    formData.append("LessonId", String(payload.LessonId));
+
+    // Handle PreviousLessonId - append only if it has a valid value
+    if (
+      payload.PreviousLessonId !== null &&
+      payload.PreviousLessonId !== undefined
+    ) {
+      formData.append("PreviousLessonId", String(payload.PreviousLessonId));
+    }
+    // If PreviousLessonId is null/undefined, don't append it (means moving to first position)
 
     try {
-      console.log("Reordering lesson with payload:", requestPayload);
-      await this.put<void>(endpoint, requestPayload);
+      console.log("Reordering lesson with payload:", {
+        LessonId: payload.LessonId,
+        PreviousLessonId: payload.PreviousLessonId,
+      });
+      await this.put<void>(endpoint, formData);
     } catch (error: any) {
       console.error("Failed to reorder lesson:", {
         courseId,
-        payload: requestPayload,
+        payload,
         error: error.message || error,
       });
       throw error;
