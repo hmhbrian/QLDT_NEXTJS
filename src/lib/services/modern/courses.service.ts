@@ -46,6 +46,7 @@ export class CoursesService extends BaseService<
       if (params.departmentIds)
         backendParams.DepartmentIds = params.departmentIds;
       if (params.positionIds) backendParams.PositionIds = params.positionIds;
+      if (params.publicOnly) backendParams.IsPublic = params.publicOnly;
     }
 
     const response = await this.get<PaginatedResponse<CourseApiResponse>>(
