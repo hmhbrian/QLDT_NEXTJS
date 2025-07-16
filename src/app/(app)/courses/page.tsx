@@ -30,7 +30,7 @@ import type { Course } from "@/lib/types/course.types";
 import { DataTable } from "@/components/ui/data-table";
 import { getColumns } from "./columns";
 import { isRegistrationOpen } from "@/lib/helpers";
-import { useCourses, useEnrollCourse } from "@/hooks/use-courses";
+import { useCourses, useEnrollCourse, useEnrolledCourses } from "@/hooks/use-courses";
 import { useError } from "@/hooks/use-error";
 import { useDebounce } from "@/hooks/use-debounce";
 import type { PaginationState } from "@tanstack/react-table";
@@ -75,9 +75,41 @@ export default function CoursesPage() {
     publicOnly: true,
   });
 
+  const {
+    enrolledCourses,
+    isLoadingEnrolled,
+    reloadEnrolledCourses,
+  } = useEnrolledCourses(!!currentUser && currentUser.role === "HOCVIEN");
+
   const pageCount = paginationInfo?.totalPages ?? 0;
 
   const enrollMutation = useEnrollCourse();
+
+  // Filter out enrolled courses for trainees
+  const filteredCourses = useMemo(() => {
+    console.log('Filtering courses:', {
+      totalCourses: publicCourses.length,
+      currentUser: currentUser?.id,
+      role: currentUser?.role,
+      enrolledCoursesCount: enrolledCourses.length
+    });
+
+    if (!currentUser || currentUser.role !== "HOCVIEN") {
+      console.log('Admin/HR - showing all courses');
+      return publicCourses; // Admin và HR thấy tất cả
+    }
+    
+    // Với HOCVIEN, ẩn các khóa học đã đăng ký
+    const enrolledCourseIds = new Set(enrolledCourses.map(course => course.id));
+    const filtered = publicCourses.filter(course => {
+      const isEnrolled = enrolledCourseIds.has(course.id);
+      console.log(`Course ${course.title}: enrolled=${isEnrolled}, courseId=${course.id}`);
+      return !isEnrolled; // Chỉ hiện khóa học chưa đăng ký
+    });
+    
+    console.log(`Filtered: ${filtered.length}/${publicCourses.length} courses`);
+    return filtered;
+  }, [publicCourses, currentUser, enrolledCourses]);
 
   const isCourseAccessible = useCallback(
     (course: Course): boolean => {
@@ -109,9 +141,17 @@ export default function CoursesPage() {
         router.push("/login");
         return;
       }
-      enrollMutation.mutate(courseId);
+      enrollMutation.mutate(courseId, {
+        onSuccess: () => {
+          console.log(`Successfully enrolled in course ${courseId}`);
+          // Reload enrolled courses để cập nhật danh sách khóa học đã đăng ký
+          reloadEnrolledCourses();
+          // Reload public courses để cập nhật danh sách
+          fetchCourses();
+        }
+      });
     },
-    [currentUser, router, showError, enrollMutation]
+    [currentUser, router, showError, enrollMutation, reloadEnrolledCourses, fetchCourses]
   );
 
   const columns = useMemo(
@@ -121,19 +161,23 @@ export default function CoursesPage() {
         handleEnroll,
         (id) => router.push(`/courses/${id}`),
         (id) => enrollMutation.isPending && enrollMutation.variables === id,
-        isCourseAccessible
+        isCourseAccessible,
+        enrolledCourses,
+        currentUser?.role
       ),
     [
       currentUser?.id,
+      currentUser?.role,
       router,
       handleEnroll,
       enrollMutation.isPending,
       enrollMutation.variables,
       isCourseAccessible,
+      enrolledCourses,
     ]
   );
 
-  if (isFetchingCourses && publicCourses.length === 0) {
+  if (isFetchingCourses && filteredCourses.length === 0) {
     return (
       <div className="flex h-60 w-full items-center justify-center">
         <Loader2 className="h-10 w-10 animate-spin text-primary" />
@@ -161,7 +205,7 @@ export default function CoursesPage() {
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row justify-between items-center gap-4">
         <h1 className="text-2xl md:text-3xl font-headline font-semibold">
-          Khóa học Công khai
+          {currentUser?.role === "HOCVIEN" ? "Khóa học có thể đăng ký" : "Khóa học Công khai"}
         </h1>
         <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
           <div className="relative flex-grow md:flex-grow-0">
@@ -195,7 +239,7 @@ export default function CoursesPage() {
       {viewMode === "card" ? (
         <>
           {/* Loading State */}
-          {isFetchingCourses && publicCourses.length === 0 ? (
+          {isFetchingCourses && filteredCourses.length === 0 ? (
             <div className="grid gap-6 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {Array.from({ length: pagination.pageSize }).map((_, index) => (
                 <Card
@@ -220,25 +264,36 @@ export default function CoursesPage() {
             </div>
           ) : (
             <div className="grid gap-6 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {publicCourses.map((course) => {
-                const isEnrolled = course.userIds?.includes(
-                  currentUser?.id || ""
-                );
+              {filteredCourses.map((course) => {
+                // Kiểm tra enrollment từ enrolled courses data thay vì course.userIds
+                const enrolledCourseIds = new Set(enrolledCourses.map(c => c.id));
+                const isEnrolled = enrolledCourseIds.has(course.id);
+                const registrationOpen = isRegistrationOpen(course.registrationDeadline);
                 const canEnroll =
                   currentUser?.role === "HOCVIEN" &&
                   !isEnrolled &&
                   course.enrollmentType === "optional" &&
-                  isRegistrationOpen(course.registrationDeadline);
+                  registrationOpen;
                 const accessible = isCourseAccessible(course);
+
+                // Debug log để kiểm tra
+                console.log(`Course ${course.title}:`, {
+                  isEnrolled,
+                  courseId: course.id,
+                  enrolledCourseIds: Array.from(enrolledCourseIds),
+                  currentUserId: currentUser?.id,
+                  registrationOpen,
+                  registrationDeadline: course.registrationDeadline
+                });
 
                 return (
                   <Card
                     key={course.id}
-                    className="overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 flex flex-col group"
+                    className="overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 flex flex-col group cursor-pointer"
+                    onClick={() => router.push(`/courses/${course.id}`)}
                   >
                     <div
-                      className="relative h-48 w-full cursor-pointer overflow-hidden"
-                      onClick={() => router.push(`/courses/${course.id}`)}
+                      className="relative h-48 w-full overflow-hidden"
                     >
                       {course.image.endsWith(".pdf") ? (
                         <div className="h-full w-full flex items-center justify-center bg-gray-100">
@@ -324,7 +379,10 @@ export default function CoursesPage() {
                       {canEnroll ? (
                         <LoadingButton
                           className="w-full"
-                          onClick={() => handleEnroll(course.id)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleEnroll(course.id);
+                          }}
                           isLoading={
                             enrollMutation.isPending &&
                             enrollMutation.variables === course.id
@@ -340,9 +398,21 @@ export default function CoursesPage() {
                         <Button
                           variant="default"
                           className="w-full"
-                          onClick={() => router.push(`/courses/${course.id}`)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            router.push(`/courses/${course.id}`);
+                          }}
                         >
                           <Eye className="mr-2 h-4 w-4" /> Vào học
+                        </Button>
+                      ) : currentUser?.role === "HOCVIEN" && course.enrollmentType === "optional" && !registrationOpen ? (
+                        <Button
+                          variant="outline"
+                          className="w-full"
+                          disabled
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          Hết hạn đăng ký
                         </Button>
                       ) : (
                         <TooltipProvider>
@@ -351,10 +421,12 @@ export default function CoursesPage() {
                               <Button
                                 variant="outline"
                                 className="w-full"
-                                onClick={() =>
-                                  accessible &&
-                                  router.push(`/courses/${course.id}`)
-                                }
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (accessible) {
+                                    router.push(`/courses/${course.id}`);
+                                  }
+                                }}
                                 disabled={!accessible}
                               >
                                 Xem chi tiết
@@ -384,7 +456,7 @@ export default function CoursesPage() {
                 Hiển thị{" "}
                 {Math.min(
                   pagination.pageIndex * pagination.pageSize +
-                    publicCourses.length,
+                    filteredCourses.length,
                   paginationInfo?.totalItems ?? 0
                 )}{" "}
                 trên {paginationInfo?.totalItems ?? 0} khóa học
@@ -454,18 +526,22 @@ export default function CoursesPage() {
           )}
 
           {/* Empty State */}
-          {publicCourses.length === 0 && !isFetchingCourses && (
+          {filteredCourses.length === 0 && !isFetchingCourses && (
             <div className="text-center py-12">
               <BookOpen className="mx-auto h-12 w-12 text-muted-foreground" />
               <h3 className="mt-2 text-xl font-semibold">
                 {debouncedSearchTerm
                   ? "Không tìm thấy khóa học nào"
-                  : "Chưa có khóa học công khai"}
+                  : currentUser?.role === "HOCVIEN" 
+                    ? "Không có khóa học mới để đăng ký"
+                    : "Chưa có khóa học công khai"}
               </h3>
               <p className="mt-1 text-sm text-muted-foreground">
                 {debouncedSearchTerm
                   ? "Vui lòng thử lại với từ khóa khác."
-                  : "Hiện tại chưa có khóa học công khai nào được phát hành."}
+                  : currentUser?.role === "HOCVIEN"
+                    ? "Bạn đã đăng ký tất cả khóa học có sẵn hoặc chưa có khóa học mới."
+                    : "Hiện tại chưa có khóa học công khai nào được phát hành."}
               </p>
             </div>
           )}
@@ -473,7 +549,7 @@ export default function CoursesPage() {
       ) : (
         <DataTable
           columns={columns}
-          data={publicCourses}
+          data={filteredCourses}
           isLoading={isFetchingCourses}
           pageCount={pageCount}
           pagination={pagination}
