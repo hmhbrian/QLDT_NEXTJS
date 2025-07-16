@@ -1,4 +1,3 @@
-
 "use client";
 
 import {
@@ -402,6 +401,8 @@ export default function TrainingOverviewReportPage() {
     safeUsers.forEach((user) => {
       if (user && user.department && user.role === "HOCVIEN") {
         const deptKey = user.department.departmentId;
+        if (!deptKey) return; // Bỏ qua nếu không có departmentId
+
         if (!departmentStatsMap.has(deptKey)) {
           departmentStatsMap.set(deptKey, {
             trainees: new Set(),
@@ -433,7 +434,9 @@ export default function TrainingOverviewReportPage() {
         );
         return {
           id: deptKey,
-          name: deptInfo ? deptInfo.label : deptKey.toString().toUpperCase(), // Đảm bảo tên là chuỗi
+          name: deptInfo
+            ? deptInfo.label
+            : (deptKey || "").toString().toUpperCase(), // Đảm bảo deptKey tồn tại trước khi gọi toString()
           trainees: stats.trainees.size,
           courses: stats.coursesAttended.size,
           score: stats.trainees.size * 1 + stats.coursesAttended.size * 3, // Ví dụ: điểm được tính dựa trên số học viên và số khóa học
