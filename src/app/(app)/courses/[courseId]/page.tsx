@@ -53,6 +53,7 @@ import {
   User,
   Calendar,
   Play,
+  Activity,
 } from "lucide-react";
 import {
   Tooltip,
@@ -88,6 +89,8 @@ import { useDebouncedLessonProgress } from "@/hooks/use-debounced-lesson-progres
 import ReactPlayer from "react-player/youtube";
 import { useDebounce } from "@/hooks/use-debounce";
 import { Progress } from "@/components/ui/progress";
+import { useActivityLogs } from "@/hooks/use-activity-logs";
+import ActivityLogList from "@/components/courses/ActivityLogList";
 
 const PdfLessonViewer = dynamic(
   () => import("@/components/lessons/PdfLessonViewer"),
@@ -212,6 +215,14 @@ export default function CourseDetailPage() {
     courseIdFromParams,
     canViewContent
   );
+
+  // Activity logs - only load for admin/hr users
+  const canViewActivityLogs = currentUser?.role === "ADMIN" || currentUser?.role === "HR";
+  const {
+    data: activityLogs,
+    isLoading: isLoadingActivityLogs,
+    error: activityLogsError,
+  } = useActivityLogs(courseIdFromParams, {}, canViewActivityLogs);
 
   const [visiblePage, setVisiblePage] = useState(1);
   const debouncedVisiblePage = useDebounce(visiblePage, 1000);
@@ -694,6 +705,11 @@ export default function CourseDetailPage() {
             <TabsTrigger value="materials" className="text-base">
               Tài liệu
             </TabsTrigger>
+            {(currentUser?.role === "ADMIN" || currentUser?.role === "HR") && (
+              <TabsTrigger value="activity-logs" className="text-base">
+                Nhật ký hoạt động
+              </TabsTrigger>
+            )}
             {(currentUser?.role === "ADMIN" || currentUser?.role === "HR") && (
               <TabsTrigger value="evaluations" className="text-base">
                 Phản hồi học viên
@@ -1230,6 +1246,41 @@ export default function CourseDetailPage() {
               </CardContent>
             </Card>
           </TabsContent>
+
+          {(currentUser?.role === "ADMIN" || currentUser?.role === "HR") && (
+            <TabsContent value="activity-logs">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center">
+                    <Activity className="mr-2 h-5 w-5 text-primary" />
+                    Nhật ký hoạt động
+                  </CardTitle>
+                  <CardDescription>
+                    Theo dõi tất cả các hoạt động liên quan đến khóa học này: tạo, sửa, xóa, đăng ký, học tập và kiểm tra.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {isLoadingActivityLogs ? (
+                    <div className="flex items-center justify-center p-6">
+                      <Loader2 className="h-6 w-6 animate-spin mr-2" />
+                      <span>Đang tải nhật ký hoạt động...</span>
+                    </div>
+                  ) : activityLogsError ? (
+                    <div className="text-center p-6 text-muted-foreground">
+                      <AlertTriangle className="h-8 w-8 mx-auto mb-2 text-yellow-500" />
+                      <p>Lỗi khi tải nhật ký hoạt động</p>
+                      <p className="text-sm">{extractErrorMessage(activityLogsError)}</p>
+                    </div>
+                  ) : (
+                    <ActivityLogList 
+                      logs={activityLogs || []} 
+                      isLoading={isLoadingActivityLogs}
+                    />
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+          )}
 
           {(currentUser?.role === "ADMIN" || currentUser?.role === "HR") && (
             <TabsContent value="evaluations">
