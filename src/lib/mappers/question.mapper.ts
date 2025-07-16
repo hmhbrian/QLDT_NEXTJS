@@ -4,7 +4,6 @@ import type {
   ApiQuestion,
 } from "@/lib/types/course.types";
 
-
 export function mapUiQuestionToApiPayload(
   uiQuestion: Partial<Question>
 ): CreateQuestionPayload {
@@ -38,39 +37,43 @@ export function mapUiQuestionToApiPayload(
   };
 }
 
-
 export function mapApiQuestionToUi(apiQuestion: ApiQuestion): Question {
+  // Luôn đảm bảo có đủ 4 options, không filter ra options rỗng
   const options = [
     apiQuestion.a || "",
     apiQuestion.b || "",
     apiQuestion.c || "",
     apiQuestion.d || "",
-  ].filter(opt => opt); // Filter out empty options
+  ];
 
   let correctAnswerIndex = -1;
   const correctAnswerIndexes: number[] = [];
 
   if (apiQuestion.correctOption) {
-    const correctOptions = apiQuestion.correctOption.split(',').map(s => s.trim().toLowerCase());
-    correctOptions.forEach(opt => {
-        const index = opt.charCodeAt(0) - 97;
-        if(index >= 0 && index < options.length) {
-            correctAnswerIndexes.push(index);
-        }
+    const correctOptions = apiQuestion.correctOption
+      .split(",")
+      .map((s) => s.trim().toLowerCase());
+    correctOptions.forEach((opt) => {
+      const index = opt.charCodeAt(0) - 97; // a=0, b=1, c=2, d=3
+      if (index >= 0 && index < 4) {
+        // Luôn check với 4 options
+        correctAnswerIndexes.push(index);
+      }
     });
   }
 
   if (correctAnswerIndexes.length > 0) {
-      correctAnswerIndex = correctAnswerIndexes[0];
+    correctAnswerIndex = correctAnswerIndexes[0];
   }
-  
+
   return {
     id: apiQuestion.id,
+    questionCode: `Q${apiQuestion.id}`, // Tạo questionCode từ id
     text: apiQuestion.questionText,
     options,
     correctAnswerIndex,
-    correctAnswerIndexes: correctAnswerIndexes.sort((a,b) => a - b),
+    correctAnswerIndexes: correctAnswerIndexes.sort((a, b) => a - b),
     explanation: apiQuestion.explanation || "",
-    position: apiQuestion.position,
+    position: apiQuestion.position || 0,
   };
 }

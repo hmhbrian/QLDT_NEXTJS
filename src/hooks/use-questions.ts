@@ -31,7 +31,9 @@ export function useQuestions(testId: number | undefined) {
       return (paginatedResponse.items || []).map(mapApiQuestionToUi);
     },
     enabled: !!testId,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 30 * 1000, // Giảm stale time xuống 30 giây để refresh thường xuyên hơn
+    refetchOnWindowFocus: true, // Bật refetch khi focus lại window
+    refetchOnMount: true, // Luôn refetch khi mount
   });
 
   return {

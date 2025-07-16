@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useMemo, useRef } from "react";
@@ -93,8 +92,11 @@ export function QuestionManagerDialog({
     typeof initialTestState.id === "number" ? initialTestState.id : undefined;
   const isEditingExistingTest = testId !== undefined;
 
-  const { questions: fetchedQuestions, isLoading: isLoadingQuestions } =
-    useQuestions(testId);
+  const {
+    questions: fetchedQuestions,
+    isLoading: isLoadingQuestions,
+    reloadQuestions,
+  } = useQuestions(testId);
 
   const createQuestionMutation = useCreateQuestion();
   const updateQuestionMutation = useUpdateQuestion();
@@ -109,10 +111,14 @@ export function QuestionManagerDialog({
   }, [isOpen, initialTestState]);
 
   useEffect(() => {
-    if (isEditingExistingTest && !isLoadingQuestions) {
-      setTestFormData((prev) => ({ ...prev, questions: fetchedQuestions }));
+    if (isEditingExistingTest && !isLoadingQuestions && isOpen) {
+      setTestFormData((prev) => ({
+        ...prev,
+        questions: fetchedQuestions,
+        countQuestion: fetchedQuestions.length,
+      }));
     }
-  }, [isEditingExistingTest, fetchedQuestions, isLoadingQuestions]);
+  }, [isEditingExistingTest, fetchedQuestions, isLoadingQuestions, isOpen]);
 
   const handleOpenAddQuestion = () => {
     setCurrentEditingQuestion(null);
@@ -162,6 +168,8 @@ export function QuestionManagerDialog({
       } else {
         await createQuestionMutation.mutateAsync({ testId: testId, payload });
       }
+      // Reload questions để cập nhật UI
+      await reloadQuestions();
     } else {
       // For new tests, just update local state
       setTestFormData((prev) => {
@@ -212,6 +220,8 @@ export function QuestionManagerDialog({
         testId: testId,
         questionIds: [id],
       });
+      // Reload questions để cập nhật UI
+      await reloadQuestions();
     } else {
       // For new tests, just update local state
       setTestFormData((prev) => ({
@@ -365,6 +375,8 @@ export function QuestionManagerDialog({
             testId,
             questions: newQuestions.map(mapUiQuestionToApiPayload),
           });
+          // Reload questions để cập nhật UI
+          await reloadQuestions();
           toast({
             title: "Thành công",
             description: `Đã import và lưu ${newQuestions.length} câu hỏi.`,
@@ -660,8 +672,7 @@ export function QuestionManagerDialog({
             </div>
             <div className="space-y-2">
               <Label>
-                Các lựa chọn trả lời{" "}
-                <span className="text-destructive">*</span>
+                Các lựa chọn trả lời <span className="text-destructive">*</span>
               </Label>
               {[0, 1, 2, 3].map((i) => (
                 <div key={i} className="flex items-center gap-2">

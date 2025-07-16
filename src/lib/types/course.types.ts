@@ -269,8 +269,8 @@ export interface ApiQuestion {
   position: number;
   a: string;
   b: string;
-  c?: string;
-  d?: string;
+  c: string;
+  d: string;
 }
 
 export interface ApiTest {
