@@ -328,7 +328,7 @@ export const getColumns = (
   {
     id: "actions",
 
-    size: 70,
+    size: 60,
     enableResizing: false,
     enableSorting: false,
     enableHiding: false,
@@ -342,7 +342,7 @@ export const getColumns = (
 
       return (
         <div className="sticky-action-cell">
-          <div className="flex justify-end">
+          <div className="flex flex-col justify-center">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="h-8 w-8 p-0">
