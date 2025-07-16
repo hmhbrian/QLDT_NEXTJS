@@ -32,7 +32,7 @@ export function Header() {
   };
 
   return (
-    <header className="sticky top-0 z-10 flex h-16 items-center justify-between border-b bg-background/80 px-4 backdrop-blur-md md:px-6">
+    <header className="sticky top-0 z-50 flex h-16 items-center justify-between border-b bg-background/80 px-4 backdrop-blur-md md:px-6">
       <div className="flex items-center gap-2">
         <SidebarTrigger className="hover:bg-accent hover:text-accent-foreground" />
         {/* <h1 className="text-lg md:text-xl font-semibold font-headline text-foreground truncate max-w-[calc(100vw-180px)] md:max-w-none">{pageTitle}</h1> */}
