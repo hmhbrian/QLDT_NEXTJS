@@ -20,7 +20,9 @@ export const getColumns = (
   handleEnroll: (courseId: string) => void,
   handleViewDetails: (courseId: string) => void,
   isEnrolling: (courseId: string) => boolean,
-  isCourseAccessible: (course: Course) => boolean
+  isCourseAccessible: (course: Course) => boolean,
+  enrolledCourses: Course[] = [],
+  currentUserRole?: string
 ): ColumnDef<Course>[] => [
   {
     id: "select",
@@ -101,12 +103,16 @@ export const getColumns = (
     header: "Hành động",
     cell: ({ row }) => {
       const course = row.original;
-      const isEnrolled = course.userIds?.includes(currentUserId || "");
+      // Kiểm tra enrollment từ enrolled courses data thay vì course.userIds
+      const enrolledCourseIds = new Set(enrolledCourses.map(c => c.id));
+      const isEnrolled = enrolledCourseIds.has(course.id);
+      const registrationOpen = isRegistrationOpen(course.registrationDeadline);
       const canEnroll =
         currentUserId &&
+        currentUserRole === "HOCVIEN" &&
         course.enrollmentType === "optional" &&
         !isEnrolled &&
-        isRegistrationOpen(course.registrationDeadline);
+        registrationOpen;
 
       const accessible = isCourseAccessible(course);
 
@@ -130,6 +136,19 @@ export const getColumns = (
             onClick={() => handleViewDetails(course.id)}
           >
             <Eye className="mr-2 h-4 w-4" /> Vào học
+          </Button>
+        );
+      }
+
+      // Nếu là HOCVIEN, khóa học tùy chọn và hết hạn đăng ký
+      if (currentUserId && currentUserRole === "HOCVIEN" && course.enrollmentType === "optional" && !registrationOpen) {
+        return (
+          <Button
+            variant="outline"
+            size="sm"
+            disabled
+          >
+            Hết hạn đăng ký
           </Button>
         );
       }
