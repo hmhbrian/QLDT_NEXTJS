@@ -1,8 +1,13 @@
+"use client";
 
-'use client';
-
-import { useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useState } from "react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,14 +18,14 @@ import { useToast } from "@/components/ui/use-toast";
 export default function SystemSettingsPage() {
   const { toast } = useToast();
   const [settings, setSettings] = useState({
-    siteName: 'QLDT System',
+    siteName: "QLDT System",
     maintenanceMode: false,
     debugMode: false,
-    maxUploadSize: '5',
-    allowedFileTypes: '.pdf,.doc,.docx,.xls,.xlsx',
+    maxUploadSize: "5",
+    allowedFileTypes: ".pdf,.doc,.docx,.xls,.xlsx",
     backupEnabled: true,
-    backupFrequency: 'daily',
-    logRetentionDays: '30'
+    backupFrequency: "daily",
+    logRetentionDays: "30",
   });
 
   const handleSave = () => {
@@ -62,13 +67,17 @@ export default function SystemSettingsPage() {
                 <Input
                   id="siteName"
                   value={settings.siteName}
-                  onChange={(e) => setSettings({ ...settings, siteName: e.target.value })}
+                  onChange={(e) =>
+                    setSettings({ ...settings, siteName: e.target.value })
+                  }
                 />
               </div>
               <div className="flex items-center space-x-2">
                 <Switch
                   checked={settings.maintenanceMode}
-                  onCheckedChange={(checked) => setSettings({ ...settings, maintenanceMode: checked })}
+                  onCheckedChange={(checked) =>
+                    setSettings({ ...settings, maintenanceMode: checked })
+                  }
                 />
                 <Label>Chế độ bảo trì</Label>
               </div>
@@ -80,24 +89,31 @@ export default function SystemSettingsPage() {
           <Card>
             <CardHeader>
               <CardTitle>Bảo mật</CardTitle>
-              <CardDescription>
-                Cấu hình các thông số bảo mật
-              </CardDescription>
+              <CardDescription>Cấu hình các thông số bảo mật</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center space-x-2">
                 <Switch
                   checked={settings.debugMode}
-                  onCheckedChange={(checked) => setSettings({ ...settings, debugMode: checked })}
+                  onCheckedChange={(checked) =>
+                    setSettings({ ...settings, debugMode: checked })
+                  }
                 />
                 <Label>Chế độ debug</Label>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="allowedFileTypes">Định dạng file cho phép</Label>
+                <Label htmlFor="allowedFileTypes">
+                  Định dạng file cho phép
+                </Label>
                 <Input
                   id="allowedFileTypes"
                   value={settings.allowedFileTypes}
-                  onChange={(e) => setSettings({ ...settings, allowedFileTypes: e.target.value })}
+                  onChange={(e) =>
+                    setSettings({
+                      ...settings,
+                      allowedFileTypes: e.target.value,
+                    })
+                  }
                 />
               </div>
             </CardContent>
@@ -108,15 +124,15 @@ export default function SystemSettingsPage() {
           <Card>
             <CardHeader>
               <CardTitle>Sao lưu dữ liệu</CardTitle>
-              <CardDescription>
-                Cấu hình sao lưu tự động
-              </CardDescription>
+              <CardDescription>Cấu hình sao lưu tự động</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center space-x-2">
                 <Switch
                   checked={settings.backupEnabled}
-                  onCheckedChange={(checked) => setSettings({ ...settings, backupEnabled: checked })}
+                  onCheckedChange={(checked) =>
+                    setSettings({ ...settings, backupEnabled: checked })
+                  }
                 />
                 <Label>Bật sao lưu tự động</Label>
               </div>
@@ -125,7 +141,12 @@ export default function SystemSettingsPage() {
                 <Input
                   id="backupFrequency"
                   value={settings.backupFrequency}
-                  onChange={(e) => setSettings({ ...settings, backupFrequency: e.target.value })}
+                  onChange={(e) =>
+                    setSettings({
+                      ...settings,
+                      backupFrequency: e.target.value,
+                    })
+                  }
                 />
               </div>
             </CardContent>
@@ -133,7 +154,7 @@ export default function SystemSettingsPage() {
         </TabsContent>
       </Tabs>
 
-      <div className="flex justify-end">
+      <div className="flex flex-col justify-center">
         <Button onClick={handleSave}>Lưu thay đổi</Button>
       </div>
     </div>
