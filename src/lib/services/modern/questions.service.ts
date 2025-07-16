@@ -1,4 +1,3 @@
-
 import { BaseService, PaginatedResponse, QueryParams } from "@/lib/core";
 import { API_CONFIG } from "@/lib/config";
 import type {
@@ -11,7 +10,7 @@ class QuestionsService extends BaseService<ApiQuestion> {
   constructor() {
     // This service operates on a sub-resource of tests.
     // The base endpoint is not directly used.
-    super(API_CONFIG.endpoints.courses.base); 
+    super(API_CONFIG.endpoints.courses.base);
   }
 
   async getQuestions(
@@ -43,13 +42,16 @@ class QuestionsService extends BaseService<ApiQuestion> {
     questionId: number,
     payload: UpdateQuestionPayload
   ): Promise<ApiQuestion> {
-    const endpoint = API_CONFIG.endpoints.tests.questionById(testId, questionId);
+    const endpoint = API_CONFIG.endpoints.tests.questionById(
+      testId,
+      questionId
+    );
     return this.put<ApiQuestion>(endpoint, payload);
   }
 
   async deleteQuestions(testId: number, questionIds: number[]): Promise<void> {
     const endpoint = API_CONFIG.endpoints.tests.questions(testId);
-    await this.delete<void>(endpoint, { ids: questionIds });
+    await this.delete<void>(endpoint, questionIds);
   }
 }
 
