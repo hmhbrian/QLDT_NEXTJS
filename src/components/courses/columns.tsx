@@ -231,39 +231,69 @@ export const getColumns = (
   },
   {
     id: "actions",
+    header: "Thao tác",
+    size: 100,
+    enableResizing: false,
+    enableSorting: false,
+    enableHiding: false,
+    meta: {
+      sticky: "right",
+    },
     cell: ({ row }) => {
       const course = row.original;
 
       if (!canManageCourses) return null;
 
       return (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="h-8 w-8 p-0">
-              <span className="sr-only">Mở menu</span>
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => handleEdit(course.id)}>
-              <Pencil className="mr-2 h-4 w-4" /> Chỉnh sửa
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => handleDuplicateCourse(course)}>
-              <Copy className="mr-2 h-4 w-4" /> Nhân bản
-            </DropdownMenuItem>
-            {course.status !== "Hủy" && (
-              <DropdownMenuItem onClick={() => setArchivingCourse(course)}>
-                <Archive className="mr-2 h-4 w-4" /> Lưu trữ
-              </DropdownMenuItem>
-            )}
-            <DropdownMenuItem
-              onClick={() => setDeletingCourse(course)}
-              className="text-destructive focus:text-destructive"
+        <div className="flex justify-center">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                className="h-8 w-8 p-0 hover:bg-muted/50 transition-colors"
+              >
+                <span className="sr-only">Mở menu thao tác</span>
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              align="end"
+              className="w-56 shadow-lg border"
+              sideOffset={5}
             >
-              <Trash2 className="mr-2 h-4 w-4" /> Xóa
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+              <DropdownMenuItem
+                onClick={() => handleEdit(course.id)}
+                className="cursor-pointer hover:bg-muted/50"
+              >
+                <Pencil className="mr-3 h-4 w-4 text-blue-600" />
+                <span>Chỉnh sửa</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => handleDuplicateCourse(course)}
+                className="cursor-pointer hover:bg-muted/50"
+              >
+                <Copy className="mr-3 h-4 w-4 text-green-600" />
+                <span>Nhân bản</span>
+              </DropdownMenuItem>
+              {course.status !== "Hủy" && (
+                <DropdownMenuItem
+                  onClick={() => setArchivingCourse(course)}
+                  className="cursor-pointer hover:bg-muted/50"
+                >
+                  <Archive className="mr-3 h-4 w-4 text-amber-600" />
+                  <span>Lưu trữ</span>
+                </DropdownMenuItem>
+              )}
+              <DropdownMenuItem
+                onClick={() => setDeletingCourse(course)}
+                className="cursor-pointer hover:bg-destructive/10 text-destructive focus:text-destructive"
+              >
+                <Trash2 className="mr-3 h-4 w-4" />
+                <span>Xóa</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       );
     },
   },

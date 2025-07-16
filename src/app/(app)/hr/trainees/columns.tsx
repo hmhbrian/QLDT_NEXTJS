@@ -172,10 +172,18 @@ export const getColumns = (
   },
   {
     id: "actions",
+
+    size: 70,
+    enableResizing: false,
+    enableSorting: false,
+    enableHiding: false,
+      meta: {
+      sticky: "right",
+    },
     cell: ({ row }) => {
       const trainee = row.original;
       return (
-        <div className="text-right">
+        <div className="flex justify-end">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="h-8 w-8 p-0">

@@ -1,4 +1,3 @@
-
 "use client";
 
 import { ColumnDef } from "@tanstack/react-table";
@@ -116,7 +115,7 @@ export const getColumns = (
     header: "Trạng thái",
     cell: ({ row }) => {
       const status = row.original.status;
-      const statusName = status?.name || 'N/A';
+      const statusName = status?.name || "N/A";
       return (
         <Badge className={cn(getStatusColor(statusName))}>{statusName}</Badge>
       );
@@ -124,28 +123,37 @@ export const getColumns = (
   },
   {
     id: "actions",
+
+    size: 70,
+    enableResizing: false,
+    enableSorting: false,
+    enableHiding: false,
     cell: ({ row }) => {
       const department = row.original;
       return (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="h-8 w-8 p-0">
-              <span className="sr-only">Mở menu</span>
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => handleOpenEditDialog(department)}>
-              <Pencil className="mr-2 h-4 w-4" /> Chỉnh sửa
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              className="text-destructive focus:text-destructive"
-              onClick={() => setDeletingDepartment(department)}
-            >
-              <Trash2 className="mr-2 h-4 w-4" /> Xóa
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <div className="flex justify-end">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="h-8 w-8 p-0">
+                <span className="sr-only">Mở menu</span>
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                onClick={() => handleOpenEditDialog(department)}
+              >
+                <Pencil className="mr-2 h-4 w-4" /> Chỉnh sửa
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="text-destructive focus:text-destructive"
+                onClick={() => setDeletingDepartment(department)}
+              >
+                <Trash2 className="mr-2 h-4 w-4" /> Xóa
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       );
     },
   },

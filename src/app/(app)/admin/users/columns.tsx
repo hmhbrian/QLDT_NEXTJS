@@ -109,36 +109,46 @@ export const getColumns = (
   },
   {
     id: "actions",
+
+    size: 70,
+    enableResizing: false,
+    enableSorting: false,
+    enableHiding: false,
+      meta: {
+      sticky: "right",
+    },
     cell: ({ row }) => {
       const user = row.original;
       return (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="h-8 w-8 p-0">
-              <span className="sr-only">Mở menu</span>
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            {user.role === "HOCVIEN" && (
-              <DropdownMenuItem onClick={() => handleViewDetails(user)}>
-                <UserCircle2 className="mr-2 h-4 w-4" />
-                Xem chi tiết
+        <div className="flex justify-end">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="h-8 w-8 p-0">
+                <span className="sr-only">Mở menu</span>
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {user.role === "HOCVIEN" && (
+                <DropdownMenuItem onClick={() => handleViewDetails(user)}>
+                  <UserCircle2 className="mr-2 h-4 w-4" />
+                  Xem chi tiết
+                </DropdownMenuItem>
+              )}
+              <DropdownMenuItem onClick={() => handleEdit(user)}>
+                <Pencil className="mr-2 h-4 w-4" />
+                Chỉnh sửa
               </DropdownMenuItem>
-            )}
-            <DropdownMenuItem onClick={() => handleEdit(user)}>
-              <Pencil className="mr-2 h-4 w-4" />
-              Chỉnh sửa
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => handleDelete(user)}
-              className="text-destructive focus:text-destructive"
-            >
-              <Trash2 className="mr-2 h-4 w-4" />
-              Xóa
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+              <DropdownMenuItem
+                onClick={() => handleDelete(user)}
+                className="text-destructive focus:text-destructive"
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                Xóa
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       );
     },
   },

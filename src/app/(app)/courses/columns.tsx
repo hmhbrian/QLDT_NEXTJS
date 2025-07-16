@@ -101,6 +101,13 @@ export const getColumns = (
   {
     id: "actions",
     header: "Hành động",
+    size: 120,
+    enableResizing: false,
+    enableSorting: false,
+    enableHiding: false,
+    meta: {
+      sticky: 'right',
+    },
     cell: ({ row }) => {
       const course = row.original;
       // Kiểm tra enrollment từ enrolled courses data thay vì course.userIds
