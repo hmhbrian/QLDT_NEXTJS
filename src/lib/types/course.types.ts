@@ -18,6 +18,42 @@ export type LessonContentType =
   | "text"
   | "external_link";
 
+// Activity Log Types
+export type ActivityAction =
+  | "CREATE"
+  | "UPDATE"
+  | "DELETE"
+  | "ENROLL"
+  | "UNENROLL"
+  | "START_LESSON"
+  | "COMPLETE_LESSON"
+  | "SUBMIT_TEST"
+  | "VIEW_CONTENT";
+
+export type ActivityEntityType =
+  | "COURSE"
+  | "LESSON"
+  | "TEST"
+  | "USER_ENROLLMENT"
+  | "QUESTION"
+  | "MATERIAL";
+
+export interface ActivityLog {
+  id: string;
+  userId: string;
+  userName: string;
+  userRole: string;
+  courseId: string;
+  action: ActivityAction;
+  entityType: ActivityEntityType;
+  entityId?: string;
+  entityName?: string;
+  description: string;
+  timestamp: string;
+  metadata?: Record<string, any>;
+  ipAddress?: string;
+}
+
 // --- Frontend UI Models ---
 
 export interface Lesson {
