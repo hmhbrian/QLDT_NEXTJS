@@ -230,7 +230,7 @@ export const getColumns = (
     header: "Trạng thái",
     cell: ({ row }) => {
       const status = row.original.status;
-      console.log("🔍 Status data:", status);
+      // console.log("🔍 Status data:", status);
 
       // Handle case where status might be an object {id, name} or a string
       const statusName =
@@ -268,10 +268,10 @@ export const getColumns = (
     maxSize: 160,
     cell: ({ row }) => {
       const course = row.original;
-      console.log("🔍 Course createdBy/modifiedBy data:", {
-        createdBy: course.createdBy,
-        modifiedBy: course.modifiedBy,
-      });
+      // console.log("🔍 Course createdBy/modifiedBy data:", {
+      //   createdBy: course.createdBy,
+      //   modifiedBy: course.modifiedBy,
+      // });
 
       // Handle createdBy and modifiedBy which might be objects {id, name}
       const createdByName =
