@@ -50,6 +50,7 @@ export const API_ENDPOINTS = {
   courses: {
     base: "/Courses",
     create: "/Courses",
+    detail: (id: string) => `/Courses/${id}`,
     getById: (id: string) => `/Courses/${id}`,
     update: (id: string) => `/Courses/${id}`,
     enroll: (courseId: string) => `/Courses/${courseId}/enroll`,

@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -59,17 +58,19 @@ export function DataTable<TData, TValue>({
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [rowSelection, setRowSelection] = React.useState({});
-  
+
   const isServerSidePagination = pageCount !== undefined;
 
   // Fallback for client-side pagination when not controlled
-  const [uncontrolledPagination, setUncontrolledPagination] = React.useState<PaginationState>({
+  const [uncontrolledPagination, setUncontrolledPagination] =
+    React.useState<PaginationState>({
       pageIndex: 0,
       pageSize: 10,
-  });
+    });
 
   const paginationState = pagination ?? uncontrolledPagination;
-  const onPaginationChangeHandler = onPaginationChange ?? setUncontrolledPagination;
+  const onPaginationChangeHandler =
+    onPaginationChange ?? setUncontrolledPagination;
 
   const table = useReactTable({
     data,
@@ -90,18 +91,40 @@ export function DataTable<TData, TValue>({
       pagination: paginationState,
     },
   });
-  
+
   const renderTableBody = () => {
     if (isLoading) {
       return (
         <TableBody>
-          {Array.from({ length: table.getState().pagination?.pageSize || 10 }).map((_, i) => (
+          {Array.from({
+            length: table.getState().pagination?.pageSize || 10,
+          }).map((_, i) => (
             <TableRow key={`skeleton-${i}`}>
-              {columns.map((column, j) => (
-                <TableCell key={`skeleton-cell-${i}-${j}`}>
-                  <Skeleton className="h-4 w-full" />
-                </TableCell>
-              ))}
+              {columns.map((column, j) => {
+                const meta = (column as any).meta;
+                const isSticky = meta?.sticky === "right";
+                return (
+                  <TableCell
+                    key={`skeleton-cell-${i}-${j}`}
+                    className={
+                      isSticky
+                        ? "sticky right-0 bg-background z-10 shadow-[-2px_0_4px_rgba(0,0,0,0.1)]"
+                        : ""
+                    }
+                    style={
+                      isSticky
+                        ? {
+                            width: (column as any).size || "auto",
+                            minWidth: (column as any).size || "auto",
+                            maxWidth: (column as any).size || "auto",
+                          }
+                        : {}
+                    }
+                  >
+                    <Skeleton className="h-4 w-full" />
+                  </TableCell>
+                );
+              })}
             </TableRow>
           ))}
         </TableBody>
@@ -116,27 +139,41 @@ export function DataTable<TData, TValue>({
               key={row.id}
               data-state={row.getIsSelected() && "selected"}
             >
-              {row.getVisibleCells().map((cell) => (
-                <TableCell key={cell.id} className="whitespace-nowrap">
-                  {flexRender(
-                    cell.column.columnDef.cell,
-                    cell.getContext()
-                  )}
-                </TableCell>
-              ))}
+              {row.getVisibleCells().map((cell) => {
+                const meta = cell.column.columnDef.meta as any;
+                const isSticky = meta?.sticky === "right";
+                return (
+                  <TableCell
+                    key={cell.id}
+                    className={`whitespace-nowrap ${
+                      isSticky
+                        ? "sticky right-0 bg-background z-10 shadow-[-2px_0_4px_rgba(0,0,0,0.1)]"
+                        : ""
+                    }`}
+                    style={
+                      isSticky
+                        ? {
+                            width: cell.column.getSize(),
+                            minWidth: cell.column.getSize(),
+                            maxWidth: cell.column.getSize(),
+                          }
+                        : {}
+                    }
+                  >
+                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                  </TableCell>
+                );
+              })}
             </TableRow>
           ))}
         </TableBody>
       );
     }
-    
+
     return (
       <TableBody>
         <TableRow>
-          <TableCell
-            colSpan={columns.length}
-            className="h-24 text-center"
-          >
+          <TableCell colSpan={columns.length} className="h-24 text-center">
             Không có kết quả.
           </TableCell>
         </TableRow>
@@ -144,17 +181,34 @@ export function DataTable<TData, TValue>({
     );
   };
 
-
   return (
     <div>
-      <div className="rounded-md border">
+      <div className="rounded-md border overflow-auto">
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
                 {headerGroup.headers.map((header) => {
+                  const meta = header.column.columnDef.meta as any;
+                  const isSticky = meta?.sticky === "right";
                   return (
-                    <TableHead key={header.id}>
+                    <TableHead
+                      key={header.id}
+                      className={
+                        isSticky
+                          ? "sticky right-0 bg-background z-10 shadow-[-2px_0_4px_rgba(0,0,0,0.1)]"
+                          : ""
+                      }
+                      style={
+                        isSticky
+                          ? {
+                              width: header.column.getSize(),
+                              minWidth: header.column.getSize(),
+                              maxWidth: header.column.getSize(),
+                            }
+                          : {}
+                      }
+                    >
                       {header.isPlaceholder
                         ? null
                         : flexRender(

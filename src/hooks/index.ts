@@ -17,6 +17,7 @@ export * from "./use-users";
 export * from "./use-tests";
 export * from "./use-questions";
 export * from "./use-lesson-progress";
+export * from "./use-activity-logs";
 
 // Form & Validation hooks
 export * from "./useForm";
