@@ -19,7 +19,7 @@
     --border: 214.3 31.8% 91.4%; /* Light Gray */
     --input: 214.3 31.8% 91.4%; /* Light Gray */
 
-    --primary: 16 93% 51%; /* Orange (Becamex Orange) */
+    --primary: 16 93% 51%; /* Orange (Becamex Orange) - UNIFIED */
     --primary-foreground: 0 0% 100%; /* White (for contrast on Orange) */
 
     --secondary: 210 40% 96.1%; /* Light Grayish Blue */
@@ -35,16 +35,15 @@
 
     --radius: 0.5rem;
 
-    /* Sidebar specific theme for light mode - now dark */
+    /* Sidebar specific theme - UNIFIED primary color */
     --sidebar-background: 0 0% 6%; /* Very Dark Gray / Near Black */
     --sidebar-foreground: 0 0% 90%; /* Light Gray */
-    --sidebar-primary: 16 93% 51%; /* Main Orange for active items */
+    --sidebar-primary: 16 93% 51%; /* Main Orange for active items - UNIFIED */
     --sidebar-primary-foreground: 0 0% 100%; /* White */
     --sidebar-accent: 217.2 32.6% 17.5%; /* Dark Gray Blue (muted) */
     --sidebar-accent-foreground: 0 0% 98%; /* Light Gray */
     --sidebar-border: 217.2 32.6% 17.5%; /* Dark Gray Blue */
     --sidebar-ring: 16 93% 51%; /* Orange */
-
 
     --chart-1: 16 93% 51%; /* Orange */
     --chart-2: 25 85% 60%; /* Lighter Orange */
@@ -69,7 +68,7 @@
     --border: 217.2 32.6% 17.5%; /* Dark Gray Blue */
     --input: 217.2 32.6% 17.5%; /* Dark Gray Blue */
 
-    --primary: 16 93% 51%; /* Orange (Becamex Orange) */
+    --primary: 16 93% 51%; /* Orange (Becamex Orange) - UNIFIED */
     --primary-foreground: 0 0% 100%; /* White */
 
     --secondary: 217.2 32.6% 17.5%; /* Dark Gray Blue */
@@ -83,10 +82,10 @@
 
     --ring: 16 93% 51%; /* Orange */
 
-    /* Sidebar specific theme for dark mode */
+    /* Sidebar specific theme for dark mode - UNIFIED primary color */
     --sidebar-background: 0 0% 6%; /* Same as main dark background */
     --sidebar-foreground: 0 0% 90%; /* Light Gray */
-    --sidebar-primary: 16 93% 51%; /* Main Orange for active items */
+    --sidebar-primary: 16 93% 51%; /* Main Orange for active items - UNIFIED */
     --sidebar-primary-foreground: 0 0% 100%; /* White */
     --sidebar-accent: 217.2 32.6% 17.5%; /* Dark Gray Blue (muted) */
     --sidebar-accent-foreground: 0 0% 98%; /* Light Gray */
@@ -231,5 +230,70 @@
   .dark .glass-morphism {
     background: rgba(0, 0, 0, 0.2);
     border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+}
+
+/* Custom Sidebar Enhancements */
+@layer components {
+  .sidebar-enhanced {
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+  }
+
+  .sidebar-menu-item {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .sidebar-menu-item::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(255, 255, 255, 0.1),
+      transparent
+    );
+    transition: left 0.5s ease;
+  }
+
+  .sidebar-menu-item:hover::before {
+    left: 100%;
+  }
+
+  .sidebar-submenu-enter {
+    animation: slideInFromLeft 0.3s ease-out;
+  }
+
+  .sidebar-popover-content {
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+}
+
+@keyframes slideInFromLeft {
+  from {
+    transform: translateX(-10px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes fadeInScale {
+  from {
+    transform: scale(0.95);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
   }
 }
