@@ -299,7 +299,7 @@ export function CourseForm({ courseId }: { courseId?: string }) {
       <Card>
         <CardContent className="p-6">
           <Tabs defaultValue="general" className="w-full">
-            <TabsList className="grid w-full grid-cols-4 mb-6">
+            <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 mb-6">
               <TabsTrigger value="general">Thông tin chung</TabsTrigger>
               <TabsTrigger value="lessons">Bài học</TabsTrigger>
               <TabsTrigger value="tests">Bài kiểm tra</TabsTrigger>
