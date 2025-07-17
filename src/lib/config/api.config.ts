@@ -1,10 +1,11 @@
-
 /**
  * Enterprise API Configuration
  * Centralized, type-safe configuration for all API endpoints and settings
  */
 export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "/api";
-export const API_TIMEOUT = parseInt(process.env.NEXT_PUBLIC_API_TIMEOUT || "30000");
+export const API_TIMEOUT = parseInt(
+  process.env.NEXT_PUBLIC_API_TIMEOUT || "30000"
+);
 export const USE_API = process.env.NEXT_PUBLIC_USE_API === "true";
 
 if (typeof window !== "undefined" && process.env.NODE_ENV === "development") {
@@ -61,31 +62,47 @@ export const API_ENDPOINTS = {
   tests: {
     base: (courseId: string) => `/courses/${courseId}/tests`,
     create: (courseId: string) => `/courses/${courseId}/tests/create`,
-    getById: (courseId: string, testId: number) => `/courses/${courseId}/tests/${testId}`,
-    update: (courseId: string, testId: number) => `/courses/${courseId}/tests/update/${testId}`,
-    delete: (courseId: string, testId: number) => `/courses/${courseId}/tests/delete/${testId}`,
+    getById: (courseId: string, testId: number) =>
+      `/courses/${courseId}/tests/${testId}`,
+    update: (courseId: string, testId: number) =>
+      `/courses/${courseId}/tests/update/${testId}`,
+    delete: (courseId: string, testId: number) =>
+      `/courses/${courseId}/tests/delete/${testId}`,
     reorder: (courseId: string) => `/courses/${courseId}/tests/reorder`,
+    submit: (courseId: string, testId: number) =>
+      `/courses/${courseId}/tests/submit/${testId}`,
+    start: (courseId: string, testId: number) =>
+      `/courses/${courseId}/tests/${testId}/start`,
+    submissions: (courseId: string, testId: number) =>
+      `/courses/${courseId}/tests/${testId}/submissions`,
+    result: (courseId: string, testId: number, submissionId: number) =>
+      `/courses/${courseId}/tests/${testId}/submissions/${submissionId}`,
     questions: (testId: number) => `/tests/${testId}/questions`,
-    questionById: (testId: number, questionId: number) => `/tests/${testId}/questions/${questionId}`,
+    questionById: (testId: number, questionId: number) =>
+      `/tests/${testId}/questions/${questionId}`,
   },
   lessons: {
     base: (courseId: string) => `/courses/${courseId}/lessons`,
     create: (courseId: string) => `/courses/${courseId}/lessons`,
-    getById: (courseId: string, lessonId: number) => `/courses/${courseId}/lessons/${lessonId}`,
-    update: (courseId: string, lessonId: number) => `/courses/${courseId}/lessons/${lessonId}`,
+    getById: (courseId: string, lessonId: number) =>
+      `/courses/${courseId}/lessons/${lessonId}`,
+    update: (courseId: string, lessonId: number) =>
+      `/courses/${courseId}/lessons/${lessonId}`,
     delete: (courseId: string) => `/courses/${courseId}/lessons`,
     reorder: (courseId: string) => `/courses/${courseId}/lessons/reorder`,
   },
   lessonProgress: {
     base: "/LessonProgress",
-    getProgress: (courseId: string) => `/LessonProgress/get-lesson-progress/${courseId}`,
+    getProgress: (courseId: string) =>
+      `/LessonProgress/get-lesson-progress/${courseId}`,
     upsert: () => `/LessonProgress/upsert-lesson-progress`,
   },
   courseAttachedFiles: {
     base: "/courseattachedfiles",
     upload: (courseId: string) => `/courseattachedfiles/${courseId}`,
     getByCourseId: (courseId: string) => `/courseattachedfiles/${courseId}`,
-    delete: (courseId: string, fileId: number) => `/courseattachedfiles/${courseId}/${fileId}`,
+    delete: (courseId: string, fileId: number) =>
+      `/courseattachedfiles/${courseId}/${fileId}`,
   },
   status: {
     base: "/status",
@@ -102,16 +119,16 @@ export const API_ENDPOINTS = {
       delete: (id: string) => `/status/users/${id}`,
     },
     departments: {
-        getAll: "/status/department",
-        create: "/status/department",
-        update: (id: string) => `/status/department/${id}`,
-        delete: (id: string) => `/status/department/${id}`,
-    }
+      getAll: "/status/department",
+      create: "/status/department",
+      update: (id: string) => `/status/department/${id}`,
+      delete: (id: string) => `/status/department/${id}`,
+    },
   },
   feedback: {
     base: (courseId: string) => `/feedback/${courseId}`,
     create: (courseId: string) => `/feedback/${courseId}/create`,
-  }
+  },
 } as const;
 
 export const API_CONFIG = {
