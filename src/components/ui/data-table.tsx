@@ -108,7 +108,7 @@ export function DataTable<TData, TValue>({
                     key={`skeleton-cell-${i}-${j}`}
                     className={
                       isSticky
-                        ? "sticky right-0 bg-background z-10 shadow-[-2px_0_4px_rgba(0,0,0,0.1)]"
+                        ? "sticky right-0 bg-background/80 backdrop-blur-sm"
                         : ""
                     }
                     style={
@@ -147,7 +147,7 @@ export function DataTable<TData, TValue>({
                     key={cell.id}
                     className={`whitespace-nowrap ${
                       isSticky
-                        ? "sticky right-0 bg-background z-10 shadow-[-2px_0_4px_rgba(0,0,0,0.1)]"
+                        ? "sticky right-0 bg-background/80 backdrop-blur-sm"
                         : ""
                     }`}
                     style={
@@ -196,7 +196,7 @@ export function DataTable<TData, TValue>({
                       key={header.id}
                       className={
                         isSticky
-                          ? "sticky right-0 bg-background z-10 shadow-[-2px_0_4px_rgba(0,0,0,0.1)]"
+                          ? "sticky right-0 bg-muted/95 z-10"
                           : ""
                       }
                       style={
