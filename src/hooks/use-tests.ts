@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -7,6 +6,8 @@ import type {
   Test,
   CreateTestPayload,
   UpdateTestPayload,
+  SelectedAnswer,
+  TestSubmissionResponse,
 } from "@/lib/types/course.types";
 import { useToast } from "@/components/ui/use-toast";
 import { extractErrorMessage } from "@/lib/core";
@@ -15,7 +16,10 @@ import { useError } from "@/hooks/use-error";
 
 export const TESTS_QUERY_KEY = "tests";
 
-export function useTests(courseId: string | undefined, enabled: boolean = true) {
+export function useTests(
+  courseId: string | undefined,
+  enabled: boolean = true
+) {
   const queryKey = [TESTS_QUERY_KEY, courseId];
 
   const {
@@ -123,6 +127,84 @@ export function useDeleteTest() {
       showError({
         success: true,
         message: "Đã xóa bài kiểm tra thành công.",
+      });
+    },
+    onError: (error) => {
+      showError(error);
+    },
+  });
+}
+
+/**
+ * Hook để submit test với các câu trả lời đã chọn
+ * @param courseId ID của khóa học
+ * @param testId ID của test
+ * @returns Mutation object để submit test
+ */
+export function useSubmitTest(courseId: string, testId: number) {
+  const { showError } = useError();
+  const queryClient = useQueryClient();
+
+  return useMutation<
+    TestSubmissionResponse,
+    Error,
+    { answers: SelectedAnswer[]; startedAt: string }
+  >({
+    mutationFn: async ({ answers, startedAt }) => {
+      console.log("🔄 useSubmitTest mutation called:", {
+        courseId,
+        testId,
+        answers,
+        startedAt,
+      });
+
+      const result = await testsService.submitTest(
+        courseId,
+        testId,
+        answers,
+        startedAt
+      );
+      console.log("🎉 useSubmitTest mutation successful:", result);
+      return result;
+    },
+    onSuccess: (data) => {
+      console.log("✅ useSubmitTest onSuccess:", data);
+
+      // Refresh test data
+      queryClient.invalidateQueries({
+        queryKey: [TESTS_QUERY_KEY, courseId],
+      });
+
+      showError({
+        success: true,
+        message: `Nộp bài thành công! Điểm: ${data.score}/${data.totalQuestions}`,
+        description: `Số câu đúng: ${data.correctAnswers}/${
+          data.totalQuestions
+        } - ${data.isPassed ? "ĐẠT" : "KHÔNG ĐẠT"}`,
+      });
+    },
+    onError: (error) => {
+      console.error("❌ useSubmitTest onError:", error);
+      showError(error);
+    },
+  });
+}
+
+/**
+ * Hook để bắt đầu làm test
+ * @param courseId ID của khóa học
+ * @param testId ID của test
+ * @returns Mutation object để bắt đầu test
+ */
+export function useStartTest(courseId: string, testId: number) {
+  const { showError } = useError();
+
+  return useMutation<any, Error, void>({
+    mutationFn: () => testsService.startTest(courseId, testId),
+    onSuccess: () => {
+      showError({
+        success: true,
+        message: "Bắt đầu làm bài thành công",
       });
     },
     onError: (error) => {
