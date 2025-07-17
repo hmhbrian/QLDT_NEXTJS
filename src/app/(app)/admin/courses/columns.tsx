@@ -99,12 +99,11 @@ export const getColumns = (
     maxSize: 200,
     cell: ({ row }) => {
       const departmentData = row.original.department;
-      console.log("🔍 Course departments data:", departmentData);
 
       if (!departmentData || departmentData.length === 0) return "N/A";
 
       // Handle case where department might be array of objects {id, name} or array of string IDs
-      const departmentNames = departmentData.map((dept: any, index: number) => {
+      const departmentNames = departmentData.map((dept: any) => {
         // If it's an object with name property
         if (typeof dept === "object" && dept) {
           if ("name" in dept && typeof dept.name === "string") return dept.name;
@@ -120,7 +119,6 @@ export const getColumns = (
           if (foundDept) return foundDept.name;
           return `Dept-${dept}`; // Fallback if not found
         }
-        console.warn(`🚨 Invalid department at index ${index}:`, dept);
         return String(dept);
       });
 
@@ -160,12 +158,11 @@ export const getColumns = (
     maxSize: 150,
     cell: ({ row }) => {
       const levelData = row.original.level;
-      console.log("🔍 Course levels data:", levelData);
 
       if (!levelData || levelData.length === 0) return "N/A";
 
       // Handle case where level might be array of objects {id, name} or array of string IDs
-      const levelNames = levelData.map((level: any, index: number) => {
+      const levelNames = levelData.map((level: any) => {
         // If it's an object with name property
         if (typeof level === "object" && level) {
           if ("name" in level && typeof level.name === "string")
@@ -181,7 +178,6 @@ export const getColumns = (
           if (foundPosition) return foundPosition.positionName;
           return `Level-${level}`; // Fallback if not found
         }
-        console.warn(`🚨 Invalid level at index ${index}:`, level);
         return String(level);
       });
 
@@ -230,8 +226,6 @@ export const getColumns = (
     header: "Trạng thái",
     cell: ({ row }) => {
       const status = row.original.status;
-      // console.log("🔍 Status data:", status);
-
       // Handle case where status might be an object {id, name} or a string
       const statusName =
         typeof status === "object" &&
@@ -268,12 +262,6 @@ export const getColumns = (
     maxSize: 160,
     cell: ({ row }) => {
       const course = row.original;
-      // console.log("🔍 Course createdBy/modifiedBy data:", {
-      //   createdBy: course.createdBy,
-      //   modifiedBy: course.modifiedBy,
-      // });
-
-      // Handle createdBy and modifiedBy which might be objects {id, name}
       const createdByName =
         typeof course.createdBy === "object" &&
         course.createdBy &&
@@ -327,7 +315,6 @@ export const getColumns = (
   },
   {
     id: "actions",
-
     size: 60,
     enableResizing: false,
     enableSorting: false,
@@ -341,36 +328,34 @@ export const getColumns = (
       if (!canManageCourses) return null;
 
       return (
-        <div className="sticky-action-cell">
-          <div className="flex flex-col justify-center">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="h-8 w-8 p-0">
-                  <span className="sr-only">Mở menu</span>
-                  <MoreHorizontal className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => handleEdit(course.id)}>
-                  <Pencil className="mr-2 h-4 w-4" /> Chỉnh sửa
+        <div className="sticky rounded-sm right-0 bg-background/80 backdrop-blur-sm flex justify-center items-center h-full">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="h-8 w-8 p-0">
+                <span className="sr-only">Mở menu</span>
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => handleEdit(course.id)}>
+                <Pencil className="mr-2 h-4 w-4" /> Chỉnh sửa
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleDuplicateCourse(course)}>
+                <Copy className="mr-2 h-4 w-4" /> Nhân bản
+              </DropdownMenuItem>
+              {course.status !== "Hủy" && (
+                <DropdownMenuItem onClick={() => setArchivingCourse(course)}>
+                  <Archive className="mr-2 h-4 w-4" /> Lưu trữ
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleDuplicateCourse(course)}>
-                  <Copy className="mr-2 h-4 w-4" /> Nhân bản
-                </DropdownMenuItem>
-                {course.status !== "Hủy" && (
-                  <DropdownMenuItem onClick={() => setArchivingCourse(course)}>
-                    <Archive className="mr-2 h-4 w-4" /> Lưu trữ
-                  </DropdownMenuItem>
-                )}
-                <DropdownMenuItem
-                  onClick={() => setDeletingCourse(course)}
-                  className="text-destructive focus:text-destructive"
-                >
-                  <Trash2 className="mr-2 h-4 w-4" /> Xóa
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
+              )}
+              <DropdownMenuItem
+                onClick={() => setDeletingCourse(course)}
+                className="text-destructive focus:text-destructive"
+              >
+                <Trash2 className="mr-2 h-4 w-4" /> Xóa
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       );
     },
