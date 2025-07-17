@@ -328,3 +328,72 @@ export interface ApiCourseAttachedFile {
   createdAt?: string;
   modifiedAt?: string;
 }
+
+// --- Test Submission Interfaces ---
+
+/**
+ * Interface cho dữ liệu câu hỏi được chọn khi submit test
+ */
+export interface SelectedAnswer {
+  questionId: number;
+  selectedOptions: string[];
+}
+
+/**
+ * Interface cho response khi submit test
+ */
+export interface TestSubmissionResponse {
+  id: number;
+  score: number;
+  totalQuestions: number;
+  correctAnswers: number;
+  submittedAt: string;
+  isPassed: boolean;
+  timeSpent?: number; // Thời gian làm bài (phút)
+  answers?: SelectedAnswer[]; // Các câu trả lời đã submit
+}
+
+/**
+ * Interface cho request body submit test
+ */
+export interface SubmitTestRequest {
+  answers: SelectedAnswer[];
+  startedAt: string;
+}
+
+/**
+ * Interface cho session test khi bắt đầu làm bài
+ */
+export interface TestSession {
+  id: string;
+  testId: number;
+  userId: string;
+  startedAt: string;
+  endAt?: string;
+  timeLimit: number; // Thời gian giới hạn (phút)
+  questions: Question[];
+}
+
+/**
+ * Interface cho kết quả chi tiết của test
+ */
+export interface DetailedTestResult extends TestSubmissionResponse {
+  questionResults: QuestionResult[];
+  testInfo: {
+    title: string;
+    passThreshold: number;
+    timeLimit: number;
+  };
+}
+
+/**
+ * Interface cho kết quả từng câu hỏi
+ */
+export interface QuestionResult {
+  questionId: number;
+  questionText: string;
+  selectedOptions: string[];
+  correctOptions: string[];
+  isCorrect: boolean;
+  explanation?: string;
+}
