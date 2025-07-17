@@ -123,7 +123,6 @@ export const getColumns = (
   },
   {
     id: "actions",
-
     size: 60,
     enableResizing: false,
     enableSorting: false,
@@ -134,7 +133,7 @@ export const getColumns = (
     cell: ({ row }) => {
       const department = row.original;
       return (
-        <div className="flex flex-col justify-center">
+        <div className="sticky right-0 bg-background/80 backdrop-blur-sm flex justify-center items-center h-full">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="h-8 w-8 p-0">
