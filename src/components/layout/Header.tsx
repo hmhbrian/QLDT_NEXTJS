@@ -23,7 +23,7 @@ export function Header() {
   if (!user) return null;
 
   const getInitials = (name?: string) => {
-    if (!name) return user.email[0].toUpperCase();
+    if (!name) return user.email ? user.email[0].toUpperCase() : "?";
     const names = name.split(" ");
     if (names.length > 1) {
       return `${names[0][0]}${names[names.length - 1][0]}`.toUpperCase();
@@ -34,13 +34,10 @@ export function Header() {
   return (
     <header className="sticky top-0 z-50 flex h-16 items-center justify-between border-b bg-background/80 px-4 backdrop-blur-md md:px-6">
       <div className="flex items-center gap-2">
-        <SidebarTrigger className="hover:bg-accent hover:text-accent-foreground" />
-        {/* <h1 className="text-lg md:text-xl font-semibold font-headline text-foreground truncate max-w-[calc(100vw-180px)] md:max-w-none">{pageTitle}</h1> */}
+        <SidebarTrigger className="h-9 w-9" />
       </div>
       <div className="flex items-center gap-3">
-        {" "}
-        {/* Added a div to group ThemeToggle and User Dropdown */}
-        <ThemeToggle /> {/* Add ThemeToggle component here */}
+        <ThemeToggle />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
