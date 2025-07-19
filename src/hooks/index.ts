@@ -1,4 +1,3 @@
-
 /**
  * Enterprise Hooks Index
  * Central export point for all custom hooks following clean architecture
@@ -18,6 +17,7 @@ export * from "./use-tests";
 export * from "./use-questions";
 export * from "./use-lesson-progress";
 export * from "./use-activity-logs";
+export * from "./use-audit-log";
 
 // Form & Validation hooks
 export * from "./useForm";
