@@ -129,6 +129,11 @@ export const API_ENDPOINTS = {
     base: (courseId: string) => `/feedback/${courseId}`,
     create: (courseId: string) => `/feedback/${courseId}/create`,
   },
+  auditLog: {
+    base: "/AuditLog",
+    course: "/AuditLog/course",
+    user: "/AuditLog/user",
+  },
 } as const;
 
 export const API_CONFIG = {
