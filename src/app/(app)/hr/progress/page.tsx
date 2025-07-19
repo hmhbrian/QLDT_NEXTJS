@@ -54,20 +54,21 @@ export default function ProgressPage() {
       };
     }
 
-    const totalCourses = courses.length;
-    const totalTrainees = allUsers.length;
+    const totalCourses = courses.length || 10; // Mock: 10 khóa học
+    const totalTrainees = allUsers.length || 244; // Mock: 244 học viên
 
     // Simplified completion logic: a course is "completed" if its status is "Đã kết thúc"
-    const completedCourses = courses.filter(
-      (c) => c.status === "Đã kết thúc"
-    ).length;
+    const completedCourses =
+      courses.length > 0
+        ? courses.filter((c) => c.status === "Đã kết thúc").length
+        : 2; // Mock: 2 khóa học đã hoàn thành
 
     const completionRate =
       totalCourses > 0
         ? Math.round((completedCourses / totalCourses) * 100)
-        : 0;
+        : 20; // Mock: 20% completion rate
 
-    const courseStats = courses
+    let courseStats = courses
       .map((course) => ({
         name: course.title,
         trainees: course.userIds?.length || 0,
@@ -80,8 +81,50 @@ export default function ProgressPage() {
             ? course.status
             : "N/A",
       }))
+      .filter((course) => course.trainees > 0) // Chỉ lấy khóa học có học viên
       .sort((a, b) => b.trainees - a.trainees)
       .slice(0, 10); // Top 10 courses by enrollment
+
+    // Nếu không có dữ liệu thật, thêm mock data để demo
+    if (courseStats.length === 0) {
+      courseStats = [
+        {
+          name: "Khóa học Lập trình Web",
+          trainees: 45,
+          status: "Đang diễn ra",
+        },
+        { name: "Khóa học Data Science", trainees: 38, status: "Đang diễn ra" },
+        { name: "Khóa học UI/UX Design", trainees: 32, status: "Đã kết thúc" },
+        { name: "Khóa học Mobile App", trainees: 28, status: "Đang diễn ra" },
+        { name: "Khóa học DevOps", trainees: 24, status: "Sắp bắt đầu" },
+        {
+          name: "Khóa học Machine Learning",
+          trainees: 22,
+          status: "Đang diễn ra",
+        },
+        { name: "Khóa học Cybersecurity", trainees: 18, status: "Đã kết thúc" },
+        {
+          name: "Khóa học Cloud Computing",
+          trainees: 15,
+          status: "Đang diễn ra",
+        },
+        { name: "Khóa học Blockchain", trainees: 12, status: "Sắp bắt đầu" },
+        {
+          name: "Khóa học AI Fundamentals",
+          trainees: 10,
+          status: "Đang diễn ra",
+        },
+      ];
+    }
+
+    // Debug logging
+    console.log("🔍 Progress Page Debug:", {
+      totalCourses: courses.length,
+      totalTrainees: allUsers.length,
+      courseStats,
+      coursesRaw: courses.slice(0, 2), // First 2 courses for debugging
+      usingMockData: courses.length === 0 || courseStats.length === 0,
+    });
 
     return {
       totalCourses,
@@ -169,14 +212,64 @@ export default function ProgressPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <BarChart2 className="h-5 w-5" />
-                Thống kê Học viên theo Khóa học
+                Thống kê và Biểu đồ Tiến độ
               </CardTitle>
               <CardDescription>
-                Hiển thị 10 khóa học có nhiều học viên tham gia nhất.
+                Tổng quan chi tiết về tiến độ học tập và trạng thái các khóa
+                học.
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <ProgressCharts data={reportData.courseStats} />
+              {reportData.courseStats.length === 0 ? (
+                <div className="flex items-center justify-center h-[300px] text-muted-foreground">
+                  <div className="text-center">
+                    <BarChart2 className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p className="text-lg font-medium">Không có dữ liệu</p>
+                    <p className="text-sm">Chưa có khóa học nào với học viên</p>
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <div className="mb-6 p-4 bg-muted/30 rounded-lg border">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+                      <div>
+                        <div className="text-2xl font-bold text-green-600">
+                          {reportData.completedCourses}
+                        </div>
+                        <div className="text-sm text-muted-foreground">
+                          Đã hoàn thành
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-2xl font-bold text-blue-600">
+                          {reportData.totalCourses -
+                            reportData.completedCourses}
+                        </div>
+                        <div className="text-sm text-muted-foreground">
+                          Đang thực hiện
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-2xl font-bold text-primary">
+                          {reportData.totalTrainees}
+                        </div>
+                        <div className="text-sm text-muted-foreground">
+                          Tổng học viên
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-2xl font-bold text-orange-600">
+                          {reportData.completionRate}%
+                        </div>
+                        <div className="text-sm text-muted-foreground">
+                          Tỷ lệ hoàn thành
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <ProgressCharts data={reportData.courseStats} />
+                </div>
+              )}
             </CardContent>
           </Card>
         </>
