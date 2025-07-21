@@ -1,4 +1,3 @@
-
 /**
  * Course Domain Types
  * All course-related interfaces and types, aligned with backend DTOs.
@@ -299,6 +298,7 @@ export interface UserEnrollCourseDto {
   registrationClosingDate?: string | null;
   location?: string;
   progressPercentage?: number;
+  progressPercentange?: number; // Trường từ API (có lỗi chính tả)
 }
 
 export interface ApiLesson {
@@ -410,4 +410,27 @@ export interface QuestionResult {
   correctOptions: string[];
   isCorrect: boolean;
   explanation?: string;
+}
+
+/**
+ * Interface cho enrolled courses từ API /enroll-courses
+ */
+export interface EnrolledCourse {
+  id: string;
+  code: string;
+  name: string;
+  description: string;
+  objectives: string;
+  thumbUrl: string | null;
+  format: string;
+  sessions: number;
+  hoursPerSessions: number;
+  optional: string;
+  maxParticipant: number;
+  startDate: string;
+  endDate: string;
+  registrationStartDate: string;
+  registrationClosingDate: string;
+  location: string;
+  progressPercentange: number; // Tên trường từ API (có lỗi chính tả)
 }
