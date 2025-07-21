@@ -1,4 +1,3 @@
-
 /**
  * Main Library Index
  * Central export point for the entire library.
@@ -8,6 +7,7 @@
 export * from "./core";
 
 // Export modern services (all individual services and the 'services' object)
+// Export all services except ApiResponse to avoid ambiguity
 export * from "./services";
 
 // Export all types
@@ -22,10 +22,7 @@ export * from "./utils";
 // Export helper helpers
 export * from "./helpers";
 
-
-// Export legacy API for backward compatibility (if still needed)
-// Note: Commented out to avoid API_CONFIG conflict
-// export * from "./legacy-api";
-
 // Re-export specific items to avoid ambiguity
 export { API_CONFIG as API_CONFIGURATION } from "./config";
+// Explicitly re-export ApiResponse from core only
+export type { ApiResponse } from "./core";

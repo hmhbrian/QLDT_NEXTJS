@@ -16,7 +16,8 @@ export * from "./modern/lessons.service";
 export * from "./modern/tests.service";
 export * from "./modern/questions.service";
 export * from "./modern/lesson-progress.service";
-
+export * from "./modern/report.service";
+export * from "./modern/feedback.service";
 
 // Import services to create a single `services` object
 import { authService } from "./modern/auth.service";
@@ -30,7 +31,8 @@ import { lessonsService } from "./modern/lessons.service";
 import { testsService } from "./modern/tests.service";
 import { questionsService } from "./modern/questions.service";
 import { lessonProgressService } from "./modern/lesson-progress.service";
-
+import { reportService } from "./modern/report.service";
+import { feedbackService } from "./modern/feedback.service";
 
 // Export a single object containing all services for convenience
 export const services = {
@@ -45,6 +47,8 @@ export const services = {
   tests: testsService,
   questions: questionsService,
   lessonProgress: lessonProgressService,
+  report: reportService,
+  feedback: feedbackService,
 } as const;
 
 // Default export for backward compatibility or alternative import style
@@ -52,3 +56,5 @@ export default services;
 
 // Type-safe services object type
 export type Services = typeof services;
+
+    
