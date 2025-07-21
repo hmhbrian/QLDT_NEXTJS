@@ -52,9 +52,21 @@ export function useCreateFeedback(courseId: string) {
       });
     },
     onError: (error) => {
+      const errorMessage = extractErrorMessage(error);
+      
+      // Check if error indicates user has already submitted
+      if (errorMessage.includes('đã đánh giá') || errorMessage.includes('already')) {
+        toast({
+          title: "Thông báo",
+          description: "Bạn đã đánh giá khóa học này rồi.",
+          variant: "default",
+        });
+        return;
+      }
+      
       toast({
         title: "Gửi đánh giá thất bại",
-        description: extractErrorMessage(error),
+        description: errorMessage,
         variant: "destructive",
       });
     },
