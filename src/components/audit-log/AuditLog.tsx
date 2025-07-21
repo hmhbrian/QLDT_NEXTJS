@@ -130,25 +130,25 @@ function FieldChangeDisplay({ field }: { field: FieldChange }) {
   const hasOldValue = "oldValue" in field;
 
   return (
-    <div className="text-sm border-l-4 border-blue-200 pl-3 py-2 bg-gradient-to-r from-blue-50/50 to-transparent rounded-r-md">
-      <div className="font-semibold text-blue-800 mb-1 text-xs">
+    <div className="text-sm border-l-4 border-blue-200 pl-3 py-2 bg-gradient-to-r from-blue-50/50 to-transparent rounded-r-md break-words overflow-hidden">
+      <div className="font-semibold text-blue-800 mb-1 text-xs break-words">
         {field.fieldName}
       </div>
       {hasOldValue ? (
         <div className="space-y-1">
-          <div className="flex items-center gap-2 text-xs">
-            <span className="px-2 py-1 bg-red-100 text-red-700 rounded line-through">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 text-xs">
+            <span className="px-2 py-1 bg-red-100 text-red-700 rounded line-through break-words max-w-full overflow-hidden">
               {formatValue(field.oldValue)}
             </span>
-            <ArrowRight className="h-3 w-3 text-gray-400" />
-            <span className="px-2 py-1 bg-green-100 text-green-700 rounded font-semibold">
+            <ArrowRight className="h-3 w-3 text-gray-400 flex-shrink-0" />
+            <span className="px-2 py-1 bg-green-100 text-green-700 rounded font-semibold break-words max-w-full overflow-hidden">
               {formatValue(field.newValue)}
             </span>
           </div>
         </div>
       ) : (
         <div className="text-xs">
-          <span className="px-2 py-1 bg-green-100 text-green-700 rounded font-semibold inline-block">
+          <span className="px-2 py-1 bg-green-100 text-green-700 rounded font-semibold inline-block break-words max-w-full overflow-hidden">
             {formatValue(field.value)}
           </span>
         </div>
@@ -312,8 +312,8 @@ function AuditLogEntryCard({ entry }: { entry: AuditLogEntry }) {
           {hasDetails && (
             <Collapsible open={isOpen} onOpenChange={setIsOpen}>
               <CollapsibleContent>
-                <CardContent className="px-4 pb-4 pt-0">
-                  <div className="space-y-4">
+                <CardContent className="px-4 pb-4 pt-0 max-w-full overflow-hidden">
+                  <div className="space-y-4 max-w-full overflow-hidden">
                     {/* Changed Fields */}
                     {entry.changedFields.length > 0 && (
                       <div>
@@ -321,7 +321,7 @@ function AuditLogEntryCard({ entry }: { entry: AuditLogEntry }) {
                           <Edit className="h-4 w-4" />
                           Các trường đã thay đổi ({entry.changedFields.length})
                         </h4>
-                        <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
+                        <div className="grid grid-cols-1 xl:grid-cols-2 gap-3 w-full overflow-hidden">
                           {entry.changedFields.map((field, index) => (
                             <FieldChangeDisplay
                               key={`changed-${index}`}
@@ -339,7 +339,7 @@ function AuditLogEntryCard({ entry }: { entry: AuditLogEntry }) {
                           <Plus className="h-4 w-4" />
                           Các trường đã thêm ({entry.addedFields.length})
                         </h4>
-                        <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
+                        <div className="grid grid-cols-1 xl:grid-cols-2 gap-3 w-full overflow-hidden">
                           {entry.addedFields.map((field, index) => (
                             <FieldChangeDisplay
                               key={`added-${index}`}
@@ -357,7 +357,7 @@ function AuditLogEntryCard({ entry }: { entry: AuditLogEntry }) {
                           <Trash2 className="h-4 w-4" />
                           Các trường đã xóa ({entry.deletedFields.length})
                         </h4>
-                        <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
+                        <div className="grid grid-cols-1 xl:grid-cols-2 gap-3 w-full overflow-hidden">
                           {entry.deletedFields.map((field, index) => (
                             <FieldChangeDisplay
                               key={`deleted-${index}`}
