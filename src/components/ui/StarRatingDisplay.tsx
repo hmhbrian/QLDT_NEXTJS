@@ -16,10 +16,16 @@ export function StarRatingDisplay({
   size = 5,
   className,
 }: StarRatingDisplayProps) {
-  const fullStars = Math.floor(rating);
+  // Gracefully handle invalid rating values
+  const validRating = typeof rating === 'number' && !isNaN(rating) ? rating : 0;
+
+  const fullStars = Math.floor(validRating);
   // Một nửa sao được hiển thị nếu phần thập phân là .5 hoặc lớn hơn
-  const halfStar = rating % 1 !== 0 && rating - fullStars >= 0.5;
+  const halfStar = validRating % 1 !== 0 && validRating - fullStars >= 0.5;
   const emptyStars = maxStars - fullStars - (halfStar ? 1 : 0);
+
+  // Ensure emptyStars is not negative which would cause an error
+  const safeEmptyStars = Math.max(0, emptyStars);
 
   return (
     <div className={cn("flex items-center gap-0.5", className)}>
@@ -37,7 +43,7 @@ export function StarRatingDisplay({
         />
       )}
       {/* Đảm bảo emptyStars không âm */}
-      {[...Array(emptyStars < 0 ? 0 : emptyStars)].map((_, i) => (
+      {[...Array(safeEmptyStars)].map((_, i) => (
         <Star
           key={`empty-${i}`}
           className={cn(`h-${size} w-${size} text-gray-300 dark:text-gray-500`)}
