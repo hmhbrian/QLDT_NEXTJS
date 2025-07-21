@@ -232,7 +232,7 @@ export default function TestDetailPage() {
     );
   }
 
-  if (error || !test) {
+  if (error || !test || !test.questions || test.questions.length === 0) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-destructive/5 via-background to-destructive/10">
         <div className="flex flex-col items-center justify-center min-h-screen p-4">
@@ -242,13 +242,16 @@ export default function TestDetailPage() {
                 <AlertTriangle className="h-8 w-8 text-destructive" />
               </div>
               <CardTitle className="text-destructive">
-                Không tìm thấy bài kiểm tra
+                {!test || !test.questions || test.questions.length === 0
+                  ? "Bài kiểm tra chưa có câu hỏi"
+                  : "Không tìm thấy bài kiểm tra"}
               </CardTitle>
             </CardHeader>
             <CardContent className="text-center space-y-4">
               <p className="text-muted-foreground">
-                Bài kiểm tra này có thể đã bị xóa hoặc bạn không có quyền truy
-                cập.
+                {!test || !test.questions || test.questions.length === 0
+                  ? "Bài kiểm tra này chưa có câu hỏi nào. Vui lòng liên hệ với giảng viên để thêm câu hỏi."
+                  : "Bài kiểm tra này có thể đã bị xóa hoặc bạn không có quyền truy cập."}
               </p>
               <div className="space-y-2 text-xs text-muted-foreground">
                 <p>
@@ -288,7 +291,7 @@ export default function TestDetailPage() {
   }
 
   const handleSelect = (questionId: string, optionLetter: string) => {
-    if (submitted) return;
+    if (submitted || !test.questions || test.questions.length === 0) return;
 
     const question = test.questions.find((q) => q.id.toString() === questionId);
     if (!question) return;
@@ -325,6 +328,12 @@ export default function TestDetailPage() {
     }
 
     console.log("🚀 Starting test submission...");
+
+    // Defensive check for empty questions
+    if (!test.questions || test.questions.length === 0) {
+      console.log("❌ No questions found, cannot submit");
+      return;
+    }
 
     // Tính điểm local để hiển thị ngay
     let correct = 0;
@@ -429,6 +438,8 @@ export default function TestDetailPage() {
   };
 
   const goToNextQuestion = () => {
+    if (!test.questions || test.questions.length === 0) return;
+
     if (currentQuestionIndex < test.questions.length - 1) {
       setState((prev) => ({
         ...prev,
@@ -440,6 +451,8 @@ export default function TestDetailPage() {
   };
 
   const goToPreviousQuestion = () => {
+    if (!test.questions || test.questions.length === 0) return;
+
     if (currentQuestionIndex > 0) {
       setState((prev) => ({
         ...prev,
@@ -449,6 +462,8 @@ export default function TestDetailPage() {
   };
 
   const goToQuestion = (index: number) => {
+    if (!test.questions || test.questions.length === 0) return;
+
     if (index >= 0 && index < test.questions.length) {
       setState((prev) => ({
         ...prev,
@@ -462,7 +477,9 @@ export default function TestDetailPage() {
     (questionId) => answers[questionId] && answers[questionId].length > 0
   ).length;
   const progressPercentage =
-    (answeredQuestionsCount / test.questions.length) * 100;
+    test.questions && test.questions.length > 0
+      ? (answeredQuestionsCount / test.questions.length) * 100
+      : 0;
 
   // Start screen
   const renderStartScreen = () => (
@@ -488,7 +505,7 @@ export default function TestDetailPage() {
                 <div>
                   <p className="font-medium">Số câu hỏi</p>
                   <p className="text-sm text-muted-foreground">
-                    {test.questions.length} câu
+                    {test.questions ? test.questions.length : 0} câu
                   </p>
                 </div>
               </div>
@@ -600,7 +617,8 @@ export default function TestDetailPage() {
             )}
             <div className="text-right">
               <p className="text-sm font-medium">
-                {answeredQuestionsCount}/{test.questions.length}
+                {answeredQuestionsCount}/
+                {test.questions ? test.questions.length : 0}
               </p>
               <p className="text-xs text-muted-foreground">câu đã trả lời</p>
             </div>
@@ -611,62 +629,113 @@ export default function TestDetailPage() {
   );
 
   // Question navigation sidebar
-  const renderQuestionNavigation = () => (
-    <Card className="h-fit sticky top-24">
-      <CardHeader className="pb-4">
-        <CardTitle className="text-sm font-medium">Danh sách câu hỏi</CardTitle>
-        <Progress value={progressPercentage} className="h-2" />
-      </CardHeader>
-      <CardContent className="space-y-2">
-        <ScrollArea className="h-64">
-          <div className="grid grid-cols-4 gap-2">
-            {test.questions.map((q, idx) => {
-              const isAnswered =
-                answers[String(q.id)] && answers[String(q.id)].length > 0;
-              const isCurrent = idx === currentQuestionIndex;
+  const renderQuestionNavigation = () => {
+    // Defensive check for empty questions array
+    if (!test.questions || test.questions.length === 0) {
+      return (
+        <Card className="h-fit sticky top-24">
+          <CardHeader className="pb-4">
+            <CardTitle className="text-sm font-medium">
+              Danh sách câu hỏi
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-center py-4">
+              <p className="text-sm text-muted-foreground">Chưa có câu hỏi</p>
+            </div>
+          </CardContent>
+        </Card>
+      );
+    }
 
-              return (
-                <Button
-                  key={String(q.id)}
-                  variant={
-                    isCurrent ? "default" : isAnswered ? "secondary" : "outline"
-                  }
-                  size="sm"
-                  className={`h-8 w-8 p-0 text-xs font-medium ${
-                    isCurrent ? "ring-2 ring-primary/50" : ""
-                  } ${
-                    isAnswered && !isCurrent
-                      ? "bg-primary/10 text-primary border-primary/30"
-                      : ""
-                  }`}
-                  onClick={() => goToQuestion(idx)}
-                  disabled={submitted}
-                >
-                  {idx + 1}
-                </Button>
-              );
-            })}
+    return (
+      <Card className="h-fit sticky top-24">
+        <CardHeader className="pb-4">
+          <CardTitle className="text-sm font-medium">
+            Danh sách câu hỏi
+          </CardTitle>
+          <Progress value={progressPercentage} className="h-2" />
+        </CardHeader>
+        <CardContent className="space-y-2">
+          <ScrollArea className="h-64">
+            <div className="grid grid-cols-4 gap-2">
+              {test.questions.map((q, idx) => {
+                const isAnswered =
+                  answers[String(q.id)] && answers[String(q.id)].length > 0;
+                const isCurrent = idx === currentQuestionIndex;
+
+                return (
+                  <Button
+                    key={String(q.id)}
+                    variant={
+                      isCurrent
+                        ? "default"
+                        : isAnswered
+                        ? "secondary"
+                        : "outline"
+                    }
+                    size="sm"
+                    className={`h-8 w-8 p-0 text-xs font-medium ${
+                      isCurrent ? "ring-2 ring-primary/50" : ""
+                    } ${
+                      isAnswered && !isCurrent
+                        ? "bg-primary/10 text-primary border-primary/30"
+                        : ""
+                    }`}
+                    onClick={() => goToQuestion(idx)}
+                    disabled={submitted}
+                  >
+                    {idx + 1}
+                  </Button>
+                );
+              })}
+            </div>
+          </ScrollArea>
+          <Separator />
+          <div className="space-y-2 text-xs">
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground">Đã trả lời:</span>
+              <span className="font-medium">{answeredQuestionsCount}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground">Chưa trả lời:</span>
+              <span className="font-medium">
+                {test.questions
+                  ? test.questions.length - answeredQuestionsCount
+                  : 0}
+              </span>
+            </div>
           </div>
-        </ScrollArea>
-        <Separator />
-        <div className="space-y-2 text-xs">
-          <div className="flex items-center justify-between">
-            <span className="text-muted-foreground">Đã trả lời:</span>
-            <span className="font-medium">{answeredQuestionsCount}</span>
-          </div>
-          <div className="flex items-center justify-between">
-            <span className="text-muted-foreground">Chưa trả lời:</span>
-            <span className="font-medium">
-              {test.questions.length - answeredQuestionsCount}
-            </span>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
+        </CardContent>
+      </Card>
+    );
+  };
 
   // Current question display
   const renderCurrentQuestion = () => {
+    // Defensive check for empty questions array or invalid index
+    if (
+      !test.questions ||
+      test.questions.length === 0 ||
+      currentQuestionIndex >= test.questions.length
+    ) {
+      return (
+        <Card className="min-h-[500px]">
+          <CardContent className="flex items-center justify-center h-full">
+            <div className="text-center space-y-4">
+              <AlertTriangle className="h-12 w-12 text-muted-foreground mx-auto" />
+              <div>
+                <h3 className="text-lg font-medium">Không có câu hỏi</h3>
+                <p className="text-sm text-muted-foreground">
+                  Bài kiểm tra này chưa có câu hỏi nào.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      );
+    }
+
     const q = test.questions[currentQuestionIndex];
     const selectedOptions = answers[String(q.id)] || [];
 
@@ -804,7 +873,8 @@ export default function TestDetailPage() {
             <span>Câu trước</span>
           </Button>
           <div className="flex items-center space-x-2">
-            {currentQuestionIndex === test.questions.length - 1 ? (
+            {currentQuestionIndex ===
+            (test.questions ? test.questions.length - 1 : 0) ? (
               <Button
                 onClick={() =>
                   setState((prev) => ({ ...prev, showReview: true }))
@@ -853,13 +923,15 @@ export default function TestDetailPage() {
           </div>
           <div className="text-center p-4 bg-muted/50 rounded-lg">
             <div className="text-2xl font-bold text-muted-foreground">
-              {test.questions.length - answeredQuestionsCount}
+              {test.questions
+                ? test.questions.length - answeredQuestionsCount
+                : 0}
             </div>
             <div className="text-xs text-muted-foreground">Chưa trả lời</div>
           </div>
           <div className="text-center p-4 bg-accent/10 rounded-lg">
             <div className="text-2xl font-bold text-accent-foreground">
-              {test.questions.length}
+              {test.questions ? test.questions.length : 0}
             </div>
             <div className="text-xs text-muted-foreground">Tổng câu hỏi</div>
           </div>
@@ -879,7 +951,7 @@ export default function TestDetailPage() {
             Danh sách câu hỏi (nhấn để chỉnh sửa)
           </h4>
           <div className="grid grid-cols-8 sm:grid-cols-10 md:grid-cols-12 gap-2">
-            {test.questions.map((q, idx) => {
+            {(test.questions || []).map((q, idx) => {
               const isAnswered =
                 answers[String(q.id)] && answers[String(q.id)].length > 0;
 
