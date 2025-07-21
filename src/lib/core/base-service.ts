@@ -233,7 +233,8 @@ export abstract class BaseService<
       message,
       originalError: error,
     });
-    throw new Error(message);
+    // Wrap the message in an Error object to be thrown
+    throw new Error(message, { cause: error });
   }
 
   protected extractData<T>(response: any): T {
@@ -245,18 +246,18 @@ export abstract class BaseService<
         // that might just return { success: true, message: '...' }.
         return response.data !== undefined ? response.data : (response as T);
       } else {
-        // If success is false, throw an error with the message from the backend.
+        // If success is false, create a more informative error message.
         // The `detail` field is often more descriptive for business logic errors.
-        const errorMessage = response.detail || response.message || "An API error occurred.";
+        const errorMessage =
+          response.detail || response.message || "An API error occurred.";
         throw new Error(errorMessage);
       }
     }
-    
+
     // Fallback for responses that don't match the expected structure.
     // This maintains compatibility with endpoints that might return data directly.
     return response as T;
   }
-
 
   protected extractItems(response: PaginatedResponse<TEntity>): TEntity[] {
     return response?.items || [];

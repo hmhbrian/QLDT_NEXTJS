@@ -134,6 +134,12 @@ export const API_ENDPOINTS = {
     course: "/AuditLog/course",
     user: "/AuditLog/user",
   },
+  report: {
+    avgFeedback: "/Report/avg-feedback",
+    monthlyReport: (month: number) => `/Report/data-report/${month}`,
+    courseAndAvgFeedback: "/Report/course-and-avg-feedback",
+    studentsOfCourse: "/Report/students-of-course",
+  },
 } as const;
 
 export const API_CONFIG = {

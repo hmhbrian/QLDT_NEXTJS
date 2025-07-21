@@ -79,13 +79,13 @@ export const navigationItems: NavItem[] = [
         label: "Báo cáo Tổng quan",
         href: "/admin/reports/overview",
         icon: PieChart,
-        roles: ["ADMIN"],
+        roles: ["ADMIN"], // Admin và HR đều có thể truy cập
       },
       {
         label: "Tiến độ Học tập",
         href: "/hr/progress",
         icon: LineChart,
-        roles: ["HR"],
+        roles: ["ADMIN", "HR"], // Admin và HR đều có thể truy cập
       },
     ],
   },
