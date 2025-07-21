@@ -27,7 +27,8 @@ export function useCourseAuditLog(courseId: string, params?: AuditLogParams) {
     queryKey: ["audit-log", "course", courseId, params],
     queryFn: () => auditLogService.getCourseAuditLog(courseId, params),
     enabled: canViewAuditLog && !!courseId,
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 60 * 1000, // 1 minute stale time
+    refetchOnWindowFocus: true,
   });
 }
 

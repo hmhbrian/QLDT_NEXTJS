@@ -1,26 +1,8 @@
 "use client";
 
-import React, { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import React, { useState, useMemo } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import {
   Collapsible,
   CollapsibleContent,
@@ -29,111 +11,144 @@ import {
 import {
   ChevronDown,
   ChevronRight,
-  Search,
-  Filter,
   RefreshCw,
   Eye,
   Edit,
   Trash2,
   Plus,
+  ArrowRight,
+  Loader2,
+  FileText,
 } from "lucide-react";
 import { useCourseAuditLog } from "@/hooks/use-audit-log";
 import { AuditLogEntry, FieldChange } from "@/lib/types/audit-log.types";
 import { cn } from "@/lib/utils";
+import {
+  Tooltip,
+  TooltipProvider,
+  TooltipTrigger,
+  TooltipContent,
+} from "@/components/ui/tooltip";
+import { ClientTime } from "../ClientTime";
+import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 
-interface AuditLogProps {
-  courseId: string;
-  className?: string;
-}
-
-const actionColors = {
-  Added: "bg-green-100 text-green-800 border-green-200",
-  Modified: "bg-yellow-100 text-yellow-800 border-yellow-200",
-  Deleted: "bg-red-100 text-red-800 border-red-200",
+const getActionInfo = (action: string) => {
+  switch (action) {
+    case "Added":
+      return {
+        label: "Thêm",
+        icon: Plus,
+        color: "text-green-600",
+        bgColor: "bg-green-100",
+        borderColor: "border-green-300",
+        verb: "Đã tạo",
+      };
+    case "Modified":
+      return {
+        label: "Sửa",
+        icon: Edit,
+        color: "text-blue-600",
+        bgColor: "bg-blue-100",
+        borderColor: "border-blue-300",
+        verb: "Đã chỉnh sửa",
+      };
+    case "Deleted":
+      return {
+        label: "Xóa",
+        icon: Trash2,
+        color: "text-red-600",
+        bgColor: "bg-red-100",
+        borderColor: "border-red-300",
+        verb: "Đã xóa",
+      };
+    default:
+      return {
+        label: action,
+        icon: Eye,
+        color: "text-gray-600",
+        bgColor: "bg-gray-100",
+        borderColor: "border-gray-300",
+        verb: "Đã thực hiện",
+      };
+  }
 };
 
-const actionLabels = {
-  Added: "Thêm mới",
-  Modified: "Sửa đổi",
-  Deleted: "Xóa",
+const getEntityDisplayName = (entityName: string): string => {
+  switch (entityName.toLowerCase()) {
+    case "courses":
+      return "Khóa học";
+    case "lessons":
+      return "Bài học";
+    case "tests":
+      return "Bài kiểm tra";
+    case "questions":
+      return "Câu hỏi";
+    case "users":
+      return "Người dùng";
+    default:
+      return entityName.toLowerCase();
+  }
 };
 
-function FieldChangeDisplay({
-  field,
-  type,
-}: {
-  field: FieldChange;
-  type: "changed" | "added" | "deleted";
-}) {
-  // Định dạng giá trị để hiển thị
-  const formatValue = (value: any) => {
-    if (value === null || value === undefined) return "N/A";
+function FieldChangeDisplay({ field }: { field: FieldChange }) {
+  const formatValue = (value: any): string => {
+    if (value === null || value === undefined) return "Không có";
+    if (value === "Unknown") return "Chưa xác định";
+    if (value === "") return "Trống";
     if (typeof value === "boolean") return value ? "Có" : "Không";
-    if (typeof value === "string" && value.length > 50) {
-      return value.substring(0, 50) + "...";
+    if (typeof value === "object") {
+      if (value.name) return value.name;
+      if (value.title) return value.title;
+      try {
+        return JSON.stringify(value);
+      } catch {
+        return "[Object]";
+      }
     }
+
+    // Định dạng ngày tháng nếu là ISO string
+    if (typeof value === "string" && value.includes("T")) {
+      try {
+        const date = new Date(value);
+        if (!isNaN(date.getTime())) {
+          return date.toLocaleString("vi-VN", {
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+          });
+        }
+      } catch {
+        // Fallback to original value
+      }
+    }
+
     return String(value);
   };
 
-  const getTypeStyle = (type: string) => {
-    switch (type) {
-      case "changed":
-        return "border-l-blue-400 bg-blue-50/50";
-      case "added":
-        return "border-l-emerald-400 bg-emerald-50/50";
-      case "deleted":
-        return "border-l-rose-400 bg-rose-50/50";
-      default:
-        return "border-l-gray-400 bg-gray-50/50";
-    }
-  };
+  const hasOldValue = "oldValue" in field;
 
   return (
-    <div
-      className={cn(
-        "text-sm border-l-4 rounded-r-lg p-3 shadow-sm",
-        getTypeStyle(type)
-      )}
-    >
-      <div className="font-medium text-gray-800 mb-2 text-xs uppercase tracking-wide">
+    <div className="text-sm border-l-4 border-blue-200 pl-3 py-2 bg-gradient-to-r from-blue-50/50 to-transparent rounded-r-md">
+      <div className="font-semibold text-blue-800 mb-1 text-xs">
         {field.fieldName}
       </div>
-      {type === "changed" && (
-        <div className="space-y-2">
-          <div className="flex items-start gap-2">
-            <span className="text-rose-600 font-medium text-xs bg-rose-100 px-2 py-1 rounded">
-              Cũ
-            </span>
-            <span className="text-rose-700 text-xs break-all">
+      {hasOldValue ? (
+        <div className="space-y-1">
+          <div className="flex items-center gap-2 text-xs">
+            <span className="px-2 py-1 bg-red-100 text-red-700 rounded line-through">
               {formatValue(field.oldValue)}
             </span>
-          </div>
-          <div className="flex items-start gap-2">
-            <span className="text-emerald-600 font-medium text-xs bg-emerald-100 px-2 py-1 rounded">
-              Mới
-            </span>
-            <span className="text-emerald-700 text-xs break-all">
+            <ArrowRight className="h-3 w-3 text-gray-400" />
+            <span className="px-2 py-1 bg-green-100 text-green-700 rounded font-semibold">
               {formatValue(field.newValue)}
             </span>
           </div>
         </div>
-      )}
-      {type === "added" && (
-        <div className="flex items-start gap-2">
-          <span className="text-emerald-600 font-medium text-xs bg-emerald-100 px-2 py-1 rounded">
-            Giá trị
-          </span>
-          <span className="text-emerald-700 text-xs break-all">
-            {formatValue(field.value)}
-          </span>
-        </div>
-      )}
-      {type === "deleted" && (
-        <div className="flex items-start gap-2">
-          <span className="text-rose-600 font-medium text-xs bg-rose-100 px-2 py-1 rounded">
-            Đã xóa
-          </span>
-          <span className="text-rose-700 text-xs break-all">
+      ) : (
+        <div className="text-xs">
+          <span className="px-2 py-1 bg-green-100 text-green-700 rounded font-semibold inline-block">
             {formatValue(field.value)}
           </span>
         </div>
@@ -144,337 +159,268 @@ function FieldChangeDisplay({
 
 function AuditLogEntryCard({ entry }: { entry: AuditLogEntry }) {
   const [isOpen, setIsOpen] = useState(false);
+  const actionInfo = getActionInfo(entry.action);
 
-  const hasDetails =
-    entry.changedFields.length > 0 ||
-    entry.addedFields.length > 0 ||
-    entry.deletedFields.length > 0;
+  // Extract the title or a descriptive name from the fields
+  const entityTitleField = useMemo(() => {
+    const fields =
+      entry.action === "Added"
+        ? entry.addedFields
+        : entry.changedFields.length > 0
+        ? entry.changedFields
+        : [];
+    return fields.find(
+      (f) =>
+        f.fieldName.toLowerCase().includes("tiêu đề") ||
+        f.fieldName.toLowerCase().includes("tên") ||
+        f.fieldName.toLowerCase() === "title" ||
+        f.fieldName.toLowerCase() === "name"
+    );
+  }, [entry]);
 
-  const getActionIcon = (action: string) => {
-    switch (action) {
-      case "Added":
-        return <Plus className="w-5 h-5 text-green-500" />;
-      case "Modified":
-        return <Edit className="w-5 h-5 text-orange-500" />;
-      case "Deleted":
-        return <Trash2 className="w-5 h-5 text-red-500" />;
-      default:
-        return <Eye className="w-5 h-5 text-blue-500" />;
-    }
-  };
+  const entityTitle = entityTitleField
+    ? entityTitleField.newValue ?? entityTitleField.value
+    : null;
+  const entityDisplayName = getEntityDisplayName(entry.entityName);
 
-  // Fix: Define getActionColor here so it's in scope
-  const getActionColor = (action: string) => {
-    switch (action) {
-      case "Added":
-        return "bg-green-100 text-green-800 border-green-200";
-      case "Modified":
-        return "bg-yellow-100 text-yellow-800 border-yellow-200";
-      case "Deleted":
-        return "bg-red-100 text-red-800 border-red-200";
-      default:
-        return "bg-gray-100 text-gray-800 border-gray-200";
-    }
-  };
-
-  const getAvatarColor = (name: string) => {
-    const colors = [
-      "bg-emerald-100",
-      "bg-blue-100",
-      "bg-purple-100",
-      "bg-pink-100",
-      "bg-indigo-100",
-      "bg-teal-100",
-      "bg-cyan-100",
-      "bg-violet-100",
+  const allFields = useMemo(() => {
+    return [
+      ...entry.addedFields,
+      ...entry.changedFields,
+      ...entry.deletedFields,
     ];
-    const index = name.length % colors.length;
-    return colors[index];
+  }, [entry]);
+
+  const hasDetails = allFields.length > 0;
+
+  // Tạo mô tả hành động chi tiết hơn
+  const getDetailedDescription = () => {
+    if (entry.action === "Added") {
+      return `${actionInfo.verb} ${entityDisplayName.toLowerCase()}${
+        entityTitle ? ` "${entityTitle}"` : ""
+      } với ${entry.addedFields.length} thuộc tính`;
+    } else if (entry.action === "Modified") {
+      const changeCount = entry.changedFields.length;
+      const mainChanges = entry.changedFields
+        .slice(0, 2)
+        .map((f) => f.fieldName)
+        .join(", ");
+      return `${actionInfo.verb} ${entityDisplayName.toLowerCase()}${
+        entityTitle ? ` "${entityTitle}"` : ""
+      }: ${mainChanges}${
+        changeCount > 2 ? ` và ${changeCount - 2} thay đổi khác` : ""
+      }`;
+    } else if (entry.action === "Deleted") {
+      return `${actionInfo.verb} ${entityDisplayName.toLowerCase()}${
+        entityTitle ? ` "${entityTitle}"` : ""
+      }`;
+    }
+    return `${actionInfo.verb} ${entityDisplayName.toLowerCase()}`;
   };
 
   return (
-    <Card className="border-l-4 border-l-orange-400 hover:shadow-md transition-shadow duration-200">
-      <CardContent className="p-4">
-        <div className="flex items-start gap-3">
-          {/* Avatar with initials, icon at bottom-right */}
-          <div className="flex-shrink-0 relative">
-            <div
-              className={cn(
-                "w-10 h-10 rounded-full flex items-center justify-center border border-gray-200 shadow-sm bg-white font-semibold text-gray-700 text-base uppercase",
-                getAvatarColor(entry.userName)
-              )}
-            >
-              {/* Show initials (first letter of each word) */}
-              {entry.userName
-                .split(" ")
-                .map((w) => w[0])
-                .join("")}
-            </div>
-            {/* Action icon at bottom-right of avatar */}
-            <span className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-white border border-gray-200 flex items-center justify-center shadow">
-              {getActionIcon(entry.action)}
-            </span>
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1">
-              <span className="font-medium text-gray-900">
-                {entry.userName}
-              </span>
-              {/* <Badge
-                className={cn(
-                  "text-xs font-medium flex items-center gap-1 px-2 py-1",
-                  getActionColor(entry.action)
-                )}
-              >
-                {getActionIcon(entry.action)}
-              </Badge> */}
-              <Badge
-                variant="outline"
-                className="text-xs bg-green-50 text-green-700 border-green-200"
-              >
-                Học viên
-              </Badge>
-              <Badge
-                variant="outline"
-                className="text-xs bg-blue-50 text-blue-700 border-blue-200"
-              >
-                Khóa học
-              </Badge>
-            </div>
-            <div className="text-sm text-gray-600 mb-1">
-              Truy cập xem nội dung khóa học
-            </div>
-            <div className="flex items-center gap-4 text-xs text-gray-500">
-              <span className="flex items-center gap-1">
-                {entry.entityName}
-              </span>
-              <span className="flex items-center gap-1">192.168.1.105</span>
-              <span className="flex items-center gap-1">{entry.timestamp}</span>
-            </div>
-          </div>
-          <div className="flex items-center gap-2"></div>
-        </div>
+    <div className="relative pl-8">
+      {/* Timeline Dot */}
+      <div
+        className={cn(
+          "absolute -left-[9px] top-2 w-4 h-4 rounded-full border-2 border-background flex items-center justify-center shadow-sm",
+          actionInfo.bgColor,
+          actionInfo.borderColor
+        )}
+      >
+        <actionInfo.icon className={cn("w-2.5 h-2.5", actionInfo.color)} />
+      </div>
 
-        {hasDetails && (
-          <Collapsible open={isOpen} onOpenChange={setIsOpen} className="mt-3">
-            <CollapsibleTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="w-full justify-center text-xs hover:bg-gray-50 text-gray-600"
-              >
-                {isOpen ? (
-                  <>
-                    <ChevronDown className="h-3 w-3 mr-1" />
-                    Ẩn chi tiết
-                  </>
-                ) : (
-                  <>
-                    <ChevronRight className="h-3 w-3 mr-1" />
-                    Xem chi tiết
-                  </>
-                )}
-              </Button>
-            </CollapsibleTrigger>
-            <CollapsibleContent className="mt-3">
-              <div className="bg-gradient-to-r from-gray-50 to-gray-50/70 rounded-lg p-4 space-y-3 border border-gray-100">
-                {entry.changedFields.length > 0 && (
-                  <div>
-                    <h4 className="font-medium text-sm mb-2 text-orange-600 flex items-center gap-1">
-                      <span>📝</span>
-                      Các trường đã thay đổi ({entry.changedFields.length}):
-                    </h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                      {entry.changedFields.map((field, index) => (
-                        <FieldChangeDisplay
-                          key={index}
-                          field={field}
-                          type="changed"
-                        />
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {entry.addedFields.length > 0 && (
-                  <div>
-                    <h4 className="font-medium text-sm mb-2 text-emerald-600 flex items-center gap-1">
-                      <span>✨</span>
-                      Các trường đã thêm ({entry.addedFields.length}):
-                    </h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                      {entry.addedFields.map((field, index) => (
-                        <FieldChangeDisplay
-                          key={index}
-                          field={field}
-                          type="added"
-                        />
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {entry.deletedFields.length > 0 && (
-                  <div>
-                    <h4 className="font-medium text-sm mb-2 text-rose-600 flex items-center gap-1">
-                      <span>🗑️</span>
-                      Các trường đã xóa ({entry.deletedFields.length}):
-                    </h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                      {entry.deletedFields.map((field, index) => (
-                        <FieldChangeDisplay
-                          key={index}
-                          field={field}
-                          type="deleted"
-                        />
-                      ))}
-                    </div>
+      <div className="mb-6">
+        <Card
+          className="shadow-sm hover:shadow-md transition-all duration-200 border-l-4"
+          style={{
+            borderLeftColor: actionInfo.color.includes("green")
+              ? "#16a34a"
+              : actionInfo.color.includes("blue")
+              ? "#2563eb"
+              : "#dc2626",
+          }}
+        >
+          <CardHeader className="p-4 pb-2">
+            <div className="flex items-start justify-between">
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="font-bold text-foreground text-base">
+                    {entry.userName}
+                  </span>
+                  <Badge
+                    variant="outline"
+                    className={cn(
+                      "text-xs font-semibold px-2 py-1",
+                      actionInfo.bgColor,
+                      actionInfo.color,
+                      actionInfo.borderColor
+                    )}
+                  >
+                    {actionInfo.label}
+                  </Badge>
+                  <Badge variant="secondary" className="text-xs font-medium">
+                    {entityDisplayName}
+                  </Badge>
+                </div>
+                <p className="text-sm text-gray-700 leading-relaxed mb-2">
+                  {getDetailedDescription()}
+                </p>
+                {hasDetails && (
+                  <div className="flex items-center gap-4 text-xs text-blue-600">
+                    {entry.changedFields.length > 0 && (
+                      <span className="flex items-center gap-1">
+                        <Edit className="h-3 w-3" />
+                        {entry.changedFields.length} đã sửa
+                      </span>
+                    )}
+                    {entry.addedFields.length > 0 && (
+                      <span className="flex items-center gap-1">
+                        <Plus className="h-3 w-3" />
+                        {entry.addedFields.length} đã thêm
+                      </span>
+                    )}
+                    {entry.deletedFields.length > 0 && (
+                      <span className="flex items-center gap-1">
+                        <Trash2 className="h-3 w-3" />
+                        {entry.deletedFields.length} đã xóa
+                      </span>
+                    )}
                   </div>
                 )}
               </div>
-            </CollapsibleContent>
-          </Collapsible>
-        )}
-      </CardContent>
-    </Card>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="text-right">
+                      <p className="text-xs text-muted-foreground cursor-default">
+                        <ClientTime date={entry.timestamp} />
+                      </p>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>
+                      Thời gian chính xác:{" "}
+                      {new Date(entry.timestamp).toLocaleString("vi-VN")}
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
+          </CardHeader>
+          {hasDetails && (
+            <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+              <CollapsibleContent>
+                <CardContent className="px-4 pb-4 pt-0">
+                  <div className="space-y-4">
+                    {/* Changed Fields */}
+                    {entry.changedFields.length > 0 && (
+                      <div>
+                        <h4 className="font-semibold text-sm mb-3 text-blue-700 flex items-center gap-2">
+                          <Edit className="h-4 w-4" />
+                          Các trường đã thay đổi ({entry.changedFields.length})
+                        </h4>
+                        <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
+                          {entry.changedFields.map((field, index) => (
+                            <FieldChangeDisplay
+                              key={`changed-${index}`}
+                              field={field}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Added Fields */}
+                    {entry.addedFields.length > 0 && (
+                      <div>
+                        <h4 className="font-semibold text-sm mb-3 text-green-700 flex items-center gap-2">
+                          <Plus className="h-4 w-4" />
+                          Các trường đã thêm ({entry.addedFields.length})
+                        </h4>
+                        <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
+                          {entry.addedFields.map((field, index) => (
+                            <FieldChangeDisplay
+                              key={`added-${index}`}
+                              field={field}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Deleted Fields */}
+                    {entry.deletedFields.length > 0 && (
+                      <div>
+                        <h4 className="font-semibold text-sm mb-3 text-red-700 flex items-center gap-2">
+                          <Trash2 className="h-4 w-4" />
+                          Các trường đã xóa ({entry.deletedFields.length})
+                        </h4>
+                        <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
+                          {entry.deletedFields.map((field, index) => (
+                            <FieldChangeDisplay
+                              key={`deleted-${index}`}
+                              field={field}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </CollapsibleContent>
+
+              <div className="border-t bg-gray-50/50 px-4 py-3">
+                <CollapsibleTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="w-full justify-center text-xs font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-100 h-8"
+                  >
+                    {isOpen ? (
+                      <>
+                        <ChevronDown className="h-3 w-3 mr-2" />
+                        Ẩn chi tiết
+                      </>
+                    ) : (
+                      <>
+                        <ChevronRight className="h-3 w-3 mr-2" />
+                        Xem chi tiết thay đổi ({allFields.length} mục)
+                      </>
+                    )}
+                  </Button>
+                </CollapsibleTrigger>
+              </div>
+            </Collapsible>
+          )}
+        </Card>
+      </div>
+    </div>
   );
 }
 
-export function AuditLog({ courseId, className }: AuditLogProps) {
-  const [filters, setFilters] = useState({
-    action: "" as "" | "Added" | "Modified" | "Deleted",
-    entityName: "",
-    userName: "",
-  });
-
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
-
-  // Tạo params object chỉ với các giá trị có thực sự
-  const auditParams = {
-    ...(filters.action && { action: filters.action }),
-    ...(filters.entityName && { entityName: filters.entityName }),
-    ...(filters.userName && { userName: filters.userName }),
-    limit: 100, // Giới hạn 100 records
-  };
-
+export function AuditLog({
+  courseId,
+  className,
+}: {
+  courseId: string;
+  className?: string;
+}) {
   const {
     data: auditLogs,
     isLoading,
     error,
     refetch,
-  } = useCourseAuditLog(courseId, auditParams);
-
-  // Reset về trang 1 khi thay đổi filter - LUÔN gọi useEffect
-  React.useEffect(() => {
-    setCurrentPage(1);
-  }, [filters]);
-
-  // Debug logging
-  console.log("🔍 AuditLog Component:", {
-    courseId,
-    auditParams,
-    isLoading,
-    error,
-    auditLogs,
-    auditLogsLength: auditLogs?.length,
-    auditLogsType: typeof auditLogs,
-    auditLogsIsArray: Array.isArray(auditLogs),
-  });
-
-  // Thêm debug chi tiết hơn
-  if (auditLogs && auditLogs.length > 0) {
-    console.log("📊 First audit log entry:", auditLogs[0]);
-  }
-
-  if (isLoading) {
-    // Use built-in Spinner from UI library if available, else fallback to improved loading
-    return (
-      <Card className={className}>
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2">
-            Nhật ký hoạt động
-          </CardTitle>
-          <p className="text-sm text-muted-foreground">
-            Theo dõi tất cả các hoạt động liên quan đến khóa học này: tạo, sửa,
-            xóa, đăng ký, học tập và kiểm tra.
-          </p>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-col items-center justify-center h-40">
-            {/* Professional loading spinner, fallback if Spinner not available */}
-            <div className="flex items-center gap-2">
-              <RefreshCw className="animate-spin h-6 w-6 text-primary" />
-              <span className="ml-2 text-sm text-gray-600">
-                Đang tải nhật ký hoạt động...
-              </span>
-            </div>
-            <span className="text-xs text-gray-500 mt-1">Vui lòng đợi</span>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  if (error) {
-    return (
-      <Card className={className}>
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2">
-            <div className="w-6 h-6 bg-orange-500 rounded-full flex items-center justify-center">
-              <span className="text-white text-xs">📋</span>
-            </div>
-            Nhật ký hoạt động
-          </CardTitle>
-          <div className="text-sm text-muted-foreground">
-            Theo dõi tất cả các hoạt động liên quan đến khóa học này: tạo, sửa,
-            xóa, đăng ký, học tập và kiểm tra.
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="text-center text-red-600 py-8">
-            <div> Có lỗi xảy ra khi tải nhật ký hoạt động </div>
-            <div className="text-sm mt-2">
-              {error instanceof Error ? error.message : "Lỗi không xác định"}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  const filteredLogs =
-    auditLogs?.filter((log) => {
-      return (
-        (!filters.action || log.action === filters.action) &&
-        (!filters.entityName ||
-          log.entityName
-            .toLowerCase()
-            .includes(filters.entityName.toLowerCase())) &&
-        (!filters.userName ||
-          log.userName.toLowerCase().includes(filters.userName.toLowerCase()))
-      );
-    }) || [];
-
-  // Phân trang
-  const totalPages = Math.ceil(filteredLogs.length / itemsPerPage);
-  const paginatedLogs = filteredLogs.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
+  } = useCourseAuditLog(courseId);
 
   return (
     <Card className={className}>
-      <CardHeader className="pb-3">
+      <CardHeader>
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-6 h-6 bg-orange-500 rounded-full flex items-center justify-center">
-              <span className="text-white text-xs">📋</span>
-            </div>
-            <CardTitle>Nhật ký hoạt động</CardTitle>
-          </div>
+          <CardTitle>Nhật ký hoạt động</CardTitle>
           <Button
-            variant="outline"
+            variant="ghost"
             size="sm"
             onClick={() => refetch()}
             disabled={isLoading}
@@ -485,160 +431,31 @@ export function AuditLog({ courseId, className }: AuditLogProps) {
             Làm mới
           </Button>
         </div>
-        <p className="text-sm text-muted-foreground mt-2">
-          Theo dõi tất cả các hoạt động liên quan đến khóa học này: tạo, sửa,
-          xóa, đăng ký, học tập và kiểm tra.
-        </p>
-
-        {/* Filters */}
-        <div className="flex flex-wrap items-center gap-4 mt-4">
-          <div className="flex items-center gap-2">
-            <Label htmlFor="action-filter" className="text-sm">
-              Hành động:
-            </Label>
-            <Select
-              value={filters.action === "" ? "all" : filters.action}
-              onValueChange={(value) =>
-                setFilters((prev) => ({
-                  ...prev,
-                  action:
-                    value === "all"
-                      ? ""
-                      : (value as "" | "Added" | "Modified" | "Deleted"),
-                }))
-              }
-            >
-              <SelectTrigger className="w-32">
-                <SelectValue placeholder="Tất cả" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tất cả</SelectItem>
-                <SelectItem value="Added">Thêm mới</SelectItem>
-                <SelectItem value="Modified">Sửa đổi</SelectItem>
-                <SelectItem value="Deleted">Xóa</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Label htmlFor="entity-filter" className="text-sm">
-              Đối tượng:
-            </Label>
-            <Input
-              id="entity-filter"
-              placeholder="Tên đối tượng..."
-              value={filters.entityName}
-              onChange={(e) =>
-                setFilters((prev) => ({ ...prev, entityName: e.target.value }))
-              }
-              className="w-40"
-            />
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Label htmlFor="user-filter" className="text-sm">
-              Người dùng:
-            </Label>
-            <Input
-              id="user-filter"
-              placeholder="Tên người dùng..."
-              value={filters.userName}
-              onChange={(e) =>
-                setFilters((prev) => ({ ...prev, userName: e.target.value }))
-              }
-              className="w-40"
-            />
-          </div>
-
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() =>
-              setFilters({ action: "" as "", entityName: "", userName: "" })
-            }
-          >
-            <Filter className="h-4 w-4 mr-2" />
-            Xóa bộ lọc
-          </Button>
-        </div>
       </CardHeader>
-
       <CardContent>
-        {filteredLogs.length === 0 ? (
-          <div className="text-center py-12 text-gray-500">
-            {!auditLogs || auditLogs.length === 0 ? (
-              <div className="space-y-2">
-                <p className="text-lg">📝 Chưa có nhật ký hoạt động nào</p>
-                <p className="text-sm">
-                  Các hoạt động trên khóa học này sẽ được ghi lại tại đây
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                <p className="text-lg">🔍 Không tìm thấy kết quả</p>
-                <p className="text-sm">
-                  Thử thay đổi bộ lọc để xem các hoạt động khác
-                </p>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() =>
-                    setFilters({
-                      action: "" as "",
-                      entityName: "",
-                      userName: "",
-                    })
-                  }
-                >
-                  Xóa bộ lọc
-                </Button>
-              </div>
-            )}
+        {isLoading ? (
+          <div className="text-center py-8 text-muted-foreground">
+            <Loader2 className="h-6 w-6 mx-auto animate-spin" />
+            <p className="mt-2">Đang tải nhật ký...</p>
+          </div>
+        ) : error ? (
+          <div className="text-center text-destructive py-8">
+            <p>Lỗi khi tải nhật ký hoạt động.</p>
+          </div>
+        ) : !auditLogs || auditLogs.length === 0 ? (
+          <div className="text-center py-8 text-muted-foreground flex flex-col items-center">
+            <FileText className="h-10 w-10 mb-2 opacity-50" />
+            <p className="font-medium">Chưa có hoạt động</p>
+            <p className="text-sm">
+              Chưa có hoạt động nào được ghi lại cho khóa học này.
+            </p>
           </div>
         ) : (
-          <>
-            <div className="space-y-4">
-              {paginatedLogs.map((entry) => (
-                <AuditLogEntryCard key={entry.id} entry={entry} />
-              ))}
-            </div>
-
-            {/* Phân trang */}
-            {totalPages > 1 && (
-              <div className="flex items-center justify-between mt-6">
-                <div className="text-sm text-gray-500">
-                  Hiển thị {(currentPage - 1) * itemsPerPage + 1} -{" "}
-                  {Math.min(currentPage * itemsPerPage, filteredLogs.length)}{" "}
-                  trong tổng số {filteredLogs.length} bản ghi
-                </div>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() =>
-                      setCurrentPage((prev) => Math.max(1, prev - 1))
-                    }
-                    disabled={currentPage === 1}
-                  >
-                    Trước
-                  </Button>
-                  <span className="text-sm">
-                    Trang {currentPage} / {totalPages}
-                  </span>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() =>
-                      setCurrentPage((prev) => Math.min(totalPages, prev + 1))
-                    }
-                    disabled={currentPage === totalPages}
-                  >
-                    Sau
-                  </Button>
-                </div>
-              </div>
-            )}
-          </>
+          <div className="relative border-l-2 border-border ml-2">
+            {auditLogs.map((entry) => (
+              <AuditLogEntryCard key={entry.id} entry={entry} />
+            ))}
+          </div>
         )}
       </CardContent>
     </Card>

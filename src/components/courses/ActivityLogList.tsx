@@ -1,10 +1,10 @@
+
+"use client";
+
 import React from "react";
-import { formatDistanceToNow } from "date-fns";
-import { vi } from "date-fns/locale";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -38,17 +38,19 @@ import {
   Copy,
   ExternalLink,
   Info,
+  Loader2,
 } from "lucide-react";
 import {
   ActivityLog,
   ActivityAction,
   ActivityEntityType,
 } from "@/lib/types/course.types";
+import { useActivityLogs } from "@/hooks/use-activity-logs";
 import { cn } from "@/lib/utils";
+import { ClientTime } from "@/components/ClientTime";
 
 interface ActivityLogListProps {
-  logs: ActivityLog[];
-  isLoading?: boolean;
+  courseId: string;
   className?: string;
 }
 
@@ -150,11 +152,11 @@ const getEntityTypeName = (entityType: ActivityEntityType): string => {
 };
 
 export const ActivityLogList: React.FC<ActivityLogListProps> = ({
-  logs,
-  isLoading = false,
+  courseId,
   className,
 }) => {
   const { toast } = useToast();
+  const { data: logs, isLoading } = useActivityLogs(courseId);
 
   const handleCopyToClipboard = async (log: ActivityLog) => {
     try {
@@ -337,10 +339,7 @@ export const ActivityLogList: React.FC<ActivityLogListProps> = ({
                   <div className="flex items-center gap-1">
                     <Clock className="h-3 w-3" />
                     <span>
-                      {formatDistanceToNow(new Date(log.timestamp), {
-                        addSuffix: true,
-                        locale: vi,
-                      })}
+                      <ClientTime date={log.timestamp} />
                     </span>
                   </div>
                   {log.ipAddress && (
@@ -418,5 +417,3 @@ export const ActivityLogList: React.FC<ActivityLogListProps> = ({
     </div>
   );
 };
-
-export default ActivityLogList;
