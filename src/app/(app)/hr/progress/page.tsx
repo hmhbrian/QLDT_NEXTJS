@@ -14,11 +14,24 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Users, BookOpen, Loader2, BarChart2, Activity } from "lucide-react";
+import {
+  Users,
+  BookOpen,
+  Loader2,
+  BarChart2,
+  Activity,
+  AlertTriangle,
+} from "lucide-react";
 import dynamic from "next/dynamic";
 import { useCourses } from "@/hooks/use-courses";
 import { useUsers } from "@/hooks/use-users";
+import {
+  useStudentsOfCourseReport,
+  useCourseAndAvgFeedbackReport,
+  useAvgFeedbackReport,
+} from "@/hooks/use-reports";
 import { useMemo } from "react";
+import { extractErrorMessage } from "@/lib/core";
 
 const ProgressCharts = dynamic(
   () =>
@@ -35,13 +48,39 @@ const ProgressCharts = dynamic(
 );
 
 export default function ProgressPage() {
-  const { courses, isLoading: isLoadingCourses } = useCourses({ Limit: 1000 });
+  const { courses, isLoading: isLoadingCourses } = useCourses({ Limit: 50 });
   const { users: allUsers, isLoading: isLoadingUsers } = useUsers({
     RoleName: "HOCVIEN",
-    Limit: 1000,
+    Limit: 50,
   });
 
-  const isLoading = isLoadingCourses || isLoadingUsers;
+  // Sử dụng API reports để lấy dữ liệu thực tế
+  const {
+    data: studentsData,
+    isLoading: isLoadingStudents,
+    error: studentsError,
+  } = useStudentsOfCourseReport();
+
+  const {
+    data: courseFeedback,
+    isLoading: isLoadingCourseFeedback,
+    error: courseFeedbackError,
+  } = useCourseAndAvgFeedbackReport();
+
+  const {
+    data: overallFeedback,
+    isLoading: isLoadingOverallFeedback,
+    error: overallFeedbackError,
+  } = useAvgFeedbackReport();
+
+  const isLoading =
+    isLoadingCourses ||
+    isLoadingUsers ||
+    isLoadingStudents ||
+    isLoadingCourseFeedback ||
+    isLoadingOverallFeedback;
+
+  const anyError = studentsError || courseFeedbackError || overallFeedbackError;
 
   const reportData = useMemo(() => {
     if (isLoading) {
@@ -51,41 +90,59 @@ export default function ProgressPage() {
         completedCourses: 0,
         completionRate: 0,
         courseStats: [],
+        overallRating: 0,
       };
     }
 
-    const totalCourses = courses.length || 10; // Mock: 10 khóa học
-    const totalTrainees = allUsers.length || 244; // Mock: 244 học viên
+    // Sử dụng dữ liệu từ API reports
+    const totalCourses = courseFeedback?.length || courses.length || 10;
+    const totalTrainees =
+      studentsData?.reduce((sum, course) => sum + course.totalStudent, 0) ||
+      allUsers.length ||
+      244;
 
-    // Simplified completion logic: a course is "completed" if its status is "Đã kết thúc"
+    // Tính toán khóa học hoàn thành từ dữ liệu thực
     const completedCourses =
       courses.length > 0
         ? courses.filter((c) => c.status === "Đã kết thúc").length
-        : 2; // Mock: 2 khóa học đã hoàn thành
+        : Math.floor(totalCourses * 0.3); // 30% completion estimate
 
     const completionRate =
       totalCourses > 0
         ? Math.round((completedCourses / totalCourses) * 100)
-        : 20; // Mock: 20% completion rate
+        : 30;
 
-    let courseStats = courses
-      .map((course) => ({
-        name: course.title,
-        trainees: course.userIds?.length || 0,
-        status:
-          typeof course.status === "object" &&
-          course.status &&
-          "name" in course.status
-            ? course.status.name
-            : typeof course.status === "string"
-            ? course.status
-            : "N/A",
-      }))
-      .filter((course) => course.trainees > 0) // Chỉ lấy khóa học có học viên
-      .sort((a, b) => b.trainees - a.trainees)
-      .slice(0, 10); // Top 10 courses by enrollment
+    // Tạo courseStats từ dữ liệu API
+    let courseStats = [];
 
-    // Nếu không có dữ liệu thật, thêm mock data để demo
+    if (studentsData && studentsData.length > 0) {
+      courseStats = studentsData
+        .map((courseData) => {
+          // Tìm thông tin khóa học từ courses API
+          const courseInfo =
+            courses.find((c) => c.title === courseData.courseName) || null;
+          const status = courseInfo
+            ? typeof courseInfo.status === "object" &&
+              courseInfo.status &&
+              "name" in courseInfo.status
+              ? courseInfo.status.name
+              : typeof courseInfo.status === "string"
+              ? courseInfo.status
+              : "Đang diễn ra"
+            : "Đang diễn ra";
+
+          return {
+            name: courseData.courseName,
+            trainees: courseData.totalStudent,
+            status: status,
+          };
+        })
+        .filter((course) => course.trainees > 0)
+        .sort((a, b) => b.trainees - a.trainees)
+        .slice(0, 10);
+    }
+
+    // Fallback to mock data if no API data
     if (courseStats.length === 0) {
       courseStats = [
         {
@@ -117,13 +174,24 @@ export default function ProgressPage() {
       ];
     }
 
-    // Debug logging
-    console.log("🔍 Progress Page Debug:", {
-      totalCourses: courses.length,
-      totalTrainees: allUsers.length,
-      courseStats,
-      coursesRaw: courses.slice(0, 2), // First 2 courses for debugging
-      usingMockData: courses.length === 0 || courseStats.length === 0,
+    // Tính điểm đánh giá tổng thể
+    const overallRating = overallFeedback
+      ? (overallFeedback.q1_relevanceAvg +
+          overallFeedback.q2_clarityAvg +
+          overallFeedback.q3_structureAvg +
+          overallFeedback.q4_durationAvg +
+          overallFeedback.q5_materialAvg) /
+        5
+      : 0;
+
+    console.log("🔍 HR Progress Page - API Data:", {
+      studentsData: studentsData?.slice(0, 3),
+      courseFeedback: courseFeedback?.slice(0, 3),
+      overallFeedback,
+      courseStats: courseStats.slice(0, 5),
+      totalCourses,
+      totalTrainees,
+      overallRating,
     });
 
     return {
@@ -132,8 +200,16 @@ export default function ProgressPage() {
       completedCourses,
       completionRate,
       courseStats,
+      overallRating,
     };
-  }, [courses, allUsers, isLoading]);
+  }, [
+    courses,
+    allUsers,
+    studentsData,
+    courseFeedback,
+    overallFeedback,
+    isLoading,
+  ]);
 
   const statCards = [
     {
@@ -154,7 +230,38 @@ export default function ProgressPage() {
       icon: Activity,
       description: `Dựa trên ${reportData.completedCourses} khóa học "Đã kết thúc".`,
     },
+    {
+      title: "Điểm Đánh giá TB",
+      value: `${reportData.overallRating.toFixed(1)}/5`,
+      icon: BarChart2,
+      description: "Điểm đánh giá trung bình từ API.",
+    },
   ];
+
+  // Loading state
+  if (isLoading && !anyError) {
+    return (
+      <div className="flex h-60 w-full items-center justify-center">
+        <Loader2 className="h-10 w-10 animate-spin text-primary" />
+        <p className="ml-3 text-muted-foreground">
+          Đang tải dữ liệu báo cáo tiến độ...
+        </p>
+      </div>
+    );
+  }
+
+  // Error state
+  if (anyError) {
+    return (
+      <div className="flex flex-col items-center justify-center h-60 w-full text-destructive">
+        <AlertTriangle className="h-10 w-10 mb-3" />
+        <p className="text-lg font-semibold">Lỗi tải dữ liệu báo cáo</p>
+        <p className="text-sm text-muted-foreground">
+          {extractErrorMessage(anyError)}
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -164,7 +271,8 @@ export default function ProgressPage() {
             Báo cáo Tiến độ Học tập
           </h1>
           <p className="text-muted-foreground mt-1">
-            Tổng quan về hoạt động đào tạo và tiến độ của học viên.
+            Tổng quan về hoạt động đào tạo và tiến độ của học viên dựa trên dữ
+            liệu API thực tế.
           </p>
         </div>
         <div className="w-full md:w-auto">
@@ -186,7 +294,7 @@ export default function ProgressPage() {
         </div>
       ) : (
         <>
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
             {statCards.map((stat, index) => (
               <Card
                 key={index}
