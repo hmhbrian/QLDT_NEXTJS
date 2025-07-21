@@ -1,3 +1,4 @@
+
 /**
  * Course Domain Types
  * All course-related interfaces and types, aligned with backend DTOs.
@@ -139,15 +140,19 @@ export interface Course {
 }
 
 export interface Feedback {
-  id: number;
-  userId: string;
-  courseId: string;
+  id?: number;
+  userId?: string;
+  userName?: string;
+  userAvatar?: string;
+  courseId?: string;
   q1_relevance: number;
   q2_clarity: number;
   q3_structure: number;
   q4_duration: number;
   q5_material: number;
   comment: string;
+  createdAt?: string;
+  averageRating: number;
 }
 
 export interface ApiLessonProgress {
@@ -228,6 +233,15 @@ export interface UpsertLessonProgressPayload {
   lessonId: number;
   currentPage?: number;
   currentTimeSecond?: number;
+}
+
+export interface CreateFeedbackPayload {
+  q1_relevance: number;
+  q2_clarity: number;
+  q3_structure: number;
+  q4_duration: number;
+  q5_material: number;
+  comment: string;
 }
 
 // --- API Response DTOs ---
