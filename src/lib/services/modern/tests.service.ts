@@ -1,3 +1,4 @@
+
 "use client";
 
 import { BaseService } from "@/lib/core";
@@ -8,9 +9,8 @@ import type {
   UpdateTestPayload,
   SelectedAnswer,
   TestSubmissionResponse,
-  TestSession,
   DetailedTestResult,
-} from "@/lib/types/course.types";
+} from "@/lib/types/test.types";
 
 class TestsService extends BaseService<ApiTest, CreateTestPayload, any> {
   constructor() {
@@ -113,18 +113,13 @@ class TestsService extends BaseService<ApiTest, CreateTestPayload, any> {
    * Lấy kết quả test đã submit
    * @param courseId ID của khóa học
    * @param testId ID của test
-   * @param submissionId ID của submission
    * @returns Promise với kết quả chi tiết test
    */
   async getTestResult(
     courseId: string,
-    testId: number,
-   
+    testId: number
   ): Promise<DetailedTestResult> {
-    const endpoint = API_CONFIG.endpoints.tests.detailResult(
-      courseId,
-      testId,
-    );
+    const endpoint = API_CONFIG.endpoints.tests.detailResult(courseId, testId);
     try {
       const response = await this.get<DetailedTestResult>(endpoint);
       return response;

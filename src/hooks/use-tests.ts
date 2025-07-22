@@ -1,15 +1,16 @@
+
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { testsService } from "@/lib/services/modern/tests.service";
-import type {
+import {
   Test,
   CreateTestPayload,
   UpdateTestPayload,
   SelectedAnswer,
   TestSubmissionResponse,
   DetailedTestResult,
-} from "@/lib/types/course.types";
+} from "@/lib/types/test.types";
 import { useToast } from "@/components/ui/use-toast";
 import { extractErrorMessage } from "@/lib/core";
 import { mapApiTestToUiTest } from "@/lib/mappers/test.mapper";
@@ -136,12 +137,6 @@ export function useDeleteTest() {
   });
 }
 
-/**
- * Hook để submit test với các câu trả lời đã chọn
- * @param courseId ID của khóa học
- * @param testId ID của test
- * @returns Mutation object để submit test
- */
 export function useSubmitTest(courseId: string, testId: number) {
   const { showError } = useError();
   const queryClient = useQueryClient();
@@ -152,70 +147,47 @@ export function useSubmitTest(courseId: string, testId: number) {
     { answers: SelectedAnswer[]; startedAt: string }
   >({
     mutationFn: async ({ answers, startedAt }) => {
-      console.log("🔄 useSubmitTest mutation called:", {
-        courseId,
-        testId,
-        answers,
-        startedAt,
-      });
-
-      const result = await testsService.submitTest(
-        courseId,
-        testId,
-        answers,
-        startedAt
-      );
-      console.log("🎉 useSubmitTest mutation successful:", result);
-      return result;
+      return await testsService.submitTest(courseId, testId, answers, startedAt);
     },
     onSuccess: (data) => {
-      console.log("✅ useSubmitTest onSuccess:", data);
-
-      // Refresh test data
+      queryClient.invalidateQueries({ queryKey: [TESTS_QUERY_KEY, courseId] });
       queryClient.invalidateQueries({
-        queryKey: [TESTS_QUERY_KEY, courseId],
+        queryKey: ["testResult", courseId, testId],
       });
 
-      // Tính phần trăm điểm, tránh NaN
-      const percent =
-        data && data.totalQuestions && data.totalQuestions > 0
-          ? ((data.score / data.totalQuestions) * 100).toFixed(1)
-          : "0.0";
+      const scorePercent =
+        typeof data.score === "number" ? data.score.toFixed(1) : "N/A";
+      const correctCount = data.correctAnswerCount ?? 0;
+      const totalQuestions = correctCount + (data.incorrectAnswerCount ?? 0);
+
       showError({
         success: true,
-        message: `Nộp bài thành công! Điểm: ${percent}% (${data.correctAnswers}/${data.totalQuestions} câu đúng)`,
-        description: `Số câu đúng: ${data.correctAnswers}/${
-          data.totalQuestions
-        } - ${data.isPassed ? "ĐẠT" : "KHÔNG ĐẠT"}`,
+        title: "Nộp bài thành công!",
+        message: `Điểm: ${scorePercent}% (${correctCount}/${totalQuestions}) - ${
+          data.isPassed ? "ĐẠT" : "KHÔNG ĐẠT"
+        }`,
       });
     },
     onError: (error) => {
-      console.error("❌ useSubmitTest onError:", error);
       showError(error);
     },
   });
 }
 
-/**
- * Hook để lấy chi tiết kết quả test đã submit
- * @param courseId ID của khóa học
- * @param testId ID của test
- * @returns Query object với chi tiết kết quả test
- */
-export function useTestResult(courseId: string, testId: number) {
+export function useTestResult(
+  courseId: string,
+  testId: number,
+  enabled: boolean = true
+) {
   return useQuery<DetailedTestResult, Error>({
     queryKey: ["testResult", courseId, testId],
     queryFn: async () => {
-      console.log("🔍 Fetching test result:", { courseId, testId });
-      const result = await testsService.getTestResult(courseId, testId);
-      console.log("✅ Test result fetched:", result);
-      return result;
+      return await testsService.getTestResult(courseId, testId);
     },
-    enabled: !!courseId && !!testId,
-    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+    enabled: !!courseId && !!testId && enabled,
+    staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
     retry: (failureCount, error: any) => {
-      // Don't retry if user hasn't submitted the test yet
       if (error?.message?.includes("chưa làm bài") || error?.status === 404) {
         return false;
       }
@@ -224,21 +196,17 @@ export function useTestResult(courseId: string, testId: number) {
   });
 }
 
-/**
- * Hook để kiểm tra xem user đã submit test chưa
- * @param courseId ID của khóa học
- * @param testId ID của test
- * @returns boolean indicating if test has been submitted
- */
 export function useHasSubmittedTest(courseId: string, testId: number) {
   const {
     data: testResult,
     isLoading,
     error,
-  } = useTestResult(courseId, testId);
+  } = useTestResult(courseId, testId, true); // Always enable to check for submission
+
+  const hasSubmitted = !!testResult && !error;
 
   return {
-    hasSubmitted: !!testResult && !error,
+    hasSubmitted,
     isLoading,
     testResult,
   };
