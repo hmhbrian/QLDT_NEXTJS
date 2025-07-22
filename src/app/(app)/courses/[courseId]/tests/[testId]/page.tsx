@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useParams, useRouter } from "next/navigation";
@@ -192,11 +193,9 @@ export default function TestDetailPage() {
 
       toast({
         title: "Nộp bài thành công!",
-        description: `Điểm số của bạn: ${scorePercent.toFixed(1)}%. ${
-          response.isPassed
-            ? "Chúc mừng bạn đã đạt!"
-            : "Tiếc quá, bạn chưa đạt."
-        }`,
+        description: `Điểm số của bạn: ${scorePercent.toFixed(
+          1
+        )}%. ${response.isPassed ? "Chúc mừng bạn đã đạt!" : "Tiếc quá, bạn chưa đạt."}`,
         variant: response.isPassed ? "success" : "default",
       });
 
@@ -306,7 +305,7 @@ export default function TestDetailPage() {
                 <div>
                   <p className="font-medium">Tạo bởi</p>
                   <p className="text-sm text-muted-foreground">
-                    {testData.createdBy?.name}
+                    {testData.createdBy?.name || "Unknown"}
                   </p>
                 </div>
               </div>
@@ -399,7 +398,8 @@ export default function TestDetailPage() {
           <div className="grid grid-cols-4 gap-2">
             {testData.questions.map((q, idx) => {
               const isAnswered =
-                answers[q.id.toString()] && answers[q.id.toString()].length > 0;
+                answers[q.id.toString()] &&
+                answers[q.id.toString()].length > 0;
               return (
                 <Button
                   key={q.id}
@@ -429,7 +429,8 @@ export default function TestDetailPage() {
     const q = testData.questions[currentQuestionIndex];
     if (!q) return null;
     const selectedOptions = answers[q.id.toString()] || [];
-    const questionType = (q.correctAnswerIndexes?.length ?? 0) > 1 ? 2 : 1;
+    const questionType =
+      (q.correctAnswerIndexes?.length ?? 0) > 1 ? 2 : 1;
     return (
       <Card>
         <CardHeader>
@@ -593,7 +594,7 @@ export default function TestDetailPage() {
         </div>
 
         {/* Warning for unanswered questions */}
-        {answeredQuestionsCount < testData.questions.length && (
+        {answeredQuestionsCount < (testData.questions?.length || 0) && (
           <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
             <div className="flex items-start space-x-3">
               <AlertTriangle className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" />
@@ -601,7 +602,7 @@ export default function TestDetailPage() {
                 <h4 className="font-medium text-amber-800">Cảnh báo</h4>
                 <p className="text-sm text-amber-700 mt-1">
                   Bạn chưa trả lời{" "}
-                  {testData.questions.length - answeredQuestionsCount} câu hỏi.
+                  {(testData.questions?.length || 0) - answeredQuestionsCount} câu hỏi.
                   Các câu chưa trả lời sẽ được tính là sai.
                 </p>
               </div>
@@ -642,124 +643,150 @@ export default function TestDetailPage() {
     </Card>
   );
 
-  return (
-    <div className="space-y-6">
-      <Card
-        className={
-          result.isPassed
-            ? "border-green-200 bg-green-50"
-            : "border-red-200 bg-red-50"
-        }
-      >
-        <CardContent className="pt-6 text-center">
-          <div
-            className={`mx-auto w-16 h-16 rounded-full flex items-center justify-center ${
-              result.isPassed ? "bg-green-100" : "bg-red-100"
-            }`}
-          >
-            {result.isPassed ? (
-              <CheckCircle className="h-8 w-8 text-green-600" />
-            ) : (
-              <XCircle className="h-8 w-8 text-red-600" />
-            )}
-          </div>
-          <h2
-            className={`text-2xl font-bold mt-4 ${
-              result.isPassed ? "text-green-700" : "text-red-700"
-            }`}
-          >
-            {result.isPassed
-              ? "Chúc mừng! Bạn đã đạt"
-              : "Tiếc quá! Bạn chưa đạt"}
-          </h2>
-          <p className="text-muted-foreground mt-1">
-            Điểm của bạn:{" "}
-            <span className="font-semibold">{result.score.toFixed(1)}%</span> (
-            {result.correctAnswerCount}/
-            {result.correctAnswerCount + result.incorrectAnswerCount} câu đúng)
-          </p>
-        </CardContent>
-      </Card>
-      <Card>
-        <CardHeader>
-          <CardTitle>Chi tiết bài làm</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ScrollArea className="h-96 pr-4">
-            <div className="space-y-4">
-              {result.userAnswers.map((ua, idx) => (
-                <div key={ua.question.id} className="border rounded-lg p-4">
-                  <div className="flex justify-between items-start">
-                    <h4 className="font-medium pr-4">
-                      Câu {idx + 1}: {ua.question.questionText}
-                    </h4>
-                    <Badge variant={ua.isCorrect ? "default" : "destructive"}>
-                      {ua.isCorrect ? "Đúng" : "Sai"}
-                    </Badge>
-                  </div>
-                  <div className="space-y-2 mt-3">
-                    {[
-                      ua.question.a,
-                      ua.question.b,
-                      ua.question.c,
-                      ua.question.d,
-                    ]
-                      .filter((o) => o)
-                      .map((opt, optIdx) => {
-                        const optLetter = String.fromCharCode(97 + optIdx);
-                        const isUserChoice =
-                          ua.selectedOptions.includes(optLetter);
-                        const isCorrectAnswer =
-                          ua.correctAnswer.includes(optLetter);
-                        return (
-                          <div
-                            key={optIdx}
-                            className={`flex items-center gap-3 p-2 rounded ${
-                              isCorrectAnswer
-                                ? "bg-green-50"
-                                : isUserChoice
-                                ? "bg-red-50"
-                                : ""
-                            }`}
-                          >
-                            <span className="font-semibold">
-                              {OPTION_LABELS[optIdx]}
-                            </span>
-                            <span>{opt}</span>
-                            {isUserChoice && (
-                              <Badge variant="outline" className="ml-auto">
-                                Bạn chọn
-                              </Badge>
-                            )}
-                          </div>
-                        );
-                      })}
-                  </div>
-                  {ua.question.explanation && (
-                    <div className="mt-3 bg-blue-50 border border-blue-200 p-3 rounded">
-                      <h5 className="font-medium text-sm text-blue-800">
-                        Giải thích:
-                      </h5>
-                      <p className="text-sm text-blue-700">
-                        {ua.question.explanation}
-                      </p>
-                    </div>
-                  )}
-                </div>
-              ))}
+  const renderResults = () => {
+    if (!result) return null;
+    return (
+      <div className="space-y-6">
+        <Card
+          className={
+            result.isPassed
+              ? "border-green-200 bg-green-50"
+              : "border-red-200 bg-red-50"
+          }
+        >
+          <CardContent className="pt-6 text-center">
+            <div
+              className={`mx-auto w-16 h-16 rounded-full flex items-center justify-center ${
+                result.isPassed ? "bg-green-100" : "bg-red-100"
+              }`}
+            >
+              {result.isPassed ? (
+                <CheckCircle className="h-8 w-8 text-green-600" />
+              ) : (
+                <XCircle className="h-8 w-8 text-red-600" />
+              )}
             </div>
-          </ScrollArea>
-        </CardContent>
-      </Card>
-      <div className="flex gap-2">
-        <Button variant="outline" onClick={() => router.back()}>
-          <Home className="h-4 w-4 mr-2" />
-          Quay lại khóa học
-        </Button>
-        <Button onClick={handleStartTest}>
-          <RefreshCw className="h-4 w-4 mr-2" />
-          Làm lại bài
-        </Button>
+            <h2
+              className={`text-2xl font-bold mt-4 ${
+                result.isPassed ? "text-green-700" : "text-red-700"
+              }`}
+            >
+              {result.isPassed
+                ? "Chúc mừng! Bạn đã đạt"
+                : "Tiếc quá! Bạn chưa đạt"}
+            </h2>
+            <p className="text-muted-foreground mt-1">
+              Điểm của bạn:{" "}
+              <span className="font-semibold">{result.score.toFixed(1)}%</span>{" "}
+              ({result.correctAnswerCount}/
+              {result.correctAnswerCount + result.incorrectAnswerCount} câu
+              đúng)
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>Chi tiết bài làm</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ScrollArea className="h-96 pr-4">
+              <div className="space-y-4">
+                {result.userAnswers.map((ua, idx) => (
+                  <div key={ua.question.id} className="border rounded-lg p-4">
+                    <div className="flex justify-between items-start">
+                      <h4 className="font-medium pr-4">
+                        Câu {idx + 1}: {ua.question.questionText}
+                      </h4>
+                      <Badge variant={ua.isCorrect ? "default" : "destructive"}>
+                        {ua.isCorrect ? "Đúng" : "Sai"}
+                      </Badge>
+                    </div>
+                    <div className="space-y-2 mt-3">
+                      {[
+                        ua.question.a,
+                        ua.question.b,
+                        ua.question.c,
+                        ua.question.d,
+                      ]
+                        .filter((o) => o)
+                        .map((opt, optIdx) => {
+                          const optLetter = String.fromCharCode(97 + optIdx);
+                          const isUserChoice =
+                            ua.selectedOptions.includes(optLetter);
+                          const isCorrectAnswer =
+                            ua.correctAnswer.includes(optLetter);
+                          return (
+                            <div
+                              key={optIdx}
+                              className={`flex items-center gap-3 p-2 rounded ${
+                                isCorrectAnswer
+                                  ? "bg-green-50"
+                                  : isUserChoice
+                                  ? "bg-red-50"
+                                  : ""
+                              }`}
+                            >
+                              <span className="font-semibold">
+                                {OPTION_LABELS[optIdx]}
+                              </span>
+                              <span>{opt}</span>
+                              {isUserChoice && (
+                                <Badge variant="outline" className="ml-auto">
+                                  Bạn chọn
+                                </Badge>
+                              )}
+                            </div>
+                          );
+                        })}
+                    </div>
+                    {ua.question.explanation && (
+                      <div className="mt-3 bg-blue-50 border border-blue-200 p-3 rounded">
+                        <h5 className="font-medium text-sm text-blue-800">
+                          Giải thích:
+                        </h5>
+                        <p className="text-sm text-blue-700">
+                          {ua.question.explanation}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </ScrollArea>
+          </CardContent>
+        </Card>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => router.back()}>
+            <Home className="h-4 w-4 mr-2" />
+            Quay lại khóa học
+          </Button>
+          <Button onClick={handleStartTest}>
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Làm lại bài
+          </Button>
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div className="min-h-screen bg-muted/40">
+      {!result && renderHeader()}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        {result ? (
+          renderResults()
+        ) : showReview ? (
+          renderReview()
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+            <div className="lg:col-span-1 order-2 lg:order-1">
+              {renderQuestionNavigation()}
+            </div>
+            <div className="lg:col-span-3 order-1 lg:order-2">
+              {renderCurrentQuestion()}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
