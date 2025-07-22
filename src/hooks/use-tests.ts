@@ -8,6 +8,7 @@ import type {
   UpdateTestPayload,
   SelectedAnswer,
   TestSubmissionResponse,
+  DetailedTestResult,
 } from "@/lib/types/course.types";
 import { useToast } from "@/components/ui/use-toast";
 import { extractErrorMessage } from "@/lib/core";
@@ -175,9 +176,14 @@ export function useSubmitTest(courseId: string, testId: number) {
         queryKey: [TESTS_QUERY_KEY, courseId],
       });
 
+      // Tính phần trăm điểm, tránh NaN
+      const percent =
+        data && data.totalQuestions && data.totalQuestions > 0
+          ? ((data.score / data.totalQuestions) * 100).toFixed(1)
+          : "0.0";
       showError({
         success: true,
-        message: `Nộp bài thành công! Điểm: ${data.score}/${data.totalQuestions}`,
+        message: `Nộp bài thành công! Điểm: ${percent}% (${data.correctAnswers}/${data.totalQuestions} câu đúng)`,
         description: `Số câu đúng: ${data.correctAnswers}/${
           data.totalQuestions
         } - ${data.isPassed ? "ĐẠT" : "KHÔNG ĐẠT"}`,
@@ -191,24 +197,49 @@ export function useSubmitTest(courseId: string, testId: number) {
 }
 
 /**
- * Hook để bắt đầu làm test
+ * Hook để lấy chi tiết kết quả test đã submit
  * @param courseId ID của khóa học
  * @param testId ID của test
- * @returns Mutation object để bắt đầu test
+ * @returns Query object với chi tiết kết quả test
  */
-export function useStartTest(courseId: string, testId: number) {
-  const { showError } = useError();
-
-  return useMutation<any, Error, void>({
-    mutationFn: () => testsService.startTest(courseId, testId),
-    onSuccess: () => {
-      showError({
-        success: true,
-        message: "Bắt đầu làm bài thành công",
-      });
+export function useTestResult(courseId: string, testId: number) {
+  return useQuery<DetailedTestResult, Error>({
+    queryKey: ["testResult", courseId, testId],
+    queryFn: async () => {
+      console.log("🔍 Fetching test result:", { courseId, testId });
+      const result = await testsService.getTestResult(courseId, testId);
+      console.log("✅ Test result fetched:", result);
+      return result;
     },
-    onError: (error) => {
-      showError(error);
+    enabled: !!courseId && !!testId,
+    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+    refetchOnWindowFocus: false,
+    retry: (failureCount, error: any) => {
+      // Don't retry if user hasn't submitted the test yet
+      if (error?.message?.includes("chưa làm bài") || error?.status === 404) {
+        return false;
+      }
+      return failureCount < 2;
     },
   });
+}
+
+/**
+ * Hook để kiểm tra xem user đã submit test chưa
+ * @param courseId ID của khóa học
+ * @param testId ID của test
+ * @returns boolean indicating if test has been submitted
+ */
+export function useHasSubmittedTest(courseId: string, testId: number) {
+  const {
+    data: testResult,
+    isLoading,
+    error,
+  } = useTestResult(courseId, testId);
+
+  return {
+    hasSubmitted: !!testResult && !error,
+    isLoading,
+    testResult,
+  };
 }

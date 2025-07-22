@@ -110,23 +110,6 @@ class TestsService extends BaseService<ApiTest, CreateTestPayload, any> {
   }
 
   /**
-   * Bắt đầu làm bài test
-   * @param courseId ID của khóa học
-   * @param testId ID của test
-   * @returns Promise với thông tin session test
-   */
-  async startTest(courseId: string, testId: number): Promise<TestSession> {
-    const endpoint = API_CONFIG.endpoints.tests.start(courseId, testId);
-    try {
-      const response = await this.post<TestSession>(endpoint);
-      return response;
-    } catch (error) {
-      console.error("Error starting test:", error);
-      this.handleError("POST", endpoint, error);
-    }
-  }
-
-  /**
    * Lấy kết quả test đã submit
    * @param courseId ID của khóa học
    * @param testId ID của test
@@ -136,38 +119,17 @@ class TestsService extends BaseService<ApiTest, CreateTestPayload, any> {
   async getTestResult(
     courseId: string,
     testId: number,
-    submissionId: number
+   
   ): Promise<DetailedTestResult> {
-    const endpoint = API_CONFIG.endpoints.tests.result(
+    const endpoint = API_CONFIG.endpoints.tests.detailResult(
       courseId,
       testId,
-      submissionId
     );
     try {
       const response = await this.get<DetailedTestResult>(endpoint);
       return response;
     } catch (error) {
       console.error("Error fetching test result:", error);
-      this.handleError("GET", endpoint, error);
-    }
-  }
-
-  /**
-   * Lấy lịch sử test submissions của user
-   * @param courseId ID của khóa học
-   * @param testId ID của test
-   * @returns Promise với lịch sử submissions
-   */
-  async getTestSubmissions(
-    courseId: string,
-    testId: number
-  ): Promise<TestSubmissionResponse[]> {
-    const endpoint = API_CONFIG.endpoints.tests.submissions(courseId, testId);
-    try {
-      const response = await this.get<TestSubmissionResponse[]>(endpoint);
-      return response || [];
-    } catch (error) {
-      console.error("Error fetching test submissions:", error);
       this.handleError("GET", endpoint, error);
     }
   }

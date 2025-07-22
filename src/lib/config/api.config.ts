@@ -71,15 +71,8 @@ export const API_ENDPOINTS = {
     reorder: (courseId: string) => `/courses/${courseId}/tests/reorder`,
     submit: (courseId: string, testId: number) =>
       `/courses/${courseId}/tests/submit/${testId}`,
-    start: (courseId: string, testId: number) =>
-      `/courses/${courseId}/tests/${testId}/start`,
-    submissions: (courseId: string, testId: number) =>
-      `/courses/${courseId}/tests/${testId}/submissions`,
-    result: (courseId: string, testId: number, submissionId: number) =>
-      `/courses/${courseId}/tests/${testId}/submissions/${submissionId}`,
-    questions: (testId: number) => `/tests/${testId}/questions`,
-    questionById: (testId: number, questionId: number) =>
-      `/tests/${testId}/questions/${questionId}`,
+    detailResult: (courseId: string, testId: number) =>
+      `/courses/${courseId}/tests/detail-test-result/${testId}`,
   },
   lessons: {
     base: (courseId: string) => `/courses/${courseId}/lessons`,

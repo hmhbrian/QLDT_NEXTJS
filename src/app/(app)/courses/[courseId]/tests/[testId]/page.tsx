@@ -390,14 +390,26 @@ export default function TestDetailPage() {
       // Cập nhật state với kết quả từ API (nếu có) hoặc dùng kết quả local
       setState((prev) => ({
         ...prev,
+        // Nếu API trả về score nhỏ hơn hoặc bằng 1, coi là tỷ lệ, nếu lớn hơn 1 thì là số câu đúng
         score:
-          response?.score !== undefined
-            ? (response.score / response.totalQuestions) * 100
+          typeof response?.score === "number"
+            ? response.totalQuestions && response.score > 1
+              ? (response.score / response.totalQuestions) * 100
+              : response.score * 100
             : percent,
         passed:
           response?.isPassed !== undefined
             ? response.isPassed
             : percent >= test.passThreshold,
+        correctCount:
+          typeof response?.correctAnswers === "number"
+            ? response.correctAnswers
+            : correct,
+        incorrectCount:
+          test.questions.length -
+          (typeof response?.correctAnswers === "number"
+            ? response.correctAnswers
+            : correct),
         submitted: true,
         showReview: true,
       }));
@@ -1071,8 +1083,14 @@ export default function TestDetailPage() {
                 </h2>
                 <p className="text-muted-foreground mt-1">
                   Điểm của bạn:{" "}
-                  <span className="font-semibold">{score?.toFixed(1)}%</span> (
-                  {correctCount}/{test.questions.length} câu đúng)
+                  <span className="font-semibold">
+                    {Number.isFinite(score) && score !== null
+                      ? score.toFixed(1)
+                      : "0.0"}
+                    %
+                  </span>{" "}
+                  ({typeof correctCount === "number" ? correctCount : 0}/
+                  {test.questions.length} câu đúng)
                 </p>
                 <p className="text-sm text-muted-foreground">
                   Điểm tối thiểu để đạt: {test.passThreshold}%

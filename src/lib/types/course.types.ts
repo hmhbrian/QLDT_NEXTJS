@@ -298,7 +298,6 @@ export interface UserEnrollCourseDto {
   registrationClosingDate?: string | null;
   location?: string;
   progressPercentage?: number;
-  progressPercentange?: number; // Trường từ API (có lỗi chính tả)
 }
 
 export interface ApiLesson {
@@ -389,18 +388,24 @@ export interface TestSession {
 }
 
 /**
- * Interface cho kết quả chi tiết của test
+ * Interface cho kết quả chi tiết của test (matching backend DetailTestResultDto)
  */
 export interface DetailedTestResult extends TestSubmissionResponse {
-  questionResults: QuestionResult[];
-  testInfo: {
-    title: string;
-    passThreshold: number;
-    timeLimit: number;
-  };
+  userAnswers: UserAnswerAndCorrectAnswer[];
 }
 
 /**
+ * Interface cho câu trả lời của user và đáp án đúng
+ */
+export interface UserAnswerAndCorrectAnswer {
+  question: Question;
+  selectedOptions: string;
+  correctAnswer: string;
+  isCorrect: boolean;
+}
+
+/**
+ * @deprecated Use UserAnswerAndCorrectAnswer instead
  * Interface cho kết quả từng câu hỏi
  */
 export interface QuestionResult {
@@ -410,27 +415,4 @@ export interface QuestionResult {
   correctOptions: string[];
   isCorrect: boolean;
   explanation?: string;
-}
-
-/**
- * Interface cho enrolled courses từ API /enroll-courses
- */
-export interface EnrolledCourse {
-  id: string;
-  code: string;
-  name: string;
-  description: string;
-  objectives: string;
-  thumbUrl: string | null;
-  format: string;
-  sessions: number;
-  hoursPerSessions: number;
-  optional: string;
-  maxParticipant: number;
-  startDate: string;
-  endDate: string;
-  registrationStartDate: string;
-  registrationClosingDate: string;
-  location: string;
-  progressPercentange: number; // Tên trường từ API (có lỗi chính tả)
 }

@@ -68,6 +68,7 @@ import {
 } from "@/lib/services/modern/report.service";
 import { extractErrorMessage } from "@/lib/core";
 import { ApiDataCharts } from "@/components/reports/ApiDataCharts";
+import dynamic from 'next/dynamic';
 
 const evaluationCriteriaLabels: Record<keyof AvgFeedbackData, string> = {
   q1_relevanceAvg: "Nội dung phù hợp công việc",
@@ -97,8 +98,10 @@ const criteriaShortLabels: Record<CriteriaKey, string> = {
 
 type FilterType = "all" | "year" | "quarter" | "month";
 
+// Dynamically import client-side components to avoid hydration errors
+const ClientStarRatingDisplay = dynamic(() => import('@/components/ui/StarRatingDisplay'), { ssr: false });
+
 export default function TrainingOverviewReportPage() {
-  // Centralized filter state management
   const [filterType, setFilterType] = useState<FilterType>("all");
   const [selectedMonth, setSelectedMonth] = useState<number>(
     new Date().getMonth() + 1
@@ -111,7 +114,6 @@ export default function TrainingOverviewReportPage() {
   );
   const [isFilterOpen, setIsFilterOpen] = useState(false);
 
-  // Data fetching hooks - only enabled when needed
   const {
     data: overallFeedback,
     isLoading: isLoadingOverallFeedback,
@@ -130,14 +132,12 @@ export default function TrainingOverviewReportPage() {
     error: studentsError,
   } = useStudentsOfCourseReport();
 
-  // Monthly report - only enabled when filterType is 'month'
   const {
     data: monthlyReport,
     isLoading: isLoadingMonthlyReport,
     error: monthlyReportError,
   } = useMonthlyReport(selectedMonth, filterType === "month");
 
-  // Centralized loading and error states
   const isLoading = useMemo(() => {
     return (
       isLoadingOverallFeedback ||
@@ -168,7 +168,6 @@ export default function TrainingOverviewReportPage() {
     monthlyReportError,
   ]);
 
-  // Centralized metrics calculation with memoization
   const metrics = useMemo(() => {
     const totalCourses =
       filterType === "all"
@@ -251,7 +250,6 @@ export default function TrainingOverviewReportPage() {
     overallFeedback,
   ]);
 
-  // Helper function for filter display labels
   const getFilterDisplayLabel = () => {
     switch (filterType) {
       case "month":
@@ -265,10 +263,8 @@ export default function TrainingOverviewReportPage() {
     }
   };
 
-  // Check if any filter is active
   const hasActiveFilter = filterType !== "all";
 
-  // Reset all filters to default
   const resetFilters = () => {
     setFilterType("all");
     setSelectedMonth(new Date().getMonth() + 1);
@@ -277,22 +273,17 @@ export default function TrainingOverviewReportPage() {
     setIsFilterOpen(false);
   };
 
-  // Handle filter type change
   const handleFilterChange = (newFilterType: FilterType) => {
     setFilterType(newFilterType);
-
-    // Auto-close popover when selecting "all"
     if (newFilterType === "all") {
       setIsFilterOpen(false);
     }
   };
 
-  // Apply filters and close popover
   const applyFilters = () => {
     setIsFilterOpen(false);
   };
 
-  // Loading state
   if (isLoading && !anyError) {
     return (
       <div className="min-h-screen from-orange-50 via-amber-50/50 to-red-50/30 dark:from-slate-950 dark:via-orange-950/20 dark:to-red-950/10">
@@ -315,7 +306,6 @@ export default function TrainingOverviewReportPage() {
     );
   }
 
-  // Error state
   if (anyError) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-orange-50 via-amber-50/50 to-red-50/30 dark:from-slate-950 dark:via-orange-950/20 dark:to-red-950/10">
@@ -343,7 +333,6 @@ export default function TrainingOverviewReportPage() {
   return (
     <div className="min-h-screen from-orange-50 via-amber-50/50 to-red-50/30 dark:from-slate-950 dark:via-orange-950/20 dark:to-red-950/10">
       <div className="container mx-auto px-4 py-8 space-y-8">
-        {/* Professional Header Section */}
         <div className="relative">
           <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
             <div className="flex-1">
@@ -356,12 +345,6 @@ export default function TrainingOverviewReportPage() {
                     <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-slate-900 via-orange-700 to-red-800 dark:from-slate-100 dark:via-orange-200 dark:to-red-200 bg-clip-text text-transparent leading-tight">
                       Báo cáo Hiệu quả Đào tạo Doanh nghiệp
                     </h1>
-                    {/* {hasActiveFilter && (
-                      <div className="flex items-center gap-2 px-3 py-1 bg-gradient-to from-orange-500 to-red-500 text-white rounded-full text-sm font-medium shadow-lg shadow-orange-500/30">
-                        <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
-                        {getFilterDisplayLabel()}
-                      </div>
-                    )} */}
                   </div>
                   <p className="text-lg text-slate-600 dark:text-slate-300 max-w-3xl">
                     {getFilterDisplayLabel()} • Phân tích tổng thể về chất
@@ -370,10 +353,7 @@ export default function TrainingOverviewReportPage() {
                 </div>
               </div>
             </div>
-
-            {/* Compact Filter Section with Popover */}
             <div className="flex items-center gap-3">
-              {/* Main Filter Button */}
               <Popover open={isFilterOpen} onOpenChange={setIsFilterOpen}>
                 <PopoverTrigger asChild>
                   <Button
@@ -399,8 +379,6 @@ export default function TrainingOverviewReportPage() {
                         <Filter className="w-4 h-4 text-orange-500" />
                         Lọc theo thời gian
                       </h4>
-
-                      {/* Filter Type Radio Group */}
                       <RadioGroup
                         value={filterType}
                         onValueChange={handleFilterChange}
@@ -445,10 +423,8 @@ export default function TrainingOverviewReportPage() {
                       </RadioGroup>
                     </div>
 
-                    {/* Dynamic Filter Controls */}
                     {filterType !== "all" && (
                       <div className="space-y-4 pt-4 border-t border-slate-200 dark:border-slate-700">
-                        {/* Year Selector - Always show for year/quarter/month */}
                         <div className="space-y-2">
                           <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">
                             Năm
@@ -478,7 +454,6 @@ export default function TrainingOverviewReportPage() {
                           </Select>
                         </div>
 
-                        {/* Quarter Selector - Only for quarter filter */}
                         {filterType === "quarter" && (
                           <div className="space-y-2">
                             <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">
@@ -512,7 +487,6 @@ export default function TrainingOverviewReportPage() {
                           </div>
                         )}
 
-                        {/* Month Selector - Only for month filter */}
                         {filterType === "month" && (
                           <div className="space-y-2">
                             <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">
@@ -541,7 +515,6 @@ export default function TrainingOverviewReportPage() {
                           </div>
                         )}
 
-                        {/* Apply Button */}
                         <Button
                           onClick={applyFilters}
                           className="w-full bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white shadow-lg"
@@ -554,7 +527,6 @@ export default function TrainingOverviewReportPage() {
                 </PopoverContent>
               </Popover>
 
-              {/* Reset Button - Only show when filter is active */}
               {hasActiveFilter && (
                 <Button
                   variant="outline"
@@ -570,7 +542,6 @@ export default function TrainingOverviewReportPage() {
           </div>
         </div>
 
-        {/* Enhanced KPI Cards */}
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
           {metrics.map((metric, index) => (
             <Card
@@ -602,7 +573,6 @@ export default function TrainingOverviewReportPage() {
           ))}
         </div>
 
-        {/* Enhanced Evaluation Charts */}
         <Card className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border-0 shadow-xl">
           <CardHeader className="pb-4">
             <CardTitle className="flex items-center text-xl font-bold text-slate-900 dark:text-slate-100">
@@ -629,7 +599,7 @@ export default function TrainingOverviewReportPage() {
                       {evaluationCriteriaLabels[key]}
                     </p>
                     <div className="flex items-center gap-3">
-                      <StarRatingDisplay
+                      <ClientStarRatingDisplay
                         rating={overallFeedback[key] || 0}
                         size={5}
                       />
@@ -653,7 +623,6 @@ export default function TrainingOverviewReportPage() {
           </CardContent>
         </Card>
 
-        {/* Enhanced Course Details Table */}
         <Card className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm border-0 shadow-xl shadow-orange-500/10">
           <CardHeader>
             <CardTitle className="flex items-center text-xl font-bold text-slate-900 dark:text-slate-100">
@@ -699,7 +668,7 @@ export default function TrainingOverviewReportPage() {
                         {criteriaOrder.map((key) => (
                           <TableCell key={String(key)} className="text-center">
                             <div className="flex flex-col items-center space-y-1">
-                              <StarRatingDisplay
+                              <ClientStarRatingDisplay
                                 rating={item.avgFeedback[key] || 0}
                                 size={4}
                               />
@@ -727,7 +696,6 @@ export default function TrainingOverviewReportPage() {
           </CardContent>
         </Card>
 
-        {/* Department Performance Card */}
         <Card className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm border-0 shadow-xl shadow-orange-500/10">
           <CardHeader>
             <CardTitle className="flex items-center text-xl font-bold text-slate-900 dark:text-slate-100">

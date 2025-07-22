@@ -48,40 +48,93 @@ export function useUsers(params?: QueryParams) {
 export function useCreateUserMutation() {
   const queryClient = useQueryClient();
   const { showError } = useError();
-  return useMutation<UserApiResponse, Error, CreateUserRequest>({
+  
+  return useMutation<UserApiResponse, Error, CreateUserRequest, { previousUsers: PaginatedResponse<UserApiResponse> | undefined }>({
     mutationFn: (payload) => usersService.createUser(payload),
+    onMutate: async (newUser) => {
+      await queryClient.cancelQueries({ queryKey: [USERS_QUERY_KEY] });
+      const previousUsers = queryClient.getQueryData<PaginatedResponse<UserApiResponse>>([USERS_QUERY_KEY]);
+      
+      const optimisticUser: User = {
+        id: `temp-${Date.now()}`,
+        fullName: newUser.FullName,
+        email: newUser.Email,
+        idCard: newUser.IdCard || '',
+        phoneNumber: newUser.NumberPhone || '',
+        role: "HOCVIEN", // Default role for optimistic update
+      };
+
+      queryClient.setQueryData<PaginatedResponse<UserApiResponse>>([USERS_QUERY_KEY], (old) => {
+        const optimisticApiUser: UserApiResponse = {
+          id: optimisticUser.id,
+          fullName: optimisticUser.fullName,
+          email: optimisticUser.email,
+          role: optimisticUser.role,
+        };
+        return old ? { ...old, items: [optimisticApiUser, ...old.items] } : { items: [optimisticApiUser], pagination: { totalItems: 1, itemsPerPage: 10, currentPage: 1, totalPages: 1 } };
+      });
+      
+      return { previousUsers };
+    },
     onSuccess: (response) => {
-      queryClient.invalidateQueries({ queryKey: [USERS_QUERY_KEY] });
       showError({
         success: true,
         message: `Đã tạo người dùng "${response.fullName}" thành công.`,
       });
     },
-    onError: (error) => {
+    onError: (error, newUser, context) => {
+      if (context?.previousUsers) {
+        queryClient.setQueryData([USERS_QUERY_KEY], context.previousUsers);
+      }
       showError(error);
+    },
+    onSettled: () => {
+        queryClient.invalidateQueries({ queryKey: [USERS_QUERY_KEY] });
     },
   });
 }
 
+
 export function useUpdateUserMutation() {
   const queryClient = useQueryClient();
   const { showError } = useError();
+  
   return useMutation<
     UserApiResponse,
     Error,
-    { id: string; payload: UpdateUserRequest }
+    { id: string; payload: UpdateUserRequest },
+    { previousUsers: PaginatedResponse<UserApiResponse> | undefined }
   >({
     mutationFn: ({ id, payload }) => usersService.updateUserByAdmin(id, payload),
-    onSuccess: (response, variables) => {
-      queryClient.invalidateQueries({ queryKey: [USERS_QUERY_KEY] });
-      queryClient.invalidateQueries({ queryKey: [USERS_QUERY_KEY, variables.id] });
+    onMutate: async ({ id, payload }) => {
+      await queryClient.cancelQueries({ queryKey: [USERS_QUERY_KEY] });
+      const previousUsers = queryClient.getQueryData<PaginatedResponse<UserApiResponse>>([USERS_QUERY_KEY]);
+      
+      queryClient.setQueryData<PaginatedResponse<UserApiResponse>>([USERS_QUERY_KEY], (old) => {
+        if (!old) return old;
+        return {
+          ...old,
+          items: old.items.map(u => u.id === id ? { ...u, ...payload } : u),
+        };
+      });
+      
+      return { previousUsers };
+    },
+    onSuccess: (response) => {
       showError({
         success: true,
         message: `Đã cập nhật người dùng "${response.fullName}" thành công.`,
       });
     },
-    onError: (error) => {
+    onError: (error, variables, context) => {
+      if (context?.previousUsers) {
+        queryClient.setQueryData([USERS_QUERY_KEY], context.previousUsers);
+      }
       showError(error);
+    },
+    onSettled: (data, error, variables) => {
+      queryClient.invalidateQueries({ queryKey: [USERS_QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: [USERS_QUERY_KEY, variables.id] });
     },
   });
 }
@@ -89,14 +142,34 @@ export function useUpdateUserMutation() {
 export function useDeleteUserMutation() {
   const queryClient = useQueryClient();
   const { showError } = useError();
-  return useMutation<any, Error, string[]>({
+  
+  return useMutation<any, Error, string[], { previousUsers: PaginatedResponse<UserApiResponse> | undefined }>({
     mutationFn: (userIds: string[]) => usersService.deleteUsers(userIds),
-    onSuccess: (response) => {
-      queryClient.invalidateQueries({ queryKey: [USERS_QUERY_KEY] });
+    onMutate: async (userIds) => {
+      await queryClient.cancelQueries({ queryKey: [USERS_QUERY_KEY] });
+      const previousUsers = queryClient.getQueryData<PaginatedResponse<UserApiResponse>>([USERS_QUERY_KEY]);
+
+      queryClient.setQueryData<PaginatedResponse<UserApiResponse>>([USERS_QUERY_KEY], (old) => {
+        if (!old) return old;
+        return {
+          ...old,
+          items: old.items.filter(u => u.id && !userIds.includes(u.id)),
+        };
+      });
+      
+      return { previousUsers };
+    },
+    onSuccess: () => {
       showError({ success: true, message: "Đã xóa người dùng thành công." });
     },
-    onError: (error) => {
+    onError: (error, variables, context) => {
+      if (context?.previousUsers) {
+        queryClient.setQueryData([USERS_QUERY_KEY], context.previousUsers);
+      }
       showError(error);
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: [USERS_QUERY_KEY] });
     },
   });
 }
