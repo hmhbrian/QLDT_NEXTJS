@@ -1,4 +1,3 @@
-
 export interface OverallAvgFeedback {
   q1_relevanceAvg: number;
   q2_clarityAvg: number;

@@ -8,6 +8,7 @@ import {
   CourseAndAvgFeedback,
   StudentsOfCourse,
 } from "@/lib/services/modern/report.service";
+import { TopDepartment } from "@/lib/types/report.types";
 
 export const REPORTS_QUERY_KEY = "reports";
 
@@ -49,4 +50,14 @@ export function useStudentsOfCourseReport(enabled: boolean = true) {
     enabled,
     staleTime: 5 * 60 * 1000,
   });
+}
+
+// Hook for top departments report
+export function useTopDepartments(enabled: boolean = true) {
+    return useQuery<TopDepartment[], Error>({
+        queryKey: [REPORTS_QUERY_KEY, 'top-departments'],
+        queryFn: () => reportService.getTopDepartments(),
+        enabled,
+        staleTime: 5 * 60 * 1000,
+    });
 }
