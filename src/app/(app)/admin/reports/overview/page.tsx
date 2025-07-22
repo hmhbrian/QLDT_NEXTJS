@@ -59,6 +59,7 @@ import {
   useAvgFeedbackReport,
   useStudentsOfCourseReport,
   useMonthlyReport,
+  useTopDepartments,
 } from "@/hooks/use-reports";
 import {
   AvgFeedbackData,
@@ -137,18 +138,26 @@ export default function TrainingOverviewReportPage() {
     isLoading: isLoadingMonthlyReport,
     error: monthlyReportError,
   } = useMonthlyReport(selectedMonth, filterType === "month");
+  
+  const { 
+    data: topDepartments, 
+    isLoading: isLoadingTopDepartments,
+    error: topDepartmentsError 
+  } = useTopDepartments();
 
   const isLoading = useMemo(() => {
     return (
       isLoadingOverallFeedback ||
       isLoadingCourseFeedback ||
       isLoadingStudents ||
+      isLoadingTopDepartments ||
       (filterType === "month" && isLoadingMonthlyReport)
     );
   }, [
     isLoadingOverallFeedback,
     isLoadingCourseFeedback,
     isLoadingStudents,
+    isLoadingTopDepartments,
     filterType,
     isLoadingMonthlyReport,
   ]);
@@ -158,12 +167,14 @@ export default function TrainingOverviewReportPage() {
       overallFeedbackError ||
       courseFeedbackError ||
       studentsError ||
+      topDepartmentsError ||
       (filterType === "month" && monthlyReportError)
     );
   }, [
     overallFeedbackError,
     courseFeedbackError,
     studentsError,
+    topDepartmentsError,
     filterType,
     monthlyReportError,
   ]);
@@ -703,24 +714,49 @@ export default function TrainingOverviewReportPage() {
               Hiệu quả Đào tạo Theo Phòng ban
             </CardTitle>
             <CardDescription className="text-slate-600 dark:text-slate-300">
-              Thống kê tham gia và hiệu quả đào tạo của các phòng ban
+              Thống kê tham gia và hiệu quả đào tạo của các phòng ban hàng đầu
               {hasActiveFilter && ` • ${getFilterDisplayLabel()}`}
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="text-center py-12">
-              <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-orange-100 to-amber-100 dark:from-orange-900/30 dark:to-amber-900/30 rounded-full mb-4 shadow-lg shadow-orange-500/20">
-                <Building2 className="h-8 w-8 text-orange-600 dark:text-orange-400" />
-              </div>
-              <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-300 mb-2">
-                Đang phát triển tính năng
-              </h3>
-              <p className="text-slate-500 dark:text-slate-400 max-w-md mx-auto">
-                API báo cáo phòng ban đang được phát triển. Tính năng này sẽ
-                cung cấp thống kê chi tiết về hiệu quả đào tạo của từng phòng
-                ban.
-              </p>
-            </div>
+            {isLoadingTopDepartments ? (
+                 <div className="flex h-40 w-full items-center justify-center">
+                    <Loader2 className="h-8 w-8 animate-spin text-orange-500" />
+                 </div>
+            ) : topDepartments && topDepartments.length > 0 ? (
+                <div className="overflow-x-auto">
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead className="font-semibold">Phòng ban</TableHead>
+                                <TableHead className="text-center font-semibold">Số khóa học</TableHead>
+                                <TableHead className="text-center font-semibold">Số học viên</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {topDepartments.map((dept) => (
+                                <TableRow key={dept.departmentId}>
+                                    <TableCell className="font-medium">{dept.departmentName}</TableCell>
+                                    <TableCell className="text-center">{dept.courseCount}</TableCell>
+                                    <TableCell className="text-center">{dept.userCount}</TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                </div>
+            ) : (
+                <div className="text-center py-12">
+                <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-orange-100 to-amber-100 dark:from-orange-900/30 dark:to-amber-900/30 rounded-full mb-4 shadow-lg shadow-orange-500/20">
+                    <Building2 className="h-8 w-8 text-orange-600 dark:text-orange-400" />
+                </div>
+                <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-300 mb-2">
+                    Chưa có dữ liệu
+                </h3>
+                <p className="text-slate-500 dark:text-slate-400 max-w-md mx-auto">
+                   Không có dữ liệu thống kê phòng ban để hiển thị.
+                </p>
+                </div>
+            )}
           </CardContent>
         </Card>
       </div>
