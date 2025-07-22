@@ -1,4 +1,3 @@
-
 /**
  * Enterprise API Configuration
  * Centralized, type-safe configuration for all API endpoints and settings
@@ -136,6 +135,7 @@ export const API_ENDPOINTS = {
     monthlyReport: (month: number) => `/Report/data-report/${month}`,
     courseAndAvgFeedback: "/Report/course-and-avg-feedback",
     studentsOfCourse: "/Report/students-of-course",
+    topDepartment: "/Report/top-department",
   },
 } as const;
 
