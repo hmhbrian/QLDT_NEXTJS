@@ -1,8 +1,9 @@
-import type {
+
+import {
   Question,
   CreateQuestionPayload,
   ApiQuestion,
-} from "@/lib/types/course.types";
+} from "@/lib/types/test.types";
 
 export function mapUiQuestionToApiPayload(
   uiQuestion: Partial<Question>
