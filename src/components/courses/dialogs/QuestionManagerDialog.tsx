@@ -26,8 +26,7 @@ import {
   Loader2,
   AlertTriangle,
 } from "lucide-react";
-import type { Test } from "@/lib/types/course.types";
-import type { Question } from "@/lib/types/test.types";
+import type { Test, Question } from "@/lib/types/test.types";
 import { useError } from "@/hooks/use-error";
 import * as XLSX from "xlsx";
 import { LoadingButton } from "@/components/ui/loading";
@@ -170,7 +169,7 @@ export function QuestionManagerDialog({
       } else {
         await createQuestionMutation.mutateAsync({ testId: testId, payload });
       }
-      // Reload questions để cập nhật UI
+      // Reload questions to update UI
       await reloadQuestions();
     } else {
       // For new tests, just update local state
@@ -222,7 +221,7 @@ export function QuestionManagerDialog({
         testId: testId,
         questionIds: [id],
       });
-      // Reload questions để cập nhật UI
+      // Reload questions to update UI
       await reloadQuestions();
     } else {
       // For new tests, just update local state
@@ -376,7 +375,7 @@ export function QuestionManagerDialog({
             testId,
             questions: newQuestions.map(q => mapUiQuestionToApiPayload(q as Question)),
           });
-          // Reload questions để cập nhật UI
+          // Reload questions to update UI
           await reloadQuestions();
           toast({
             title: "Thành công",

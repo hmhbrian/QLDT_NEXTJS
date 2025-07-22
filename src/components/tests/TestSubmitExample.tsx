@@ -5,7 +5,7 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { useSubmitTest } from "@/hooks/use-tests";
-import type { SelectedAnswer } from "@/lib/types/course.types";
+import type { SelectedAnswer } from "@/lib/types/test.types";
 
 export function TestSubmitExample() {
   const courseId = "test-course-123";
