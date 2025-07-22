@@ -1,3 +1,4 @@
+
 import type {
   Test,
   ApiTest,
@@ -28,9 +29,7 @@ export function mapUiTestToCreatePayload(
     Title: uiTest.title || "Bài kiểm tra không tên",
     PassThreshold: uiTest.passingScorePercentage || 70,
     TimeTest: uiTest.time || 0,
-    Questions: (uiTest.questions || []).map((q) =>
-      mapUiQuestionToApiPayload(q)
-    ),
+    Questions: (uiTest.questions || []).map((q) => mapUiQuestionToApiPayload(q)),
   };
 }
 
