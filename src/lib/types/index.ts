@@ -1,4 +1,3 @@
-
 /**
  * Types Barrel Export
  * Centralized export of all type definitions
@@ -12,3 +11,4 @@ export * from "./api.types";
 export * from "./ui.types";
 export * from "./status.types";
 export * from "./report.types";
+export * from "./test.types";
