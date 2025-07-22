@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState, useMemo, useCallback, useRef } from "react";
@@ -53,6 +54,8 @@ import {
   Calendar,
   Play,
   UserCircle2,
+  Eye,
+  RefreshCw,
 } from "lucide-react";
 import {
   Tooltip,
@@ -79,7 +82,7 @@ import {
   useEnrolledCourses,
 } from "@/hooks/use-courses";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { useTests } from "@/hooks/use-tests";
+import { useTests, useHasSubmittedTest } from "@/hooks/use-tests";
 import { useAttachedFiles } from "@/hooks/use-course-attached-files";
 import { extractErrorMessage } from "@/lib/core";
 import { useLessonProgress } from "@/hooks/use-lesson-progress";
@@ -150,6 +153,89 @@ type LessonWithProgress = Lesson & {
   progressPercentage: number;
   currentPage?: number;
   currentTimeSecond?: number;
+};
+
+// Component con để hiển thị một bài test, giúp quản lý state đã làm bài
+const TestItem = ({
+  test,
+  courseId,
+  isEnrolled,
+}: {
+  test: any;
+  courseId: string;
+  isEnrolled: boolean;
+}) => {
+  const { hasSubmitted, isLoading } = useHasSubmittedTest(
+    courseId,
+    test.id
+  );
+
+  return (
+    <Card
+      key={String(test.id)}
+      className="p-4 hover:shadow-md transition-shadow"
+    >
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+        <h4 className="font-semibold flex items-center gap-2">
+          <ShieldQuestion className="h-5 w-5 text-primary" /> {test.title}
+        </h4>
+        <Badge>Cần đạt: {test.passingScorePercentage}%</Badge>
+      </div>
+      <p className="text-sm text-muted-foreground mt-1">
+        Số lượng câu hỏi: {test.countQuestion || 0}
+      </p>
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div className="mt-3 flex items-center gap-2">
+              {isLoading ? (
+                <Button variant="outline" size="sm" disabled>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Đang
+                  tải...
+                </Button>
+              ) : hasSubmitted ? (
+                <>
+                  <Button asChild variant="secondary" size="sm">
+                    <Link href={`/courses/${courseId}/tests/${test.id}`}>
+                      <Eye className="mr-2 h-4 w-4" /> Xem lại kết quả
+                    </Link>
+                  </Button>
+                  <Button asChild variant="outline" size="sm">
+                    <Link href={`/courses/${courseId}/tests/${test.id}`}>
+                      <RefreshCw className="mr-2 h-4 w-4" /> Làm lại bài
+                    </Link>
+                  </Button>
+                </>
+              ) : (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={!isEnrolled}
+                  asChild
+                >
+                  <Link
+                    href={`/courses/${courseId}/tests/${test.id}`}
+                    onClick={(e) => !isEnrolled && e.preventDefault()}
+                    aria-disabled={!isEnrolled}
+                    tabIndex={!isEnrolled ? -1 : undefined}
+                    className={!isEnrolled ? "pointer-events-none" : ""}
+                  >
+                    <Check className="mr-2 h-4 w-4" />
+                    Làm bài kiểm tra
+                  </Link>
+                </Button>
+              )}
+            </div>
+          </TooltipTrigger>
+          {!isEnrolled && !hasSubmitted && (
+            <TooltipContent>
+              <p>Bạn cần đăng ký khóa học để làm bài kiểm tra.</p>
+            </TooltipContent>
+          )}
+        </Tooltip>
+      </TooltipProvider>
+    </Card>
+  );
 };
 
 export default function CourseDetailPage() {
@@ -1128,56 +1214,12 @@ export default function CourseDetailPage() {
                 ) : tests && tests.length > 0 ? (
                   <div className="space-y-4">
                     {tests.map((test) => (
-                      <Card
-                        key={String(test.id)}
-                        className="p-4 hover:shadow-md transition-shadow"
-                      >
-                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
-                          <h4 className="font-semibold flex items-center gap-2">
-                            <ShieldQuestion className="h-5 w-5 text-primary" />{" "}
-                            {test.title}
-                          </h4>
-                          <Badge>Cần đạt: {test.passingScorePercentage}%</Badge>
-                        </div>
-                        <p className="text-sm text-muted-foreground mt-1">
-                          Số lượng câu hỏi: {test.countQuestion || 0}
-                        </p>
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                disabled={!isEnrolled}
-                                asChild
-                                className="mt-3"
-                              >
-                                <Link
-                                  href={`/courses/${course.id}/tests/${test.id}`}
-                                  onClick={(e) =>
-                                    !isEnrolled && e.preventDefault()
-                                  }
-                                  aria-disabled={!isEnrolled}
-                                  tabIndex={!isEnrolled ? -1 : undefined}
-                                  className={
-                                    !isEnrolled ? "pointer-events-none" : ""
-                                  }
-                                >
-                                  <Check className="mr-2 h-5 w-5" />
-                                  Làm bài kiểm tra
-                                </Link>
-                              </Button>
-                            </TooltipTrigger>
-                            {!isEnrolled && (
-                              <TooltipContent>
-                                <p>
-                                  Bạn cần đăng ký khóa học để làm bài kiểm tra.
-                                </p>
-                              </TooltipContent>
-                            )}
-                          </Tooltip>
-                        </TooltipProvider>
-                      </Card>
+                      <TestItem
+                        key={test.id}
+                        test={test}
+                        courseId={course.id}
+                        isEnrolled={isEnrolled}
+                      />
                     ))}
                   </div>
                 ) : (
