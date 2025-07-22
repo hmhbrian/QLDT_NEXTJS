@@ -1,3 +1,4 @@
+
 /**
  * Enterprise API Configuration
  * Centralized, type-safe configuration for all API endpoints and settings
@@ -73,6 +74,9 @@ export const API_ENDPOINTS = {
       `/courses/${courseId}/tests/submit/${testId}`,
     detailResult: (courseId: string, testId: number) =>
       `/courses/${courseId}/tests/detail-test-result/${testId}`,
+    questions: (testId: number) => `/tests/${testId}/questions`,
+    questionById: (testId: number, questionId: number) =>
+      `/tests/${testId}/questions/${questionId}`,
   },
   lessons: {
     base: (courseId: string) => `/courses/${courseId}/lessons`,
