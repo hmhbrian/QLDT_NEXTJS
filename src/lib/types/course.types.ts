@@ -1,3 +1,4 @@
+
 /**
  * Course Domain Types
  * All course-related interfaces and types, aligned with backend DTOs.
@@ -6,6 +7,7 @@
 import type { DepartmentInfo } from "./department.types";
 import type { Position, User } from "./user.types";
 import type { Status } from "./status.types";
+import type { Question, ApiQuestion, Test, ApiTest, SelectedAnswer, TestSubmissionResponse, DetailedTestResult, UserAnswerAndCorrectAnswer, QuestionResult } from "./test.types"; 
 
 // --- Enums and Unions ---
 export type LearningFormat = "online" | "offline";
@@ -65,26 +67,6 @@ export interface Lesson {
   link?: string | null;
   duration?: string;
   totalDurationSeconds?: number;
-}
-
-export interface Question {
-  id: number;
-  questionCode?: string;
-  text: string;
-  options: string[];
-  correctAnswerIndex: number;
-  correctAnswerIndexes: number[];
-  explanation?: string;
-  position?: number;
-}
-
-export interface Test {
-  id: number;
-  title: string;
-  questions: Question[];
-  passingScorePercentage: number;
-  time: number;
-  countQuestion: number;
 }
 
 export interface CourseMaterial {
@@ -201,33 +183,6 @@ export interface CreateLessonPayload {
 
 export interface UpdateLessonPayload extends Partial<CreateLessonPayload> {}
 
-export interface CreateQuestionPayload {
-  QuestionText: string;
-  CorrectOption?: string;
-  QuestionType?: number;
-  Explanation?: string;
-  A?: string;
-  B?: string;
-  C?: string;
-  D?: string;
-  Position?: number;
-}
-
-export interface UpdateQuestionPayload extends Partial<CreateQuestionPayload> {}
-
-export interface CreateTestPayload {
-  Title: string;
-  PassThreshold: number;
-  TimeTest: number;
-  Questions: CreateQuestionPayload[];
-}
-
-export interface UpdateTestPayload {
-  Title: string;
-  PassThreshold: number;
-  TimeTest: number;
-}
-
 export interface UpsertLessonProgressPayload {
   lessonId: number;
   currentPage?: number;
@@ -309,28 +264,6 @@ export interface ApiLesson {
   totalDurationSeconds?: number;
 }
 
-export interface ApiQuestion {
-  id: number;
-  questionText: string;
-  correctOption: string;
-  questionType: number;
-  explanation: string;
-  position: number;
-  a: string;
-  b: string;
-  c: string;
-  d: string;
-}
-
-export interface ApiTest {
-  id: number;
-  title: string;
-  passThreshold: number;
-  timeTest: number;
-  countQuestion: number;
-  questions?: ApiQuestion[];
-}
-
 export interface ApiCourseAttachedFile {
   id: number;
   courseId?: string;
@@ -342,77 +275,5 @@ export interface ApiCourseAttachedFile {
   modifiedAt?: string;
 }
 
-// --- Test Submission Interfaces ---
-
-/**
- * Interface cho dữ liệu câu hỏi được chọn khi submit test
- */
-export interface SelectedAnswer {
-  questionId: number;
-  selectedOptions: string[];
-}
-
-/**
- * Interface cho response khi submit test
- */
-export interface TestSubmissionResponse {
-  id: number;
-  score: number;
-  totalQuestions: number;
-  correctAnswers: number;
-  submittedAt: string;
-  isPassed: boolean;
-  timeSpent?: number; // Thời gian làm bài (phút)
-  answers?: SelectedAnswer[]; // Các câu trả lời đã submit
-}
-
-/**
- * Interface cho request body submit test
- */
-export interface SubmitTestRequest {
-  answers: SelectedAnswer[];
-  startedAt: string;
-}
-
-/**
- * Interface cho session test khi bắt đầu làm bài
- */
-export interface TestSession {
-  id: string;
-  testId: number;
-  userId: string;
-  startedAt: string;
-  endAt?: string;
-  timeLimit: number; // Thời gian giới hạn (phút)
-  questions: Question[];
-}
-
-/**
- * Interface cho kết quả chi tiết của test (matching backend DetailTestResultDto)
- */
-export interface DetailedTestResult extends TestSubmissionResponse {
-  userAnswers: UserAnswerAndCorrectAnswer[];
-}
-
-/**
- * Interface cho câu trả lời của user và đáp án đúng
- */
-export interface UserAnswerAndCorrectAnswer {
-  question: Question;
-  selectedOptions: string;
-  correctAnswer: string;
-  isCorrect: boolean;
-}
-
-/**
- * @deprecated Use UserAnswerAndCorrectAnswer instead
- * Interface cho kết quả từng câu hỏi
- */
-export interface QuestionResult {
-  questionId: number;
-  questionText: string;
-  selectedOptions: string[];
-  correctOptions: string[];
-  isCorrect: boolean;
-  explanation?: string;
-}
+// Re-export test types for backward compatibility
+export type { Test, ApiTest, Question, ApiQuestion, SelectedAnswer, TestSubmissionResponse, DetailedTestResult, UserAnswerAndCorrectAnswer, QuestionResult };
