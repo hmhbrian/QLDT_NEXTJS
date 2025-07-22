@@ -1,4 +1,3 @@
-
 /**
  * Course Domain Types
  * All course-related interfaces and types, aligned with backend DTOs.
@@ -7,7 +6,7 @@
 import type { DepartmentInfo } from "./department.types";
 import type { Position, User } from "./user.types";
 import type { Status } from "./status.types";
-import type { Question, ApiQuestion, Test, ApiTest, SelectedAnswer, TestSubmissionResponse, DetailedTestResult, UserAnswerAndCorrectAnswer, QuestionResult } from "./test.types"; 
+import type { Test } from "./test.types";
 
 // --- Enums and Unions ---
 export type LearningFormat = "online" | "offline";
@@ -252,7 +251,7 @@ export interface UserEnrollCourseDto {
   registrationStartDate?: string | null;
   registrationClosingDate?: string | null;
   location?: string;
-  progressPercentage?: number;
+  progressPercentange?: number; // Correct property name from backend
 }
 
 export interface ApiLesson {
@@ -274,6 +273,3 @@ export interface ApiCourseAttachedFile {
   createdAt?: string;
   modifiedAt?: string;
 }
-
-// Re-export test types for backward compatibility
-export type { Test, ApiTest, Question, ApiQuestion, SelectedAnswer, TestSubmissionResponse, DetailedTestResult, UserAnswerAndCorrectAnswer, QuestionResult };

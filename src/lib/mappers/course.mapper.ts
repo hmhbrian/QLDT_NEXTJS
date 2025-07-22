@@ -109,8 +109,8 @@ export function mapUserEnrollCourseDtoToCourse(
     modifiedAt: new Date().toISOString(),
     createdBy: "",
     modifiedBy: "",
-    progressPercentage: dto.progressPercentage
-      ? Math.round(dto.progressPercentage)
+    progressPercentage: dto.progressPercentange // Corrected property name
+      ? Math.round(dto.progressPercentange)
       : 0,
   };
 }
