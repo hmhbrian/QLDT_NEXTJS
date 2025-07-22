@@ -9,8 +9,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { useSubmitTest, useStartTest } from "@/hooks/use-tests";
-import type { SelectedAnswer } from "@/lib/types/course.types";
+import { useSubmitTest } from "@/hooks/use-tests";
+import type { SelectedAnswer } from "@/lib/types/test.types";
 
 interface Question {
   id: number;
@@ -50,18 +50,13 @@ export function TestSubmissionComponent({
 
   // Hooks để gọi API
   const submitTestMutation = useSubmitTest(courseId, testId);
-  const startTestMutation = useStartTest(courseId, testId);
 
   // Xử lý khi bắt đầu test
   const handleStartTest = async () => {
-    try {
-      await startTestMutation.mutateAsync();
-      const startTime = new Date().toISOString();
-      setTestStartTime(startTime);
-      setIsTestStarted(true);
-    } catch (error) {
-      console.error("Failed to start test:", error);
-    }
+    // No API call needed to start, just set the client-side state
+    const startTime = new Date().toISOString();
+    setTestStartTime(startTime);
+    setIsTestStarted(true);
   };
 
   // Xử lý khi chọn câu trả lời (single choice)
@@ -150,14 +145,7 @@ export function TestSubmissionComponent({
           {!isTestStarted ? (
             <div className="text-center">
               <p className="mb-4">Nhấn nút bên dưới để bắt đầu làm bài</p>
-              <Button
-                onClick={handleStartTest}
-                disabled={startTestMutation.isPending}
-              >
-                {startTestMutation.isPending
-                  ? "Đang bắt đầu..."
-                  : "Bắt đầu làm bài"}
-              </Button>
+              <Button onClick={handleStartTest}>Bắt đầu làm bài</Button>
             </div>
           ) : (
             <div className="space-y-6">
