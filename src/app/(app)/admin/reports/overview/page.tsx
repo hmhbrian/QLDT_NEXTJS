@@ -61,6 +61,7 @@ import {
   useMonthlyReport,
   useYearlyReport,
   useQuarterlyReport,
+  useAllTimeReport,
   useTopDepartments,
   useCourseStatusDistribution,
 } from "@/hooks/use-reports";
@@ -170,6 +171,12 @@ export default function TrainingOverviewReportPage() {
   );
 
   const {
+    data: allTimeReport,
+    isLoading: isLoadingAllTimeReport,
+    error: allTimeReportError,
+  } = useAllTimeReport(filterType === "all");
+
+  const {
     data: topDepartments,
     isLoading: isLoadingTopDepartments,
     error: topDepartmentsError,
@@ -195,7 +202,8 @@ export default function TrainingOverviewReportPage() {
       isLoadingCourseStatus ||
       (filterType === "month" && isLoadingMonthlyReport) ||
       (filterType === "year" && isLoadingYearlyReport) ||
-      (filterType === "quarter" && isLoadingQuarterlyReport)
+      (filterType === "quarter" && isLoadingQuarterlyReport) ||
+      (filterType === "all" && isLoadingAllTimeReport)
     );
   }, [
     isLoadingOverallFeedback,
@@ -207,6 +215,7 @@ export default function TrainingOverviewReportPage() {
     isLoadingMonthlyReport,
     isLoadingYearlyReport,
     isLoadingQuarterlyReport,
+    isLoadingAllTimeReport,
   ]);
 
   const anyError = useMemo(() => {
@@ -218,7 +227,8 @@ export default function TrainingOverviewReportPage() {
       courseStatusError ||
       (filterType === "month" && monthlyReportError) ||
       (filterType === "year" && yearlyReportError) ||
-      (filterType === "quarter" && quarterlyReportError)
+      (filterType === "quarter" && quarterlyReportError) ||
+      (filterType === "all" && allTimeReportError)
     );
   }, [
     overallFeedbackError,
@@ -230,6 +240,7 @@ export default function TrainingOverviewReportPage() {
     monthlyReportError,
     yearlyReportError,
     quarterlyReportError,
+    allTimeReportError,
   ]);
 
   const metrics = useMemo(() => {
@@ -245,23 +256,26 @@ export default function TrainingOverviewReportPage() {
       case "quarter":
         currentReport = quarterlyReport;
         break;
+      case "all":
+        currentReport = allTimeReport;
+        break;
       default:
         currentReport = undefined;
     }
 
     const totalCourses =
-      filterType === "all"
+      filterType === "all" && !currentReport
         ? courseFeedback?.length || 0
         : currentReport?.numberOfCourses || 0;
 
     const totalStudents =
-      filterType === "all"
+      filterType === "all" && !currentReport
         ? studentsData?.reduce((sum, course) => sum + course.totalStudent, 0) ||
           0
         : currentReport?.numberOfStudents || 0;
 
     const completionRate =
-      filterType === "all"
+      filterType === "all" && !currentReport
         ? "Đang phát triển..."
         : `${Math.min(
             Math.round(currentReport?.averangeCompletedPercentage || 0),
@@ -269,12 +283,12 @@ export default function TrainingOverviewReportPage() {
           )}%`;
 
     const avgTrainingHours =
-      filterType === "all"
+      filterType === "all" && !currentReport
         ? "Đang phát triển..."
         : `${(currentReport?.averangeTime || 0).toFixed(1)} giờ`;
 
     const positiveEvalRate =
-      filterType === "all"
+      filterType === "all" && !currentReport
         ? overallFeedback
           ? `${Math.min(
               Math.round(
@@ -329,7 +343,7 @@ export default function TrainingOverviewReportPage() {
         title: "Chỉ số Hài lòng",
         value: positiveEvalRate,
         icon: Award,
-        unit: filterType === "all" ? "(tổng hợp)" : "",
+        unit: filterType === "all" && !currentReport ? "(tổng hợp)" : "",
       },
     ];
   }, [
@@ -339,6 +353,7 @@ export default function TrainingOverviewReportPage() {
     monthlyReport,
     yearlyReport,
     quarterlyReport,
+    allTimeReport,
     overallFeedback,
   ]);
 
