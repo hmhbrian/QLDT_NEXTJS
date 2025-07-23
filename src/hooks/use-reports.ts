@@ -91,6 +91,28 @@ export function useMonthlyReport(
   return result;
 }
 
+// Hook cho báo cáo toàn bộ thời gian (không có filter)
+export function useAllTimeReport(enabled: boolean = true) {
+  console.log(`🔍 useAllTimeReport called with enabled=${enabled}`);
+
+  const result = useQuery<ReportData, Error>({
+    queryKey: [REPORTS_QUERY_KEY, "data-report", "all-time"],
+    queryFn: () => reportService.getDataReport({}), // Gọi API mà không có params
+    enabled,
+    staleTime: 5 * 60 * 1000,
+    retry: (failureCount, error) => {
+      if (failureCount >= 2) return false;
+      const status = (error as any)?.response?.status;
+      if (status >= 400 && status < 500) return false;
+      return true;
+    },
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+  });
+
+  console.log(`📊 useAllTimeReport result:`, result.data);
+  return result;
+}
+
 // Hook cho danh sách khóa học và đánh giá (không filter vì chưa có API)
 export function useCourseAndAvgFeedbackReport(enabled: boolean = true) {
   return useQuery<CourseAndAvgFeedback[], Error>({
