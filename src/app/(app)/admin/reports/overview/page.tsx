@@ -59,6 +59,8 @@ import {
   useAvgFeedbackReport,
   useStudentsOfCourseReport,
   useMonthlyReport,
+  useYearlyReport,
+  useQuarterlyReport,
   useTopDepartments,
   useCourseStatusDistribution,
 } from "@/hooks/use-reports";
@@ -66,7 +68,7 @@ import {
   AvgFeedbackData,
   CourseAndAvgFeedback,
   StudentsOfCourse,
-  MonthlyReportData,
+  ReportData,
 } from "@/lib/services/modern/report.service";
 import { extractErrorMessage } from "@/lib/core";
 import { ApiDataCharts } from "@/components/reports/ApiDataCharts";
@@ -149,7 +151,24 @@ export default function TrainingOverviewReportPage() {
     data: monthlyReport,
     isLoading: isLoadingMonthlyReport,
     error: monthlyReportError,
-  } = useMonthlyReport(selectedMonth, filterType === "month");
+  } = useMonthlyReport(selectedMonth, selectedYear, filterType === "month");
+
+  const {
+    data: yearlyReport,
+    isLoading: isLoadingYearlyReport,
+    error: yearlyReportError,
+  } = useYearlyReport(selectedYear, filterType === "year");
+
+  const {
+    data: quarterlyReport,
+    isLoading: isLoadingQuarterlyReport,
+    error: quarterlyReportError,
+  } = useQuarterlyReport(
+    selectedQuarter,
+    selectedYear,
+    filterType === "quarter"
+  );
+
   const {
     data: topDepartments,
     isLoading: isLoadingTopDepartments,
@@ -174,7 +193,9 @@ export default function TrainingOverviewReportPage() {
       isLoadingStudents ||
       isLoadingTopDepartments ||
       isLoadingCourseStatus ||
-      (filterType === "month" && isLoadingMonthlyReport)
+      (filterType === "month" && isLoadingMonthlyReport) ||
+      (filterType === "year" && isLoadingYearlyReport) ||
+      (filterType === "quarter" && isLoadingQuarterlyReport)
     );
   }, [
     isLoadingOverallFeedback,
@@ -184,15 +205,20 @@ export default function TrainingOverviewReportPage() {
     isLoadingCourseStatus,
     filterType,
     isLoadingMonthlyReport,
+    isLoadingYearlyReport,
+    isLoadingQuarterlyReport,
   ]);
 
   const anyError = useMemo(() => {
     return (
+      overallFeedbackError ||
       courseFeedbackError ||
       studentsError ||
       topDepartmentsError ||
       courseStatusError ||
-      (filterType === "month" && monthlyReportError)
+      (filterType === "month" && monthlyReportError) ||
+      (filterType === "year" && yearlyReportError) ||
+      (filterType === "quarter" && quarterlyReportError)
     );
   }, [
     overallFeedbackError,
@@ -202,32 +228,50 @@ export default function TrainingOverviewReportPage() {
     courseStatusError,
     filterType,
     monthlyReportError,
+    yearlyReportError,
+    quarterlyReportError,
   ]);
 
   const metrics = useMemo(() => {
+    // Lấy dữ liệu report dựa vào filterType
+    let currentReport: ReportData | undefined;
+    switch (filterType) {
+      case "month":
+        currentReport = monthlyReport;
+        break;
+      case "year":
+        currentReport = yearlyReport;
+        break;
+      case "quarter":
+        currentReport = quarterlyReport;
+        break;
+      default:
+        currentReport = undefined;
+    }
+
     const totalCourses =
       filterType === "all"
         ? courseFeedback?.length || 0
-        : monthlyReport?.numberOfCourses || 0;
+        : currentReport?.numberOfCourses || 0;
 
     const totalStudents =
       filterType === "all"
         ? studentsData?.reduce((sum, course) => sum + course.totalStudent, 0) ||
           0
-        : monthlyReport?.numberOfStudents || 0;
+        : currentReport?.numberOfStudents || 0;
 
     const completionRate =
       filterType === "all"
         ? "Đang phát triển..."
         : `${Math.min(
-            Math.round(monthlyReport?.averangeCompletedPercentage || 0),
+            Math.round(currentReport?.averangeCompletedPercentage || 0),
             100
           )}%`;
 
     const avgTrainingHours =
       filterType === "all"
         ? "Đang phát triển..."
-        : `${(monthlyReport?.averangeTime || 0).toFixed(1)} giờ`;
+        : `${(currentReport?.averangeTime || 0).toFixed(1)} giờ`;
 
     const positiveEvalRate =
       filterType === "all"
@@ -247,7 +291,7 @@ export default function TrainingOverviewReportPage() {
             )}%`
           : "0%"
         : `${Math.min(
-            Math.round(monthlyReport?.averagePositiveFeedback || 0),
+            Math.round(currentReport?.averagePositiveFeedback || 0),
             100
           )}%`;
 
@@ -293,6 +337,8 @@ export default function TrainingOverviewReportPage() {
     courseFeedback,
     studentsData,
     monthlyReport,
+    yearlyReport,
+    quarterlyReport,
     overallFeedback,
   ]);
 
