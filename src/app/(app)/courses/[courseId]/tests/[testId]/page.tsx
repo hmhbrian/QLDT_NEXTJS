@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useParams, useRouter } from "next/navigation";
@@ -188,23 +187,56 @@ export default function TestDetailPage() {
         startedAt
       );
 
-      const scorePercent =
-        typeof response.score === "number" ? response.score : 0;
+      // Sử dụng dữ liệu từ backend response để tạo kết quả ngay lập tức
+      const detailedResult: DetailedTestResult = {
+        id: response.id,
+        test: {
+          id: parseInt(testId),
+          title: testData.title,
+        },
+        score: response.score || 0,
+        user: {
+          id: response.user?.id || "",
+          name: response.user?.name || "Unknown",
+        },
+        submittedAt: response.submittedAt,
+        startedAt: response.startedAt || startedAt,
+        isPassed: response.isPassed,
+        correctAnswerCount: response.correctAnswerCount || 0,
+        incorrectAnswerCount: response.incorrectAnswerCount || 0,
+        userAnswers: testData.questions.map((q, idx) => {
+          const userAnswer = answers[q.id.toString()] || [];
+          const correctAnswer =
+            q.correctAnswerIndexes
+              ?.map((i) => String.fromCharCode(97 + i))
+              .join("") || "";
+          const isCorrect =
+            userAnswer.length > 0 &&
+            userAnswer.every((ans) => correctAnswer.includes(ans)) &&
+            correctAnswer.split("").every((ans) => userAnswer.includes(ans));
 
-      toast({
-        title: "Nộp bài thành công!",
-        description: `Điểm số của bạn: ${scorePercent.toFixed(
-          1
-        )}%. ${response.isPassed ? "Chúc mừng bạn đã đạt!" : "Tiếc quá, bạn chưa đạt."}`,
-        variant: response.isPassed ? "success" : "default",
-      });
+          return {
+            question: {
+              id: q.id,
+              questionText: q.text,
+              correctOption: correctAnswer,
+              questionType: (q.correctAnswerIndexes?.length ?? 0) > 1 ? 2 : 1,
+              explanation: q.explanation || "",
+              position: idx + 1,
+              a: q.options[0] || "",
+              b: q.options[1] || "",
+              c: q.options[2] || "",
+              d: q.options[3] || "",
+            },
+            selectedOptions: userAnswer.join(""),
+            correctAnswer: correctAnswer,
+            isCorrect: isCorrect,
+          };
+        }),
+      };
 
-      // Fetch the detailed results to show the review
-      const detailedResult = await refetchResult();
-      if (detailedResult.data) {
-        setResult(detailedResult.data);
-      }
-
+      // Hiển thị kết quả ngay lập tức
+      setResult(detailedResult);
       setIsStarted(false); // End the test session on client
     } catch (error) {
       toast({
@@ -398,8 +430,7 @@ export default function TestDetailPage() {
           <div className="grid grid-cols-4 gap-2">
             {testData.questions.map((q, idx) => {
               const isAnswered =
-                answers[q.id.toString()] &&
-                answers[q.id.toString()].length > 0;
+                answers[q.id.toString()] && answers[q.id.toString()].length > 0;
               return (
                 <Button
                   key={q.id}
@@ -429,8 +460,7 @@ export default function TestDetailPage() {
     const q = testData.questions[currentQuestionIndex];
     if (!q) return null;
     const selectedOptions = answers[q.id.toString()] || [];
-    const questionType =
-      (q.correctAnswerIndexes?.length ?? 0) > 1 ? 2 : 1;
+    const questionType = (q.correctAnswerIndexes?.length ?? 0) > 1 ? 2 : 1;
     return (
       <Card>
         <CardHeader>
@@ -602,8 +632,8 @@ export default function TestDetailPage() {
                 <h4 className="font-medium text-amber-800">Cảnh báo</h4>
                 <p className="text-sm text-amber-700 mt-1">
                   Bạn chưa trả lời{" "}
-                  {(testData.questions?.length || 0) - answeredQuestionsCount} câu hỏi.
-                  Các câu chưa trả lời sẽ được tính là sai.
+                  {(testData.questions?.length || 0) - answeredQuestionsCount}{" "}
+                  câu hỏi. Các câu chưa trả lời sẽ được tính là sai.
                 </p>
               </div>
             </div>
