@@ -69,7 +69,7 @@ import {
 } from "@/lib/services/modern/report.service";
 import { extractErrorMessage } from "@/lib/core";
 import { ApiDataCharts } from "@/components/reports/ApiDataCharts";
-import dynamic from 'next/dynamic';
+import dynamic from "next/dynamic";
 
 const evaluationCriteriaLabels: Record<keyof AvgFeedbackData, string> = {
   q1_relevanceAvg: "Nội dung phù hợp công việc",
@@ -100,7 +100,10 @@ const criteriaShortLabels: Record<CriteriaKey, string> = {
 type FilterType = "all" | "year" | "quarter" | "month";
 
 // Dynamically import client-side components to avoid hydration errors
-const ClientStarRatingDisplay = dynamic(() => import('@/components/ui/StarRatingDisplay'), { ssr: false });
+const ClientStarRatingDisplay = dynamic(
+  () => import("@/components/ui/StarRatingDisplay"),
+  { ssr: false }
+);
 
 export default function TrainingOverviewReportPage() {
   const [filterType, setFilterType] = useState<FilterType>("all");
@@ -138,11 +141,11 @@ export default function TrainingOverviewReportPage() {
     isLoading: isLoadingMonthlyReport,
     error: monthlyReportError,
   } = useMonthlyReport(selectedMonth, filterType === "month");
-  
-  const { 
-    data: topDepartments, 
+
+  const {
+    data: topDepartments,
     isLoading: isLoadingTopDepartments,
-    error: topDepartmentsError 
+    error: topDepartmentsError,
   } = useTopDepartments();
 
   const isLoading = useMemo(() => {
@@ -321,20 +324,33 @@ export default function TrainingOverviewReportPage() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-orange-50 via-amber-50/50 to-red-50/30 dark:from-slate-950 dark:via-orange-950/20 dark:to-red-950/10">
         <div className="container mx-auto px-4 py-8">
-          <div className="flex flex-col items-center justify-center h-60 w-full text-red-600 dark:text-red-400">
-            <AlertTriangle className="h-12 w-12 mb-4" />
-            <p className="text-xl font-semibold mb-2">
-              Lỗi tải dữ liệu báo cáo
+          <div className="flex flex-col items-center justify-center h-60 w-full">
+            <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-red-100 to-orange-100 dark:from-red-900/30 dark:to-orange-900/30 rounded-full mb-6 shadow-lg shadow-red-500/20">
+              <AlertTriangle className="h-8 w-8 text-red-600 dark:text-red-400" />
+            </div>
+            <h3 className="text-xl font-semibold text-slate-700 dark:text-slate-300 mb-3">
+              Không thể tải dữ liệu báo cáo
+            </h3>
+            <p className="text-slate-500 dark:text-slate-400 text-center max-w-md mb-6">
+              Hệ thống đang gặp sự cố tạm thời. Vui lòng thử lại sau ít phút
+              hoặc liên hệ bộ phận hỗ trợ nếu vấn đề vẫn tiếp tục.
             </p>
-            <p className="text-sm text-slate-600 dark:text-slate-400 text-center max-w-md">
-              {extractErrorMessage(anyError)}
-            </p>
-            <Button
-              onClick={() => window.location.reload()}
-              className="mt-4 bg-orange-500 hover:bg-orange-600 text-white shadow-lg"
-            >
-              Thử lại
-            </Button>
+            <div className="flex gap-3">
+              <Button
+                onClick={() => window.location.reload()}
+                className="bg-orange-500 hover:bg-orange-600 text-white shadow-lg"
+              >
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Tải lại trang
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => window.history.back()}
+                className="border-slate-300 hover:bg-slate-50"
+              >
+                Quay lại
+              </Button>
+            </div>
           </div>
         </div>
       </div>
@@ -720,42 +736,73 @@ export default function TrainingOverviewReportPage() {
           </CardHeader>
           <CardContent>
             {isLoadingTopDepartments ? (
-                 <div className="flex h-40 w-full items-center justify-center">
-                    <Loader2 className="h-8 w-8 animate-spin text-orange-500" />
-                 </div>
-            ) : topDepartments && topDepartments.length > 0 ? (
-                <div className="overflow-x-auto">
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead className="font-semibold">Phòng ban</TableHead>
-                                <TableHead className="text-center font-semibold">Số khóa học</TableHead>
-                                <TableHead className="text-center font-semibold">Số học viên</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {topDepartments.map((dept) => (
-                                <TableRow key={dept.departmentId}>
-                                    <TableCell className="font-medium">{dept.departmentName}</TableCell>
-                                    <TableCell className="text-center">{dept.courseCount}</TableCell>
-                                    <TableCell className="text-center">{dept.userCount}</TableCell>
-                                </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
-                </div>
-            ) : (
-                <div className="text-center py-12">
-                <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-orange-100 to-amber-100 dark:from-orange-900/30 dark:to-amber-900/30 rounded-full mb-4 shadow-lg shadow-orange-500/20">
-                    <Building2 className="h-8 w-8 text-orange-600 dark:text-orange-400" />
+              <div className="flex h-40 w-full items-center justify-center">
+                <Loader2 className="h-8 w-8 animate-spin text-orange-500" />
+              </div>
+            ) : topDepartmentsError ? (
+              <div className="text-center py-12">
+                <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-red-100 to-orange-100 dark:from-red-900/30 dark:to-orange-900/30 rounded-full mb-4 shadow-lg shadow-red-500/20">
+                  <AlertTriangle className="h-8 w-8 text-red-600 dark:text-red-400" />
                 </div>
                 <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-300 mb-2">
-                    Chưa có dữ liệu
+                  Không thể tải dữ liệu phòng ban
+                </h3>
+                <p className="text-slate-500 dark:text-slate-400 max-w-md mx-auto mb-4">
+                  Hệ thống đang gặp sự cố tạm thời. Vui lòng thử lại sau.
+                </p>
+                <Button
+                  onClick={() => window.location.reload()}
+                  variant="outline"
+                  size="sm"
+                  className="text-orange-600 border-orange-300 hover:bg-orange-50"
+                >
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Thử lại
+                </Button>
+              </div>
+            ) : topDepartments && topDepartments.length > 0 ? (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="font-semibold">Phòng ban</TableHead>
+                      <TableHead className="text-center font-semibold">
+                        Số khóa học
+                      </TableHead>
+                      <TableHead className="text-center font-semibold">
+                        Số học viên
+                      </TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {topDepartments.map((dept) => (
+                      <TableRow key={dept.departmentId}>
+                        <TableCell className="font-medium">
+                          {dept.departmentName}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          {dept.courseCount}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          {dept.userCount}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            ) : (
+              <div className="text-center py-12">
+                <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-orange-100 to-amber-100 dark:from-orange-900/30 dark:to-amber-900/30 rounded-full mb-4 shadow-lg shadow-orange-500/20">
+                  <Building2 className="h-8 w-8 text-orange-600 dark:text-orange-400" />
+                </div>
+                <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-300 mb-2">
+                  Chưa có dữ liệu
                 </h3>
                 <p className="text-slate-500 dark:text-slate-400 max-w-md mx-auto">
-                   Không có dữ liệu thống kê phòng ban để hiển thị.
+                  Không có dữ liệu thống kê phòng ban để hiển thị.
                 </p>
-                </div>
+              </div>
             )}
           </CardContent>
         </Card>
