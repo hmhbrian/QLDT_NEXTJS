@@ -196,10 +196,7 @@ export function ReportFilter({
                       </SelectTrigger>
                       <SelectContent>
                         {Array.from({ length: 12 }, (_, i) => (
-                          <SelectItem
-                            key={i + 1}
-                            value={(i + 1).toString()}
-                          >
+                          <SelectItem key={i + 1} value={(i + 1).toString()}>
                             Tháng {i + 1}
                           </SelectItem>
                         ))}
