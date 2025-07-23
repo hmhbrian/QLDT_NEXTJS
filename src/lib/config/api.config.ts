@@ -136,6 +136,7 @@ export const API_ENDPOINTS = {
     courseAndAvgFeedback: "/Report/course-and-avg-feedback",
     studentsOfCourse: "/Report/students-of-course",
     topDepartment: "/Report/top-department",
+    reportStatus: "/Report/report-status",
   },
 } as const;
 
