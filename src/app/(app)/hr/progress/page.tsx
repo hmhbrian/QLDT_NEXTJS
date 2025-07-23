@@ -250,7 +250,7 @@ export default function ProgressPage() {
       title: "Điểm Đánh giá TB",
       value: `${reportData.overallRating.toFixed(1)}/5`,
       icon: BarChart2,
-      description: "Điểm đánh giá trung bình từ API.",
+      description: "Điểm đánh giá trung bình.",
     },
   ];
 
@@ -324,8 +324,8 @@ export default function ProgressPage() {
             Báo cáo Tiến độ Học tập
           </h1>
           <p className="text-muted-foreground mt-1">
-            Tổng quan về hoạt động đào tạo và tiến độ của học viên dựa trên dữ
-            liệu API thực tế • {getFilterDisplayLabel()}
+            Tổng quan về hoạt động đào tạo và tiến độ của học viên •{" "}
+            {getFilterDisplayLabel()}
           </p>
         </div>
         <div className="w-full md:w-auto">

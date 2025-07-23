@@ -150,7 +150,7 @@ export function ProgressCharts({ data }: ProgressChartsProps) {
 
       <div className="grid gap-6 md:grid-cols-2">
         {/* Biểu đồ tròn - Trạng thái khóa học */}
-        <Card>
+        {/* <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <PieChartIcon className="h-5 w-5" />
@@ -197,10 +197,10 @@ export function ProgressCharts({ data }: ProgressChartsProps) {
               </ResponsiveContainer>
             </div>
           </CardContent>
-        </Card>
+        </Card> */}
 
         {/* Biểu đồ xu hướng */}
-        <Card>
+        {/* <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <TrendingUp className="h-5 w-5" />
@@ -246,7 +246,7 @@ export function ProgressCharts({ data }: ProgressChartsProps) {
               </ResponsiveContainer>
             </div>
           </CardContent>
-        </Card>
+        </Card> */}
       </div>
     </div>
   );
