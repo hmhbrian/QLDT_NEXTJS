@@ -1,7 +1,12 @@
-
 "use client";
 
-import { User, LoginDTO, UserApiResponse, ChangePasswordRequest, UserProfileUpdateRequest } from "@/lib/types/user.types";
+import {
+  User,
+  LoginDTO,
+  UserApiResponse,
+  ChangePasswordRequest,
+  UserProfileUpdateRequest,
+} from "@/lib/types/user.types";
 import React, {
   createContext,
   useContext,
@@ -17,6 +22,10 @@ import { authService } from "@/lib/services";
 import { mockUsers } from "@/lib/mock";
 import { extractErrorMessage } from "@/lib/core";
 import { useQueryClient } from "@tanstack/react-query";
+import {
+  COURSES_QUERY_KEY,
+  ENROLLED_COURSES_QUERY_KEY,
+} from "@/hooks/use-courses";
 import { mapUserApiToUi } from "@/lib/mappers/user.mapper";
 
 interface AuthContextType {
@@ -141,7 +150,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
     localStorage.removeItem(API_CONFIG.storage.user);
     localStorage.removeItem(API_CONFIG.storage.token);
-    queryClient.clear();
+    // Invalidate specific queries related to user data and enrolled courses
+    queryClient.invalidateQueries({ queryKey: [ENROLLED_COURSES_QUERY_KEY] });
+    queryClient.invalidateQueries({ queryKey: [COURSES_QUERY_KEY] });
 
     if (pathname !== "/login") {
       router.push("/login");
@@ -159,15 +170,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     const payload: UserProfileUpdateRequest = {
-      UrlAvatar: newAvatarFile
+      UrlAvatar: newAvatarFile,
     };
 
     try {
       const response = await authService.updateUserProfile(payload);
       // Assuming response contains the updated user data
       const updatedUser = mapUserApiToUi(response);
-      setUser(prevUser => prevUser ? { ...prevUser, ...updatedUser } : updatedUser);
-      localStorage.setItem(API_CONFIG.storage.user, JSON.stringify(updatedUser));
+      setUser((prevUser) =>
+        prevUser ? { ...prevUser, ...updatedUser } : updatedUser
+      );
+      localStorage.setItem(
+        API_CONFIG.storage.user,
+        JSON.stringify(updatedUser)
+      );
       toast({
         title: "Thành công",
         description: "Ảnh đại diện đã được cập nhật.",
