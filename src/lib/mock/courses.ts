@@ -1,4 +1,6 @@
-import type { Course, Lesson, Test, Question } from "@/lib/types/course.types";
+
+import type { Course, Lesson } from "@/lib/types/course.types";
+import type { Question, Test } from "@/lib/types/test.types";
 import { categoryOptions } from "../config/constants";
 
 // --- Sample Lessons and Tests Data ---

@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -243,6 +244,7 @@ export function ActualSidebar() {
                                 <Link
                                   href={child.href!}
                                   className="flex items-center gap-3"
+                                  prefetch={true}
                                 >
                                   {child.icon && (
                                     <child.icon className="h-4 w-4 transition-transform duration-200 group-hover:scale-110" />
@@ -296,6 +298,7 @@ export function ActualSidebar() {
                                     <Link
                                       href={child.href!}
                                       className="flex items-center gap-3 w-full"
+                                      prefetch={true}
                                     >
                                       <div className="p-1.5 rounded-md bg-muted/50 group-hover:bg-primary/20 transition-colors duration-200">
                                         {child.icon && (
@@ -343,6 +346,7 @@ export function ActualSidebar() {
                       <Link
                         href={item.href}
                         className="flex items-center gap-3 group"
+                        prefetch={true}
                       >
                         <item.icon
                           className={cn(

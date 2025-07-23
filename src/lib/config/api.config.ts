@@ -71,12 +71,8 @@ export const API_ENDPOINTS = {
     reorder: (courseId: string) => `/courses/${courseId}/tests/reorder`,
     submit: (courseId: string, testId: number) =>
       `/courses/${courseId}/tests/submit/${testId}`,
-    start: (courseId: string, testId: number) =>
-      `/courses/${courseId}/tests/${testId}/start`,
-    submissions: (courseId: string, testId: number) =>
-      `/courses/${courseId}/tests/${testId}/submissions`,
-    result: (courseId: string, testId: number, submissionId: number) =>
-      `/courses/${courseId}/tests/${testId}/submissions/${submissionId}`,
+    detailResult: (courseId: string, testId: number) =>
+      `/courses/${courseId}/tests/detail-test-result/${testId}`,
     questions: (testId: number) => `/tests/${testId}/questions`,
     questionById: (testId: number, questionId: number) =>
       `/tests/${testId}/questions/${questionId}`,
@@ -139,6 +135,7 @@ export const API_ENDPOINTS = {
     monthlyReport: (month: number) => `/Report/data-report/${month}`,
     courseAndAvgFeedback: "/Report/course-and-avg-feedback",
     studentsOfCourse: "/Report/students-of-course",
+    topDepartment: "/Report/top-department",
   },
 } as const;
 

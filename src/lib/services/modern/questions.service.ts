@@ -1,10 +1,11 @@
+
 import { BaseService, PaginatedResponse, QueryParams } from "@/lib/core";
 import { API_CONFIG } from "@/lib/config";
 import type {
   ApiQuestion,
   CreateQuestionPayload,
   UpdateQuestionPayload,
-} from "@/lib/types/course.types";
+} from "@/lib/types/test.types";
 
 class QuestionsService extends BaseService<ApiQuestion> {
   constructor() {
@@ -51,7 +52,7 @@ class QuestionsService extends BaseService<ApiQuestion> {
 
   async deleteQuestions(testId: number, questionIds: number[]): Promise<void> {
     const endpoint = API_CONFIG.endpoints.tests.questions(testId);
-    await this.delete<void>(endpoint, questionIds);
+    await this.delete<void>(endpoint, { ids: questionIds });
   }
 }
 

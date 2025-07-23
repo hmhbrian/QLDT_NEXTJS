@@ -20,7 +20,7 @@ import {
   Loader2,
   AlertTriangle,
 } from "lucide-react";
-import type { Test } from "@/lib/types/course.types";
+import type { Test } from "@/lib/types/test.types";
 import { LoadingButton } from "@/components/ui/loading";
 import {
   useTests,

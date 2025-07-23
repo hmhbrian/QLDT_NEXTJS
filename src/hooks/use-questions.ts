@@ -1,10 +1,11 @@
+
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { questionsService } from "@/lib/services";
 import type {
   CreateQuestionPayload,
   UpdateQuestionPayload,
   Question,
-} from "@/lib/types/course.types";
+} from "@/lib/types/test.types";
 import { useToast } from "@/components/ui/use-toast";
 import { extractErrorMessage } from "@/lib/core";
 import { mapApiQuestionToUi } from "@/lib/mappers/question.mapper";

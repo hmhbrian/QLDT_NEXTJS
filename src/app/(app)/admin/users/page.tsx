@@ -74,6 +74,7 @@ import {
 import { NO_DEPARTMENT_VALUE } from "@/lib/config/constants";
 import type { PaginationState } from "@tanstack/react-table";
 import { mapUserApiToUi } from "@/lib/mappers/user.mapper";
+import { useRouter } from "next/navigation";
 
 type UserFormState = Partial<
   Omit<User, "department" | "position"> & {
@@ -89,6 +90,7 @@ export default function UsersPage() {
   const { showError } = useError();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const router = useRouter();
 
   // UI State
   const [searchTerm, setSearchTerm] = useState("");
@@ -261,6 +263,9 @@ export default function UsersPage() {
       return;
     }
 
+    // Close dialog immediately for better UX
+    setIsFormOpen(false);
+
     try {
       if (isEdit && editingUser) {
         // Build the update payload in one go
@@ -315,8 +320,6 @@ export default function UsersPage() {
         };
         await createUserMutation.mutateAsync(createUserPayload);
       }
-
-      setIsFormOpen(false); // Close dialog on success
     } catch (error) {
       // Errors from mutations are handled by the hooks themselves (toast).
       console.error("Failed to save user:", error);

@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect } from "react";
@@ -18,12 +17,6 @@ export function ClientTime({ date, className }: ClientTimeProps) {
     setIsMounted(true);
   }, []);
 
-  if (!isMounted) {
-    // Render a placeholder on the server and during initial client render
-    return <span className={className}>...</span>;
-  }
-
-  // Now that we are on the client, we can safely format the time
   const formatDate = () => {
     if (!date) {
       return "Thời gian không xác định";
@@ -31,7 +24,6 @@ export function ClientTime({ date, className }: ClientTimeProps) {
     try {
       const dateObj = parseISO(date);
       if (!isValid(dateObj)) {
-        // Handle potentially invalid date strings from API gracefully
         return "Ngày không hợp lệ";
       }
       return formatDistanceToNow(dateObj, { addSuffix: true, locale: vi });
@@ -40,6 +32,10 @@ export function ClientTime({ date, className }: ClientTimeProps) {
       return "Lỗi định dạng ngày";
     }
   };
+
+  if (!isMounted) {
+    return <span className={className}>...</span>;
+  }
 
   return <span className={className}>{formatDate()}</span>;
 }

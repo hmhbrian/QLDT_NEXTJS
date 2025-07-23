@@ -1,3 +1,4 @@
+
 "use client";
 
 import { Suspense } from "react";
@@ -31,7 +32,10 @@ function CourseEditPageContent() {
           {isCreating ? "Tạo khóa học mới" : "Chỉnh sửa khóa học"}
         </h1>
       </div>
-      <CourseForm courseId={isCreating ? undefined : courseId} />
+      <CourseForm
+        courseId={isCreating ? undefined : courseId}
+        onSaveSuccess={() => router.push("/admin/courses")}
+      />
     </div>
   );
 }

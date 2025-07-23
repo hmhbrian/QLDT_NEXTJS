@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useMemo, useRef } from "react";
@@ -25,7 +26,7 @@ import {
   Loader2,
   AlertTriangle,
 } from "lucide-react";
-import type { Test, Question } from "@/lib/types/course.types";
+import type { Test, Question } from "@/lib/types/test.types";
 import { useError } from "@/hooks/use-error";
 import * as XLSX from "xlsx";
 import { LoadingButton } from "@/components/ui/loading";
@@ -168,7 +169,7 @@ export function QuestionManagerDialog({
       } else {
         await createQuestionMutation.mutateAsync({ testId: testId, payload });
       }
-      // Reload questions để cập nhật UI
+      // Reload questions to update UI
       await reloadQuestions();
     } else {
       // For new tests, just update local state
@@ -220,7 +221,7 @@ export function QuestionManagerDialog({
         testId: testId,
         questionIds: [id],
       });
-      // Reload questions để cập nhật UI
+      // Reload questions to update UI
       await reloadQuestions();
     } else {
       // For new tests, just update local state
@@ -270,7 +271,7 @@ export function QuestionManagerDialog({
         const headers = (jsonData[0] as string[]).map(
           (h) => h?.toString().trim().toLowerCase() || ""
         );
-        const newQuestions: Question[] = [];
+        const newQuestions: Omit<Question, 'id'>[] = [];
 
         const headerMap = {
           question:
@@ -352,7 +353,6 @@ export function QuestionManagerDialog({
           if (correctAnswerIndexes.length === 0) continue;
 
           newQuestions.push({
-            id: Date.now() + i,
             text: questionText,
             options: options,
             correctAnswerIndex: correctAnswerIndexes[0],
@@ -373,9 +373,9 @@ export function QuestionManagerDialog({
         if (isEditingExistingTest && testId) {
           await createQuestionsSilentMutation.mutateAsync({
             testId,
-            questions: newQuestions.map(mapUiQuestionToApiPayload),
+            questions: newQuestions.map(q => mapUiQuestionToApiPayload(q as Question)),
           });
-          // Reload questions để cập nhật UI
+          // Reload questions to update UI
           await reloadQuestions();
           toast({
             title: "Thành công",
@@ -385,7 +385,7 @@ export function QuestionManagerDialog({
         } else {
           setTestFormData((prev) => ({
             ...prev,
-            questions: [...(prev.questions || []), ...newQuestions],
+            questions: [...(prev.questions || []), ...newQuestions.map((q, i) => ({...q, id: Date.now() + i}))],
           }));
           toast({
             title: "Thành công",

@@ -1,5 +1,6 @@
 import { BaseService } from "@/lib/core";
 import { API_CONFIG } from "@/lib/config";
+import { TopDepartment } from "@/lib/types/report.types";
 
 // Interface cho dữ liệu thống kê báo cáo
 export interface AvgFeedbackData {
@@ -81,6 +82,14 @@ class ReportService extends BaseService {
   async getStudentsOfCourse(): Promise<StudentsOfCourse[]> {
     const response = await this.get<StudentsOfCourse[]>(
       API_CONFIG.endpoints.report.studentsOfCourse
+    );
+    return response || [];
+  }
+  
+  // API for top departments
+  async getTopDepartments(): Promise<TopDepartment[]> {
+    const response = await this.get<TopDepartment[]>(
+      API_CONFIG.endpoints.report.topDepartment
     );
     return response || [];
   }

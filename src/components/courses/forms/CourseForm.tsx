@@ -100,7 +100,7 @@ const initialNewCourseState: Course = {
   modifiedBy: "",
 };
 
-export function CourseForm({ courseId }: { courseId?: string }) {
+export function CourseForm({ courseId, onSaveSuccess }: { courseId?: string; onSaveSuccess?: () => void; }) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -260,6 +260,9 @@ export function CourseForm({ courseId }: { courseId?: string }) {
       imageFile: selectedImageFile || undefined,
     };
 
+    // Navigate immediately for better UX
+    onSaveSuccess?.();
+
     try {
       if (courseId) {
         // Editing existing course
@@ -270,9 +273,9 @@ export function CourseForm({ courseId }: { courseId?: string }) {
         const payload = mapCourseUiToCreatePayload(dataWithFile);
         await createCourseMutation.mutateAsync(payload);
       }
-      router.push("/admin/courses");
     } catch (error) {
-      // useMutation hooks already handle showing the error toast
+      // The useMutation hook will show the error toast.
+      // We don't need to re-throw, as navigation has already occurred.
       console.error("Failed to save course:", error);
     }
   };

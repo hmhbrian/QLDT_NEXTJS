@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -46,10 +47,6 @@ export function useCourses(
     queryFn: async () => {
       const apiResponse = await coursesService.getCourses(apiParams);
       const allCourses = (apiResponse.items || []).map(mapCourseApiToUi);
-
-      // For public-only view, we don't filter here as it would break server-side pagination
-      // Instead, the backend should handle this filtering or we need client-side pagination
-      // For now, we'll return all courses and let the UI handle the enrolled state display
       
       return {
         items: allCourses,
@@ -166,17 +163,36 @@ export function useDeleteCourse() {
   const queryClient = useQueryClient();
   const { showError } = useError();
 
-  return useMutation<any, Error, string[]>({
+  return useMutation<any, Error, string[], { previousCourses: PaginatedResponse<Course> | undefined }>({
     mutationFn: (ids) => coursesService.softDeleteCourses(ids),
+    onMutate: async (ids) => {
+      await queryClient.cancelQueries({ queryKey: [COURSES_QUERY_KEY] });
+      const previousCourses = queryClient.getQueryData<PaginatedResponse<Course>>([COURSES_QUERY_KEY]);
+      
+      queryClient.setQueryData<PaginatedResponse<Course>>([COURSES_QUERY_KEY], (old) => {
+        if (!old) return old;
+        return {
+          ...old,
+          items: old.items.filter(c => !ids.includes(c.id)),
+        };
+      });
+
+      return { previousCourses };
+    },
     onSuccess: (response) => {
-      queryClient.invalidateQueries({ queryKey: [COURSES_QUERY_KEY] });
       showError(
         response || { success: true, message: "Đã xóa khóa học thành công." }
       );
     },
-    onError: (error) => {
+    onError: (error, variables, context) => {
+      if (context?.previousCourses) {
+          queryClient.setQueryData([COURSES_QUERY_KEY], context.previousCourses);
+      }
       showError(error);
     },
+    onSettled: () => {
+        queryClient.invalidateQueries({ queryKey: [COURSES_QUERY_KEY] });
+    }
   });
 }
 
