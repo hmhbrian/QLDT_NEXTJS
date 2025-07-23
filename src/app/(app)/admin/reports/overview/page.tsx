@@ -60,6 +60,7 @@ import {
   useStudentsOfCourseReport,
   useMonthlyReport,
   useTopDepartments,
+  useCourseStatusDistribution,
 } from "@/hooks/use-reports";
 import {
   AvgFeedbackData,
@@ -70,6 +71,14 @@ import {
 import { extractErrorMessage } from "@/lib/core";
 import { ApiDataCharts } from "@/components/reports/ApiDataCharts";
 import dynamic from "next/dynamic";
+import {
+  PieChart,
+  Pie,
+  Cell,
+  ResponsiveContainer,
+  Legend,
+  Tooltip,
+} from "recharts";
 
 const evaluationCriteriaLabels: Record<keyof AvgFeedbackData, string> = {
   q1_relevanceAvg: "Nội dung phù hợp công việc",
@@ -141,12 +150,22 @@ export default function TrainingOverviewReportPage() {
     isLoading: isLoadingMonthlyReport,
     error: monthlyReportError,
   } = useMonthlyReport(selectedMonth, filterType === "month");
-
   const {
     data: topDepartments,
     isLoading: isLoadingTopDepartments,
     error: topDepartmentsError,
   } = useTopDepartments();
+
+  const {
+    data: courseStatusDistribution,
+    isLoading: isLoadingCourseStatus,
+    error: courseStatusError,
+  } = useCourseStatusDistribution();
+
+  // Debug log để kiểm tra dữ liệu
+  console.log("🔍 Course Status Distribution Data:", courseStatusDistribution);
+  console.log("📊 Is Loading:", isLoadingCourseStatus);
+  console.log("❌ Error:", courseStatusError);
 
   const isLoading = useMemo(() => {
     return (
@@ -154,6 +173,7 @@ export default function TrainingOverviewReportPage() {
       isLoadingCourseFeedback ||
       isLoadingStudents ||
       isLoadingTopDepartments ||
+      isLoadingCourseStatus ||
       (filterType === "month" && isLoadingMonthlyReport)
     );
   }, [
@@ -161,16 +181,17 @@ export default function TrainingOverviewReportPage() {
     isLoadingCourseFeedback,
     isLoadingStudents,
     isLoadingTopDepartments,
+    isLoadingCourseStatus,
     filterType,
     isLoadingMonthlyReport,
   ]);
 
   const anyError = useMemo(() => {
     return (
-      overallFeedbackError ||
       courseFeedbackError ||
       studentsError ||
       topDepartmentsError ||
+      courseStatusError ||
       (filterType === "month" && monthlyReportError)
     );
   }, [
@@ -178,6 +199,7 @@ export default function TrainingOverviewReportPage() {
     courseFeedbackError,
     studentsError,
     topDepartmentsError,
+    courseStatusError,
     filterType,
     monthlyReportError,
   ]);
@@ -197,7 +219,10 @@ export default function TrainingOverviewReportPage() {
     const completionRate =
       filterType === "all"
         ? "Đang phát triển..."
-        : `${(monthlyReport?.averangeCompletedPercentage || 0).toFixed(1)}%`;
+        : `${Math.min(
+            Math.round(monthlyReport?.averangeCompletedPercentage || 0),
+            100
+          )}%`;
 
     const avgTrainingHours =
       filterType === "all"
@@ -207,17 +232,24 @@ export default function TrainingOverviewReportPage() {
     const positiveEvalRate =
       filterType === "all"
         ? overallFeedback
-          ? `${(
-              ((overallFeedback.q1_relevanceAvg +
-                overallFeedback.q2_clarityAvg +
-                overallFeedback.q3_structureAvg +
-                overallFeedback.q4_durationAvg +
-                overallFeedback.q5_materialAvg) /
-                5) *
-              20
-            ).toFixed(0)}%`
+          ? `${Math.min(
+              Math.round(
+                ((overallFeedback.q1_relevanceAvg +
+                  overallFeedback.q2_clarityAvg +
+                  overallFeedback.q3_structureAvg +
+                  overallFeedback.q4_durationAvg +
+                  overallFeedback.q5_materialAvg) /
+                  5 /
+                  5) *
+                  100
+              ),
+              100
+            )}%`
           : "0%"
-        : `${(monthlyReport?.averagePositiveFeedback || 0).toFixed(1)}%`;
+        : `${Math.min(
+            Math.round(monthlyReport?.averagePositiveFeedback || 0),
+            100
+          )}%`;
 
     return [
       {
@@ -568,7 +600,6 @@ export default function TrainingOverviewReportPage() {
             </div>
           </div>
         </div>
-
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
           {metrics.map((metric, index) => (
             <Card
@@ -599,7 +630,92 @@ export default function TrainingOverviewReportPage() {
             </Card>
           ))}
         </div>
-
+        {/* Course Status Distribution Chart */}
+        <Card className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm border-0 shadow-xl shadow-orange-500/10">
+          <CardHeader>
+            <CardTitle className="flex items-center text-xl font-bold text-slate-900 dark:text-slate-100">
+              <PieChartIcon className="mr-3 h-6 w-6 text-orange-500" />
+              Phân bố Trạng thái Khóa học
+              {isLoadingCourseStatus && (
+                <Loader2 className="ml-3 h-5 w-5 animate-spin text-orange-500" />
+              )}
+            </CardTitle>
+            <CardDescription className="text-slate-600 dark:text-slate-300">
+              Tỷ lệ khóa học theo trạng thái hiện tại
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {courseStatusDistribution && courseStatusDistribution.length > 0 ? (
+              <div className="h-[400px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={courseStatusDistribution}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={60}
+                      outerRadius={120}
+                      paddingAngle={5}
+                      dataKey="percent"
+                      nameKey="statusName"
+                      label={({ statusName, percent }) =>
+                        `${statusName}: ${percent}%`
+                      }
+                      labelLine={false}
+                    >
+                      {courseStatusDistribution.map((entry, index) => {
+                        const colors = [
+                          "#ef4444", // Red for "Đã kết thúc"
+                          "#f97316", // Orange for "Sắp khai giảng"
+                          "#22c55e", // Green for "Đang mở"
+                          "#64748b", // Gray for "Lưu nháp"
+                          "#9ca3af", // Light gray for "Hủy"
+                        ];
+                        return (
+                          <Cell
+                            key={`cell-${index}`}
+                            fill={colors[index % colors.length]}
+                          />
+                        );
+                      })}
+                    </Pie>
+                    <Tooltip
+                      formatter={(value: number) => [`${value}%`, "Tỷ lệ"]}
+                      labelFormatter={(label) => `Trạng thái: ${label}`}
+                      contentStyle={{
+                        backgroundColor: "rgba(255, 255, 255, 0.95)",
+                        border: "1px solid #e2e8f0",
+                        borderRadius: "8px",
+                        boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
+                      }}
+                    />
+                    <Legend
+                      verticalAlign="bottom"
+                      height={36}
+                      formatter={(value, entry) => (
+                        <span
+                          style={{ color: entry.color, fontWeight: "medium" }}
+                        >
+                          {value}
+                        </span>
+                      )}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            ) : (
+              <div className="text-center py-12">
+                <PieChartIcon className="h-12 w-12 text-slate-400 mx-auto mb-4" />
+                <h3 className="text-lg font-semibold text-slate-600 dark:text-slate-400 mb-2">
+                  Chưa có dữ liệu
+                </h3>
+                <p className="text-slate-500 dark:text-slate-400 max-w-md mx-auto">
+                  Không có dữ liệu trạng thái khóa học để hiển thị.
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>{" "}
         <Card className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border-0 shadow-xl">
           <CardHeader className="pb-4">
             <CardTitle className="flex items-center text-xl font-bold text-slate-900 dark:text-slate-100">
@@ -649,7 +765,6 @@ export default function TrainingOverviewReportPage() {
             )}
           </CardContent>
         </Card>
-
         <Card className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm border-0 shadow-xl shadow-orange-500/10">
           <CardHeader>
             <CardTitle className="flex items-center text-xl font-bold text-slate-900 dark:text-slate-100">
@@ -722,7 +837,6 @@ export default function TrainingOverviewReportPage() {
             )}
           </CardContent>
         </Card>
-
         <Card className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm border-0 shadow-xl shadow-orange-500/10">
           <CardHeader>
             <CardTitle className="flex items-center text-xl font-bold text-slate-900 dark:text-slate-100">
@@ -767,24 +881,42 @@ export default function TrainingOverviewReportPage() {
                     <TableRow>
                       <TableHead className="font-semibold">Phòng ban</TableHead>
                       <TableHead className="text-center font-semibold">
-                        Số khóa học
+                        Số người tham gia
                       </TableHead>
                       <TableHead className="text-center font-semibold">
-                        Số học viên
+                        Tổng số người
+                      </TableHead>
+                      <TableHead className="text-center font-semibold">
+                        Tỷ lệ tham gia
                       </TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {topDepartments.map((dept) => (
-                      <TableRow key={dept.departmentId}>
+                    {topDepartments.map((dept, index) => (
+                      <TableRow key={dept.departmentName || index}>
                         <TableCell className="font-medium">
                           {dept.departmentName}
                         </TableCell>
                         <TableCell className="text-center">
-                          {dept.courseCount}
+                          {dept.numberOfUsersParticipated}
                         </TableCell>
                         <TableCell className="text-center">
-                          {dept.userCount}
+                          {dept.totalUsers}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <div className="flex items-center justify-center gap-2">
+                            <div className="text-sm font-medium">
+                              {(dept.participationRate * 100).toFixed(1)}%
+                            </div>
+                            <div className="w-16 bg-gray-200 rounded-full h-2">
+                              <div
+                                className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                                style={{
+                                  width: `${dept.participationRate * 100}%`,
+                                }}
+                              ></div>
+                            </div>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -806,6 +938,12 @@ export default function TrainingOverviewReportPage() {
             )}
           </CardContent>
         </Card>
+        {/* Additional Charts */}
+        <ApiDataCharts
+          studentsData={studentsData}
+          courseFeedback={courseFeedback}
+          overallFeedback={overallFeedback}
+        />
       </div>
     </div>
   );

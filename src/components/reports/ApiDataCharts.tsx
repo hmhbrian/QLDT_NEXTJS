@@ -301,7 +301,7 @@ export function ApiDataCharts({
       </div>
 
       {/* Biểu đồ xu hướng - Mock data cho demo */}
-      <Card>
+      {/* <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <TrendingUp className="h-5 w-5" />
@@ -352,7 +352,7 @@ export function ApiDataCharts({
             </ResponsiveContainer>
           </div>
         </CardContent>
-      </Card>
+      </Card> */}
     </div>
   );
 }
