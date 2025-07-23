@@ -132,7 +132,11 @@ export const API_ENDPOINTS = {
   },
   report: {
     avgFeedback: "/Report/avg-feedback",
-    monthlyReport: (month: number) => `/Report/data-report/${month}`,
+    monthlyReport: (month: number, year: number) =>
+      `/Report/data-report?month=${month}&year=${year}`,
+    quarterlyReport: (quarter: number, year: number) =>
+      `/Report/data-report?quarter=${quarter}&year=${year}`,
+    yearReport: (year: number) => `/Report/data-report?year=${year}`,
     courseAndAvgFeedback: "/Report/course-and-avg-feedback",
     studentsOfCourse: "/Report/students-of-course",
     topDepartment: "/Report/top-department",
