@@ -68,6 +68,8 @@ export function ApiDataCharts({
   // Chuẩn bị dữ liệu cho biểu đồ học viên theo khóa học
   const studentChartData =
     studentsData
+      ?.filter((course) => course.totalStudent > 0)
+      ?.sort((a, b) => b.totalStudent - a.totalStudent)
       ?.map((course) => ({
         name:
           course.courseName.length > 20
