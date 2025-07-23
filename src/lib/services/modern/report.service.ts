@@ -29,6 +29,11 @@ export interface StudentsOfCourse {
   totalStudent: number;
 }
 
+export interface CourseStatusDistribution {
+  statusName: string;
+  percent: number;
+}
+
 export interface ApiResponse<T> {
   success: boolean;
   message: string | null;
@@ -91,6 +96,16 @@ class ReportService extends BaseService {
     const response = await this.get<TopDepartment[]>(
       API_CONFIG.endpoints.report.topDepartment
     );
+    return response || [];
+  }
+
+  // API for course status distribution
+  async getCourseStatusDistribution(): Promise<CourseStatusDistribution[]> {
+    console.log("🔍 Calling getCourseStatusDistribution API...");
+    const response = await this.get<CourseStatusDistribution[]>(
+      API_CONFIG.endpoints.report.reportStatus
+    );
+    console.log("📊 Course status distribution response:", response);
     return response || [];
   }
 }

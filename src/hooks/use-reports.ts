@@ -7,6 +7,7 @@ import {
   MonthlyReportData,
   CourseAndAvgFeedback,
   StudentsOfCourse,
+  CourseStatusDistribution,
 } from "@/lib/services/modern/report.service";
 import { TopDepartment } from "@/lib/types/report.types";
 
@@ -85,6 +86,24 @@ export function useTopDepartments(enabled: boolean = true) {
   return useQuery<TopDepartment[], Error>({
     queryKey: [REPORTS_QUERY_KEY, "top-departments"],
     queryFn: () => reportService.getTopDepartments(),
+    enabled,
+    staleTime: 5 * 60 * 1000,
+    retry: (failureCount, error) => {
+      // Chỉ retry 2 lần và không retry cho lỗi 4xx
+      if (failureCount >= 2) return false;
+      const status = (error as any)?.response?.status;
+      if (status >= 400 && status < 500) return false;
+      return true;
+    },
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+  });
+}
+
+// Hook for course status distribution report
+export function useCourseStatusDistribution(enabled: boolean = true) {
+  return useQuery<CourseStatusDistribution[], Error>({
+    queryKey: [REPORTS_QUERY_KEY, "course-status-distribution"],
+    queryFn: () => reportService.getCourseStatusDistribution(),
     enabled,
     staleTime: 5 * 60 * 1000,
     retry: (failureCount, error) => {
