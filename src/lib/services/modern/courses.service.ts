@@ -138,9 +138,12 @@ export class CoursesService extends BaseService<
     if (courseIds.length === 0) {
       return;
     }
-    await this.delete(API_CONFIG.endpoints.courses.softDelete, {
-      ids: courseIds,
-    });
+    // Xóa từng khóa học một vì API chỉ nhận 1 id
+    for (const courseId of courseIds) {
+      await this.delete(
+        `${API_CONFIG.endpoints.courses.softDelete}?id=${courseId}`
+      );
+    }
   }
 }
 

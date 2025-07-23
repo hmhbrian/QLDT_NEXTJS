@@ -60,7 +60,9 @@ export function mapCourseApiToUi(apiCourse: CourseApiResponse): Course {
       String(d.departmentId)
     ),
     level: (apiCourse.positions || []).map((p) => String(p.positionId)),
-    userIds: (apiCourse.users || []).map((u) => u.id),
+    userIds: (apiCourse.students || apiCourse.users || []).map((user) =>
+      "id" in user ? user.id : (user as any).id
+    ),
     category: apiCourse.category?.name || "Chung",
     materials: [],
     lessons: [],

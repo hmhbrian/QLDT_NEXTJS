@@ -231,7 +231,8 @@ export interface CourseApiResponse {
   lecturer?: any; // Define LecturerDto if needed
   departments?: DepartmentInfo[];
   positions?: Position[];
-  users?: User[]; // For enrolled users
+  users?: User[]; // For enrolled users (legacy)
+  students?: { id: string; name: string }[]; // For enrolled students (new API format)
 }
 
 export interface UserEnrollCourseDto {
