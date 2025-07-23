@@ -11,7 +11,7 @@ export interface AvgFeedbackData {
   q5_materialAvg: number;
 }
 
-export interface MonthlyReportData {
+export interface ReportData {
   numberOfCourses: number;
   numberOfStudents: number;
   averangeCompletedPercentage: number;
@@ -45,6 +45,50 @@ class ReportService extends BaseService {
     super(""); // Base endpoint không cần thiết vì sử dụng full paths
   }
 
+  // API thống nhất cho /api/Report/data-report với month, quarter, year
+  async getDataReport(params: {
+    month?: number;
+    quarter?: number;
+    year?: number;
+  }): Promise<ReportData> {
+    const { month, quarter, year } = params;
+    console.log(`🔍 Calling getDataReport API with params:`, params);
+
+    // Tạo query string từ params
+    const queryParams = new URLSearchParams();
+    if (month !== undefined) queryParams.append("month", month.toString());
+    if (quarter !== undefined)
+      queryParams.append("quarter", quarter.toString());
+    if (year !== undefined) queryParams.append("year", year.toString());
+
+    const endpoint = `/Report/data-report?${queryParams.toString()}`;
+    console.log(`📡 Calling endpoint: ${endpoint}`);
+
+    const response = await this.get<ReportData>(endpoint);
+    console.log("📊 Data report response:", response);
+
+    if (!response) {
+      throw new Error("Không thể lấy dữ liệu báo cáo");
+    }
+
+    return response;
+  }
+
+  // API lấy báo cáo theo năm
+  async getYearlyReport(year: number): Promise<ReportData> {
+    return this.getDataReport({ year });
+  }
+
+  // API lấy báo cáo theo quý
+  async getQuarterlyReport(quarter: number, year: number): Promise<ReportData> {
+    return this.getDataReport({ quarter, year });
+  }
+
+  // API lấy báo cáo theo tháng
+  async getMonthlyReport(month: number, year: number): Promise<ReportData> {
+    return this.getDataReport({ month, year });
+  }
+
   // API lấy đánh giá trung bình tổng thể
   async getAvgFeedback(): Promise<AvgFeedbackData> {
     console.log("🔍 Calling getAvgFeedback API...");
@@ -55,21 +99,6 @@ class ReportService extends BaseService {
 
     if (!response) {
       throw new Error("Không thể lấy dữ liệu đánh giá trung bình");
-    }
-
-    return response;
-  }
-
-  // API lấy báo cáo theo tháng
-  async getMonthlyReport(month: number): Promise<MonthlyReportData> {
-    console.log(`🔍 Calling getMonthlyReport API for month ${month}...`);
-    const response = await this.get<MonthlyReportData>(
-      API_CONFIG.endpoints.report.monthlyReport(month)
-    );
-    console.log("📊 Monthly report response:", response);
-
-    if (!response) {
-      throw new Error(`Không thể lấy dữ liệu báo cáo tháng ${month}`);
     }
 
     return response;
@@ -90,7 +119,7 @@ class ReportService extends BaseService {
     );
     return response || [];
   }
-  
+
   // API for top departments
   async getTopDepartments(): Promise<TopDepartment[]> {
     const response = await this.get<TopDepartment[]>(

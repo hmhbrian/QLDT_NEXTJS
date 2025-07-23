@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import {
   reportService,
   AvgFeedbackData,
-  MonthlyReportData,
+  ReportData,
   CourseAndAvgFeedback,
   StudentsOfCourse,
   CourseStatusDistribution,
@@ -29,13 +29,19 @@ export function useAvgFeedbackReport(enabled: boolean = true) {
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
   });
 }
+// Hook thống nhất cho báo cáo data-report (nhận month, quarter, year)
+export function useDataReport(params: {
+  month?: number;
+  quarter?: number;
+  year?: number;
+  enabled?: boolean;
+}) {
+  const { month, quarter, year, enabled = true } = params;
 
-// Hook cho báo cáo theo tháng (sử dụng API mới)
-export function useMonthlyReport(month: number, enabled: boolean = true) {
-  return useQuery<MonthlyReportData, Error>({
-    queryKey: [REPORTS_QUERY_KEY, "monthly-report", month],
-    queryFn: () => reportService.getMonthlyReport(month),
-    enabled: enabled && month >= 1 && month <= 12,
+  return useQuery<ReportData, Error>({
+    queryKey: [REPORTS_QUERY_KEY, "data-report", { month, quarter, year }],
+    queryFn: () => reportService.getDataReport({ month, quarter, year }),
+    enabled: enabled && !!year,
     staleTime: 5 * 60 * 1000,
     retry: (failureCount, error) => {
       if (failureCount >= 2) return false;
@@ -45,6 +51,44 @@ export function useMonthlyReport(month: number, enabled: boolean = true) {
     },
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
   });
+}
+
+// Hook cho báo cáo theo năm
+export function useYearlyReport(year: number, enabled: boolean = true) {
+  console.log(
+    `🔍 useYearlyReport called with year=${year}, enabled=${enabled}`
+  );
+  const result = useDataReport({ year, enabled });
+  console.log(`📊 useYearlyReport result:`, result.data);
+  return result;
+}
+
+// Hook cho báo cáo theo quý
+export function useQuarterlyReport(
+  quarter: number,
+  year: number,
+  enabled: boolean = true
+) {
+  console.log(
+    `🔍 useQuarterlyReport called with quarter=${quarter}, year=${year}, enabled=${enabled}`
+  );
+  const result = useDataReport({ quarter, year, enabled });
+  console.log(`📊 useQuarterlyReport result:`, result.data);
+  return result;
+}
+
+// Hook cho báo cáo theo tháng
+export function useMonthlyReport(
+  month: number,
+  year: number,
+  enabled: boolean = true
+) {
+  console.log(
+    `🔍 useMonthlyReport called with month=${month}, year=${year}, enabled=${enabled}`
+  );
+  const result = useDataReport({ month, year, enabled });
+  console.log(`📊 useMonthlyReport result:`, result.data);
+  return result;
 }
 
 // Hook cho danh sách khóa học và đánh giá (không filter vì chưa có API)
