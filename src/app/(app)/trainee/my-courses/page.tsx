@@ -84,7 +84,7 @@ export default function MyCoursesPage() {
 
       {myDisplayCourses.length > 0 ? (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {myDisplayCourses.map((course) => (
+          {myDisplayCourses.map((course, index) => (
             <Card
               key={course.id}
               className="flex flex-col overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 group"
@@ -98,6 +98,7 @@ export default function MyCoursesPage() {
                     fill
                     sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                     data-ai-hint={course.dataAiHint}
+                    priority={index === 0} // Add priority to the first image
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
                 </div>
