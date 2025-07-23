@@ -1,191 +1,202 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { useState, useMemo, useCallback } from "react";
+import { useRouter } from "next/navigation";
+import NextImage from "next/image";
+import {
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, CalendarClock, LayoutGrid, List, Loader2, BookOpen } from "lucide-react";
-import { useAuth } from '@/hooks/useAuth';
-import NextImage from "next/image";
-import { useRouter } from 'next/navigation';
-import { Badge } from '@/components/ui/badge';
-import { useToast } from '@/components/ui/use-toast';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { useCookie } from '@/hooks/use-cookie';
-import { mockPublicCourses } from '@/lib/mock';
-import { categoryOptions } from '@/lib/constants';
-import { useCourseStore } from '@/stores/course-store';
-import type { PublicCourse } from '@/lib/types';
-
-const PUBLIC_COURSES_COOKIE_KEY = 'becamex-public-courses-data';
+import {
+  Search,
+  CalendarClock,
+  LayoutGrid,
+  List,
+  Loader2,
+  BookOpen,
+  XCircle,
+  ChevronLeft,
+  ChevronRight,
+  Eye,
+} from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { Badge } from "@/components/ui/badge";
+import type { Course } from "@/lib/types/course.types";
+import { DataTable } from "@/components/ui/data-table";
+import { getColumns } from "./columns";
+import { isRegistrationOpen } from "@/lib/helpers";
+import { useCourses, useEnrollCourse, useEnrolledCourses } from "@/hooks/use-courses";
+import { useError } from "@/hooks/use-error";
+import { useDebounce } from "@/hooks/use-debounce";
+import type { PaginationState } from "@tanstack/react-table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { LoadingButton } from "@/components/ui/loading";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 export default function CoursesPage() {
   const { user: currentUser } = useAuth();
-  const { toast } = useToast();
   const router = useRouter();
+  const { showError } = useError();
 
-  // Get courses from the store
-  const { courses: allCoursesFromStore } = useCourseStore();
-  
-  // Keep using cookies for public courses display data
-  const [publicCoursesFromCookie, setPublicCoursesInCookie] = useCookie<PublicCourse[]>(
-    PUBLIC_COURSES_COOKIE_KEY,
-    mockPublicCourses
-  );
+  const [searchTerm, setSearchTerm] = useState("");
+  const debouncedSearchTerm = useDebounce(searchTerm, 500);
+  const [viewMode, setViewMode] = useState<"card" | "table">("card");
+  const [pagination, setPagination] = useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: 10,
+  });
 
-  const [courses, setCourses] = useState<PublicCourse[]>([]);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [viewMode, setViewMode] = useState<'card' | 'table'>('card');
-  const [isLoading, setIsLoading] = useState(true);
+  const {
+    courses: publicCourses,
+    paginationInfo,
+    isLoading: isFetchingCourses,
+    error: coursesError,
+    reloadCourses: fetchCourses,
+  } = useCourses({
+    keyword: debouncedSearchTerm,
+    Page: pagination.pageIndex + 1,
+    Limit: pagination.pageSize,
+    publicOnly: true,
+  });
 
-  useEffect(() => {
-    setIsLoading(true);
-    
-    // Start with mock data for public courses
-    const publicCourses = mockPublicCourses.length > 0 ? mockPublicCourses : [];
-    
-    // Only use data from all courses if we have some courses
-    if (allCoursesFromStore.length > 0) {
-      // Filter for only public and published courses from the store
-      const publicCoursesFromAll = allCoursesFromStore
-        .filter(course => course.isPublic && course.status === 'published')
-        .map(course => ({
-          id: course.id,
-          title: course.title,
-          description: course.description,
-          category: categoryOptions.find(c => c.value === course.category)?.label as PublicCourse['category'] || 'Lập trình',
-          instructor: course.instructor,
-          duration: `${course.duration.sessions} buổi (${course.duration.hoursPerSession}h/buổi)`,
-          image: course.image,
-          dataAiHint: course.category,
-          enrollmentType: course.enrollmentType,
-          registrationDeadline: course.registrationDeadline,
-          isPublic: course.isPublic,
-          enrolledTrainees: course.enrolledTrainees,
-        }));
-      
-      // If we found public courses from the store, use those instead
-      if (publicCoursesFromAll.length > 0) {
-        setCourses(publicCoursesFromAll);
-        
-        // Only update the cookie if it differs from current value to prevent loops
-        const currentCookieValue = JSON.stringify(publicCoursesFromCookie);
-        const newValue = JSON.stringify(publicCoursesFromAll);
-        if (currentCookieValue !== newValue) {
-          setPublicCoursesInCookie(publicCoursesFromAll);
-        }
-      } else {
-        // Otherwise use our mock data
-        setCourses(publicCourses);
-        
-        // Only update cookie if needed
-        const currentCookieValue = JSON.stringify(publicCoursesFromCookie);
-        const newValue = JSON.stringify(publicCourses);
-        if (currentCookieValue !== newValue && publicCourses.length > 0) {
-          setPublicCoursesInCookie(publicCourses);
-        }
-      }
-    } else {
-      // If we don't have any courses in the store, just use mock data
-      setCourses(publicCourses);
-      
-      // Only update cookie if needed
-      const currentCookieValue = JSON.stringify(publicCoursesFromCookie);
-      const newValue = JSON.stringify(publicCourses);
-      if (currentCookieValue !== newValue && publicCourses.length > 0) {
-        setPublicCoursesInCookie(publicCourses);
-      }
-    }
-    
-    setIsLoading(false);
-  }, [allCoursesFromStore, publicCoursesFromCookie, setPublicCoursesInCookie]); 
+  const {
+    enrolledCourses,
+    isLoadingEnrolled,
+    reloadEnrolledCourses,
+  } = useEnrolledCourses(!!currentUser && currentUser.role === "HOCVIEN");
 
-  const filteredCourses = courses.filter(course =>
-    course.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    course.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (course.category && course.category.toLowerCase().includes(searchTerm.toLowerCase())) ||
-    course.instructor.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const pageCount = paginationInfo?.totalPages ?? 0;
 
-  const handleEnroll = (courseId: string) => {
-    // Add enrollment logic here
-    if (!currentUser) {
-      toast({
-        title: "Chưa đăng nhập",
-        description: "Vui lòng đăng nhập để đăng ký khóa học.",
-        variant: "destructive"
-      });
-      router.push('/login');
-      return;
-    }
-    
-    const courseToEnroll = courses.find(c => c.id === courseId);
-    if (!courseToEnroll) {
-      toast({
-        title: "Lỗi",
-        description: "Không tìm thấy thông tin khóa học.",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    // Get the course from store to update
-    const courseInStore = allCoursesFromStore.find(c => c.id === courseId);
-    if (!courseInStore) {
-      toast({
-        title: "Lỗi",
-        description: "Không tìm thấy thông tin khóa học trong hệ thống.",
-        variant: "destructive"
-      });
-      return;
-    }
+  const enrollMutation = useEnrollCourse();
 
-    // Check if user is already enrolled
-    if (courseInStore.enrolledTrainees?.includes(currentUser.id)) {
-      // User already enrolled, redirect to course detail
-      toast({
-        title: "Đã đăng ký",
-        description: `Bạn đã đăng ký khóa học "${courseToEnroll.title}" trước đó.`,
-        variant: "default"
-      });
-      router.push(`/courses/${courseId}`);
-      return;
-    }
-
-    // Add user to enrolledTrainees list
-    const updatedEnrolledTrainees = [
-      ...(courseInStore.enrolledTrainees || []),
-      currentUser.id
-    ];
-
-    // Update course in store
-    useCourseStore.getState().updateCourse(courseId, {
-      enrolledTrainees: updatedEnrolledTrainees
+  // Filter out enrolled courses for trainees
+  const filteredCourses = useMemo(() => {
+    console.log('Filtering courses:', {
+      totalCourses: publicCourses.length,
+      currentUser: currentUser?.id,
+      role: currentUser?.role,
+      enrolledCoursesCount: enrolledCourses.length
     });
 
-    toast({
-      title: "Đăng ký thành công",
-      description: `Bạn đã đăng ký khóa học "${courseToEnroll.title}" thành công.`,
-      duration: 3000,
-      variant: "success"
+    if (!currentUser || currentUser.role !== "HOCVIEN") {
+      console.log('Admin/HR - showing all courses');
+      return publicCourses; // Admin và HR thấy tất cả
+    }
+    
+    // Với HOCVIEN, ẩn các khóa học đã đăng ký
+    const enrolledCourseIds = new Set(enrolledCourses.map(course => course.id));
+    const filtered = publicCourses.filter(course => {
+      const isEnrolled = enrolledCourseIds.has(course.id);
+      console.log(`Course ${course.title}: enrolled=${isEnrolled}, courseId=${course.id}`);
+      return !isEnrolled; // Chỉ hiện khóa học chưa đăng ký
     });
     
-    // Redirect to course detail page
-    router.push(`/courses/${courseId}`);
-  };
+    console.log(`Filtered: ${filtered.length}/${publicCourses.length} courses`);
+    return filtered;
+  }, [publicCourses, currentUser, enrolledCourses]);
 
-  const isRegistrationOpen = (deadline: string | null | undefined): boolean => {
-    if (!deadline) return true;
-    const now = new Date();
-    const deadlineDate = new Date(deadline);
-    return now <= deadlineDate;
-  };
+  const isCourseAccessible = useCallback(
+    (course: Course): boolean => {
+      if (!currentUser) return false;
+      // Admins and HR can see everything
+      if (currentUser.role === "ADMIN" || currentUser.role === "HR") {
+        return true;
+      }
+      // All users can see public courses
+      if (course.isPublic) {
+        return true;
+      }
+      // Trainees can see internal courses for their department
+      if (
+        currentUser.department &&
+        course.department?.includes(currentUser.department.departmentId)
+      ) {
+        return true;
+      }
+      return false;
+    },
+    [currentUser]
+  );
 
-  if (isLoading) {
+  const handleEnroll = useCallback(
+    (courseId: string) => {
+      if (!currentUser) {
+        showError("AUTH002");
+        router.push("/login");
+        return;
+      }
+      enrollMutation.mutate(courseId, {
+        onSuccess: () => {
+          console.log(`Successfully enrolled in course ${courseId}`);
+          // Reload enrolled courses để cập nhật danh sách khóa học đã đăng ký
+          reloadEnrolledCourses();
+          // Reload public courses để cập nhật danh sách
+          fetchCourses();
+        }
+      });
+    },
+    [currentUser, router, showError, enrollMutation, reloadEnrolledCourses, fetchCourses]
+  );
+
+  const columns = useMemo(
+    () =>
+      getColumns(
+        currentUser?.id,
+        handleEnroll,
+        (id) => router.push(`/courses/${id}`),
+        (id) => enrollMutation.isPending && enrollMutation.variables === id,
+        isCourseAccessible,
+        enrolledCourses,
+        currentUser?.role
+      ),
+    [
+      currentUser?.id,
+      currentUser?.role,
+      router,
+      handleEnroll,
+      enrollMutation.isPending,
+      enrollMutation.variables,
+      isCourseAccessible,
+      enrolledCourses,
+    ]
+  );
+
+  if (isFetchingCourses && filteredCourses.length === 0) {
     return (
       <div className="flex h-60 w-full items-center justify-center">
         <Loader2 className="h-10 w-10 animate-spin text-primary" />
-        <p className="ml-3 text-muted-foreground">Đang tải danh sách khóa học...</p>
+        <p className="ml-3 text-muted-foreground">
+          Đang tải danh sách khóa học...
+        </p>
+      </div>
+    );
+  }
+
+  if (coursesError) {
+    return (
+      <div className="flex flex-col items-center justify-center h-60 w-full text-red-500">
+        <XCircle className="h-10 w-10 mb-3" />
+        <p className="text-lg font-semibold">Lỗi tải khóa học:</p>
+        <p className="text-sm text-muted-foreground">{coursesError.message}</p>
+        <Button onClick={() => fetchCourses()} className="mt-4">
+          Thử lại
+        </Button>
       </div>
     );
   }
@@ -193,10 +204,12 @@ export default function CoursesPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-        <h1 className="text-2xl md:text-3xl font-headline font-semibold">Khóa học Công khai</h1>
+        <h1 className="text-2xl md:text-3xl font-headline font-semibold">
+          {currentUser?.role === "HOCVIEN" ? "Khóa học có thể đăng ký" : "Khóa học Công khai"}
+        </h1>
         <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
           <div className="relative flex-grow md:flex-grow-0">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground z-10" />
             <Input
               placeholder="Tìm kiếm khóa học..."
               className="pl-10 w-full md:w-64"
@@ -204,153 +217,345 @@ export default function CoursesPage() {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          <Button variant={viewMode === 'table' ? 'default' : 'outline'} size="icon" onClick={() => setViewMode('table')} aria-label="Table view">
+          <Button
+            variant={viewMode === "table" ? "default" : "outline"}
+            size="icon"
+            onClick={() => setViewMode("table")}
+            aria-label="Table view"
+          >
             <List className="h-5 w-5" />
           </Button>
-          <Button variant={viewMode === 'card' ? 'default' : 'outline'} size="icon" onClick={() => setViewMode('card')} aria-label="Card view">
+          <Button
+            variant={viewMode === "card" ? "default" : "outline"}
+            size="icon"
+            onClick={() => setViewMode("card")}
+            aria-label="Card view"
+          >
             <LayoutGrid className="h-5 w-5" />
           </Button>
         </div>
       </div>
 
-      {filteredCourses.length > 0 ? (
-        viewMode === 'card' ? (
-          <div className="grid gap-6 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {filteredCourses.map(course => (
-              <Card key={course.id} className="overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 flex flex-col">
-                <div className="relative h-48 w-full">
-                  {course.image.endsWith('.pdf') ? (
-                    <div className="h-full w-full flex items-center justify-center bg-gray-100">
-                      <BookOpen className="h-12 w-12 text-gray-400" />
-                      <span className="ml-2 text-gray-600">PDF Document</span>
-                    </div>
-                  ) : (
-                  <NextImage
-                    src={course.image}
-                    alt={course.title}
-                    layout="fill"
-                    objectFit="cover"
-                    data-ai-hint={course.dataAiHint || "course image"}
-                  />
-                  )}
-                </div>
-                <CardHeader>
-                  <CardTitle className="font-headline text-xl">{course.title}</CardTitle>
-                  <div className="flex items-center gap-2 mt-1">
-                    <Badge variant="outline" className="text-xs">{course.category}</Badge>
-                    <Badge variant={course.enrollmentType === 'mandatory' ? 'default' : 'secondary'} className="text-xs">
-                      {course.enrollmentType === 'mandatory' ? 'Bắt buộc' : 'Tùy chọn'}
-                    </Badge>
-                  </div>
-                </CardHeader>
-                <CardContent className="flex-grow">
-                  <p className="text-sm text-muted-foreground mb-2 line-clamp-3">{course.description}</p>
-                  <p className="text-xs text-muted-foreground">Giảng viên: {course.instructor}</p>
-                  <p className="text-xs text-muted-foreground">Thời lượng: {course.duration}</p>
-                  {course.enrollmentType === 'optional' && course.registrationDeadline && (
-                    <p className="text-xs text-muted-foreground mt-1 flex items-center">
-                      <CalendarClock className="mr-1.5 h-3 w-3"/>
-                      Hạn đăng ký: {new Date(course.registrationDeadline).toLocaleDateString('vi-VN')}
-                      {!isRegistrationOpen(course.registrationDeadline) && <Badge variant="destructive" className="ml-2 text-xs">Hết hạn</Badge>}
-                    </p>
-                  )}
-                </CardContent>
-                <CardFooter className="border-t mt-auto pt-4 flex flex-col sm:flex-row gap-2">
-                  {currentUser?.role === 'Trainee' && 
-                   course.enrollmentType === 'optional' && 
-                   !course.enrolledTrainees?.includes(currentUser?.id || '') ? (
-                    isRegistrationOpen(course.registrationDeadline) ? (
-                      <Button
-                        className="w-full"
-                        onClick={() => handleEnroll(course.id)}
-                      >
-                        Đăng ký
-                      </Button>
-                    ) : (
-                      <Button variant="outline" disabled className="w-full">
-                        Hết hạn đăng ký
-                      </Button>
-                    )
-                  ) : (
-                    <Button
-                      variant="outline"
-                      className="w-full"
-                      onClick={() => router.push(`/courses/${course.id}`)}
+      {viewMode === "card" ? (
+        <>
+          {/* Loading State */}
+          {isFetchingCourses && filteredCourses.length === 0 ? (
+            <div className="grid gap-6 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {Array.from({ length: pagination.pageSize }).map((_, index) => (
+                <Card
+                  key={index}
+                  className="overflow-hidden shadow-lg animate-pulse"
+                >
+                  <div className="h-48 w-full bg-gray-200"></div>
+                  <CardHeader className="pt-4 pb-2">
+                    <div className="h-4 bg-gray-200 rounded mb-2"></div>
+                    <div className="h-6 bg-gray-200 rounded"></div>
+                  </CardHeader>
+                  <CardContent className="flex-grow">
+                    <div className="h-4 bg-gray-200 rounded mb-2"></div>
+                    <div className="h-4 bg-gray-200 rounded mb-2"></div>
+                    <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                  </CardContent>
+                  <CardFooter className="border-t mt-auto p-3">
+                    <div className="h-8 bg-gray-200 rounded w-full"></div>
+                  </CardFooter>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <div className="grid gap-6 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {filteredCourses.map((course) => {
+                // Kiểm tra enrollment từ enrolled courses data thay vì course.userIds
+                const enrolledCourseIds = new Set(enrolledCourses.map(c => c.id));
+                const isEnrolled = enrolledCourseIds.has(course.id);
+                const registrationOpen = isRegistrationOpen(course.registrationDeadline);
+                const canEnroll =
+                  currentUser?.role === "HOCVIEN" &&
+                  !isEnrolled &&
+                  course.enrollmentType === "optional" &&
+                  registrationOpen;
+                const accessible = isCourseAccessible(course);
+
+                // Debug log để kiểm tra
+                console.log(`Course ${course.title}:`, {
+                  isEnrolled,
+                  courseId: course.id,
+                  enrolledCourseIds: Array.from(enrolledCourseIds),
+                  currentUserId: currentUser?.id,
+                  registrationOpen,
+                  registrationDeadline: course.registrationDeadline
+                });
+
+                return (
+                  <Card
+                    key={course.id}
+                    className="overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 flex flex-col group cursor-pointer"
+                    onClick={() => router.push(`/courses/${course.id}`)}
+                  >
+                    <div
+                      className="relative h-48 w-full overflow-hidden"
                     >
-                      Xem chi tiết
-                    </Button>
-                  )}
-                </CardFooter>
-              </Card>
-            ))}
-          </div>
-        ) : ( // Chế độ xem Bảng
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Tên khóa học</TableHead>
-                  <TableHead>Danh mục</TableHead>
-                  <TableHead>Giảng viên</TableHead>
-                  <TableHead>Thời lượng</TableHead>
-                  <TableHead>Loại</TableHead>
-                  <TableHead>Hành động</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredCourses.map(course => (
-                  <TableRow key={course.id}>
-                    <TableCell className="font-medium">{course.title}</TableCell>
-                    <TableCell>{course.category}</TableCell>
-                    <TableCell>{course.instructor}</TableCell>
-                    <TableCell>{course.duration}</TableCell>
-                    <TableCell>
-                      <Badge variant={course.enrollmentType === 'mandatory' ? 'default' : 'secondary'}>
-                        {course.enrollmentType === 'mandatory' ? 'Bắt buộc' : 'Tùy chọn'}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      {currentUser?.role === 'Trainee' && 
-                       course.enrollmentType === 'optional' && 
-                       !course.enrolledTrainees?.includes(currentUser?.id || '') ? (
-                        isRegistrationOpen(course.registrationDeadline) ? (
-                          <Button
-                            size="sm"
-                            onClick={() => handleEnroll(course.id)}
-                          >
-                            Đăng ký
-                          </Button>
-                        ) : (
-                          <Button variant="outline" disabled size="sm">
-                            Hết hạn đăng ký
-                          </Button>
-                        )
+                      {course.image.endsWith(".pdf") ? (
+                        <div className="h-full w-full flex items-center justify-center bg-gray-100">
+                          <BookOpen className="h-12 w-12 text-gray-400" />
+                          <span className="ml-2 text-gray-600">
+                            PDF Document
+                          </span>
+                        </div>
                       ) : (
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          onClick={() => router.push(`/courses/${course.id}`)}
-                        >
-                          Xem chi tiết
-                        </Button>
+                        <NextImage
+                          src={course.image}
+                          alt={course.title}
+                          fill
+                          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                          className="object-cover group-hover:scale-105 transition-transform duration-300"
+                          data-ai-hint="course thumbnail"
+                        />
                       )}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        )
-        ) : (
-        <div className="text-center py-12">
-          <BookOpen className="mx-auto h-12 w-12 text-muted-foreground" />
-          <h3 className="mt-2 text-xl font-semibold">Không có khóa học công khai nào</h3>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Vui lòng kiểm tra lại sau.
-          </p>
-        </div>
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
+                    </div>
+                    <CardHeader className="pt-4 pb-2">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Badge variant="outline" className="text-xs">
+                          {course.category}
+                        </Badge>
+                        <Badge
+                          variant={
+                            course.enrollmentType === "mandatory"
+                              ? "default"
+                              : "secondary"
+                          }
+                          className="text-xs"
+                        >
+                          {course.enrollmentType === "mandatory"
+                            ? "Bắt buộc"
+                            : "Tùy chọn"}
+                        </Badge>
+                      </div>
+                      <CardTitle className="font-headline text-lg line-clamp-2 leading-snug">
+                        {course.title}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="flex-grow text-sm">
+                      <p className="text-muted-foreground mb-3 line-clamp-2">
+                        {course.description}
+                      </p>
+                      <div className="space-y-1 text-xs text-muted-foreground">
+                        <p>
+                          Giảng viên:{" "}
+                          <span className="font-medium text-foreground">
+                            {course.instructor}
+                          </span>
+                        </p>
+                        <p>
+                          Thời lượng: {course.duration.sessions} buổi (
+                          {course.duration.hoursPerSession}h/buổi)
+                        </p>
+                        {course.enrollmentType === "optional" &&
+                          course.registrationDeadline && (
+                            <div className="flex items-center">
+                              <CalendarClock className="mr-1.5 h-3 w-3" />
+                              Hạn ĐK:{" "}
+                              <span className="font-medium text-foreground ml-1">
+                                {new Date(
+                                  course.registrationDeadline
+                                ).toLocaleDateString("vi-VN")}
+                              </span>
+                              {!isRegistrationOpen(
+                                course.registrationDeadline
+                              ) && (
+                                <Badge
+                                  variant="destructive"
+                                  className="ml-2 text-xs"
+                                >
+                                  Hết hạn
+                                </Badge>
+                              )}
+                            </div>
+                          )}
+                      </div>
+                    </CardContent>
+                    <CardFooter className="border-t mt-auto p-3">
+                      {canEnroll ? (
+                        <LoadingButton
+                          className="w-full"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleEnroll(course.id);
+                          }}
+                          isLoading={
+                            enrollMutation.isPending &&
+                            enrollMutation.variables === course.id
+                          }
+                          disabled={enrollMutation.isPending}
+                        >
+                          {enrollMutation.isPending &&
+                          enrollMutation.variables === course.id
+                            ? "Đang đăng ký..."
+                            : "Đăng ký"}
+                        </LoadingButton>
+                      ) : isEnrolled ? (
+                        <Button
+                          variant="default"
+                          className="w-full"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            router.push(`/courses/${course.id}`);
+                          }}
+                        >
+                          <Eye className="mr-2 h-4 w-4" /> Vào học
+                        </Button>
+                      ) : currentUser?.role === "HOCVIEN" && course.enrollmentType === "optional" && !registrationOpen ? (
+                        <Button
+                          variant="outline"
+                          className="w-full"
+                          disabled
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          Hết hạn đăng ký
+                        </Button>
+                      ) : (
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="outline"
+                                className="w-full"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (accessible) {
+                                    router.push(`/courses/${course.id}`);
+                                  }
+                                }}
+                                disabled={!accessible}
+                              >
+                                Xem chi tiết
+                              </Button>
+                            </TooltipTrigger>
+                            {!accessible && (
+                              <TooltipContent>
+                                <p>
+                                  Khóa học này là nội bộ. Bạn không có quyền
+                                  truy cập.
+                                </p>
+                              </TooltipContent>
+                            )}
+                          </Tooltip>
+                        </TooltipProvider>
+                      )}
+                    </CardFooter>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
+          {/* Pagination Controls - Always show if there are multiple pages */}
+          {pageCount > 1 && (
+            <div className="flex items-center justify-between pt-6">
+              <div className="flex-1 text-sm text-muted-foreground">
+                Hiển thị{" "}
+                {Math.min(
+                  pagination.pageIndex * pagination.pageSize +
+                    filteredCourses.length,
+                  paginationInfo?.totalItems ?? 0
+                )}{" "}
+                trên {paginationInfo?.totalItems ?? 0} khóa học
+              </div>
+              <div className="flex items-center space-x-6 lg:space-x-8">
+                <div className="flex items-center space-x-2">
+                  <p className="text-sm font-medium">Số mục mỗi trang</p>
+                  <Select
+                    value={`${pagination.pageSize}`}
+                    onValueChange={(value) => {
+                      setPagination((p) => ({
+                        ...p,
+                        pageSize: Number(value),
+                        pageIndex: 0,
+                      }));
+                    }}
+                  >
+                    <SelectTrigger className="h-8 w-[70px]">
+                      <SelectValue placeholder={pagination.pageSize} />
+                    </SelectTrigger>
+                    <SelectContent side="top">
+                      {[10, 20, 30, 40, 50].map((pageSize) => (
+                        <SelectItem key={pageSize} value={`${pageSize}`}>
+                          {pageSize}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex w-[100px] items-center justify-center text-sm font-medium">
+                  Trang {pagination.pageIndex + 1} của {pageCount}
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Button
+                    variant="outline"
+                    className="h-8 w-8 p-0"
+                    onClick={() =>
+                      setPagination((p) => ({
+                        ...p,
+                        pageIndex: p.pageIndex - 1,
+                      }))
+                    }
+                    disabled={pagination.pageIndex === 0 || isFetchingCourses}
+                  >
+                    <span className="sr-only">Trang trước</span>
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="h-8 w-8 p-0"
+                    onClick={() =>
+                      setPagination((p) => ({
+                        ...p,
+                        pageIndex: p.pageIndex + 1,
+                      }))
+                    }
+                    disabled={
+                      pagination.pageIndex + 1 >= pageCount || isFetchingCourses
+                    }
+                  >
+                    <span className="sr-only">Trang sau</span>
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Empty State */}
+          {filteredCourses.length === 0 && !isFetchingCourses && (
+            <div className="text-center py-12">
+              <BookOpen className="mx-auto h-12 w-12 text-muted-foreground" />
+              <h3 className="mt-2 text-xl font-semibold">
+                {debouncedSearchTerm
+                  ? "Không tìm thấy khóa học nào"
+                  : currentUser?.role === "HOCVIEN" 
+                    ? "Không có khóa học mới để đăng ký"
+                    : "Chưa có khóa học công khai"}
+              </h3>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {debouncedSearchTerm
+                  ? "Vui lòng thử lại với từ khóa khác."
+                  : currentUser?.role === "HOCVIEN"
+                    ? "Bạn đã đăng ký tất cả khóa học có sẵn hoặc chưa có khóa học mới."
+                    : "Hiện tại chưa có khóa học công khai nào được phát hành."}
+              </p>
+            </div>
+          )}
+        </>
+      ) : (
+        <DataTable
+          columns={columns}
+          data={filteredCourses}
+          isLoading={isFetchingCourses}
+          pageCount={pageCount}
+          pagination={pagination}
+          onPaginationChange={setPagination}
+        />
       )}
     </div>
   );
 }
-

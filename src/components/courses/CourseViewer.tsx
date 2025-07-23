@@ -1,30 +1,38 @@
 
-'use client';
+"use client";
 
-import { useState, useEffect, useCallback } from 'react';
-import { Document, Page, pdfjs } from 'react-pdf';
-import 'react-pdf/dist/esm/Page/AnnotationLayer.css';
-import 'react-pdf/dist/esm/Page/TextLayer.css';
+import { useState, useEffect, useCallback } from "react";
+import { Document, Page, pdfjs } from "react-pdf";
+import "react-pdf/dist/esm/Page/AnnotationLayer.css";
+import "react-pdf/dist/esm/Page/TextLayer.css";
 
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
-import { ChevronLeft, ChevronRight, Download, Maximize2, Minimize2, AlertTriangle, RefreshCw, Image as ImageIcon, Loader2 } from 'lucide-react';
-import NextImage from 'next/image'; 
-import type { Course } from '@/lib/types';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Download,
+  Maximize2,
+  Minimize2,
+  AlertTriangle,
+  RefreshCw,
+  Image as ImageIcon,
+  Loader2,
+} from "lucide-react";
+import NextImage from "next/image";
+import type { Course, Lesson } from "@/lib/types/course.types";
 
 // Cấu hình PDF.js worker
-if (typeof window !== 'undefined') {
+if (typeof window !== "undefined") {
   pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
 }
 
-// Interface cho props của CourseViewer
 interface CourseViewerProps {
-  // Mong muốn slides được truyền như một phần của đối tượng course
-  course: Pick<Course, 'title'> & { slides?: { title: string; url: string; type: 'pdf' | 'image' }[] };
+  course: Course;
 }
 
-export function CourseViewer({ course }: CourseViewerProps) {
+function CourseViewer({ course }: CourseViewerProps) {
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
   const [numPages, setNumPages] = useState<number | null>(null);
   const [pageNumber, setPageNumber] = useState(1);
@@ -32,19 +40,24 @@ export function CourseViewer({ course }: CourseViewerProps) {
   const [pdfError, setPdfError] = useState<string | null>(null);
   const [isLoadingPdf, setIsLoadingPdf] = useState(false);
 
-  const slides = course.slides || [];
-  const currentSlide = slides[currentSlideIndex];
+  const lessons = course.lessons || [];
+  const currentSlide: Lesson | undefined = lessons[currentSlideIndex];
 
-  const onDocumentLoadSuccess = useCallback(({ numPages: nextNumPages }: { numPages: number }) => {
-    setNumPages(nextNumPages);
-    setPageNumber(1); // Đặt lại về trang đầu tiên khi có tài liệu mới
-    setPdfError(null);
-    setIsLoadingPdf(false);
-  }, []);
+  const onDocumentLoadSuccess = useCallback(
+    ({ numPages: nextNumPages }: { numPages: number }) => {
+      setNumPages(nextNumPages);
+      setPageNumber(1); 
+      setPdfError(null);
+      setIsLoadingPdf(false);
+    },
+    []
+  );
 
   const onDocumentLoadError = useCallback((error: Error) => {
-    console.error('Lỗi khi tải PDF:', error);
-    setPdfError(`Không thể tải tài liệu PDF. Lỗi: ${error.message}. Vui lòng thử lại hoặc kiểm tra đường dẫn.`);
+    console.error("Lỗi khi tải PDF:", error);
+    setPdfError(
+      `Không thể tải tài liệu PDF. Lỗi: ${error.message}. Vui lòng thử lại hoặc kiểm tra đường dẫn.`
+    );
     setNumPages(null);
     setIsLoadingPdf(false);
   }, []);
@@ -53,14 +66,16 @@ export function CourseViewer({ course }: CourseViewerProps) {
     setCurrentSlideIndex((prev) => (prev > 0 ? prev - 1 : prev));
     setPageNumber(1);
     setPdfError(null);
-    if (slides[currentSlideIndex - 1]?.type === 'pdf') setIsLoadingPdf(true);
+    if (lessons[currentSlideIndex - 1]?.type === "pdf_url") setIsLoadingPdf(true);
   };
 
   const handleNextSlide = () => {
-    setCurrentSlideIndex((prev) => (prev < slides.length - 1 ? prev + 1 : prev));
+    setCurrentSlideIndex((prev) =>
+      prev < lessons.length - 1 ? prev + 1 : prev
+    );
     setPageNumber(1);
     setPdfError(null);
-    if (slides[currentSlideIndex + 1]?.type === 'pdf') setIsLoadingPdf(true);
+    if (lessons[currentSlideIndex + 1]?.type === "pdf_url") setIsLoadingPdf(true);
   };
 
   const handlePrevPage = () => {
@@ -72,12 +87,14 @@ export function CourseViewer({ course }: CourseViewerProps) {
   };
 
   const toggleFullscreen = useCallback(() => {
-    const viewerElement = document.getElementById('course-viewer-content'); // Lấy phần tử trình xem
+    const viewerElement = document.getElementById("course-viewer-content"); 
     if (!viewerElement) return;
 
     if (!document.fullscreenElement) {
-      viewerElement.requestFullscreen().catch(err => { // Yêu cầu chế độ toàn màn hình và bắt lỗi
-        console.error(`Lỗi khi cố gắng bật chế độ toàn màn hình: ${err.message} (${err.name})`); // Ghi lỗi nếu không thể bật chế độ toàn màn hình
+      viewerElement.requestFullscreen().catch((err) => {
+        console.error(
+          `Lỗi khi cố gắng bật chế độ toàn màn hình: ${err.message} (${err.name})`
+        ); 
       });
     } else {
       document.exitFullscreen();
@@ -88,18 +105,18 @@ export function CourseViewer({ course }: CourseViewerProps) {
     const handleFullscreenChange = () => {
       setIsFullscreen(!!document.fullscreenElement);
     };
-    document.addEventListener('fullscreenchange', handleFullscreenChange);
-    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    return () =>
+      document.removeEventListener("fullscreenchange", handleFullscreenChange);
   }, []);
-  
+
   useEffect(() => {
-    if (currentSlide?.type === 'pdf') { // Nếu slide hiện tại là PDF
+    if (currentSlide?.type === "pdf_url") {
       setIsLoadingPdf(true);
     }
   }, [currentSlide]);
 
-
-  if (!slides.length) {
+  if (!lessons.length) {
     return (
       <Card className="shadow-lg">
         <CardContent className="p-6 text-center text-muted-foreground">
@@ -117,12 +134,12 @@ export function CourseViewer({ course }: CourseViewerProps) {
           {currentSlide?.title || `Bài giảng ${course.title}`}
         </CardTitle>
         <div className="flex items-center gap-2 self-end sm:self-center">
-          {currentSlide?.url && (
+          {currentSlide?.fileUrl && (
             <Button
               variant="outline"
               size="icon"
               title="Tải xuống slide hiện tại"
-              onClick={() => window.open(currentSlide.url, '_blank')}
+              onClick={() => window.open(currentSlide.fileUrl!, "_blank")}
               className="h-9 w-9"
             >
               <Download className="h-4 w-4" />
@@ -132,18 +149,30 @@ export function CourseViewer({ course }: CourseViewerProps) {
           <Button
             variant="outline"
             size="icon"
-            title={isFullscreen ? 'Thoát toàn màn hình' : 'Xem toàn màn hình'}
+            title={isFullscreen ? "Thoát toàn màn hình" : "Xem toàn màn hình"}
             onClick={toggleFullscreen}
             className="h-9 w-9"
           >
-            {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
-            <span className="sr-only">{isFullscreen ? 'Thoát toàn màn hình' : 'Toàn màn hình'}</span>
+            {isFullscreen ? (
+              <Minimize2 className="h-4 w-4" />
+            ) : (
+              <Maximize2 className="h-4 w-4" />
+            )}
+            <span className="sr-only">
+              {isFullscreen ? "Thoát toàn màn hình" : "Toàn màn hình"}
+            </span>
           </Button>
         </div>
       </CardHeader>
       <CardContent className="p-0" id="course-viewer-content">
-        <div className={`relative ${isFullscreen ? 'h-screen bg-background' : 'min-h-[400px] md:min-h-[500px] lg:min-h-[600px]'} w-full flex flex-col items-center justify-center bg-muted/30`}>
-          {currentSlide?.type === 'pdf' ? (
+        <div
+          className={`relative ${
+            isFullscreen
+              ? "h-screen bg-background"
+              : "min-h-[400px] md:min-h-[500px] lg:min-h-[800px]"
+          } w-full flex flex-col items-center justify-center bg-muted/30`}
+        >
+          {currentSlide?.type === "pdf_url" ? (
             <>
               {isLoadingPdf && !pdfError && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/80 z-10">
@@ -156,72 +185,108 @@ export function CourseViewer({ course }: CourseViewerProps) {
                   <AlertTriangle className="mx-auto h-12 w-12" />
                   <p className="font-semibold">Lỗi tải PDF</p>
                   <p className="text-sm">{pdfError}</p>
-                  <Button variant="outline" onClick={() => { setPdfError(null); setIsLoadingPdf(true); setPageNumber(1); }}>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setPdfError(null);
+                      setIsLoadingPdf(true);
+                      setPageNumber(1);
+                    }}
+                  >
                     <RefreshCw className="mr-2 h-4 w-4" /> Thử lại
                   </Button>
                 </div>
               )}
               {!pdfError && (
                 <Document
-                  file={currentSlide.url}
+                  file={currentSlide.fileUrl}
                   onLoadSuccess={onDocumentLoadSuccess}
                   onLoadError={onDocumentLoadError}
-                  loading={<Skeleton className={`w-full ${isFullscreen ? 'h-screen' : 'h-[600px]'}`} />} // Hiển thị skeleton khi đang tải
-                  className={`flex-grow w-full overflow-hidden ${isLoadingPdf ? 'opacity-0' : 'opacity-100'}`}
-                  options={{StandardFontDataFactory: `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/standard_fonts/` }} // Tùy chọn cho react-pdf, chỉ định nguồn font chuẩn
+                  loading={
+                    <Skeleton
+                      className={`w-full ${
+                        isFullscreen ? "h-screen" : "h-[800px]"
+                      }`}
+                    />
+                  } 
+                  className={`flex-grow w-full overflow-hidden ${
+                    isLoadingPdf ? "opacity-0" : "opacity-100"
+                  }`}
+                  options={{
+                    standardFontDataUrl: `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/standard_fonts/`,
+                  }} 
                 >
-                  {/* Component Page của react-pdf */}
+                  
                   <Page
-                    pageNumber={pageNumber} // Số trang hiện tại để hiển thị
-                    width={isFullscreen ? window.innerWidth - 40 : undefined} 
-                    height={isFullscreen ? window.innerHeight - (slides.length > 1 || numPages > 1 ? 120 : 60) : undefined} 
-                    renderTextLayer={true} // Cho phép chọn văn bản
+                    pageNumber={pageNumber} 
+                    width={isFullscreen ? window.innerWidth - 40 : undefined}
+                    height={
+                      isFullscreen
+                        ? window.innerHeight -
+                          (lessons.length > 1 || (numPages && numPages > 1) ? 120 : 60)
+                        : undefined
+                    }
+                    renderTextLayer={true} 
                     renderAnnotationLayer={true}
                     className="flex justify-center items-center"
-                    loading={<Skeleton className={`w-full ${isFullscreen ? 'h-screen' : 'h-[600px]'}`} />} // Hiển thị skeleton khi trang đang tải
+                    loading={
+                      <Skeleton
+                        className={`w-full ${
+                          isFullscreen ? "h-screen" : "h-[800px]"
+                        }`}
+                      />
+                    }
                   />
                 </Document>
               )}
             </>
-          ) : currentSlide?.type === 'image' ? (
-            <div className="relative w-full h-full max-h-[80vh] flex items-center justify-center p-4">
-               {/* Sử dụng NextImage để tối ưu hóa hình ảnh */}
-               <NextImage
-                src={currentSlide.url}
-                alt={currentSlide.title || 'Nội dung hình ảnh'}
-                layout="fill"
-                objectFit="contain"
-                className="rounded-md"
-              />
-            </div>
           ) : (
             <div className="p-6 text-center text-muted-foreground">
-                <ImageIcon className="mx-auto h-12 w-12 mb-4 text-gray-400" />
-                Định dạng slide không được hỗ trợ hoặc không có nội dung.
+              <ImageIcon className="mx-auto h-12 w-12 mb-4 text-gray-400" />
+              Định dạng slide không được hỗ trợ hoặc không có nội dung.
             </div>
           )}
         </div>
-        {(slides.length > 1 || (currentSlide?.type === 'pdf' && numPages && numPages > 1)) && (
+        {(lessons.length > 1 ||
+          (currentSlide?.type === "pdf_url" && numPages && numPages > 1)) && (
           <div className="flex items-center justify-between p-3 border-t bg-background">
             <Button
               variant="outline"
-              onClick={currentSlide?.type === 'pdf' ? handlePrevPage : handlePrevSlide}
-              disabled={(currentSlide?.type === 'pdf' ? pageNumber <= 1 : currentSlideIndex === 0) || isLoadingPdf}
+              onClick={
+                currentSlide?.type === "pdf_url" ? handlePrevPage : handlePrevSlide
+              }
+              disabled={
+                (currentSlide?.type === "pdf_url"
+                  ? pageNumber <= 1
+                  : currentSlideIndex === 0) || isLoadingPdf
+              }
               className="h-9"
             >
               <ChevronLeft className="h-4 w-4" />
-              <span className="ml-1.5">{currentSlide?.type === 'pdf' ? 'Trang trước' : 'Slide trước'}</span>
+              <span className="ml-1.5">
+                {currentSlide?.type === "pdf_url" ? "Trang trước" : "Slide trước"}
+              </span>
             </Button>
             <span className="text-sm text-muted-foreground">
-              {currentSlide?.type === 'pdf' ? `Trang ${pageNumber} / ${numPages || '...'}` : `Slide ${currentSlideIndex + 1} / ${slides.length}`}
+              {currentSlide?.type === "pdf_url"
+                ? `Trang ${pageNumber} / ${numPages || "..."}`
+                : `Slide ${currentSlideIndex + 1} / ${lessons.length}`}
             </span>
             <Button
               variant="outline"
-              onClick={currentSlide?.type === 'pdf' ? handleNextPage : handleNextSlide}
-              disabled={(currentSlide?.type === 'pdf' ? pageNumber >= (numPages ?? 0) : currentSlideIndex === slides.length - 1) || isLoadingPdf }
+              onClick={
+                currentSlide?.type === "pdf_url" ? handleNextPage : handleNextSlide
+              }
+              disabled={
+                (currentSlide?.type === "pdf_url"
+                  ? pageNumber >= (numPages ?? 0)
+                  : currentSlideIndex === lessons.length - 1) || isLoadingPdf
+              }
               className="h-9"
             >
-              <span className="mr-1.5">{currentSlide?.type === 'pdf' ? 'Trang sau' : 'Slide sau'}</span>
+              <span className="mr-1.5">
+                {currentSlide?.type === "pdf_url" ? "Trang sau" : "Slide sau"}
+              </span>
               <ChevronRight className="h-4 w-4" />
             </Button>
           </div>
@@ -231,3 +296,4 @@ export function CourseViewer({ course }: CourseViewerProps) {
   );
 }
 
+export default CourseViewer;

@@ -1,1 +1,17 @@
-export * from './department-tree'; 
+/**
+ * Enterprise Utilities Index
+ * Central export point for all utility functions
+ * Following domain-driven design principles
+ */
+
+// Core utilities
+export { cn } from "../utils";
+
+// Domain-specific utilities
+export * from "./form.utils";
+export * from "./string.utils"; 
+export * from "./date.utils";
+export * from "./error.utils";
+export * from "./performance.utils";
+export * from "./department-tree";
+export * from "./code-generator";

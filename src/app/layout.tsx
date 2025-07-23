@@ -1,26 +1,26 @@
-import type { Metadata } from 'next';
-import './globals.css';
-import { AuthProvider } from '@/hooks/useAuth';
-// Toaster component từ Shadcn được import trong ToastProvider
-import { Inter, Poppins } from 'next/font/google';
-import { ToastProvider } from '@/providers/toast-provider';
-import { CustomThemeProvider } from '@/providers/theme-provider'; // Đã đổi tên import
+import type { Metadata } from "next";
+import "./globals.css";
+import { AuthProvider } from "@/hooks/useAuth";
+// Chỉ sử dụng Inter font
+import { Inter } from "next/font/google";
+import { ToastProvider } from "@/providers/toast-provider";
+import { CustomThemeProvider } from "@/providers/theme-provider";
+import { LoadingProvider } from "@/providers/loading-provider";
+import { QueryProvider } from "@/providers/query-provider";
 
-const inter = Inter({ subsets: ['latin'] });
-const poppins = Poppins({ 
-  weight: ['400', '500', '600', '700'],
-  subsets: ['latin'],
-  variable: '--font-poppins'
+const inter = Inter({
+  subsets: ["latin"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
-  title: 'BECAMEX - Hệ thống Quản lý Đào tạo',
-  description: 'Hệ thống Quản lý Đào tạo Toàn diện cho BECAMEX',
+  title: "BECAMEX - Hệ thống Quản lý Đào tạo",
+  description: "Hệ thống Quản lý Đào tạo Toàn diện cho BECAMEX",
   icons: {
     icon: [
       {
-        url: '/B.svg',
-        sizes: 'any',
+        url: "/B.svg",
+        sizes: "any",
       },
     ],
   },
@@ -33,23 +33,23 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="vi" suppressHydrationWarning>
-      <head>
-      </head>
-      <body className={`${inter.className} ${poppins.variable}`}>
-        <CustomThemeProvider // Đã đổi thành CustomThemeProvider
+      <head></head>
+      <body className={inter.className}>
+        <CustomThemeProvider
           attribute="class"
           defaultTheme="system"
           enableSystem
           disableTransitionOnChange
         >
-          <AuthProvider>
-            <ToastProvider>
-              {children}
-            </ToastProvider>
-          </AuthProvider>
+          <QueryProvider>
+            <AuthProvider>
+              <LoadingProvider>
+                <ToastProvider>{children}</ToastProvider>
+              </LoadingProvider>
+            </AuthProvider>
+          </QueryProvider>
         </CustomThemeProvider>
       </body>
     </html>
   );
 }
-

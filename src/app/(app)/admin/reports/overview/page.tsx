@@ -1,503 +1,765 @@
-'use client';
+"use client";
 
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Badge } from '@/components/ui/badge';
-import { StarRatingDisplay } from '@/components/courses/StarRatingDisplay';
-import { BookText as BookTextIcon, FileText, Users, CheckSquare, Clock, Award, BarChartHorizontalBig, Activity } from "lucide-react";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { StarRatingDisplay } from "@/components/ui/StarRatingDisplay";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
+import {
+  BookText as BookTextIcon,
+  FileText,
+  Users,
+  CheckSquare,
+  Clock,
+  Award,
+  BarChartHorizontalBig,
+  Activity,
+  Loader2,
+  AlertTriangle,
+  TrendingUp,
+  PieChart as PieChartIcon,
+  RefreshCw,
+  Calendar,
+  Filter,
+  ChevronDown,
+  Building2,
+  BarChart3,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
 import { useState, useMemo } from "react";
-import { useCookie } from "@/hooks/use-cookie";
-import { useUserStore } from "@/stores/user-store";
-import type { Course, StudentCourseEvaluation, Department } from "@/lib/types";
 import {
-    mockCourses as initialMockCourses,
-    mockEvaluations as initialMockEvaluations,
-    mockUsers
-} from "@/lib/mock";
-import { departmentOptions as globalDepartmentOptions } from '@/lib/constants';
+  useCourseAndAvgFeedbackReport,
+  useAvgFeedbackReport,
+  useStudentsOfCourseReport,
+  useMonthlyReport,
+  useTopDepartments,
+} from "@/hooks/use-reports";
 import {
-  startOfMonth,
-  endOfMonth,
-  subMonths,
-  startOfQuarter,
-  endOfQuarter,
-  subQuarters,
-  startOfYear,
-  endOfYear,
-  subYears,
-  isWithinInterval,
-} from 'date-fns';
+  AvgFeedbackData,
+  CourseAndAvgFeedback,
+  StudentsOfCourse,
+  MonthlyReportData,
+} from "@/lib/services/modern/report.service";
+import { extractErrorMessage } from "@/lib/core";
+import { ApiDataCharts } from "@/components/reports/ApiDataCharts";
+import dynamic from 'next/dynamic';
 
-
-const OVERVIEW_REPORT_COURSES_KEY = 'becamex-courses-data';
-const OVERVIEW_REPORT_EVALUATIONS_KEY = 'becamex-course-evaluations-data';
-
-const evaluationCriteriaLabels: Record<keyof StudentCourseEvaluation['ratings'], string> = {
-  contentRelevance: "Nội dung phù hợp công việc",
-  clarity: "Kiến thức dễ hiểu",
-  structureLogic: "Cấu trúc logic",
-  durationAppropriateness: "Thời lượng hợp lý",
-  materialsEffectiveness: "Tài liệu hiệu quả",
+const evaluationCriteriaLabels: Record<keyof AvgFeedbackData, string> = {
+  q1_relevanceAvg: "Nội dung phù hợp công việc",
+  q2_clarityAvg: "Kiến thức dễ hiểu",
+  q3_structureAvg: "Cấu trúc logic",
+  q4_durationAvg: "Thời lượng hợp lý",
+  q5_materialAvg: "Tài liệu hiệu quả",
 };
 
-type CriteriaKey = keyof StudentCourseEvaluation['ratings'];
+type CriteriaKey = keyof AvgFeedbackData;
 
 const criteriaOrder: CriteriaKey[] = [
-  'contentRelevance',
-  'clarity',
-  'structureLogic',
-  'durationAppropriateness',
-  'materialsEffectiveness'
+  "q1_relevanceAvg",
+  "q2_clarityAvg",
+  "q3_structureAvg",
+  "q4_durationAvg",
+  "q5_materialAvg",
 ];
 
-interface DepartmentStat {
-  id: Department;
-  name: string;
-  courses: number;
-  trainees: number;
-  score: number;
-}
+const criteriaShortLabels: Record<CriteriaKey, string> = {
+  q1_relevanceAvg: "Phù hợp",
+  q2_clarityAvg: "Dễ hiểu",
+  q3_structureAvg: "Logic",
+  q4_durationAvg: "Thời lượng",
+  q5_materialAvg: "Tài liệu",
+};
 
-function getDateRange(period: string): { start: Date; end: Date } | null {
-  const now = new Date();
-  switch (period) {
-    case 'last_month':
-      const prevMonth = subMonths(now, 1);
-      return { start: startOfMonth(prevMonth), end: endOfMonth(prevMonth) };
-    case 'last_quarter':
-      const prevQuarter = subQuarters(now, 1);
-      return { start: startOfQuarter(prevQuarter), end: endOfQuarter(prevQuarter) };
-    case 'last_year':
-      const prevYear = subYears(now, 1);
-      return { start: startOfYear(prevYear), end: endOfYear(prevYear) };
-    case 'all_time':
-    default:
-      return null; // Trả về null nếu là 'all_time' hoặc giá trị không xác định
-  }
-}
+type FilterType = "all" | "year" | "quarter" | "month";
 
+// Dynamically import client-side components to avoid hydration errors
+const ClientStarRatingDisplay = dynamic(() => import('@/components/ui/StarRatingDisplay'), { ssr: false });
 
 export default function TrainingOverviewReportPage() {
-  const [allCoursesFromCookie] = useCookie<Course[]>(OVERVIEW_REPORT_COURSES_KEY, initialMockCourses);
-  const [allEvaluationsFromCookie] = useCookie<StudentCourseEvaluation[]>(OVERVIEW_REPORT_EVALUATIONS_KEY, initialMockEvaluations);
-  const allUsersFromStore = useUserStore(state => state.users);
+  const [filterType, setFilterType] = useState<FilterType>("all");
+  const [selectedMonth, setSelectedMonth] = useState<number>(
+    new Date().getMonth() + 1
+  );
+  const [selectedYear, setSelectedYear] = useState<number>(
+    new Date().getFullYear()
+  );
+  const [selectedQuarter, setSelectedQuarter] = useState<number>(
+    Math.ceil((new Date().getMonth() + 1) / 3)
+  );
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
 
-  const [selectedPeriod, setSelectedPeriod] = useState<string>("all_time");
+  const {
+    data: overallFeedback,
+    isLoading: isLoadingOverallFeedback,
+    error: overallFeedbackError,
+  } = useAvgFeedbackReport();
 
-  // Ensure we have data even if cookies are empty
-  const allCourses = useMemo(() => {
-    return Array.isArray(allCoursesFromCookie) && allCoursesFromCookie.length > 0 
-      ? allCoursesFromCookie 
-      : initialMockCourses;
-  }, [allCoursesFromCookie]);
+  const {
+    data: courseFeedback,
+    isLoading: isLoadingCourseFeedback,
+    error: courseFeedbackError,
+  } = useCourseAndAvgFeedbackReport();
 
-  const allEvaluations = useMemo(() => {
-    return Array.isArray(allEvaluationsFromCookie) && allEvaluationsFromCookie.length > 0
-      ? allEvaluationsFromCookie
-      : initialMockEvaluations;
-  }, [allEvaluationsFromCookie]);
+  const {
+    data: studentsData,
+    isLoading: isLoadingStudents,
+    error: studentsError,
+  } = useStudentsOfCourseReport();
 
-  const allUsers = useMemo(() => {
-    return Array.isArray(allUsersFromStore) && allUsersFromStore.length > 0
-      ? allUsersFromStore
-      : mockUsers;
-  }, [allUsersFromStore]);
+  const {
+    data: monthlyReport,
+    isLoading: isLoadingMonthlyReport,
+    error: monthlyReportError,
+  } = useMonthlyReport(selectedMonth, filterType === "month");
+  
+  const { 
+    data: topDepartments, 
+    isLoading: isLoadingTopDepartments,
+    error: topDepartmentsError 
+  } = useTopDepartments();
 
-  const reportData = useMemo(() => {
-    const safeCourses = allCourses;
-    const safeEvaluations = allEvaluations;
-    const safeUsers = allUsers;
+  const isLoading = useMemo(() => {
+    return (
+      isLoadingOverallFeedback ||
+      isLoadingCourseFeedback ||
+      isLoadingStudents ||
+      isLoadingTopDepartments ||
+      (filterType === "month" && isLoadingMonthlyReport)
+    );
+  }, [
+    isLoadingOverallFeedback,
+    isLoadingCourseFeedback,
+    isLoadingStudents,
+    isLoadingTopDepartments,
+    filterType,
+    isLoadingMonthlyReport,
+  ]);
 
-    const dateRange = getDateRange(selectedPeriod);
+  const anyError = useMemo(() => {
+    return (
+      overallFeedbackError ||
+      courseFeedbackError ||
+      studentsError ||
+      topDepartmentsError ||
+      (filterType === "month" && monthlyReportError)
+    );
+  }, [
+    overallFeedbackError,
+    courseFeedbackError,
+    studentsError,
+    topDepartmentsError,
+    filterType,
+    monthlyReportError,
+  ]);
 
-    // Lọc các khóa học dựa trên giai đoạn và trạng thái
-    const coursesInPeriod = safeCourses.filter(course => {
-      if (!course) return false; // Bỏ qua nếu khóa học không hợp lệ
-      const isActiveStatus = course.status === 'published' || course.status === 'archived';
-      if (!isActiveStatus) return false;
-      if (!dateRange) return true; // Bao gồm tất cả nếu là 'all_time'
-      if (!course.startDate) return false; // Không thể lọc nếu không có ngày bắt đầu
-      try {
-        const courseStartDate = new Date(course.startDate);
-        if (isNaN(courseStartDate.getTime())) return false; // Ngày không hợp lệ
-        return isWithinInterval(courseStartDate, dateRange);
-      } catch (e) {
-        console.error("Lỗi phân tích cú pháp ngày bắt đầu khóa học:", course.startDate, e);
-        return false; // Lỗi trong quá trình phân tích cú pháp ngày
-      }
-    });
+  const metrics = useMemo(() => {
+    const totalCourses =
+      filterType === "all"
+        ? courseFeedback?.length || 0
+        : monthlyReport?.numberOfCourses || 0;
 
-    const numCoursesOrganized = coursesInPeriod.length;
+    const totalStudents =
+      filterType === "all"
+        ? studentsData?.reduce((sum, course) => sum + course.totalStudent, 0) ||
+          0
+        : monthlyReport?.numberOfStudents || 0;
 
-    // Tính toán số học viên duy nhất
-    const uniqueParticipantIds = new Set<string>();
-    coursesInPeriod.forEach(course => {
-      if (course && Array.isArray(course.enrolledTrainees)) {
-        course.enrolledTrainees.forEach(id => {
-          if (id) uniqueParticipantIds.add(id);
-        });
-      }
-    });
-    const totalUniqueParticipants = uniqueParticipantIds.size;
+    const completionRate =
+      filterType === "all"
+        ? "Đang phát triển..."
+        : `${(monthlyReport?.averangeCompletedPercentage || 0).toFixed(1)}%`;
 
-    // Tính toán tổng số lượt ghi danh
-    let totalEnrollmentsInRelevantCourses = 0;
-    coursesInPeriod.forEach(course => {
-      if (course && Array.isArray(course.enrolledTrainees)) {
-        totalEnrollmentsInRelevantCourses += course.enrolledTrainees.length;
-      }
-    });
+    const avgTrainingHours =
+      filterType === "all"
+        ? "Đang phát triển..."
+        : `${(monthlyReport?.averangeTime || 0).toFixed(1)} giờ`;
 
-    // Tính toán tổng số lượt hoàn thành
-    let totalCompletions = 0;
-    safeUsers.forEach(user => {
-        if (user && Array.isArray(user.completedCourses)) {
-            user.completedCourses.forEach(completedCourse => {
-                if (completedCourse && coursesInPeriod.some(c => c && c.id === completedCourse.courseId)) {
-                    totalCompletions++;
-                }
-            });
-        }
-    });
-    const completionRate = totalEnrollmentsInRelevantCourses > 0
-        ? Math.round((totalCompletions / totalEnrollmentsInRelevantCourses) * 100)
-        : 0;
+    const positiveEvalRate =
+      filterType === "all"
+        ? overallFeedback
+          ? `${(
+              ((overallFeedback.q1_relevanceAvg +
+                overallFeedback.q2_clarityAvg +
+                overallFeedback.q3_structureAvg +
+                overallFeedback.q4_durationAvg +
+                overallFeedback.q5_materialAvg) /
+                5) *
+              20
+            ).toFixed(0)}%`
+          : "0%"
+        : `${(monthlyReport?.averagePositiveFeedback || 0).toFixed(1)}%`;
 
-    // Tính toán tổng số giờ đào tạo được cung cấp
-    let totalCourseHoursOffered = 0;
-    coursesInPeriod.forEach(course => {
-        if (course && course.duration && typeof course.duration.sessions === 'number' && typeof course.duration.hoursPerSession === 'number') {
-            totalCourseHoursOffered += course.duration.sessions * course.duration.hoursPerSession;
-        }
-    });
-    const avgTrainingHoursPerPerson = totalUniqueParticipants > 0
-        ? parseFloat((totalCourseHoursOffered / totalUniqueParticipants).toFixed(1))
-        : 0;
+    return [
+      {
+        id: "coursesOrganized",
+        title: "Khóa học Đã Tổ chức",
+        value: totalCourses.toString(),
+        icon: FileText,
+        unit: "khóa học",
+      },
+      {
+        id: "totalParticipants",
+        title: "Tổng Học viên",
+        value: totalStudents.toString(),
+        icon: Users,
+        unit: "học viên",
+      },
+      {
+        id: "completionRate",
+        title: "Tỷ lệ Hoàn thành",
+        value: completionRate,
+        icon: CheckSquare,
+        unit: "",
+      },
+      {
+        id: "avgTrainingHours",
+        title: "Thời lượng TB",
+        value: avgTrainingHours,
+        icon: Clock,
+        unit: "",
+      },
+      {
+        id: "positiveEvalRate",
+        title: "Chỉ số Hài lòng",
+        value: positiveEvalRate,
+        icon: Award,
+        unit: filterType === "all" ? "(tổng hợp)" : "",
+      },
+    ];
+  }, [
+    filterType,
+    courseFeedback,
+    studentsData,
+    monthlyReport,
+    overallFeedback,
+  ]);
 
-    // Lọc các đánh giá dựa trên giai đoạn
-    const evaluationsInPeriod = safeEvaluations.filter(evaluation => {
-      if (!evaluation || !coursesInPeriod.some(c => c && c.id === evaluation.courseId)) return false;
-      if (!dateRange) return true; // Bao gồm tất cả nếu là 'all_time'
-      if (!evaluation.submissionDate) return false; // Không thể lọc nếu không có ngày nộp
-      try {
-        const submissionDate = new Date(evaluation.submissionDate);
-        if (isNaN(submissionDate.getTime())) return false; // Ngày không hợp lệ
-        return isWithinInterval(submissionDate, dateRange);
-      } catch (e) {
-        console.error("Lỗi phân tích cú pháp ngày nộp đánh giá:", evaluation.submissionDate, e);
-        return false; // Lỗi trong quá trình phân tích cú pháp ngày
-      }
-    });
+  const getFilterDisplayLabel = () => {
+    switch (filterType) {
+      case "month":
+        return `Tháng ${selectedMonth}/${selectedYear}`;
+      case "quarter":
+        return `Quý ${selectedQuarter}/${selectedYear}`;
+      case "year":
+        return `Năm ${selectedYear}`;
+      default:
+        return "Toàn bộ thời gian";
+    }
+  };
 
-    // Tính toán tỷ lệ đánh giá tích cực
-    let positiveEvaluationsCount = 0;
-    evaluationsInPeriod.forEach(evaluation => {
-        if (evaluation && evaluation.ratings) {
-            const criteriaRatings = Object.values(evaluation.ratings);
-            const highlyRatedCriteria = criteriaRatings.filter(rating => typeof rating === 'number' && rating >= 4).length;
-            const numCriteria = Object.keys(evaluationCriteriaLabels).length;
-            if (numCriteria > 0 && highlyRatedCriteria >= Math.max(1, numCriteria -1) ) { // Tích cực nếu >= (số tiêu chí - 1) tiêu chí được đánh giá cao, tối thiểu 1
-                positiveEvaluationsCount++;
-            }
-        }
-    });
-    const totalRelevantEvaluationsCount = evaluationsInPeriod.length;
-    const positiveEvaluationRate = totalRelevantEvaluationsCount > 0
-        ? Math.round((positiveEvaluationsCount / totalRelevantEvaluationsCount) * 100)
-        : 0;
+  const hasActiveFilter = filterType !== "all";
 
-    // Khởi tạo điểm đánh giá tổng thể
-    const overallScores: Record<CriteriaKey, { sum: number, count: number }> = {} as Record<CriteriaKey, { sum: number, count: number }>;
-    criteriaOrder.forEach(key => {
-        overallScores[key] = { sum: 0, count: 0 };
-    });
-    let totalValidEvaluationsForCriteria = 0;
+  const resetFilters = () => {
+    setFilterType("all");
+    setSelectedMonth(new Date().getMonth() + 1);
+    setSelectedYear(new Date().getFullYear());
+    setSelectedQuarter(Math.ceil((new Date().getMonth() + 1) / 3));
+    setIsFilterOpen(false);
+  };
 
-    evaluationsInPeriod.forEach(evaluation => {
-      if (evaluation && evaluation.ratings) {
-        let validCriteriaInEval = 0;
-        criteriaOrder.forEach(key => {
-          const rating = evaluation.ratings[key];
-          if (typeof rating === 'number' && rating >= 1 && rating <= 5) {
-            overallScores[key].sum += rating;
-            overallScores[key].count += 1;
-            validCriteriaInEval++;
-          }
-        });
-        if (validCriteriaInEval > 0) totalValidEvaluationsForCriteria++;
-      }
-    });
+  const handleFilterChange = (newFilterType: FilterType) => {
+    setFilterType(newFilterType);
+    if (newFilterType === "all") {
+      setIsFilterOpen(false);
+    }
+  };
 
-    const overallEvaluationAverages = {} as Record<CriteriaKey, { average: number; count: number }>;
-    criteriaOrder.forEach(key => {
-      overallEvaluationAverages[key] = {
-        average: overallScores[key].count > 0 ? parseFloat((overallScores[key].sum / overallScores[key].count).toFixed(2)) : 0,
-        count: overallScores[key].count,
-      };
-    });
+  const applyFilters = () => {
+    setIsFilterOpen(false);
+  };
 
-    // Tính toán điểm đánh giá trung bình theo khóa học
-    const perCourseEvaluationAverages = coursesInPeriod
-      .map(course => {
-        if (!course) return null;
-        const courseEvaluations = evaluationsInPeriod.filter(ev => ev && ev.courseId === course.id);
-        if (!courseEvaluations.length) return null;
+  if (isLoading && !anyError) {
+    return (
+      <div className="min-h-screen from-orange-50 via-amber-50/50 to-red-50/30 dark:from-slate-950 dark:via-orange-950/20 dark:to-red-950/10">
+        <div className="container mx-auto px-4 py-8">
+          <div className="flex h-60 w-full items-center justify-center">
+            <div className="text-center space-y-4">
+              <Loader2 className="h-12 w-12 animate-spin text-orange-500 mx-auto" />
+              <div className="space-y-2">
+                <p className="text-lg font-medium text-slate-700 dark:text-slate-300">
+                  Đang tải dữ liệu báo cáo...
+                </p>
+                <p className="text-sm text-slate-500 dark:text-slate-400">
+                  {getFilterDisplayLabel()}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
-        const courseScores: Record<CriteriaKey, { sum: number, count: number }> = {} as Record<CriteriaKey, { sum: number, count: number }>;
-        criteriaOrder.forEach(key => {
-            courseScores[key] = { sum: 0, count: 0 };
-        });
-        let totalEvaluationsForCourse = 0;
-
-        courseEvaluations.forEach(evaluation => {
-            if (evaluation && evaluation.ratings) {
-                let validCriteriaInEval = 0;
-                criteriaOrder.forEach(key => {
-                    const rating = evaluation.ratings[key];
-                    if (typeof rating === 'number' && rating >= 1 && rating <= 5) {
-                      courseScores[key].sum += rating;
-                      courseScores[key].count += 1;
-                      validCriteriaInEval++;
-                    }
-                });
-                if(validCriteriaInEval > 0) totalEvaluationsForCourse++;
-            }
-        });
-
-        const courseAverages = {} as Record<CriteriaKey, { average: number; count: number }>;
-        criteriaOrder.forEach(key => {
-          courseAverages[key] = {
-            average: courseScores[key].count > 0 ? parseFloat((courseScores[key].sum / courseScores[key].count).toFixed(2)) : 0,
-            count: courseScores[key].count,
-          };
-        });
-
-        return {
-          courseId: course.id,
-          courseTitle: course.title,
-          averages: courseAverages,
-          totalEvaluationsForCourse,
-        };
-      })
-      .filter(Boolean) as Array<{ courseId: string; courseTitle: string; averages: Record<CriteriaKey, {average: number; count: number}>; totalEvaluationsForCourse: number}>;
-
-    // Tính toán top phòng ban
-    const departmentStatsMap = new Map<Department, { trainees: Set<string>; coursesAttended: Set<string> }>();
-
-    safeUsers.forEach(user => {
-        if (user && user.department && user.role === 'Trainee') {
-            const deptKey = user.department as Department;
-            if (!departmentStatsMap.has(deptKey)) {
-                departmentStatsMap.set(deptKey, { trainees: new Set(), coursesAttended: new Set() });
-            }
-            const stats = departmentStatsMap.get(deptKey)!;
-            stats.trainees.add(user.id);
-
-            coursesInPeriod.forEach(courseInP => { // Chỉ xem xét các khóa học trong giai đoạn
-                if (courseInP && Array.isArray(courseInP.enrolledTrainees) && courseInP.enrolledTrainees.includes(user.id)) {
-                    stats.coursesAttended.add(courseInP.id);
-                }
-            });
-        }
-    });
-
-    const calculatedTopDepartments: DepartmentStat[] = Array.from(departmentStatsMap.entries())
-        .map(([deptKey, stats]) => {
-            const deptInfo = globalDepartmentOptions.find(opt => opt.value === deptKey);
-            return {
-                id: deptKey,
-                name: deptInfo ? deptInfo.label : deptKey.toString().toUpperCase(), // Đảm bảo tên là chuỗi
-                trainees: stats.trainees.size,
-                courses: stats.coursesAttended.size,
-                score: (stats.trainees.size * 1) + (stats.coursesAttended.size * 3), // Ví dụ: điểm được tính dựa trên số học viên và số khóa học
-            };
-        })
-        .sort((a, b) => b.score - a.score)
-        .slice(0, 5);
-
-    return {
-      numCoursesOrganized,
-      totalParticipants: totalUniqueParticipants,
-      completionRate,
-      avgTrainingHoursPerPerson,
-      topDepartments: calculatedTopDepartments,
-      positiveEvaluationRate,
-      totalRelevantEvaluations: totalRelevantEvaluationsCount,
-      overallEvaluationAverages,
-      perCourseEvaluationAverages,
-      totalValidEvaluationsForCriteria,
-    };
-  }, [allCourses, allEvaluations, allUsers, selectedPeriod]);
-
-
-  const metrics = [
-    { id: "coursesOrganized", title: "Số Khóa học Đã Tổ chức", value: reportData.numCoursesOrganized.toString(), icon: FileText, unit: "khóa học" },
-    { id: "totalParticipants", title: "Tổng Số Học viên Duy nhất", value: reportData.totalParticipants.toString(), icon: Users, unit: "học viên" },
-    { id: "completionRate", title: "Tỷ lệ Hoàn thành", value: `${reportData.completionRate}%`, icon: CheckSquare, unit: `(${reportData.totalParticipants} lượt ghi danh)` },
-    { id: "avgTrainingHours", title: "Số Giờ Đào tạo TB/Người", value: `${reportData.avgTrainingHoursPerPerson} giờ`, icon: Clock, unit: "(dựa trên giờ học cung cấp)" },
-    { id: "positiveEvalRate", title: "Tỷ lệ Đánh giá Tích cực", value: `${reportData.positiveEvaluationRate}%`, icon: Award, unit: `(${reportData.totalRelevantEvaluations} đánh giá)` },
-  ];
+  if (anyError) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-orange-50 via-amber-50/50 to-red-50/30 dark:from-slate-950 dark:via-orange-950/20 dark:to-red-950/10">
+        <div className="container mx-auto px-4 py-8">
+          <div className="flex flex-col items-center justify-center h-60 w-full text-red-600 dark:text-red-400">
+            <AlertTriangle className="h-12 w-12 mb-4" />
+            <p className="text-xl font-semibold mb-2">
+              Lỗi tải dữ liệu báo cáo
+            </p>
+            <p className="text-sm text-slate-600 dark:text-slate-400 text-center max-w-md">
+              {extractErrorMessage(anyError)}
+            </p>
+            <Button
+              onClick={() => window.location.reload()}
+              className="mt-4 bg-orange-500 hover:bg-orange-600 text-white shadow-lg"
+            >
+              Thử lại
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-8">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-headline font-semibold">Báo cáo Tổng quan & Đánh giá Đào tạo</h1>
-          <p className="text-muted-foreground mt-1">Cung cấp cái nhìn tổng thể về hiệu quả, tình hình và chất lượng đào tạo.</p>
-        </div>
-        <div className="w-full md:w-auto pt-2 md:pt-0">
-            <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
-                 <SelectTrigger className="w-full md:w-[240px] bg-background shadow-sm">
-                    <SelectValue placeholder="Chọn Giai đoạn Báo cáo" />
-                </SelectTrigger>
-                <SelectContent>
-                    <SelectItem value="all_time">Toàn bộ thời gian</SelectItem>
-                    <SelectItem value="last_month">Tháng Trước</SelectItem>
-                    <SelectItem value="last_quarter">Quý Trước</SelectItem>
-                    <SelectItem value="last_year">Năm Trước</SelectItem>
-                </SelectContent>
-            </Select>
-        </div>
-      </div>
-
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-        {metrics.map(metric => (
-          <Card key={metric.id} className="shadow-lg hover:shadow-xl transition-shadow duration-300 flex flex-col">
-            <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
-              <CardTitle className="text-[15px] font-semibold text-card-foreground">{metric.title}</CardTitle>
-              <metric.icon className="h-6 w-6 text-primary" />
-            </CardHeader>
-            <CardContent className="mt-auto">
-              <div className="text-4xl font-bold text-primary">{metric.value}</div>
-              {metric.unit && <p className="text-xs text-muted-foreground pt-1">{metric.unit}</p>}
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      <Card className="shadow-lg">
-        <CardHeader>
-          <CardTitle className="flex items-center font-headline text-xl">
-            <BarChartHorizontalBig className="mr-3 h-6 w-6 text-primary" />
-            Điểm Đánh giá Bình quân Chung ({reportData.totalValidEvaluationsForCriteria} đánh giá)
-          </CardTitle>
-          <CardDescription>Điểm trung bình cho từng tiêu chí trên tất cả các khóa học trong giai đoạn đã chọn.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {reportData.totalValidEvaluationsForCriteria > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {criteriaOrder.map(key => (
-                <Card key={key} className="bg-muted/30 p-4">
-                  <p className="text-sm font-medium text-muted-foreground">{evaluationCriteriaLabels[key]}</p>
-                  <div className="flex items-center gap-2 mt-1">
-                    <StarRatingDisplay rating={reportData.overallEvaluationAverages[key]?.average || 0} size={5} />
-                    <span className="text-lg font-bold text-primary">({reportData.overallEvaluationAverages[key]?.average || 0}/5)</span>
+    <div className="min-h-screen from-orange-50 via-amber-50/50 to-red-50/30 dark:from-slate-950 dark:via-orange-950/20 dark:to-red-950/10">
+      <div className="container mx-auto px-4 py-8 space-y-8">
+        <div className="relative">
+          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
+            <div className="flex-1">
+              <div className="flex items-start gap-4 mb-4">
+                <div className="flex-shrink-0 w-16 h-16 bg-gradient-to-br from-orange-500 to-red-500 rounded-xl flex items-center justify-center shadow-xl shadow-orange-500/25">
+                  <BarChart3 className="w-8 h-8 text-white" />
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-center gap-3 mb-2">
+                    <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-slate-900 via-orange-700 to-red-800 dark:from-slate-100 dark:via-orange-200 dark:to-red-200 bg-clip-text text-transparent leading-tight">
+                      Báo cáo Hiệu quả Đào tạo Doanh nghiệp
+                    </h1>
                   </div>
-                  <p className="text-xs text-muted-foreground mt-0.5">({reportData.overallEvaluationAverages[key]?.count || 0} lượt)</p>
-                </Card>
-              ))}
+                  <p className="text-lg text-slate-600 dark:text-slate-300 max-w-3xl">
+                    {getFilterDisplayLabel()} • Phân tích tổng thể về chất
+                    lượng, hiệu quả và tác động của chương trình đào tạo
+                  </p>
+                </div>
+              </div>
             </div>
-          ) : (
-            <p className="text-muted-foreground text-center py-8">Chưa có dữ liệu đánh giá nào để tổng hợp cho giai đoạn này.</p>
-          )}
-        </CardContent>
-      </Card>
+            <div className="flex items-center gap-3">
+              <Popover open={isFilterOpen} onOpenChange={setIsFilterOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 shadow-lg hover:shadow-xl transition-all duration-200 min-w-[200px] justify-between"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Filter className="w-4 h-4 text-orange-500" />
+                      <span className="font-medium">
+                        {getFilterDisplayLabel()}
+                      </span>
+                    </div>
+                    <ChevronDown className="w-4 h-4 text-slate-400" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent
+                  className="w-80 p-6 bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 shadow-2xl"
+                  align="end"
+                >
+                  <div className="space-y-6">
+                    <div className="space-y-3">
+                      <h4 className="font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                        <Filter className="w-4 h-4 text-orange-500" />
+                        Lọc theo thời gian
+                      </h4>
+                      <RadioGroup
+                        value={filterType}
+                        onValueChange={handleFilterChange}
+                        className="space-y-3"
+                      >
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="all" id="all" />
+                          <Label
+                            htmlFor="all"
+                            className="text-sm font-medium cursor-pointer"
+                          >
+                            Toàn bộ thời gian
+                          </Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="year" id="year" />
+                          <Label
+                            htmlFor="year"
+                            className="text-sm font-medium cursor-pointer"
+                          >
+                            Theo năm
+                          </Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="quarter" id="quarter" />
+                          <Label
+                            htmlFor="quarter"
+                            className="text-sm font-medium cursor-pointer"
+                          >
+                            Theo quý
+                          </Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="month" id="month" />
+                          <Label
+                            htmlFor="month"
+                            className="text-sm font-medium cursor-pointer"
+                          >
+                            Theo tháng
+                          </Label>
+                        </div>
+                      </RadioGroup>
+                    </div>
 
-      <Card className="shadow-xl">
-        <CardHeader>
-          <CardTitle className="flex items-center font-headline text-xl">
-            <BookTextIcon className="mr-3 h-6 w-6 text-primary" />
-            Điểm Đánh giá Chi tiết Theo Khóa học
-          </CardTitle>
-          <CardDescription>Điểm trung bình cho từng tiêu chí của mỗi khóa học có đánh giá trong giai đoạn đã chọn.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {reportData.perCourseEvaluationAverages.length > 0 ? (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="min-w-[200px]">Tên Khóa học</TableHead>
-                    {criteriaOrder.map(key => (
-                      <TableHead key={key} className="min-w-[180px] text-center">{evaluationCriteriaLabels[key]}</TableHead>
-                    ))}
-                    <TableHead className="text-center min-w-[100px]">Tổng ĐG</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {reportData.perCourseEvaluationAverages.map(item => (
-                    <TableRow key={item.courseId}>
-                      <TableCell className="font-medium">{item.courseTitle}</TableCell>
-                      {criteriaOrder.map(key => (
-                        <TableCell key={key} className="text-center">
-                           <div className="flex flex-col items-center">
-                            <StarRatingDisplay rating={item.averages[key]?.average || 0} size={4} />
-                            <span className="text-xs text-muted-foreground">({item.averages[key]?.average || 0}/5 - {item.averages[key]?.count || 0} ĐG)</span>
-                           </div>
-                        </TableCell>
+                    {filterType !== "all" && (
+                      <div className="space-y-4 pt-4 border-t border-slate-200 dark:border-slate-700">
+                        <div className="space-y-2">
+                          <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                            Năm
+                          </Label>
+                          <Select
+                            value={selectedYear.toString()}
+                            onValueChange={(value) =>
+                              setSelectedYear(parseInt(value))
+                            }
+                          >
+                            <SelectTrigger className="w-full">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {Array.from({ length: 5 }, (_, i) => {
+                                const year = new Date().getFullYear() - i;
+                                return (
+                                  <SelectItem
+                                    key={year}
+                                    value={year.toString()}
+                                  >
+                                    {year}
+                                  </SelectItem>
+                                );
+                              })}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        {filterType === "quarter" && (
+                          <div className="space-y-2">
+                            <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                              Quý
+                            </Label>
+                            <Select
+                              value={selectedQuarter.toString()}
+                              onValueChange={(value) =>
+                                setSelectedQuarter(parseInt(value))
+                              }
+                            >
+                              <SelectTrigger className="w-full">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {[
+                                  { value: 1, label: "Quý 1 (T1-T3)" },
+                                  { value: 2, label: "Quý 2 (T4-T6)" },
+                                  { value: 3, label: "Quý 3 (T7-T9)" },
+                                  { value: 4, label: "Quý 4 (T10-T12)" },
+                                ].map((quarter) => (
+                                  <SelectItem
+                                    key={quarter.value}
+                                    value={quarter.value.toString()}
+                                  >
+                                    {quarter.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        )}
+
+                        {filterType === "month" && (
+                          <div className="space-y-2">
+                            <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                              Tháng
+                            </Label>
+                            <Select
+                              value={selectedMonth.toString()}
+                              onValueChange={(value) =>
+                                setSelectedMonth(parseInt(value))
+                              }
+                            >
+                              <SelectTrigger className="w-full">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {Array.from({ length: 12 }, (_, i) => (
+                                  <SelectItem
+                                    key={i + 1}
+                                    value={(i + 1).toString()}
+                                  >
+                                    Tháng {i + 1}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        )}
+
+                        <Button
+                          onClick={applyFilters}
+                          className="w-full bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white shadow-lg"
+                        >
+                          Áp dụng bộ lọc
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                </PopoverContent>
+              </Popover>
+
+              {hasActiveFilter && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={resetFilters}
+                  className="flex items-center gap-2 bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-red-50 dark:hover:bg-red-950/20 hover:border-red-200 dark:hover:border-red-800 hover:text-red-600 dark:hover:text-red-400 transition-all duration-200 shadow-lg"
+                >
+                  <RefreshCw className="h-4 w-4" />
+                  <span className="hidden sm:inline">Đặt lại</span>
+                </Button>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+          {metrics.map((metric, index) => (
+            <Card
+              key={metric.id}
+              className="group relative bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm border-0 shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1 overflow-hidden"
+            >
+              <div className="absolute inset-0 bg-gradient-to-br from-orange-500/5 via-transparent to-red-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+              <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-3 relative z-10">
+                <div className="flex-1">
+                  <CardTitle className="text-sm font-semibold text-slate-600 dark:text-slate-300 mb-2 leading-tight">
+                    {metric.title}
+                  </CardTitle>
+                  <div className="text-2xl lg:text-3xl font-bold text-slate-900 dark:text-slate-100 mb-1">
+                    {metric.value}
+                  </div>
+                  {metric.unit && (
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      {metric.unit}
+                    </p>
+                  )}
+                </div>
+                <div className="flex-shrink-0 ml-4">
+                  <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-red-500 rounded-xl flex items-center justify-center shadow-lg group-hover:shadow-xl transition-shadow duration-300 shadow-orange-500/25">
+                    <metric.icon className="h-6 w-6 text-white" />
+                  </div>
+                </div>
+              </CardHeader>
+            </Card>
+          ))}
+        </div>
+
+        <Card className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border-0 shadow-xl">
+          <CardHeader className="pb-4">
+            <CardTitle className="flex items-center text-xl font-bold text-slate-900 dark:text-slate-100">
+              <BarChartHorizontalBig className="mr-3 h-6 w-6 text-orange-500" />
+              Chỉ số Đánh giá Chất lượng
+              {isLoadingOverallFeedback && (
+                <Loader2 className="ml-3 h-5 w-5 animate-spin text-orange-500" />
+              )}
+            </CardTitle>
+            <CardDescription className="text-slate-600 dark:text-slate-300">
+              Điểm số trung bình theo từng tiêu chí đánh giá chất lượng đào tạo
+              {hasActiveFilter && ` • ${getFilterDisplayLabel()}`}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {overallFeedback ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {criteriaOrder.map((key) => (
+                  <Card
+                    key={String(key)}
+                    className="bg-gradient-to-br from-slate-50/50 to-slate-100/50 dark:from-slate-700/50 dark:to-slate-800/50 p-4 border-0 shadow-md hover:shadow-lg transition-shadow duration-200"
+                  >
+                    <p className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                      {evaluationCriteriaLabels[key]}
+                    </p>
+                    <div className="flex items-center gap-3">
+                      <ClientStarRatingDisplay
+                        rating={overallFeedback[key] || 0}
+                        size={5}
+                      />
+                      <span className="text-lg font-bold text-orange-600 dark:text-orange-400">
+                        ({(overallFeedback[key] || 0).toFixed(1)}/5)
+                      </span>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-12">
+                <FileText className="h-12 w-12 text-slate-400 mx-auto mb-4" />
+                <p className="text-slate-600 dark:text-slate-400 text-lg">
+                  {hasActiveFilter
+                    ? `Chưa có dữ liệu đánh giá cho ${getFilterDisplayLabel().toLowerCase()}`
+                    : "Chưa có dữ liệu đánh giá để hiển thị"}
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm border-0 shadow-xl shadow-orange-500/10">
+          <CardHeader>
+            <CardTitle className="flex items-center text-xl font-bold text-slate-900 dark:text-slate-100">
+              <BookTextIcon className="mr-3 h-6 w-6 text-orange-500" />
+              Chi tiết Đánh giá Theo Khóa học
+              {isLoadingCourseFeedback && (
+                <Loader2 className="ml-3 h-5 w-5 animate-spin text-orange-500" />
+              )}
+            </CardTitle>
+            <CardDescription className="text-slate-600 dark:text-slate-300">
+              Điểm trung bình cho từng tiêu chí của mỗi khóa học
+              {hasActiveFilter && ` • ${getFilterDisplayLabel()}`}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {courseFeedback && courseFeedback.length > 0 ? (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="border-orange-200/50 dark:border-orange-700/30">
+                      <TableHead className="min-w-[200px] font-semibold text-slate-700 dark:text-slate-300">
+                        Tên Khóa học
+                      </TableHead>
+                      {criteriaOrder.map((key) => (
+                        <TableHead
+                          key={String(key)}
+                          className="min-w-[140px] text-center whitespace-nowrap font-semibold text-slate-700 dark:text-slate-300"
+                        >
+                          {criteriaShortLabels[key]}
+                        </TableHead>
                       ))}
-                      <TableCell className="text-center">
-                        <Badge variant="secondary">{item.totalEvaluationsForCourse}</Badge>
-                      </TableCell>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          ) : (
-             <p className="text-muted-foreground text-center py-8">Không có dữ liệu đánh giá chi tiết theo khóa học để hiển thị cho giai đoạn này.</p>
-          )}
-        </CardContent>
-      </Card>
+                  </TableHeader>
+                  <TableBody>
+                    {courseFeedback.map((item: CourseAndAvgFeedback, index) => (
+                      <TableRow
+                        key={item.courseName}
+                        className="border-orange-200/30 dark:border-orange-700/20 hover:bg-orange-50/30 dark:hover:bg-orange-900/10 transition-colors duration-150"
+                      >
+                        <TableCell className="font-medium text-slate-900 dark:text-slate-100">
+                          {item.courseName}
+                        </TableCell>
+                        {criteriaOrder.map((key) => (
+                          <TableCell key={String(key)} className="text-center">
+                            <div className="flex flex-col items-center space-y-1">
+                              <ClientStarRatingDisplay
+                                rating={item.avgFeedback[key] || 0}
+                                size={4}
+                              />
+                              <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+                                ({(item.avgFeedback[key] || 0).toFixed(1)}/5)
+                              </span>
+                            </div>
+                          </TableCell>
+                        ))}
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            ) : (
+              <div className="text-center py-12">
+                <BookTextIcon className="h-12 w-12 text-orange-400 mx-auto mb-4" />
+                <p className="text-slate-600 dark:text-slate-400 text-lg">
+                  {hasActiveFilter
+                    ? `Không có dữ liệu khóa học cho ${getFilterDisplayLabel().toLowerCase()}`
+                    : "Không có dữ liệu khóa học để hiển thị"}
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
-      <Card className="shadow-xl">
-        <CardHeader>
-          <CardTitle className="flex items-center font-headline text-xl">
-            <Activity className="mr-3 h-6 w-6 text-primary" />Top Phòng ban Tích cực Đào tạo
-          </CardTitle>
-          <CardDescription>Các phòng ban có hoạt động đào tạo nổi bật nhất trong giai đoạn đã chọn.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {reportData.topDepartments.length > 0 ? (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b">
-                    <th className="text-left p-3 font-medium text-muted-foreground w-10">#</th>
-                    <th className="text-left p-3 font-medium text-muted-foreground">Tên Phòng Ban</th>
-                    <th className="text-right p-3 font-medium text-muted-foreground">Số Khóa Tham Gia</th>
-                    <th className="text-right p-3 font-medium text-muted-foreground">Số Học Viên</th>
-                    <th className="text-right p-3 font-medium text-muted-foreground">Điểm Hoạt Động</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {reportData.topDepartments.map((dept, index) => (
-                    <tr key={dept.id} className="border-b last:border-b-0 hover:bg-muted/50 transition-colors">
-                      <td className="p-3">
-                        <span className={`flex items-center justify-center h-7 w-7 rounded-full text-xs font-semibold ${
-                          index === 0 ? 'bg-primary text-primary-foreground' :
-                          (index === 1 ? 'bg-orange-400 text-white' :
-                          (index === 2 ? 'bg-yellow-400 text-black' : 'bg-muted text-muted-foreground'))
-                        }`}>
-                          {index + 1}
-                        </span>
-                      </td>
-                      <td className="p-3 font-medium text-card-foreground">{dept.name}</td>
-                      <td className="p-3 text-right">{dept.courses}</td>
-                      <td className="p-3 text-right">{dept.trainees}</td>
-                      <td className="p-3 text-right font-semibold text-primary">{dept.score}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <p className="text-muted-foreground text-center py-8">Không có dữ liệu về phòng ban để hiển thị cho giai đoạn này.</p>
-          )}
-        </CardContent>
-      </Card>
+        <Card className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm border-0 shadow-xl shadow-orange-500/10">
+          <CardHeader>
+            <CardTitle className="flex items-center text-xl font-bold text-slate-900 dark:text-slate-100">
+              <Activity className="mr-3 h-6 w-6 text-orange-500" />
+              Hiệu quả Đào tạo Theo Phòng ban
+            </CardTitle>
+            <CardDescription className="text-slate-600 dark:text-slate-300">
+              Thống kê tham gia và hiệu quả đào tạo của các phòng ban hàng đầu
+              {hasActiveFilter && ` • ${getFilterDisplayLabel()}`}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {isLoadingTopDepartments ? (
+                 <div className="flex h-40 w-full items-center justify-center">
+                    <Loader2 className="h-8 w-8 animate-spin text-orange-500" />
+                 </div>
+            ) : topDepartments && topDepartments.length > 0 ? (
+                <div className="overflow-x-auto">
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead className="font-semibold">Phòng ban</TableHead>
+                                <TableHead className="text-center font-semibold">Số khóa học</TableHead>
+                                <TableHead className="text-center font-semibold">Số học viên</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {topDepartments.map((dept) => (
+                                <TableRow key={dept.departmentId}>
+                                    <TableCell className="font-medium">{dept.departmentName}</TableCell>
+                                    <TableCell className="text-center">{dept.courseCount}</TableCell>
+                                    <TableCell className="text-center">{dept.userCount}</TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                </div>
+            ) : (
+                <div className="text-center py-12">
+                <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-orange-100 to-amber-100 dark:from-orange-900/30 dark:to-amber-900/30 rounded-full mb-4 shadow-lg shadow-orange-500/20">
+                    <Building2 className="h-8 w-8 text-orange-600 dark:text-orange-400" />
+                </div>
+                <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-300 mb-2">
+                    Chưa có dữ liệu
+                </h3>
+                <p className="text-slate-500 dark:text-slate-400 max-w-md mx-auto">
+                   Không có dữ liệu thống kê phòng ban để hiển thị.
+                </p>
+                </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
-    

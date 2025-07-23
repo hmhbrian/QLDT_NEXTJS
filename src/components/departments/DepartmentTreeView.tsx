@@ -3,7 +3,7 @@
 import React, { useMemo, useCallback } from 'react';
 import { Building2 } from 'lucide-react';
 import { TreeView, TreeNode } from '@/components/ui/tree-view';
-import type { DepartmentInfo } from '@/lib/types';
+import type { DepartmentInfo } from '@/lib/types/department.types';
 import { buildDepartmentTree } from '@/lib/utils/department-tree';
 
 interface DepartmentTreeProps {
@@ -23,7 +23,7 @@ export function DepartmentTreeView({
   // Get all department IDs that should be expanded by default (level 1)
   const defaultExpandedNodes = useMemo(() => departments
     .filter(dept => dept.level === 1)
-    .map(dept => dept.id),
+    .map(dept => dept.departmentId),
   [departments]);
   
   // Handler for selecting a department - wrapped in useCallback to maintain reference equality
@@ -40,8 +40,8 @@ export function DepartmentTreeView({
     
     return (
       <TreeNode
-        key={department.id}
-        id={department.id}
+        key={department.departmentId}
+        id={department.departmentId}
         name={department.name}
         level={level}
         hasChildren={hasChildren}

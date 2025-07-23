@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import { AdminSettings } from "@/components/settings/AdminSettings";
 import { HRSettings } from "@/components/settings/HRSettings";
@@ -38,28 +38,32 @@ export default function SettingsPage() {
   };
 
   const handleNotificationChange = (settingName, value) => {
-    setNotifications(prev => ({
+    setNotifications((prev) => ({
       ...prev,
-      [settingName]: value
+      [settingName]: value,
     }));
   };
 
   const renderSettings = () => {
     switch (user.role) {
-      case 'Admin':
+      case "ADMIN":
         return <AdminSettings />;
-      case 'HR':
+      case "HR":
         return <HRSettings />;
-      case 'Trainee':
-        return <TraineeSettings 
-          notifications={notifications}
-          onNotificationChange={handleNotificationChange}
-        />;
+      case "HOCVIEN":
+        return (
+          <TraineeSettings
+            notifications={notifications}
+            onNotificationChange={handleNotificationChange}
+          />
+        );
       default:
         return (
           <div className="flex flex-col items-center justify-center h-[60vh]">
             <Settings className="h-16 w-16 text-muted-foreground" />
-            <h2 className="mt-4 text-xl font-semibold">Không có quyền truy cập</h2>
+            <h2 className="mt-4 text-xl font-semibold">
+              Không có quyền truy cập
+            </h2>
             <p className="text-sm text-muted-foreground mt-2">
               Bạn không có quyền truy cập vào trang cài đặt.
             </p>
@@ -71,7 +75,9 @@ export default function SettingsPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-        <h1 className="text-2xl md:text-3xl font-headline font-semibold">Cài đặt hệ thống</h1>
+        <h1 className="text-2xl md:text-3xl font-headline font-semibold">
+          Cài đặt hệ thống
+        </h1>
         <Button onClick={handleSaveSettings}>
           <Settings className="mr-2 h-5 w-5" />
           Lưu thay đổi

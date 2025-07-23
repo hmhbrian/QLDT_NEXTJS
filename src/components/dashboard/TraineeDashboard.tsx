@@ -2,62 +2,52 @@
 'use client';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { GraduationCap, BookMarked, Percent, CalendarClock, CalendarDays } from 'lucide-react';
+import { GraduationCap, BookMarked, Percent, CalendarDays } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '../ui/button';
 import { Progress } from '@/components/ui/progress';
-import { useEffect, useState } from 'react';
+import { useMemo } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { useCookie } from '@/hooks/use-cookie';
-import type { Course } from '@/lib/types';
-
-const COURSES_COOKIE_KEY = 'becamex-courses-data';
+import { useCourses } from '@/hooks/use-courses';
+import type { Course } from "@/lib/types/course.types";
 
 export function TraineeDashboard() {
   const { user: currentUser } = useAuth();
-  const [allCourses] = useCookie<Course[]>(COURSES_COOKIE_KEY, []);
+  const { courses: allCourses } = useCourses();
 
-  const [enrolledCoursesCount, setEnrolledCoursesCount] = useState(0);
-  const [completedCoursesCount, setCompletedCoursesCount] = useState(0);
-  const [overallProgress, setOverallProgress] = useState(0);
-  const [upcomingClasses, setUpcomingClasses] = useState<Course[]>([]);
+  const { enrolledCoursesCount, completedCoursesCount, overallProgress, upcomingClasses } = useMemo(() => {
+    if (!currentUser || !allCourses) {
+        return { enrolledCoursesCount: 0, completedCoursesCount: 0, overallProgress: 0, upcomingClasses: [] };
+    }
 
-  useEffect(() => {
-    if (currentUser && allCourses.length > 0) {
-      // Tính toán các khóa học đã đăng ký
-      const enrolled = allCourses.filter(course =>
-        course.status === 'published' &&
-        course.enrolledTrainees?.includes(currentUser.id)
-      );
-      setEnrolledCoursesCount(enrolled.length);
-
-      // Tính toán các khóa học đã hoàn thành
-      const completed = currentUser.completedCourses?.length || 0;
-      setCompletedCoursesCount(completed);
-
-      // Tính toán tiến độ tổng thể
-      if (enrolled.length > 0) {
-        setOverallProgress(Math.round((completed / enrolled.length) * 100));
-      } else {
-        setOverallProgress(0);
-      }
-
-      // Tính toán các lớp học sắp tới
-      const now = new Date();
-      const upcoming = enrolled
+    const enrolled = allCourses.filter(course =>
+        course.userIds?.includes(currentUser.id)
+    );
+    
+    // This part needs real data to be meaningful.
+    // For now, we'll keep it simple.
+    const completed = 0; // Placeholder
+    const progress = enrolled.length > 0 ? Math.round((completed / enrolled.length) * 100) : 0;
+    
+    const now = new Date();
+    const upcoming = enrolled
         .filter(course => {
-          const endDate = course.endDate ? new Date(course.endDate) : null;
-          // Chỉ lấy các khóa học chưa kết thúc
-          return endDate && endDate >= now;
+            const endDate = course.endDate ? new Date(course.endDate) : null;
+            return endDate && endDate >= now;
         })
         .sort((a, b) => {
-          const dateA = a.startDate ? new Date(a.startDate).getTime() : Infinity;
-          const dateB = b.startDate ? new Date(b.startDate).getTime() : Infinity;
-          return dateA - dateB;
+            const dateA = a.startDate ? new Date(a.startDate).getTime() : Infinity;
+            const dateB = b.startDate ? new Date(b.startDate).getTime() : Infinity;
+            return dateA - dateB;
         })
-        .slice(0, 3); // Lấy 3 khóa học sắp tới gần nhất
-      setUpcomingClasses(upcoming);
-    }
+        .slice(0, 3);
+
+    return {
+        enrolledCoursesCount: enrolled.length,
+        completedCoursesCount: completed,
+        overallProgress: progress,
+        upcomingClasses: upcoming,
+    };
   }, [currentUser, allCourses]);
 
   const stats = [
@@ -130,7 +120,7 @@ export function TraineeDashboard() {
             </ul>
           ) : (
             <div className="flex flex-col items-center justify-center h-40 border-2 border-dashed rounded-md text-center p-4">
-              <CalendarClock className="h-12 w-12 text-muted-foreground" />
+              <CalendarDays className="h-12 w-12 text-muted-foreground" />
               <p className="ml-0 md:ml-4 mt-2 md:mt-0 text-muted-foreground">Hiện tại không có lớp học nào sắp diễn ra.</p>
             </div>
           )}

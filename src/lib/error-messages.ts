@@ -1,19 +1,53 @@
-export const errorMessages: Record<string, string> = {
-    // ... existing code ...
+export interface ErrorMessage {
+  title: string;
+  message: string;
+  variant?: "default" | "destructive" | "success";
+}
 
-    // Course errors
-    'COURSE001': 'Khóa học đã tồn tại',
-    'COURSE002': 'Không thể xóa khóa học đang diễn ra',
-    'COURSE003': 'Bạn không có quyền thực hiện hành động này',
+export const errorMessages: Record<string, ErrorMessage> = {
+  // Course errors
+  COURSE001: {
+    title: "Lỗi khóa học",
+    message: "Khóa học đã tồn tại",
+    variant: "destructive",
+  },
+  COURSE002: {
+    title: "Lỗi xóa khóa học",
+    message: "Không thể xóa khóa học đang diễn ra",
+    variant: "destructive",
+  },
+  COURSE003: {
+    title: "Lỗi quyền hạn",
+    message: "Bạn không có quyền thực hiện hành động này",
+    variant: "destructive",
+  },
 
-    // Form validation
-    'FORM001': 'Vui lòng điền đầy đủ thông tin',
-    'SUCCESS001': 'Thao tác thành công',
+  // Form validation
+  FORM001: {
+    title: "Lỗi biểu mẫu",
+    message: "Vui lòng điền đầy đủ thông tin",
+    variant: "destructive",
+  },
+  SUCCESS001: {
+    title: "Thành công",
+    message: "Thao tác thành công",
+    variant: "success",
+  },
 
-    // File upload errors
-    'FILE001': 'Định dạng file không hợp lệ. Chỉ chấp nhận ảnh hoặc PDF.',
-    'FILE002': 'File quá lớn. Kích thước tối đa là 5MB.',
-    'FILE003': 'Không thể tải file lên. Vui lòng thử lại.',
-
-    // ... existing code ...
-}; 
+  // File upload errors
+  FILE001: {
+    title: "Lỗi tải tệp lên",
+    message: "Định dạng file không hợp lệ. Chỉ chấp nhận ảnh hoặc PDF.",
+    variant: "destructive",
+  },
+  FILE002: {
+    title: "Lỗi tải tệp lên",
+    message: "File quá lớn. Kích thước tối đa là 5MB.",
+    variant: "destructive",
+  },
+  FILE003: {
+    title: "Lỗi tải tệp lên",
+    message: "Không thể tải file lên. Vui lòng thử lại.",
+    variant: "destructive",
+  },
+};

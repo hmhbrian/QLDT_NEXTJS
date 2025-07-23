@@ -1,29 +1,81 @@
-'use client';
 
-import { useState, useEffect } from 'react';
-import { getCookie } from './use-cookie';
-import { mockDepartments } from '@/lib/mock';
-import type { DepartmentInfo } from '@/lib/types';
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { departmentsService } from "@/lib/services";
+import type {
+  DepartmentInfo,
+  CreateDepartmentPayload,
+  UpdateDepartmentPayload,
+} from "@/lib/types/department.types";
+import { useError } from "./use-error";
 
-const DEPARTMENTS_COOKIE_KEY = 'becamex-departments-data';
+export const DEPARTMENTS_QUERY_KEY = "departments";
 
-export function useDepartments() {
-    const [departments, setDepartments] = useState<DepartmentInfo[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
+export function useDepartments(params?: { status?: "active" }) {
+  const {
+    data,
+    isLoading,
+    error,
+    refetch: reloadDepartments,
+  } = useQuery<DepartmentInfo[], Error>({
+    queryKey: [DEPARTMENTS_QUERY_KEY, params],
+    queryFn: () => departmentsService.getDepartments(params),
+    staleTime: 5 * 60 * 1000, 
+    refetchOnWindowFocus: false,
+  });
 
-    useEffect(() => {
-        // Lấy dữ liệu phòng ban từ cookie
-        const deptData = getCookie<DepartmentInfo[]>(DEPARTMENTS_COOKIE_KEY, mockDepartments);
-        setDepartments(deptData);
-        setIsLoading(false);
-    }, []);
+  return {
+    departments: data ?? [],
+    isLoading,
+    error,
+    reloadDepartments,
+  };
+}
 
-    // Lọc các phòng ban đang hoạt động
-    const activeDepartments = departments.filter(dept => dept.status === 'active');
+export function useCreateDepartment() {
+  const queryClient = useQueryClient();
+  const { showError } = useError();
 
-    return {
-        departments,
-        activeDepartments,
-        isLoading
-    };
-} 
+  return useMutation<DepartmentInfo, Error, CreateDepartmentPayload>({
+    mutationFn: (payload) => departmentsService.createDepartment(payload),
+    onSuccess: (response) => {
+      queryClient.invalidateQueries({ queryKey: [DEPARTMENTS_QUERY_KEY] });
+      showError({ success: true, message: `Đã tạo phòng ban "${response.name}" thành công.` });
+    },
+    onError: (error) => {
+      showError(error);
+    },
+  });
+}
+
+export function useUpdateDepartment() {
+  const queryClient = useQueryClient();
+  const { showError } = useError();
+
+  return useMutation<void, Error, { id: string; payload: UpdateDepartmentPayload }>({
+    mutationFn: ({ id, payload }) =>
+      departmentsService.updateDepartment(id, payload),
+    onSuccess: (_, { payload }) => {
+      queryClient.invalidateQueries({ queryKey: [DEPARTMENTS_QUERY_KEY] });
+      showError({ success: true, message: `Đã cập nhật phòng ban "${payload.DepartmentName}" thành công.` });
+    },
+    onError: (error) => {
+      showError(error);
+    },
+  });
+}
+
+export function useDeleteDepartment() {
+  const queryClient = useQueryClient();
+  const { showError } = useError();
+
+  return useMutation<void, Error, string>({
+    mutationFn: (id) => departmentsService.deleteDepartment(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [DEPARTMENTS_QUERY_KEY] });
+      showError({ success: true, message: "Đã xóa phòng ban thành công."});
+    },
+    onError: (error) => {
+      showError(error);
+    },
+  });
+}

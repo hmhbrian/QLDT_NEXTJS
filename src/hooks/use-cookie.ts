@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { useState, useEffect, useCallback } from 'react';
-import Cookies from 'js-cookie';
+import { useState, useEffect, useCallback } from "react";
+import Cookies from "js-cookie";
 
 export function useCookie<T>(
   key: string,
@@ -16,8 +16,8 @@ export function useCookie<T>(
       // Đặt cookie ban đầu nếu không tìm thấy
       Cookies.set(key, JSON.stringify(initialValue), {
         expires: 7, // Thời gian hết hạn (7 ngày)
-        sameSite: 'strict', // Chính sách SameSite
-        secure: process.env.NODE_ENV === 'production', // Chỉ gửi qua HTTPS ở môi trường production
+        sameSite: "strict", // Chính sách SameSite
+        secure: process.env.NODE_ENV === "production", // Chỉ gửi qua HTTPS ở môi trường production
       });
       return initialValue;
     } catch (error) {
@@ -55,16 +55,14 @@ export function useCookie<T>(
         // Lưu vào cookie
         Cookies.set(key, JSON.stringify(valueToStore), {
           expires: 7,
-          sameSite: 'strict',
-          secure: process.env.NODE_ENV === 'production',
+          sameSite: "strict",
+          secure: process.env.NODE_ENV === "production",
         });
 
-        // Buộc cập nhật lại giá trị từ cookie sau một khoảng thời gian ngắn
-        // để đảm bảo các thành phần khác đều có dữ liệu mới nhất
-        setTimeout(() => {
-          // Thông báo cho các component khác biết cookie đã thay đổi
-          window.dispatchEvent(new CustomEvent('cookie-change', { detail: { key } }));
-        }, 50);
+        // Instant notification to other components about cookie change
+        window.dispatchEvent(
+          new CustomEvent("cookie-change", { detail: { key } })
+        );
       } catch (error) {
         console.error(`Lỗi khi đặt cookie "${key}":`, error);
       }
@@ -79,18 +77,21 @@ export function useCookie<T>(
     };
 
     // Lắng nghe sự kiện cookie-change
-    window.addEventListener('cookie-change', (e: CustomEvent<{ key: string }>) => {
-      if (e.detail.key === key) {
-        handleCookieChange();
+    window.addEventListener(
+      "cookie-change",
+      (e: CustomEvent<{ key: string }>) => {
+        if (e.detail.key === key) {
+          handleCookieChange();
+        }
       }
-    });
+    );
 
     // Kiểm tra định kỳ với tần suất cao hơn
     const intervalId = setInterval(handleCookieChange, 500); // Kiểm tra mỗi 0.5 giây
 
     return () => {
       clearInterval(intervalId); // Dọn dẹp interval khi unmount
-      window.removeEventListener('cookie-change', handleCookieChange);
+      window.removeEventListener("cookie-change", handleCookieChange);
     };
   }, [key, reloadFromCookie]);
 
@@ -101,7 +102,7 @@ export function useCookie<T>(
 export function removeCookie(key: string) {
   Cookies.remove(key);
   // Thông báo cookie đã thay đổi
-  window.dispatchEvent(new CustomEvent('cookie-change', { detail: { key } }));
+  window.dispatchEvent(new CustomEvent("cookie-change", { detail: { key } }));
 }
 
 // Hàm tiện ích để lấy giá trị cookie
@@ -125,12 +126,11 @@ export function setCookie<T>(
 ) {
   Cookies.set(key, JSON.stringify(value), {
     expires: 7,
-    sameSite: 'strict',
-    secure: process.env.NODE_ENV === 'production',
+    sameSite: "strict",
+    secure: process.env.NODE_ENV === "production",
     ...options, // Ghi đè các tùy chọn mặc định nếu được cung cấp
   });
 
   // Thông báo cookie đã thay đổi
-  window.dispatchEvent(new CustomEvent('cookie-change', { detail: { key } }));
+  window.dispatchEvent(new CustomEvent("cookie-change", { detail: { key } }));
 }
-

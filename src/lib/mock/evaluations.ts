@@ -1,61 +1,65 @@
 
-import type { StudentCourseEvaluation } from '../types';
+import type { Feedback } from "@/lib/types/course.types";
 
-export const mockEvaluations: StudentCourseEvaluation[] = [
+export const mockEvaluations: Feedback[] = [
   {
-    id: 'eval1',
-    courseId: '1', // JavaScript Nâng cao
-    traineeId: 'mock-trainee-alpha', // Thay đổi từ '3'
-    submissionDate: '2024-09-20T10:00:00Z',
-    ratings: {
-      contentRelevance: 5,
-      clarity: 4,
-      structureLogic: 4,
-      durationAppropriateness: 5,
-      materialsEffectiveness: 3,
-    },
-    suggestions: 'Khóa học rất hay và thực tế. Tuy nhiên, phần tài liệu về Promises có thể chi tiết hơn một chút.',
+    id: 1,
+    courseId: "1", // JavaScript Nâng cao
+    userId: "mock-trainee-alpha",
+    userName: "Trainee Alpha",
+    q1_relevance: 5,
+    q2_clarity: 4,
+    q3_structure: 4,
+    q4_duration: 5,
+    q5_material: 3,
+    comment:
+      "Khóa học rất hay và thực tế. Tuy nhiên, phần tài liệu về Promises có thể chi tiết hơn một chút.",
+    createdAt: new Date().toISOString(),
+    averageRating: (5 + 4 + 4 + 5 + 3) / 5,
   },
   {
-    id: 'eval2',
-    courseId: '2', // Nguyên tắc Quản lý Dự án
-    traineeId: 'mock-trainee-beta', // Thay đổi từ '3'
-    submissionDate: '2024-10-05T14:30:00Z',
-    ratings: {
-      contentRelevance: 4,
-      clarity: 5,
-      structureLogic: 5,
-      durationAppropriateness: 4,
-      materialsEffectiveness: 4,
-    },
-    suggestions: 'Giảng viên nhiệt tình, nội dung dễ hiểu. Nên có thêm bài tập thực hành nhóm.',
+    id: 2,
+    courseId: "2", // Nguyên tắc Quản lý Dự án
+    userId: "mock-trainee-beta",
+    userName: "Trainee Beta",
+    q1_relevance: 4,
+    q2_clarity: 5,
+    q3_structure: 5,
+    q4_duration: 4,
+    q5_material: 4,
+    comment:
+      "Giảng viên nhiệt tình, nội dung dễ hiểu. Nên có thêm bài tập thực hành nhóm.",
+    createdAt: new Date().toISOString(),
+    averageRating: (4 + 5 + 5 + 4 + 4) / 5,
   },
   {
-    id: 'eval3',
-    courseId: '1', // JavaScript Nâng cao
-    traineeId: 'mock-trainee-gamma', // Thay đổi từ 'mock-trainee-2' để tránh trùng lặp nếu có
-    submissionDate: '2024-09-22T11:00:00Z',
-    ratings: {
-      contentRelevance: 4,
-      clarity: 3,
-      structureLogic: 4,
-      durationAppropriateness: 4,
-      materialsEffectiveness: 5,
-    },
-    suggestions: 'Tài liệu slide rất tốt, dễ theo dõi. Phần bài tập hơi khó với người mới.',
+    id: 3,
+    courseId: "1", // JavaScript Nâng cao
+    userId: "mock-trainee-gamma",
+    userName: "Trainee Gamma",
+    q1_relevance: 4,
+    q2_clarity: 3,
+    q3_structure: 4,
+    q4_duration: 4,
+    q5_material: 5,
+    comment:
+      "Tài liệu slide rất tốt, dễ theo dõi. Phần bài tập hơi khó với người mới.",
+    createdAt: new Date().toISOString(),
+    averageRating: (4 + 3 + 4 + 4 + 5) / 5,
   },
   {
-    id: 'eval4',
-    courseId: '5', // Python cho Khoa học Dữ liệu - Giữ nguyên traineeId: '3' để test
-    traineeId: '3', // Nguyễn Văn An
-    submissionDate: '2024-11-25T09:15:00Z',
-    ratings: {
-      contentRelevance: 5,
-      clarity: 4,
-      structureLogic: 5,
-      durationAppropriateness: 5,
-      materialsEffectiveness: 4,
-    },
-    suggestions: 'Rất thích phần thực hành với Pandas. Có thể thêm một module về triển khai mô hình đơn giản.',
+    id: 4,
+    courseId: "5", // Python cho Khoa học Dữ liệu
+    userId: "3", // Nguyễn Văn An
+    userName: "Nguyễn Văn An",
+    q1_relevance: 5,
+    q2_clarity: 4,
+    q3_structure: 5,
+    q4_duration: 5,
+    q5_material: 4,
+    comment:
+      "Rất thích phần thực hành với Pandas. Có thể thêm một module về triển khai mô hình đơn giản.",
+    createdAt: new Date().toISOString(),
+    averageRating: (5 + 4 + 5 + 5 + 4) / 5,
   },
 ];

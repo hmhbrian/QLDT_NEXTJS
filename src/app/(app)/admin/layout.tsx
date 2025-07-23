@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import { useAuth } from '@/hooks/useAuth';
-import { useRouter } from 'next/navigation';
-import { Loader2 } from 'lucide-react';
+import { useAuth } from "@/hooks/useAuth";
+import { useRouter } from "next/navigation";
+import { Loader2 } from "lucide-react";
 
 export default function AdminLayout({
   children,
@@ -21,18 +21,13 @@ export default function AdminLayout({
     );
   }
 
-  if (!user || (user.role !== 'Admin' && user.role !== 'HR')) {
-    router.replace('/dashboard'); // Chuyển hướng nếu không phải Admin hoặc HR
+  if (!user || (user.role !== "ADMIN" && user.role !== "HR")) {
+    router.replace("/dashboard"); // Chuyển hướng nếu không phải Admin hoặc HR
     return null;
   }
-  
+
   // Nếu là HR và cố gắng truy cập một số trang chỉ dành cho Admin (ví dụ: /admin/settings), có thể thêm logic chuyển hướng ở đây nếu cần.
   // Ví dụ: if (user.role === 'HR' && someAdminOnlyPaths.includes(pathname)) router.replace('/hr/trainees');
 
-
-  return (
-    <div className="space-y-6">
-      {children}
-    </div>
-  );
+  return <div className="space-y-6">{children}</div>;
 }

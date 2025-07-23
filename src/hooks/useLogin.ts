@@ -1,48 +1,41 @@
-'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { useToast } from '@/components/ui/use-toast';
-import { useAuth } from './useAuth';
-import { mockLoginAPI } from '@/lib/mock';
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "./useAuth";
+import { useError } from "./use-error";
+import { toast } from "@/components/ui/use-toast";
+import { authService } from "@/lib/services";
+import { mapUserApiToUi } from "@/lib/mappers/user.mapper";
 
 export function useLogin() {
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
-  const { toast } = useToast();
   const { setUser } = useAuth();
+  const { showError } = useError();
 
   const login = async (email: string, password: string) => {
     try {
       setIsLoading(true);
-      const response = await mockLoginAPI(email, password);
+      const response = await authService.login({ email, password });
 
-      if (response.success && response.user) {
-        const userWithMissingProps = {
-          ...response.user,
-          idCard: '',
-          phoneNumber: '',
-          role: response.user.role as 'Admin' | 'HR' | 'Trainee'
-        };
-        setUser(userWithMissingProps);
+      if (response && response.accessToken) {
+        const userToStore = mapUserApiToUi(response);
+        setUser(userToStore);
+
         toast({
-          title: 'Thành công',
-          description: response.message,
+          title: "Thành công",
+          description: "Đăng nhập thành công!",
+          variant: "success",
         });
-        router.push('/dashboard');
+
+        router.push("/dashboard");
       } else {
-        toast({
-          variant: 'destructive',
-          title: 'Lỗi',
-          description: response.message,
-        });
+        throw new Error("Đăng nhập thất bại do dữ liệu không hợp lệ.");
       }
-    } catch {
-      toast({
-        variant: 'destructive',
-        title: 'Lỗi',
-        description: 'Đã có lỗi xảy ra khi đăng nhập',
-      });
+    } catch (error) {
+      showError(error);
     } finally {
       setIsLoading(false);
     }
@@ -50,6 +43,6 @@ export function useLogin() {
 
   return {
     login,
-    isLoading
+    isLoading,
   };
-} 
+}

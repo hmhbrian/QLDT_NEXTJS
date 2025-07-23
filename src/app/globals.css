@@ -19,7 +19,7 @@
     --border: 214.3 31.8% 91.4%; /* Light Gray */
     --input: 214.3 31.8% 91.4%; /* Light Gray */
 
-    --primary: 16 93% 51%; /* Orange (Becamex Orange) */
+    --primary: 16 93% 51%; /* Orange (Becamex Orange) - UNIFIED */
     --primary-foreground: 0 0% 100%; /* White (for contrast on Orange) */
 
     --secondary: 210 40% 96.1%; /* Light Grayish Blue */
@@ -35,14 +35,14 @@
 
     --radius: 0.5rem;
 
-    /* Sidebar specific theme for light mode */
-    --sidebar-background: 240 5% 15%; /* Dark Slate Blue/Gray */
-    --sidebar-foreground: 0 0% 95%; /* Light Gray */
-    --sidebar-primary: 16 93% 60%; /* Brighter Orange for active items */
+    /* Sidebar specific theme - UNIFIED primary color */
+    --sidebar-background: 0 0% 6%; /* Very Dark Gray / Near Black */
+    --sidebar-foreground: 0 0% 90%; /* Light Gray */
+    --sidebar-primary: 16 93% 51%; /* Main Orange for active items - UNIFIED */
     --sidebar-primary-foreground: 0 0% 100%; /* White */
-    --sidebar-accent: 240 5% 25%; /* Darker hover/accent for sidebar */
-    --sidebar-accent-foreground: 0 0% 95%; /* Light Gray */
-    --sidebar-border: 240 5% 20%;
+    --sidebar-accent: 217.2 32.6% 17.5%; /* Dark Gray Blue (muted) */
+    --sidebar-accent-foreground: 0 0% 98%; /* Light Gray */
+    --sidebar-border: 217.2 32.6% 17.5%; /* Dark Gray Blue */
     --sidebar-ring: 16 93% 51%; /* Orange */
 
     --chart-1: 16 93% 51%; /* Orange */
@@ -68,7 +68,7 @@
     --border: 217.2 32.6% 17.5%; /* Dark Gray Blue */
     --input: 217.2 32.6% 17.5%; /* Dark Gray Blue */
 
-    --primary: 16 93% 51%; /* Orange (Becamex Orange) */
+    --primary: 16 93% 51%; /* Orange (Becamex Orange) - UNIFIED */
     --primary-foreground: 0 0% 100%; /* White */
 
     --secondary: 217.2 32.6% 17.5%; /* Dark Gray Blue */
@@ -82,15 +82,15 @@
 
     --ring: 16 93% 51%; /* Orange */
 
-    /* Sidebar specific theme for dark mode */
-    --sidebar-background: 0 0% 2%; /* Near Black */
+    /* Sidebar specific theme for dark mode - UNIFIED primary color */
+    --sidebar-background: 0 0% 6%; /* Same as main dark background */
     --sidebar-foreground: 0 0% 90%; /* Light Gray */
-    --sidebar-primary: 16 93% 60%; /* Brighter Orange */
+    --sidebar-primary: 16 93% 51%; /* Main Orange for active items - UNIFIED */
     --sidebar-primary-foreground: 0 0% 100%; /* White */
-    --sidebar-accent: 0 0% 10%; /* Dark hover */
-    --sidebar-accent-foreground: 0 0% 95%; /* Light Gray */
-    --sidebar-border: 0 0% 8%;
-    --sidebar-ring: 16 93% 51%;
+    --sidebar-accent: 217.2 32.6% 17.5%; /* Dark Gray Blue (muted) */
+    --sidebar-accent-foreground: 0 0% 98%; /* Light Gray */
+    --sidebar-border: 217.2 32.6% 17.5%; /* Dark Gray Blue */
+    --sidebar-ring: 16 93% 51%; /* Orange */
 
     --chart-1: 16 80% 55%;
     --chart-2: 25 85% 60%;
@@ -98,14 +98,202 @@
     --chart-4: 10 75% 50%;
     --chart-5: 20 70% 45%;
   }
-}
 
-@layer base {
   * {
     @apply border-border;
   }
   body {
     @apply bg-background text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;
+  }
+
+  /* Override focus ring colors for form elements */
+  input:focus-visible,
+  textarea:focus-visible,
+  select:focus-visible {
+    --tw-ring-color: rgb(156 163 175); /* gray-400 */
+    border-color: rgb(156 163 175);
+  }
+
+  .dark input:focus-visible,
+  .dark textarea:focus-visible,
+  .dark select:focus-visible {
+    --tw-ring-color: rgb(107 114 128); /* gray-500 */
+    border-color: rgb(107 114 128);
+  }
+
+  /* Custom Scrollbar Styles */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background-color: hsl(var(--border));
+    border-radius: 10px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: hsl(var(--muted-foreground) / 0.5);
+  }
+}
+
+/* Custom Loading Animations */
+@layer utilities {
+  .animate-spin-smooth {
+    animation: spin-smooth 1s linear infinite;
+  }
+
+  @keyframes spin-smooth {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  .loading-gradient {
+    background: linear-gradient(45deg, hsl(var(--primary)), hsl(var(--accent)));
+    background-size: 200% 200%;
+    animation: gradient-shift 2s ease-in-out infinite;
+  }
+
+  @keyframes gradient-shift {
+    0%,
+    100% {
+      background-position: 0% 50%;
+    }
+    50% {
+      background-position: 100% 50%;
+    }
+  }
+
+  .fade-in-up {
+    animation: fade-in-up 0.3s ease-out;
+  }
+
+  @keyframes fade-in-up {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* Evaluation Form Styles */
+  .evaluation-card {
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    transition: all 0.3s ease;
+  }
+
+  .evaluation-card:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.2);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  }
+
+  .star-glow {
+    filter: drop-shadow(0 0 4px rgba(245, 158, 11, 0.4));
+  }
+
+  .gradient-border {
+    position: relative;
+    border-radius: 0.5rem;
+    background: linear-gradient(45deg, hsl(var(--primary)), hsl(var(--accent)));
+    padding: 1px;
+  }
+
+  .gradient-border::before {
+    content: "";
+    position: absolute;
+    inset: 1px;
+    border-radius: calc(0.5rem - 1px);
+    background: hsl(var(--background));
+  }
+
+  .glass-morphism {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+  }
+
+  .dark .glass-morphism {
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+}
+
+/* Custom Sidebar Enhancements */
+@layer components {
+  .sidebar-enhanced {
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+  }
+
+  .sidebar-menu-item {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .sidebar-menu-item::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(255, 255, 255, 0.1),
+      transparent
+    );
+    transition: left 0.5s ease;
+  }
+
+  .sidebar-menu-item:hover::before {
+    left: 100%;
+  }
+
+  .sidebar-submenu-enter {
+    animation: slideInFromLeft 0.3s ease-out;
+  }
+
+  .sidebar-popover-content {
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+}
+
+@keyframes slideInFromLeft {
+  from {
+    transform: translateX(-10px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes fadeInScale {
+  from {
+    transform: scale(0.95);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
   }
 }
