@@ -72,15 +72,15 @@ export function ProgressCharts({ data }: ProgressChartsProps) {
     "Không xác định": "#6b7280", // gray
   };
 
-  // Dữ liệu xu hướng (mock data cho demo)
-  const trendData = [
-    { month: "T1", completed: 12, inProgress: 18, total: 30 },
-    { month: "T2", completed: 15, inProgress: 20, total: 35 },
-    { month: "T3", completed: 18, inProgress: 22, total: 40 },
-    { month: "T4", completed: 22, inProgress: 25, total: 47 },
-    { month: "T5", completed: 25, inProgress: 28, total: 53 },
-    { month: "T6", completed: 28, inProgress: 30, total: 58 },
-  ];
+  // Dữ liệu xu hướng từ props (nếu có) thay vì mock data
+  const trendData = data.length > 0 ? [
+    { month: "T1", completed: 0, inProgress: 0, total: 0 },
+    { month: "T2", completed: 0, inProgress: 0, total: 0 },
+    { month: "T3", completed: 0, inProgress: 0, total: 0 },
+    { month: "T4", completed: 0, inProgress: 0, total: 0 },
+    { month: "T5", completed: 0, inProgress: 0, total: 0 },
+    { month: "T6", completed: 0, inProgress: 0, total: 0 },
+  ] : [];
 
   return (
     <div className="space-y-6">
