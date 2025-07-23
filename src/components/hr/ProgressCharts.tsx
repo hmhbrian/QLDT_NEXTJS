@@ -73,14 +73,17 @@ export function ProgressCharts({ data }: ProgressChartsProps) {
   };
 
   // Dữ liệu xu hướng từ props (nếu có) thay vì mock data
-  const trendData = data.length > 0 ? [
-    { month: "T1", completed: 0, inProgress: 0, total: 0 },
-    { month: "T2", completed: 0, inProgress: 0, total: 0 },
-    { month: "T3", completed: 0, inProgress: 0, total: 0 },
-    { month: "T4", completed: 0, inProgress: 0, total: 0 },
-    { month: "T5", completed: 0, inProgress: 0, total: 0 },
-    { month: "T6", completed: 0, inProgress: 0, total: 0 },
-  ] : [];
+  const trendData =
+    data.length > 0
+      ? [
+          { month: "T1", completed: 0, inProgress: 0, total: 0 },
+          { month: "T2", completed: 0, inProgress: 0, total: 0 },
+          { month: "T3", completed: 0, inProgress: 0, total: 0 },
+          { month: "T4", completed: 0, inProgress: 0, total: 0 },
+          { month: "T5", completed: 0, inProgress: 0, total: 0 },
+          { month: "T6", completed: 0, inProgress: 0, total: 0 },
+        ]
+      : [];
 
   return (
     <div className="space-y-6">
