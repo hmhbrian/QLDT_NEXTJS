@@ -195,11 +195,11 @@ const TestItem = ({
                 </Button>
               ) : hasSubmitted ? (
                 <>
-                  <Button asChild variant="secondary" size="sm">
+                  {/* <Button asChild variant="secondary" size="sm">
                     <Link href={`/courses/${courseId}/tests/${test.id}`}>
                       <Eye className="mr-2 h-4 w-4" /> Xem lại kết quả
                     </Link>
-                  </Button>
+                  </Button> */}
                   <Button asChild variant="outline" size="sm">
                     <Link href={`/courses/${courseId}/tests/${test.id}`}>
                       <RefreshCw className="mr-2 h-4 w-4" /> Làm lại bài
