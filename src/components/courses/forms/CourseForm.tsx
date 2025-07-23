@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useRef, useMemo } from "react";
@@ -100,7 +99,13 @@ const initialNewCourseState: Course = {
   modifiedBy: "",
 };
 
-export function CourseForm({ courseId, onSaveSuccess }: { courseId?: string; onSaveSuccess?: () => void; }) {
+export function CourseForm({
+  courseId,
+  onSaveSuccess,
+}: {
+  courseId?: string;
+  onSaveSuccess?: () => void;
+}) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -124,9 +129,7 @@ export function CourseForm({ courseId, onSaveSuccess }: { courseId?: string; onS
   const [courseImagePreview, setCourseImagePreview] = useState<string | null>(
     initialNewCourseState.image
   );
-  const [selectedImageFile, setSelectedImageFile] = useState<File | null>(
-    null
-  );
+  const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null);
   const courseImageInputRef = useRef<HTMLInputElement>(null);
 
   const [isSelectingTrainees, setIsSelectingTrainees] = useState(false);
@@ -174,9 +177,9 @@ export function CourseForm({ courseId, onSaveSuccess }: { courseId?: string; onS
         ...sourceCourseForDuplication,
         id: crypto.randomUUID(),
         title: `${sourceCourseForDuplication.title} (Bản sao)`,
-        courseCode: `${
-          sourceCourseForDuplication.courseCode
-        }-COPY-${Date.now().toString().slice(-4)}`,
+        courseCode: `${sourceCourseForDuplication.courseCode}-COPY-${Date.now()
+          .toString()
+          .slice(-4)}`,
         status: "Lưu nháp",
         statusId: draftStatus?.id,
         isPublic: false,
@@ -185,6 +188,26 @@ export function CourseForm({ courseId, onSaveSuccess }: { courseId?: string; onS
       setFormData(duplicatedCourse);
       setCourseImagePreview(duplicatedCourse.image);
       setTempSelectedTraineeIds([]);
+
+      // Download and convert image to file for duplication
+      if (
+        sourceCourseForDuplication.image &&
+        !sourceCourseForDuplication.image.includes("placehold.co")
+      ) {
+        fetch(sourceCourseForDuplication.image)
+          .then((response) => response.blob())
+          .then((blob) => {
+            const file = new File([blob], "duplicated-image.jpg", {
+              type: blob.type,
+            });
+            setSelectedImageFile(file);
+          })
+          .catch((error) => {
+            console.warn("Failed to duplicate image file:", error);
+            // Fallback to default image if download fails
+            setCourseImagePreview("https://placehold.co/600x400.png");
+          });
+      }
     } else if (!courseId && !duplicateFromId) {
       const draftStatus = courseStatuses.find((s) => s.name === "Lưu nháp");
       setFormData({
@@ -432,16 +455,17 @@ export function CourseForm({ courseId, onSaveSuccess }: { courseId?: string; onS
                   />
                 </div>
                 <div>
-                  <Label htmlFor="maxParticipants">
-                    Số học viên tối đa
-                  </Label>
+                  <Label htmlFor="maxParticipants">Số học viên tối đa</Label>
                   <Input
                     id="maxParticipants"
                     type="number"
                     min="1"
                     value={formData.maxParticipants}
                     onChange={(e) =>
-                      handleInputChange("maxParticipants", parseInt(e.target.value) || 200)
+                      handleInputChange(
+                        "maxParticipants",
+                        parseInt(e.target.value) || 200
+                      )
                     }
                     placeholder="200"
                   />

@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useMemo, useCallback } from "react";
@@ -415,30 +414,43 @@ export default function CoursesPage() {
                                 variant="ghost"
                                 size="icon"
                                 className="bg-white/30 hover:bg-white/50 text-black"
+                                onClick={(e) => e.stopPropagation()}
                               >
                                 <MoreHorizontal className="h-4 w-4" />
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
                               <DropdownMenuItem
-                                onClick={() => handleEditCourse(course.id)}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleEditCourse(course.id);
+                                }}
                               >
                                 <Pencil className="mr-2 h-4 w-4" /> Chỉnh sửa
                               </DropdownMenuItem>
                               <DropdownMenuItem
-                                onClick={() => handleDuplicateCourse(course)}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDuplicateCourse(course);
+                                }}
                               >
                                 <Copy className="mr-2 h-4 w-4" /> Nhân bản
                               </DropdownMenuItem>
                               {course.status !== "Hủy" && (
                                 <DropdownMenuItem
-                                  onClick={() => setArchivingCourse(course)}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setArchivingCourse(course);
+                                  }}
                                 >
                                   <Archive className="mr-2 h-4 w-4" /> Lưu trữ
                                 </DropdownMenuItem>
                               )}
                               <DropdownMenuItem
-                                onClick={() => setDeletingCourse(course)}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setDeletingCourse(course);
+                                }}
                                 className="text-destructive focus:text-destructive"
                                 disabled={!canDeleteCourse(course)}
                               >
