@@ -33,7 +33,15 @@ interface ProgressChartsProps {
 }
 
 export function ProgressCharts({ data }: ProgressChartsProps) {
-  console.log("📊 ProgressCharts received data:", data);
+  // Chuẩn hóa dữ liệu: lấy top 8 khóa học có nhiều học viên nhất
+  const normalizedData = Array.isArray(data)
+    ? [...data]
+        .filter(
+          (item) => typeof item.trainees === "number" && item.trainees > 0
+        )
+        .sort((a, b) => b.trainees - a.trainees)
+        .slice(0, 8)
+    : [];
 
   if (!data || data.length === 0) {
     return (
@@ -95,14 +103,14 @@ export function ProgressCharts({ data }: ProgressChartsProps) {
             Số học viên theo khóa học
           </CardTitle>
           <CardDescription>
-            Top {data.length} khóa học có nhiều học viên nhất
+            Top {normalizedData.length} khóa học có nhiều học viên nhất
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="h-[400px]">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
-                data={data}
+                data={normalizedData}
                 layout="vertical"
                 margin={{
                   top: 5,
