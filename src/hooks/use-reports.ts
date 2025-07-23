@@ -19,6 +19,13 @@ export function useAvgFeedbackReport(enabled: boolean = true) {
     queryFn: () => reportService.getAvgFeedback(),
     enabled,
     staleTime: 5 * 60 * 1000, // 5 phút
+    retry: (failureCount, error) => {
+      if (failureCount >= 2) return false;
+      const status = (error as any)?.response?.status;
+      if (status >= 400 && status < 500) return false;
+      return true;
+    },
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
   });
 }
 
@@ -29,6 +36,13 @@ export function useMonthlyReport(month: number, enabled: boolean = true) {
     queryFn: () => reportService.getMonthlyReport(month),
     enabled: enabled && month >= 1 && month <= 12,
     staleTime: 5 * 60 * 1000,
+    retry: (failureCount, error) => {
+      if (failureCount >= 2) return false;
+      const status = (error as any)?.response?.status;
+      if (status >= 400 && status < 500) return false;
+      return true;
+    },
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
   });
 }
 
@@ -39,6 +53,13 @@ export function useCourseAndAvgFeedbackReport(enabled: boolean = true) {
     queryFn: () => reportService.getCourseAndAvgFeedback(),
     enabled,
     staleTime: 5 * 60 * 1000,
+    retry: (failureCount, error) => {
+      if (failureCount >= 2) return false;
+      const status = (error as any)?.response?.status;
+      if (status >= 400 && status < 500) return false;
+      return true;
+    },
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
   });
 }
 
@@ -49,15 +70,30 @@ export function useStudentsOfCourseReport(enabled: boolean = true) {
     queryFn: () => reportService.getStudentsOfCourse(),
     enabled,
     staleTime: 5 * 60 * 1000,
+    retry: (failureCount, error) => {
+      if (failureCount >= 2) return false;
+      const status = (error as any)?.response?.status;
+      if (status >= 400 && status < 500) return false;
+      return true;
+    },
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
   });
 }
 
 // Hook for top departments report
 export function useTopDepartments(enabled: boolean = true) {
-    return useQuery<TopDepartment[], Error>({
-        queryKey: [REPORTS_QUERY_KEY, 'top-departments'],
-        queryFn: () => reportService.getTopDepartments(),
-        enabled,
-        staleTime: 5 * 60 * 1000,
-    });
+  return useQuery<TopDepartment[], Error>({
+    queryKey: [REPORTS_QUERY_KEY, "top-departments"],
+    queryFn: () => reportService.getTopDepartments(),
+    enabled,
+    staleTime: 5 * 60 * 1000,
+    retry: (failureCount, error) => {
+      // Chỉ retry 2 lần và không retry cho lỗi 4xx
+      if (failureCount >= 2) return false;
+      const status = (error as any)?.response?.status;
+      if (status >= 400 && status < 500) return false;
+      return true;
+    },
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+  });
 }
