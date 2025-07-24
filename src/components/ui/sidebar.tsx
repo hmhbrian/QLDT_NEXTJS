@@ -240,7 +240,7 @@ const Sidebar = React.forwardRef<
         >
           <div
             data-sidebar="sidebar"
-            className="flex h-full w-full flex-col bg-sidebar shadow-xl group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:border group-data-[variant=floating]:border-sidebar-border group-data-[variant=floating]:shadow-2xl"
+            className="flex h-full w-full flex-col bg-sidebar text-sidebar-foreground shadow-xl group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:border group-data-[variant=floating]:border-sidebar-border group-data-[variant=floating]:shadow-2xl"
           >
             {children}
           </div>
@@ -577,7 +577,7 @@ const HoverPopoverContent = React.forwardRef<
       sideOffset={sideOffset}
       onOpenAutoFocus={(e) => e.preventDefault()}
       className={cn(
-        "z-[50] w-64 rounded-xl border-sidebar-border bg-sidebar-background/95 backdrop-blur-md p-4 text-sidebar-foreground shadow-2xl animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
+        "z-[50] w-64 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-black p-4 text-gray-900 dark:text-gray-100 shadow-2xl animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
         className
       )}
       {...props}
