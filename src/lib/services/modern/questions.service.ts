@@ -1,4 +1,3 @@
-
 import { BaseService, PaginatedResponse, QueryParams } from "@/lib/core";
 import { API_CONFIG } from "@/lib/config";
 import type {
@@ -27,7 +26,14 @@ class QuestionsService extends BaseService<ApiQuestion> {
     payload: CreateQuestionPayload
   ): Promise<ApiQuestion> {
     const endpoint = API_CONFIG.endpoints.tests.questions(testId);
-    return this.post<ApiQuestion>(endpoint, payload);
+    console.log("🔄 Creating single question:", {
+      testId,
+      payload,
+      endpoint,
+      arrayPayload: [payload]
+    });
+    // Send as array like the successful curl request
+    return this.post<ApiQuestion>(endpoint, [payload]);
   }
 
   async createQuestions(
@@ -35,6 +41,13 @@ class QuestionsService extends BaseService<ApiQuestion> {
     questions: CreateQuestionPayload[]
   ): Promise<void> {
     const endpoint = API_CONFIG.endpoints.tests.questions(testId);
+    console.log("🔄 Creating questions:", {
+      testId,
+      questionsCount: questions.length,
+      questions,
+      endpoint
+    });
+    // Send array directly like the successful curl request
     await this.post<void>(endpoint, questions);
   }
 
@@ -52,7 +65,7 @@ class QuestionsService extends BaseService<ApiQuestion> {
 
   async deleteQuestions(testId: number, questionIds: number[]): Promise<void> {
     const endpoint = API_CONFIG.endpoints.tests.questions(testId);
-    await this.delete<void>(endpoint, { ids: questionIds });
+    await this.delete<void>(endpoint, questionIds);
   }
 }
 
