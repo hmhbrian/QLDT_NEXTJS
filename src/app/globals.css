@@ -255,7 +255,7 @@
     background: linear-gradient(
       90deg,
       transparent,
-      rgba(255, 255, 255, 0.1),
+      rgba(255, 255, 255, 0.05),
       transparent
     );
     transition: left 0.5s ease;
@@ -270,9 +270,8 @@
   }
 
   .sidebar-popover-content {
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    /* Remove transparency for better text visibility */
+    border: 1px solid hsl(var(--sidebar-border));
   }
 }
 
