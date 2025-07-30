@@ -81,7 +81,7 @@ export function mapUserEnrollCourseDtoToCourse(
   return {
     id: dto.id,
     title: dto.name,
-    courseCode: dto.code,
+    courseCode: dto.code || dto.courseCode || "",
     description: dto.description || "",
     objectives: dto.objectives || "",
     image: imageUrl,
@@ -89,7 +89,7 @@ export function mapUserEnrollCourseDtoToCourse(
     status: "Đang mở",
     enrollmentType: dto.optional === "Bắt buộc" ? "mandatory" : "optional",
     isPublic: dto.optional !== "Bắt buộc",
-    instructor: "N/A",
+    instructor: dto.instructor || "N/A",
     duration: {
       sessions: dto.sessions || 0,
       hoursPerSession: dto.hoursPerSessions || 0,
@@ -102,7 +102,7 @@ export function mapUserEnrollCourseDtoToCourse(
     registrationDeadline: dto.registrationClosingDate || null,
     department: [],
     level: [],
-    category: "N/A",
+    category: dto.category || "N/A",
     materials: [],
     lessons: [],
     tests: [],
@@ -111,8 +111,8 @@ export function mapUserEnrollCourseDtoToCourse(
     modifiedAt: new Date().toISOString(),
     createdBy: "",
     modifiedBy: "",
-    progressPercentage: dto.progressPercentange // Corrected property name
-      ? Math.round(dto.progressPercentange)
+    progressPercentage: dto.progressPercentage // Fixed property name
+      ? Math.round(dto.progressPercentage)
       : 0,
   };
 }

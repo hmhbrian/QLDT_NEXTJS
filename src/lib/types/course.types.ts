@@ -237,22 +237,65 @@ export interface CourseApiResponse {
 
 export interface UserEnrollCourseDto {
   id: string;
-  code: string;
   name: string;
-  description?: string;
-  objectives?: string;
+  description: string;
   thumbUrl?: string;
-  format?: string;
-  sessions?: number;
-  hoursPerSessions?: number;
-  optional?: string;
-  maxParticipant?: number;
-  startDate?: string | null;
-  endDate?: string | null;
-  registrationStartDate?: string | null;
-  registrationClosingDate?: string | null;
+  courseCode?: string;
+  code?: string; // Add this for mapping
+  objectives?: string; // Add this for mapping
+  status?: string;
+  startDate?: string;
+  endDate?: string;
+  registrationStartDate?: string; // Add this for mapping
+  registrationClosingDate?: string; // Add this for mapping
+  category?: string;
   location?: string;
-  progressPercentange?: number; // Correct property name from backend
+  instructor?: string;
+  format?: string; // Add this for mapping
+  sessions?: number; // Add this for mapping
+  hoursPerSessions?: number; // Add this for mapping
+  optional?: string; // Add this for mapping
+  maxParticipant?: number; // Add this for mapping
+  progressPercentage?: number; // Fix typo
+}
+
+export interface CompletedCourseDto {
+  id: string;
+  name: string;
+  description: string;
+  thumbUrl?: string;
+}
+
+export interface UserCourseProgressDto {
+  userId: string;
+  userName: string;
+  progressPercentage: number;
+}
+
+export interface LessonProgressDetail {
+  lessonId: string;
+  lessonName: string;
+  progressPercentage: number;
+  isCompleted: boolean;
+}
+
+export interface TestScoreDetail {
+  testId: string;
+  testName: string;
+  isPassed: boolean;
+  score: number;
+  attemptDate: string;
+}
+
+export interface UserCourseProgressDetailDto {
+  courseId: string;
+  courseName: string;
+  status: string;
+  lessonProgress: LessonProgressDetail[];
+  testScore: TestScoreDetail[];
+  userId: string;
+  userName: string;
+  progressPercentage: number;
 }
 
 export interface ApiLesson {
