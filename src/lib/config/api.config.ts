@@ -150,6 +150,10 @@ export const API_ENDPOINTS = {
     topDepartment: "/Report/top-department",
     reportStatus: "/Report/report-status",
   },
+  certs: {
+    base: "/Certs",
+    byCourseId: (courseId: string) => `/Certs/${courseId}`,
+  },
 } as const;
 
 export const API_CONFIG = {
