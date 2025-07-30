@@ -783,7 +783,6 @@ export default function CourseDetailPage() {
                     ? "default"
                     : "secondary"
                 }
-                className="text-base"
               >
                 {course.enrollmentType === "mandatory"
                   ? "Bắt buộc"
@@ -838,36 +837,18 @@ export default function CourseDetailPage() {
           className="space-y-6"
         >
           <TabsList className="flex w-full overflow-x-auto h-auto items-center rounded-md bg-muted p-1 text-muted-foreground justify-start">
-            <TabsTrigger value="content" className="text-base">
-              Nội dung chính
-            </TabsTrigger>
-            <TabsTrigger value="objectives" className="text-base">
-              Mục tiêu
-            </TabsTrigger>
-            <TabsTrigger value="lessons" className="text-base">
-              Bài học
-            </TabsTrigger>
-            <TabsTrigger
-              value="tests"
-              className="text-base"
-              disabled={!canViewContent}
-            >
+            <TabsTrigger value="content">Nội dung chính</TabsTrigger>
+            <TabsTrigger value="objectives">Mục tiêu</TabsTrigger>
+            <TabsTrigger value="lessons">Bài học</TabsTrigger>
+            <TabsTrigger value="tests" disabled={!canViewContent}>
               Bài kiểm tra
             </TabsTrigger>
-            <TabsTrigger value="requirements" className="text-base">
-              Yêu cầu
-            </TabsTrigger>
-            <TabsTrigger value="materials" className="text-base">
-              Tài liệu
-            </TabsTrigger>
+            <TabsTrigger value="requirements">Yêu cầu</TabsTrigger>
+            <TabsTrigger value="materials">Tài liệu</TabsTrigger>
             {(currentUser?.role === "ADMIN" || currentUser?.role === "HR") && (
-              <TabsTrigger value="activity-logs" className="text-base">
-                Nhật ký hoạt động
-              </TabsTrigger>
+              <TabsTrigger value="activity-logs">Nhật ký hoạt động</TabsTrigger>
             )}
-            <TabsTrigger value="evaluations" className="text-base">
-              Phản hồi học viên
-            </TabsTrigger>
+            <TabsTrigger value="evaluations">Phản hồi học viên</TabsTrigger>
             {currentUser?.role === "ADMIN" && (
               <TabsTrigger value="students">Học viên & Tiến độ</TabsTrigger>
             )}
