@@ -367,7 +367,7 @@ export default function TestDetailPage() {
               size="lg"
             >
               <BookOpen className="mr-2 h-5 w-5" />
-              {result ? "Làm lại bài" : "Bắt đầu làm bài"}
+              {result ? "Xem lại bài" : "Bắt đầu làm bài"}
             </Button>
             {result && (
               <Button
@@ -790,10 +790,10 @@ export default function TestDetailPage() {
             <Home className="h-4 w-4 mr-2" />
             Quay lại khóa học
           </Button>
-          <Button onClick={handleStartTest}>
+          {/* <Button onClick={handleStartTest}>
             <RefreshCw className="h-4 w-4 mr-2" />
             Làm lại bài
-          </Button>
+          </Button> */}
         </div>
       </div>
     );
