@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
@@ -41,16 +40,18 @@ import { Badge } from "@/components/ui/badge";
 import { useError } from "@/hooks/use-error";
 import type { User, Position } from "@/lib/types/user.types";
 import type { DepartmentInfo } from "@/lib/types/department.types";
+import type { Course } from "@/lib/types/course.types";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  getLevelBadgeColor,
-  getStatusColor,
-} from "@/lib/helpers";
+import { getLevelBadgeColor, getStatusColor } from "@/lib/helpers";
+import { useCompletedCoursesCount } from "@/hooks/use-courses";
+import { CourseCard } from "@/components/courses/CourseCard";
 
 export default function UserProfilePage() {
   const { user, updateAvatar, changePassword } = useAuth();
   const { toast } = useToast();
   const { showError } = useError();
+  const { data: completedCoursesData, isLoading: isLoadingCompletedCourses } =
+    useCompletedCoursesCount();
 
   const [isEditing, setIsEditing] = useState(false);
 
@@ -203,9 +204,7 @@ export default function UserProfilePage() {
     }
   };
 
-  const renderDepartment = (
-    department: DepartmentInfo | undefined
-  ) => {
+  const renderDepartment = (department: DepartmentInfo | undefined) => {
     if (!department) return "N/A";
     return department.name;
   };
@@ -256,7 +255,7 @@ export default function UserProfilePage() {
                 <span>{profileData.email}</span>
                 {profileData.role === "HOCVIEN" && profileData.position && (
                   <Badge
-                      className={getLevelBadgeColor(
+                    className={getLevelBadgeColor(
                       (profileData.position as Position).positionName
                     )}
                   >
@@ -381,9 +380,51 @@ export default function UserProfilePage() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <p className="text-muted-foreground">
-                  Chức năng đang được phát triển.
-                </p>
+                {isLoadingCompletedCourses ? (
+                  <p className="text-muted-foreground">Đang tải...</p>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-2">
+                      <Award className="h-5 w-5 text-primary" />
+                      <p className="text-sm">
+                        <strong>Số khóa học đã hoàn thành:</strong>{" "}
+                        <span className="text-lg font-semibold text-primary">
+                          {completedCoursesData?.count || 0}
+                        </span>{" "}
+                        khóa học
+                      </p>
+                    </div>
+
+                    {(completedCoursesData?.count || 0) === 0 ? (
+                      <p className="text-muted-foreground text-sm">
+                        Bạn chưa hoàn thành khóa học nào. Hãy tham gia học tập
+                        để tích lũy kiến thức!
+                      </p>
+                    ) : (
+                      <div className="space-y-3">
+                        <p className="text-muted-foreground text-sm">
+                          Chúc mừng bạn đã hoàn thành{" "}
+                          {completedCoursesData?.count} khóa học. Tiếp tục phát
+                          triển bản thân!
+                        </p>
+
+                        {/* Always show the courses list if we have any data */}
+                        {completedCoursesData?.courses && (
+                          <div className="grid gap-2 max-h-60 overflow-y-auto">
+                            {completedCoursesData.courses.map(
+                              (course, index) => (
+                                <CourseCard
+                                  key={course.id || index}
+                                  course={course}
+                                />
+                              )
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -399,9 +440,7 @@ export default function UserProfilePage() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                 <p className="text-muted-foreground">
-                  Chưa có chứng chỉ nào.
-                </p>
+                <p className="text-muted-foreground">Chưa có chứng chỉ nào.</p>
               </CardContent>
             </Card>
           </TabsContent>
@@ -417,9 +456,7 @@ export default function UserProfilePage() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <p className="text-muted-foreground">
-                  Chưa có đánh giá nào.
-                </p>
+                <p className="text-muted-foreground">Chưa có đánh giá nào.</p>
               </CardContent>
             </Card>
           </TabsContent>
