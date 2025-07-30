@@ -17,7 +17,7 @@ export function mapApiTestToUiTest(apiTest: ApiTest): Test {
     countQuestion: apiTest.countQuestion || (apiTest.questions || []).length,
     questions: (apiTest.questions || []).map(mapApiQuestionToUi),
     passingScorePercentage: apiTest.passThreshold || 70,
-    time: apiTest.timeTest || 0,
+    timeTest: apiTest.timeTest || 0,
     createdBy: apiTest.createdBy || { id: "unknown", name: "Unknown" },
   };
 }
@@ -28,7 +28,7 @@ export function mapUiTestToCreatePayload(
   return {
     Title: uiTest.title || "Bài kiểm tra không tên",
     PassThreshold: uiTest.passingScorePercentage || 70,
-    TimeTest: uiTest.time || 0,
+    TimeTest: uiTest.timeTest || 0,
     Questions: (uiTest.questions || []).map((q) => mapUiQuestionToApiPayload(q)),
   };
 }
@@ -39,6 +39,6 @@ export function mapUiTestToUpdatePayload(
   return {
     Title: uiTest.title || "Bài kiểm tra không tên",
     PassThreshold: uiTest.passingScorePercentage || 70,
-    TimeTest: uiTest.time || 0,
+    TimeTest: uiTest.timeTest || 0,
   };
 }

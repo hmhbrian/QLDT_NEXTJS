@@ -1,4 +1,3 @@
-
 /**
  * Test & Question Domain Types
  * All test and question-related interfaces and types.
@@ -22,7 +21,7 @@ export interface Test {
   title: string;
   questions: Question[];
   passingScorePercentage: number;
-  time: number; // in minutes
+  timeTest: number; // Add timeTest in minutes
   countQuestion: number;
   createdBy?: { id: string; name: string };
 }
@@ -42,14 +41,13 @@ export interface UiTest {
   courseId: string;
   title: string;
   passThreshold: number;
-  timeTest: number;
+  timeTest: number; // Ensure this is here
   createdBy: {
     id: string;
     name: string;
   };
   questions: UiQuestion[];
 }
-
 
 // --- API DTOs and Payloads ---
 export interface ApiQuestion {
@@ -72,7 +70,7 @@ export interface ApiTest {
   id: number;
   title: string;
   passThreshold: number;
-  timeTest: number;
+  timeTest: number; // Ensure this is here
   countQuestion: number;
   questions?: ApiQuestion[];
   createdBy?: { id: string; name: string };
@@ -95,7 +93,7 @@ export interface UpdateQuestionPayload extends Partial<CreateQuestionPayload> {}
 export interface CreateTestPayload {
   Title: string;
   PassThreshold: number;
-  TimeTest: number;
+  TimeTest: number; // Ensure this is here
   Questions: CreateQuestionPayload[];
 }
 
@@ -104,7 +102,6 @@ export interface UpdateTestPayload {
   PassThreshold: number;
   TimeTest: number;
 }
-
 
 // --- Test Submission Interfaces ---
 export interface SelectedAnswer {
