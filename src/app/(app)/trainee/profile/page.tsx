@@ -45,6 +45,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { getLevelBadgeColor, getStatusColor } from "@/lib/helpers";
 import { useCompletedCoursesCount } from "@/hooks/use-courses";
 import { CourseCard } from "@/components/courses/CourseCard";
+import { useCertificates } from "@/hooks/use-certificates";
+import { CertificatesList } from "@/components/certificates";
 
 export default function UserProfilePage() {
   const { user, updateAvatar, changePassword } = useAuth();
@@ -52,6 +54,8 @@ export default function UserProfilePage() {
   const { showError } = useError();
   const { data: completedCoursesData, isLoading: isLoadingCompletedCourses } =
     useCompletedCoursesCount();
+  const { data: certificates, isLoading: isLoadingCertificates } =
+    useCertificates();
 
   const [isEditing, setIsEditing] = useState(false);
 
@@ -436,11 +440,14 @@ export default function UserProfilePage() {
               <CardHeader>
                 <CardTitle>Chứng chỉ đã đạt được</CardTitle>
                 <CardDescription>
-                  Danh sách các chứng chỉ và thành tích
+                  Danh sách các chứng chỉ và thành tích học tập của bạn
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <p className="text-muted-foreground">Chưa có chứng chỉ nào.</p>
+                <CertificatesList
+                  certificates={certificates || []}
+                  isLoading={isLoadingCertificates}
+                />
               </CardContent>
             </Card>
           </TabsContent>
