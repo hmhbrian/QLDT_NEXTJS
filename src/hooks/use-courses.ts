@@ -8,6 +8,8 @@ import type {
   UpdateCourseRequest,
   CourseApiResponse,
   UserEnrollCourseDto,
+  UserCourseProgressDto,
+  UserCourseProgressDetailDto,
 } from "@/lib/types/course.types";
 import { useError } from "./use-error";
 import {
@@ -209,5 +211,156 @@ export function useEnrollCourse() {
     onError: (error) => {
       showError(error);
     },
+  });
+}
+
+export function useCompletedCoursesCount() {
+  const { user } = useAuth();
+
+  return useQuery<{ count: number; courses: Course[] }, Error>({
+    queryKey: ["completedCoursesCount", user?.id],
+    queryFn: async () => {
+      console.log("🚀 Starting to fetch completed courses data...");
+
+      // Call both APIs in parallel
+      const [coursesResponse, countResponse] = await Promise.all([
+        coursesService.getCompletedCourses(), // Changed to getCompletedCourses
+        coursesService.getCompletedCoursesCount(),
+      ]);
+
+      console.log("🚀 Courses response:", coursesResponse);
+      console.log("🚀 Count response:", countResponse);
+
+      // Map the API response to Course format
+      const courses = (coursesResponse.items || []).map((item) => {
+        console.log("🔄 Mapping item:", item);
+        return {
+          id: item.id || "",
+          title: item.name || "", // API returns 'name', we need 'title'
+          courseCode: "",
+          description: item.description || "",
+          objectives: "",
+          image: item.thumbUrl || "",
+          location: "",
+          status: "completed",
+          statusId: 1,
+          enrollmentType: "optional" as const,
+          isPublic: true,
+          instructor: "",
+          duration: { sessions: 0, hoursPerSession: 0 },
+          learningType: "online" as const,
+          maxParticipants: 0,
+          startDate: null,
+          endDate: null,
+          registrationStartDate: null,
+          registrationDeadline: null,
+          department: [],
+          level: [],
+          category: "",
+          materials: [],
+          lessons: [],
+          tests: [],
+          userIds: [],
+          createdAt: "",
+          modifiedAt: "",
+          createdBy: "",
+          modifiedBy: null,
+        };
+      });
+
+      // Use the count from the dedicated endpoint if available, otherwise fall back to pagination
+      const finalCount =
+        countResponse ||
+        coursesResponse.pagination?.totalItems ||
+        coursesResponse.items?.length ||
+        0;
+
+      console.log("🔄 Final mapped courses:", courses);
+      console.log("🔄 Final count:", finalCount);
+
+      return {
+        count: finalCount,
+        courses,
+      };
+    },
+    enabled: !!user && user.role === "HOCVIEN", // Only fetch for students
+    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+    refetchOnWindowFocus: false,
+  });
+}
+
+export function useUpcomingCourses() {
+  const { user } = useAuth();
+
+  return useQuery<Course[], Error>({
+    queryKey: ["upcomingCourses", user?.id],
+    queryFn: async () => {
+      console.log("🚀 Starting to fetch upcoming courses data...");
+      const apiResponse = await coursesService.getUpcomingCourses();
+      console.log("🚀 Raw Upcoming Courses API response:", apiResponse);
+      return (apiResponse || []).map(mapCourseApiToUi);
+    },
+    enabled: !!user && user.role === "HOCVIEN",
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
+}
+
+export function useCourseProgressList(courseId: string, params?: QueryParams) {
+  return useQuery<PaginatedResponse<UserCourseProgressDto>, Error>({
+    queryKey: ["courseProgressList", courseId, params],
+    queryFn: async () => {
+      console.log(
+        `🚀 Starting to fetch progress list for course ${courseId}...`
+      );
+      const response = await coursesService.getCourseProgressList(
+        courseId,
+        params
+      );
+      console.log("🚀 Raw Course Progress List response:", response);
+      return response;
+    },
+    enabled: !!courseId, // Only fetch if courseId is provided
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
+}
+
+export function useCourseProgressDetail(courseId: string, userId: string) {
+  return useQuery<UserCourseProgressDetailDto, Error>({
+    queryKey: ["courseProgressDetail", courseId, userId],
+    queryFn: async () => {
+      console.log(
+        `🚀 Starting to fetch progress detail for user ${userId} in course ${courseId}...`
+      );
+      const response = await coursesService.getCourseProgressDetail(
+        courseId,
+        userId
+      );
+      console.log("🚀 Raw Course Progress Detail response:", response);
+      return response;
+    },
+    enabled: !!courseId && !!userId, // Only fetch if both courseId and userId are provided
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
+}
+
+export function useCompletedLessonsCount(courseId: string) {
+  return useQuery<number, Error>({
+    queryKey: ["completedLessonsCount", courseId],
+    queryFn: async () => {
+      console.log(
+        `🚀 Starting to fetch completed lessons count for course ${courseId}...`
+      );
+      const response = await coursesService.getCompletedLessonsCountByCourseId(
+        courseId
+      );
+      console.log("🚀 Raw Completed Lessons Count response:", response);
+      return response;
+    },
+    enabled: !!courseId, // Only fetch if courseId is provided
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 }
