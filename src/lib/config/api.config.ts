@@ -56,8 +56,16 @@ export const API_ENDPOINTS = {
     update: (id: string) => `/Courses/${id}`,
     enroll: (courseId: string) => `/Courses/${courseId}/enroll`,
     getEnrolled: "/Courses/enroll-courses",
+    completedCount: "/Courses/completed-count",
+    completedEnrollCourses: "/Courses/completed-enroll-courses",
     search: "/Courses/search",
     softDelete: "/Courses/soft-delete",
+    upcomingCourses: "/Courses/upcoming-courses",
+    progressList: (courseId: string) => `/Courses/progress-list/${courseId}`,
+    progressDetail: (courseId: string, userId: string) =>
+      `/Courses/progress-detail/${courseId}/${userId}`,
+    countCompletedLessons: (courseId: string) =>
+      `/Courses/${courseId}/lessons/count-completed`, // New endpoint
   },
   tests: {
     base: (courseId: string) => `/courses/${courseId}/tests`,
