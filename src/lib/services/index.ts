@@ -1,4 +1,3 @@
-
 /**
  * Enterprise Services Index
  * Central export point for all API services using modern architecture
@@ -7,6 +6,7 @@
 // Export all modern services individually
 export * from "./modern/auth.service";
 export * from "./modern/courses.service";
+export * from "./modern/certificates.service";
 export * from "./modern/departments.service";
 export * from "./modern/positions.service";
 export * from "./modern/roles.service";
@@ -56,5 +56,3 @@ export default services;
 
 // Type-safe services object type
 export type Services = typeof services;
-
-    
