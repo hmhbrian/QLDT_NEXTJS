@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState } from "react";
@@ -43,7 +42,7 @@ const initialTestState: Omit<Test, "id"> = {
   title: "",
   questions: [],
   passingScorePercentage: 70,
-  time: 0,
+  timeTest: 30, // Thay đổi từ 0 thành 30
   countQuestion: 0,
 };
 
