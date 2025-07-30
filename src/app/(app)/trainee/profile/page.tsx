@@ -376,58 +376,53 @@ export default function UserProfilePage() {
 
         {user.role === "HOCVIEN" && (
           <TabsContent value="courses">
-            <Card>
-              <CardHeader>
-                <CardTitle>Khóa học đã hoàn thành</CardTitle>
-                <CardDescription>
-                  Danh sách các khóa học đã hoàn thành và kết quả
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {isLoadingCompletedCourses ? (
-                  <p className="text-muted-foreground">Đang tải...</p>
-                ) : (
-                  <div className="space-y-4">
-                    <div className="flex items-center gap-2">
-                      <Award className="h-5 w-5 text-primary" />
-                      <p className="text-sm">
-                        <strong>Số khóa học đã hoàn thành:</strong>{" "}
-                        <span className="text-lg font-semibold text-primary">
-                          {completedCoursesData?.count || 0}
-                        </span>{" "}
-                        khóa học
-                      </p>
-                    </div>
-
-                    {(completedCoursesData?.count || 0) === 0 ? (
-                      <p className="text-muted-foreground text-sm">
-                        Bạn chưa hoàn thành khóa học nào. Hãy tham gia học tập
-                        để tích lũy kiến thức!
-                      </p>
-                    ) : (
-                      <div className="space-y-3">
-                        <p className="text-muted-foreground text-sm">
-                          Chúc mừng bạn đã hoàn thành{" "}
-                          {completedCoursesData?.count} khóa học. Tiếp tục phát
-                          triển bản thân!
-                        </p>
-
-                        {/* Always show the courses list if we have any data */}
-                        {completedCoursesData?.courses && (
-                          <div className="grid gap-2 max-h-60 overflow-y-auto">
-                            {completedCoursesData.courses.map(
-                              (course, index) => (
-                                <CourseCard
-                                  key={course.id || index}
-                                  course={course}
-                                />
-                              )
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    )}
+            <Card className="shadow-xl border-2 border-primary/20">
+              <CardHeader className="pb-2 bg-gradient-to-r from-primary/5 to-transparent rounded-t-md border-b border-primary/10">
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                  <div className="mb-2 md:mb-0">
+                    <CardTitle className="text-2xl font-bold text-primary flex items-center gap-2">
+                      <Award className="h-7 w-7 text-primary" />
+                      Khóa học đã hoàn thành
+                    </CardTitle>
+                    <CardDescription className="mt-1 text-base text-muted-foreground">
+                      Danh sách các khóa học bạn đã hoàn thành cùng kết quả học tập
+                    </CardDescription>
                   </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-2xl font-bold text-primary">
+                      {completedCoursesData?.count || 0}
+                    </span>
+                    <span className="text-sm font-medium text-muted-foreground">Khóa học đã hoàn thành</span>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="pt-5">
+                {isLoadingCompletedCourses ? (
+                  <div className="flex justify-center items-center gap-2">
+                    <p className="text-muted-foreground">Đang tải...</p>
+                  </div>
+                ) : (completedCoursesData?.count || 0) === 0 ? (
+                  <div className="flex flex-col items-center justify-center min-h-[120px] gap-2">
+                    <Award className="h-10 w-10 text-muted-foreground mb-1" />
+                    <p className="text-muted-foreground text-sm text-center font-normal">
+                      Bạn chưa hoàn thành khóa học nào.<br />Hãy tham gia học tập để tích lũy kiến thức!
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    {/* <div className="mb-4">
+                      <p className="text-muted-foreground text-sm font-normal">
+                        🎉 Chúc mừng bạn đã hoàn thành <span className="font-semibold text-primary">{completedCoursesData?.count}</span> khóa học. Tiếp tục phát triển bản thân!
+                      </p>
+                    </div> */}
+                    <div className="w-full overflow-x-auto pb-2">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-1 gap-1 min-w-[320px]">
+                        {completedCoursesData?.courses?.map((course, idx) => (
+                          <CourseCard key={course.id || idx} course={course} />
+                        ))}
+                      </div>
+                    </div>
+                  </>
                 )}
               </CardContent>
             </Card>
