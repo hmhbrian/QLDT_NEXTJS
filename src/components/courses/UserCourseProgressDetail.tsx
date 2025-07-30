@@ -38,8 +38,8 @@ export const UserCourseProgressDetail: React.FC<
         <div className="flex items-center justify-center h-48">
           <div className="flex flex-col items-center space-y-4">
             <div className="relative">
-              <Loader2 className="h-10 w-10 animate-spin text-orange-500" />
-              <div className="absolute inset-0 h-10 w-10 rounded-full border-2 border-orange-200 opacity-25"></div>
+              <Loader2 className="h-10 w-10 animate-spin text-blue-500" />
+              <div className="absolute inset-0 h-10 w-10 rounded-full border-2 border-blue-200 opacity-25"></div>
             </div>
             <div className="text-center">
               <p className="text-sm font-medium text-gray-900">
@@ -105,11 +105,11 @@ export const UserCourseProgressDetail: React.FC<
   return (
     <div className="space-y-6">
       {/* Student Header Card */}
-      <Card className="border-0 bg-gradient-to-br from-orange-50 to-amber-50">
+      <Card className="border-0 bg-gradient-to-br from-blue-50 to-indigo-50">
         <CardContent className="p-6">
           <div className="flex items-center gap-4">
             <Avatar className="h-16 w-16 border-4 border-white shadow-lg">
-              <AvatarFallback className="bg-gradient-to-br from-orange-500 to-amber-600 text-white text-xl font-bold">
+              <AvatarFallback className="bg-gradient-to-br from-blue-500 to-indigo-600 text-white text-xl font-bold">
                 {userName.charAt(0).toUpperCase()}
               </AvatarFallback>
             </Avatar>
@@ -143,7 +143,7 @@ export const UserCourseProgressDetail: React.FC<
             </div>
 
             <div className="text-right">
-              <div className="text-3xl font-bold bg-gradient-to-r from-orange-600 to-amber-600 bg-clip-text text-transparent">
+              <div className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
                 {progressPercentage}%
               </div>
               <p className="text-sm text-muted-foreground">Tiến độ tổng thể</p>
@@ -176,35 +176,35 @@ export const UserCourseProgressDetail: React.FC<
           </CardContent>
         </Card>
 
-        <Card className="border-0 bg-gradient-to-br from-orange-50 to-amber-50">
+        <Card className="border-0 bg-gradient-to-br from-blue-50 to-cyan-50">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-orange-700">
+                <p className="text-sm font-medium text-blue-700">
                   Bài kiểm tra đạt
                 </p>
-                <p className="text-2xl font-bold text-orange-600">
+                <p className="text-2xl font-bold text-blue-600">
                   {passedTests}/{testScore.length}
                 </p>
               </div>
-              <div className="p-3 bg-orange-100 rounded-lg">
-                <Award className="h-6 w-6 text-orange-600" />
+              <div className="p-3 bg-blue-100 rounded-lg">
+                <Award className="h-6 w-6 text-blue-600" />
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="border-0 bg-gradient-to-br from-amber-50 to-yellow-50">
+        <Card className="border-0 bg-gradient-to-br from-purple-50 to-violet-50">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-amber-700">Điểm TB</p>
-                <p className="text-2xl font-bold text-amber-600">
+                <p className="text-sm font-medium text-purple-700">Điểm TB</p>
+                <p className="text-2xl font-bold text-purple-600">
                   {averageTestScore}%
                 </p>
               </div>
-              <div className="p-3 bg-amber-100 rounded-lg">
-                <TrendingUp className="h-6 w-6 text-amber-600" />
+              <div className="p-3 bg-purple-100 rounded-lg">
+                <TrendingUp className="h-6 w-6 text-purple-600" />
               </div>
             </div>
           </CardContent>
@@ -219,7 +219,7 @@ export const UserCourseProgressDetail: React.FC<
               <BookOpen className="h-5 w-5 text-green-600" />
             </div>
             <div>
-              <span className="bg-gradient-to-r from-orange-600 to-amber-600 bg-clip-text text-transparent">
+              <span className="bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">
                 Tiến độ bài học
               </span>
               <p className="text-sm font-normal text-muted-foreground mt-1">
@@ -240,7 +240,7 @@ export const UserCourseProgressDetail: React.FC<
               </p>
             </div>
           ) : (
-            <div className="space-y-3 max-h-64 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-orange-200 scrollbar-track-transparent">
+            <div className="space-y-3 max-h-64 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-200 scrollbar-track-transparent">
               {lessonProgress.map((lesson, index) => (
                 <div
                   key={lesson.lessonId}
@@ -283,7 +283,7 @@ export const UserCourseProgressDetail: React.FC<
                           width: `${lesson.progressPercentage}%`,
                           background: lesson.isCompleted
                             ? "linear-gradient(90deg, #10b981, #059669)"
-                            : "linear-gradient(90deg, #ea580c, #c2410c)",
+                            : "linear-gradient(90deg, #3b82f6, #1d4ed8)",
                         }}
                       />
                     </div>
@@ -295,7 +295,7 @@ export const UserCourseProgressDetail: React.FC<
                         "text-sm font-bold",
                         lesson.isCompleted
                           ? "text-green-600"
-                          : "text-orange-600"
+                          : "text-blue-600"
                       )}
                     >
                       {lesson.progressPercentage}%
@@ -317,11 +317,11 @@ export const UserCourseProgressDetail: React.FC<
       <Card className="border-0 shadow-lg">
         <CardHeader className="pb-4">
           <CardTitle className="flex items-center text-lg">
-            <div className="p-2 bg-orange-100 rounded-lg mr-3">
-              <Award className="h-5 w-5 text-orange-600" />
+            <div className="p-2 bg-purple-100 rounded-lg mr-3">
+              <Award className="h-5 w-5 text-purple-600" />
             </div>
             <div>
-              <span className="bg-gradient-to-r from-orange-600 to-amber-600 bg-clip-text text-transparent">
+              <span className="bg-gradient-to-r from-purple-600 to-violet-600 bg-clip-text text-transparent">
                 Kết quả kiểm tra
               </span>
               <p className="text-sm font-normal text-muted-foreground mt-1">
@@ -344,7 +344,7 @@ export const UserCourseProgressDetail: React.FC<
               </p>
             </div>
           ) : (
-            <div className="space-y-3 max-h-64 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-orange-200 scrollbar-track-transparent">
+            <div className="space-y-3 max-h-64 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-200 scrollbar-track-transparent">
               {testScore.map((test, index) => (
                 <div
                   key={test.testId}
