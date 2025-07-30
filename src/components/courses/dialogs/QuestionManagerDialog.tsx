@@ -105,7 +105,14 @@ export function QuestionManagerDialog({
 
   useEffect(() => {
     if (isOpen) {
-      setTestFormData(initialTestState);
+      setTestFormData((prev) => ({
+        ...initialTestState,
+        timeTest:
+          initialTestState.timeTest === 0 ||
+          initialTestState.timeTest === undefined
+            ? 30
+            : initialTestState.timeTest,
+      }));
       setQuestionsPage(1);
     }
   }, [isOpen, initialTestState]);
@@ -474,6 +481,24 @@ export function QuestionManagerDialog({
                     setTestFormData((p) => ({
                       ...p,
                       passingScorePercentage: parseInt(e.target.value) || 70,
+                    }))
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="timeTest">
+                  Thời gian làm bài (phút){" "}
+                  <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id="timeTest"
+                  type="number"
+                  min={1}
+                  value={testFormData.timeTest || 30} // Default to 30 minutes
+                  onChange={(e) =>
+                    setTestFormData((p) => ({
+                      ...p,
+                      timeTest: parseInt(e.target.value) || 30,
                     }))
                   }
                 />
