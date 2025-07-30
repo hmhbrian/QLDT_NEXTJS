@@ -124,15 +124,15 @@ export const CourseProgressList: React.FC<CourseProgressListProps> = ({
       : 0;
 
   return (
-    <Card className="shadow-xl border-0 bg-gradient-to-br from-white to-orange-50/30">
+    <Card className="shadow-xl border-0 bg-gradient-to-br from-white to-blue-50/30">
       <CardHeader className="pb-4">
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center text-lg font-semibold">
-            <div className="p-2 bg-orange-100 rounded-lg mr-3">
-              <Users className="h-5 w-5 text-orange-600" />
+            <div className="p-2 bg-blue-100 rounded-lg mr-3">
+              <Users className="h-5 w-5 text-blue-600" />
             </div>
             <div>
-              <span className="bg-gradient-to-r from-orange-600 to-amber-600 bg-clip-text text-transparent">
+              <span className="bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
                 Tiến độ học viên
               </span>
               <p className="text-sm font-normal text-muted-foreground mt-1">
@@ -152,7 +152,7 @@ export const CourseProgressList: React.FC<CourseProgressListProps> = ({
               </Badge>
               <Badge
                 variant="secondary"
-                className="bg-orange-100 text-orange-700 border-orange-200"
+                className="bg-blue-100 text-blue-700 border-blue-200"
               >
                 <TrendingUp className="w-3 h-3 mr-1" />
                 {averageProgress}% TB
@@ -184,13 +184,13 @@ export const CourseProgressList: React.FC<CourseProgressListProps> = ({
             </p>
           </div>
         ) : (
-          <div className="space-y-3 max-h-96 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-orange-200 scrollbar-track-transparent">
+          <div className="space-y-3 max-h-96 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-blue-200 scrollbar-track-transparent">
             {students.map((student, index) => (
               <div
                 key={student.userId}
                 className={cn(
                   "group relative flex items-center gap-4 p-4 rounded-xl border transition-all duration-200 cursor-pointer",
-                  "bg-white/80 hover:bg-white hover:shadow-md hover:scale-[1.01] hover:border-orange-200",
+                  "bg-white/80 hover:bg-white hover:shadow-md hover:scale-[1.01] hover:border-blue-200",
                   "backdrop-blur-sm"
                 )}
                 onClick={() => handleStudentClick(student.userId)}
@@ -200,7 +200,7 @@ export const CourseProgressList: React.FC<CourseProgressListProps> = ({
                 }}
               >
                 <Avatar className="h-10 w-10 border-2 border-white shadow-sm">
-                  <AvatarFallback className="bg-gradient-to-br from-orange-400 to-amber-500 text-white font-semibold">
+                  <AvatarFallback className="bg-gradient-to-br from-blue-400 to-indigo-500 text-white font-semibold">
                     {student.userName.charAt(0).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
@@ -222,8 +222,8 @@ export const CourseProgressList: React.FC<CourseProgressListProps> = ({
                           student.progressPercentage >= 80
                             ? "text-green-600"
                             : student.progressPercentage >= 50
-                            ? "text-orange-600"
-                            : "text-amber-600"
+                            ? "text-blue-600"
+                            : "text-orange-600"
                         )}
                       >
                         {student.progressPercentage}%
@@ -244,7 +244,7 @@ export const CourseProgressList: React.FC<CourseProgressListProps> = ({
                           student.progressPercentage >= 80
                             ? "linear-gradient(90deg, #10b981, #059669)"
                             : student.progressPercentage >= 50
-                            ? "linear-gradient(90deg, #ea580c, #c2410c)"
+                            ? "linear-gradient(90deg, #3b82f6, #1d4ed8)"
                             : "linear-gradient(90deg, #f59e0b, #d97706)",
                       }}
                     />
@@ -252,8 +252,8 @@ export const CourseProgressList: React.FC<CourseProgressListProps> = ({
                 </div>
 
                 <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                  <div className="p-2 bg-orange-50 rounded-lg">
-                    <Eye className="h-4 w-4 text-orange-600" />
+                  <div className="p-2 bg-blue-50 rounded-lg">
+                    <Eye className="h-4 w-4 text-blue-600" />
                   </div>
                 </div>
               </div>
@@ -266,7 +266,7 @@ export const CourseProgressList: React.FC<CourseProgressListProps> = ({
         <Dialog open={isDetailModalOpen} onOpenChange={setIsDetailModalOpen}>
           <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-hidden">
             <DialogHeader className="pb-4">
-              <DialogTitle className="text-xl font-semibold bg-gradient-to-r from-orange-600 to-amber-600 bg-clip-text text-transparent">
+              <DialogTitle className="text-xl font-semibold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
                 Chi tiết tiến độ học viên
               </DialogTitle>
             </DialogHeader>
