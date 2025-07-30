@@ -108,10 +108,10 @@ export default function TestDetailPage() {
 
   // Timer
   useEffect(() => {
-    if (!isStarted || result || !testData?.time) return;
+    if (!isStarted || result || !testData?.timeTest) return;
 
     if (timeRemaining === null) {
-      setTimeRemaining(testData.time * 60);
+      setTimeRemaining(testData.timeTest * 60);
       return;
     }
 
@@ -321,13 +321,13 @@ export default function TestDetailPage() {
                   </p>
                 </div>
               </div>
-              {testData.time > 0 && (
+              {testData.timeTest > 0 && (
                 <div className="p-4 bg-muted/50 rounded-lg flex items-center gap-4">
                   <Timer className="h-5 w-5 text-primary" />{" "}
                   <div>
                     <p className="font-medium">Thời gian</p>
                     <p className="text-sm text-muted-foreground">
-                      {testData.time} phút
+                      {testData.timeTest}
                     </p>
                   </div>
                 </div>
