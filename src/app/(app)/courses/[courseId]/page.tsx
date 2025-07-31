@@ -368,6 +368,7 @@ export default function CourseDetailPage() {
     tests,
     isLoading: isLoadingTests,
     error: testsError,
+    reloadTests,
   } = useTests(courseIdFromParams, canViewContent);
   const {
     attachedFiles,
@@ -415,11 +416,21 @@ export default function CourseDetailPage() {
     }
   }, [videoProgress.playedSeconds, selectedLesson, debouncedUpsert]);
 
+  // Auto reload tests when returning from a test detail page
   useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") {
+        if (typeof reloadTests === "function") {
+          reloadTests();
+        }
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
     return () => {
+      document.removeEventListener("visibilitychange", handleVisibility);
       cleanupProgress();
     };
-  }, [cleanupProgress]);
+  }, [cleanupProgress, reloadTests]);
 
   useEffect(() => {
     if (hasPendingProgress()) {
