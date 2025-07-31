@@ -99,7 +99,13 @@ export default function TestDetailPage() {
   });
 
   useEffect(() => {
-    if (fetchedTest) setTestData(fetchedTest);
+    // Đảm bảo isDone từ backend được gán vào testData
+    if (fetchedTest) {
+      setTestData((prev) => ({
+        ...fetchedTest,
+        isDone: fetchedTest.isDone,
+      }));
+    }
   }, [fetchedTest]);
 
   useEffect(() => {
@@ -291,6 +297,8 @@ export default function TestDetailPage() {
   }
 
   if (!isStarted) {
+    // Debug log để kiểm tra giá trị isDone
+    console.log("DEBUG isDone:", testData?.isDone, typeof testData?.isDone);
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-4">
         <Card className="max-w-2xl w-full">
@@ -361,21 +369,23 @@ export default function TestDetailPage() {
             )}
           </CardContent>
           <CardFooter className="flex flex-col sm:flex-row gap-2">
-            <Button
-              onClick={handleStartTest}
-              className="w-full sm:w-auto flex-1"
-              size="lg"
-            >
-              <BookOpen className="mr-2 h-5 w-5" />
-              {result ? "Xem lại bài" : "Bắt đầu làm bài"}
-            </Button>
-            {result && (
+            {testData.isDone ? (
               <Button
                 onClick={() => setIsStarted(true)}
                 variant="outline"
-                className="w-full sm:w-auto"
+                className="w-full flex-1 "
+                size="lg"
               >
                 <Eye className="mr-2 h-4 w-4" /> Xem lại chi tiết
+              </Button>
+            ) : (
+              <Button
+                onClick={handleStartTest}
+                className="w-full sm:w-auto flex-1"
+                size="lg"
+              >
+                <BookOpen className="mr-2 h-5 w-5" />
+                Bắt đầu làm bài
               </Button>
             )}
             <Button
