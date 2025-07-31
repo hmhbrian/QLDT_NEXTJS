@@ -23,6 +23,7 @@ export interface Test {
   passingScorePercentage: number;
   timeTest: number; // Add timeTest in minutes
   countQuestion: number;
+  isDone: boolean;
   createdBy?: { id: string; name: string };
 }
 
@@ -72,6 +73,7 @@ export interface ApiTest {
   passThreshold: number;
   timeTest: number; // Ensure this is here
   countQuestion: number;
+  isDone?: boolean; // Ensure isDone is here
   questions?: ApiQuestion[];
   createdBy?: { id: string; name: string };
 }

@@ -15,6 +15,7 @@ export function mapApiTestToUiTest(apiTest: ApiTest): Test {
     id: apiTest.id,
     title: apiTest.title,
     countQuestion: apiTest.countQuestion || (apiTest.questions || []).length,
+    isDone: apiTest.isDone || false, // Ensure isDone is mapped
     questions: (apiTest.questions || []).map(mapApiQuestionToUi),
     passingScorePercentage: apiTest.passThreshold || 70,
     timeTest: apiTest.timeTest || 0,
