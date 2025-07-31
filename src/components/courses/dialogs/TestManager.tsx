@@ -42,6 +42,7 @@ const initialTestState: Omit<Test, "id"> = {
   title: "",
   questions: [],
   passingScorePercentage: 70,
+  isDone: false, // Ensure isDone is initialized
   timeTest: 30, // Thay đổi từ 0 thành 30
   countQuestion: 0,
 };
