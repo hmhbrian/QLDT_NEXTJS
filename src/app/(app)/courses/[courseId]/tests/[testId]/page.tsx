@@ -299,6 +299,14 @@ export default function TestDetailPage() {
   if (!isStarted) {
     // Debug log để kiểm tra giá trị isDone
     console.log("DEBUG isDone:", testData?.isDone, typeof testData?.isDone);
+    if (isSubmitting) {
+      return (
+        <div className="flex flex-col items-center justify-center min-h-screen p-4">
+          <Loader2 className="w-12 h-12 animate-spin text-primary" />
+          {/* <p className="mt-4 text-lg font-semibold text-primary">Đang nộp bài, vui lòng chờ hệ thống xử lý...</p> */}
+        </div>
+      );
+    }
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-4">
         <Card className="max-w-2xl w-full">
@@ -673,9 +681,16 @@ export default function TestDetailPage() {
               }}
               className="flex items-center space-x-2 bg-green-600 hover:bg-green-700"
               size="lg"
+              disabled={isSubmitting}
             >
-              <Send className="h-4 w-4" />
-              <span>Nộp bài kiểm tra</span>
+              {isSubmitting ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Send className="h-4 w-4 mr-2" />
+              )}
+              <span>
+                {isSubmitting ? "Đang nộp bài..." : "Nộp bài kiểm tra"}
+              </span>
             </Button>
           </div>
         </div>
