@@ -1001,7 +1001,7 @@ export default function TrainingOverviewReportPage() {
         </Card>
         {/* Additional Charts */}
         <ApiDataCharts
-          studentsData={studentsData}
+          // studentsData={studentsData}
           courseFeedback={courseFeedback}
           overallFeedback={overallFeedback}
         />
