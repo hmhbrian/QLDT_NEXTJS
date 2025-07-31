@@ -418,16 +418,14 @@ export default function CourseDetailPage() {
 
   // Auto reload tests when returning from a test detail page
   useEffect(() => {
-    const handleVisibility = () => {
-      if (document.visibilityState === "visible") {
-        if (typeof reloadTests === "function") {
-          reloadTests();
-        }
+    const handleFocus = () => {
+      if (typeof reloadTests === "function") {
+        reloadTests();
       }
     };
-    document.addEventListener("visibilitychange", handleVisibility);
+    window.addEventListener("focus", handleFocus);
     return () => {
-      document.removeEventListener("visibilitychange", handleVisibility);
+      window.removeEventListener("focus", handleFocus);
       cleanupProgress();
     };
   }, [cleanupProgress, reloadTests]);
