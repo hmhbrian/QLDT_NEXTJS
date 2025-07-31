@@ -73,6 +73,7 @@ export default function TestDetailPage() {
     data: fetchedTest,
     isLoading: isLoadingTest,
     error: testError,
+    refetch: refetchTest,
   } = useQuery({
     queryKey: ["test", courseId, testId],
     queryFn: async () => {
@@ -244,6 +245,12 @@ export default function TestDetailPage() {
       // Hiển thị kết quả ngay lập tức
       setResult(detailedResult);
       setIsStarted(false); // End the test session on client
+      // Cập nhật trạng thái isDone để UI chuyển sang "Xem lại chi tiết"
+      setTestData((prev) => (prev ? { ...prev, isDone: true } : prev));
+      // Refetch test data to get the latest state from backend
+      if (typeof refetchTest === "function") {
+        refetchTest();
+      }
     } catch (error) {
       toast({
         variant: "destructive",
