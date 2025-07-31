@@ -201,7 +201,7 @@ const TestItem = ({
                   </Button> */}
                   <Button asChild variant="outline" size="sm">
                     <Link href={`/courses/${courseId}/tests/${test.id}`}>
-                      <RefreshCw className="mr-2 h-4 w-4" /> Làm lại bài
+                      <Eye className="mr-2 h-4 w-4" /> Xem lại bài
                     </Link>
                   </Button>
                 </>
