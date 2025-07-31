@@ -37,16 +37,14 @@ export default function MyCoursesPage() {
   const { enrolledCourses, isLoadingEnrolled, reloadEnrolledCourses } =
     useEnrolledCourses(!!currentUser);
 
-  // Tự động reload khi người dùng quay lại tab hoặc trang
+  // Tự động reload khi người dùng quay lại tab hoặc trang (dùng focus cho nhanh và ổn định hơn)
   useEffect(() => {
-    const handleVisibility = () => {
-      if (document.visibilityState === "visible") {
-        reloadEnrolledCourses();
-      }
+    const handleFocus = () => {
+      reloadEnrolledCourses();
     };
-    document.addEventListener("visibilitychange", handleVisibility);
+    window.addEventListener("focus", handleFocus);
     return () => {
-      document.removeEventListener("visibilitychange", handleVisibility);
+      window.removeEventListener("focus", handleFocus);
     };
   }, [reloadEnrolledCourses]);
 
