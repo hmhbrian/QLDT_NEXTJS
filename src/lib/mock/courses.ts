@@ -57,6 +57,7 @@ const sampleTests: Test[] = [
     title: "Kiểm tra cuối Chương 1",
     questions: sampleQuestions,
     passingScorePercentage: 70,
+    isDone: false, // Ensure isDone is initialized
     timeTest: 30,
     countQuestion: sampleQuestions.length,
   },
@@ -74,6 +75,7 @@ const sampleTests: Test[] = [
       },
     ],
     passingScorePercentage: 70,
+    isDone: false, // Ensure isDone is initialized
     timeTest: 45,
     countQuestion: 3,
   },
