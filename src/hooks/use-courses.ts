@@ -45,16 +45,18 @@ export function useCourses(
         pagination: apiResponse.pagination,
       };
     },
-    enabled: true, // Always enable fetching, let filtering happen after both load
+    enabled: true,
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
     placeholderData: (previousData) => previousData,
+    // Key changes for instant navigation:
+    refetchOnMount: false, // Don't refetch on every mount
   });
 
   return {
     courses: data?.items ?? [],
     paginationInfo: data?.pagination,
-    isLoading: isLoading, // Simplified loading state
+    isLoading: isLoading,
     error,
     reloadCourses,
   };
@@ -72,7 +74,8 @@ export function useEnrolledCourses(enabled: boolean = true) {
     },
     enabled: enabled,
     staleTime: 5 * 60 * 1000,
-    refetchOnWindowFocus: true,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
   });
 
   return {
