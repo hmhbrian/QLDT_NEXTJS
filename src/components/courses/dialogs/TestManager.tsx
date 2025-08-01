@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from "react";
@@ -42,8 +43,8 @@ const initialTestState: Omit<Test, "id"> = {
   title: "",
   questions: [],
   passingScorePercentage: 70,
-  isDone: false, // Ensure isDone is initialized
-  timeTest: 30, // Thay đổi từ 0 thành 30
+  isDone: false,
+  timeTest: 30,
   countQuestion: 0,
 };
 
@@ -100,7 +101,6 @@ export function TestManager({ courseId }: TestManagerProps) {
     if (!courseId) return;
 
     if (typeof testData.id === "number") {
-      // Editing existing test
       const payload = mapUiTestToUpdatePayload(testData as Test);
       await updateTestMutation.mutateAsync({
         courseId,
@@ -108,7 +108,6 @@ export function TestManager({ courseId }: TestManagerProps) {
         payload: payload,
       });
     } else {
-      // Creating new test
       const payload = mapUiTestToCreatePayload(testData as Test);
       await createTestMutation.mutateAsync({
         courseId,
@@ -221,3 +220,5 @@ export function TestManager({ courseId }: TestManagerProps) {
     </div>
   );
 }
+
+    
