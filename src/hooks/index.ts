@@ -7,6 +7,9 @@
 export * from "./useAuth";
 export * from "./useLogin";
 
+// Navigation hooks
+export * from "./useInstantNavigation";
+
 // Data fetching & API hooks
 export * from "./useAsync";
 export * from "./use-courses";
