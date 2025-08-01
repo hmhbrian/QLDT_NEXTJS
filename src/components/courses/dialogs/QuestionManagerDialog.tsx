@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useMemo, useRef } from "react";
@@ -95,7 +96,6 @@ export function QuestionManagerDialog({
   const {
     questions: fetchedQuestions,
     isLoading: isLoadingQuestions,
-    reloadQuestions,
   } = useQuestions(testId);
 
   const createQuestionMutation = useCreateQuestion();
@@ -175,8 +175,6 @@ export function QuestionManagerDialog({
       } else {
         await createQuestionMutation.mutateAsync({ testId: testId, payload });
       }
-      // Reload questions to update UI
-      await reloadQuestions();
     } else {
       // For new tests, just update local state
       setTestFormData((prev) => {
@@ -227,8 +225,6 @@ export function QuestionManagerDialog({
         testId: testId,
         questionIds: [id],
       });
-      // Reload questions to update UI
-      await reloadQuestions();
     } else {
       // For new tests, just update local state
       setTestFormData((prev) => ({
@@ -383,8 +379,6 @@ export function QuestionManagerDialog({
               mapUiQuestionToApiPayload(q as Question)
             ),
           });
-          // Reload questions to update UI
-          await reloadQuestions();
           toast({
             title: "Thành công",
             description: `Đã import và lưu ${newQuestions.length} câu hỏi.`,
