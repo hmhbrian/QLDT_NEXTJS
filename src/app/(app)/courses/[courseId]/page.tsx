@@ -275,6 +275,30 @@ export default function CourseDetailPage() {
     reloadFeedbacks,
   } = useFeedbacks(courseIdFromParams);
 
+  // Instant navigation - show skeleton while loading
+  if (isLoading || courseError) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="lg:col-span-2">
+            <div className="h-8 bg-gray-200 animate-pulse rounded mb-4"></div>
+            <div className="h-64 bg-gray-200 animate-pulse rounded mb-6"></div>
+            <div className="space-y-4">
+              <div className="h-4 bg-gray-200 animate-pulse rounded"></div>
+              <div className="h-4 bg-gray-200 animate-pulse rounded"></div>
+              <div className="h-4 bg-gray-200 animate-pulse rounded w-3/4"></div>
+            </div>
+          </div>
+          <div className="space-y-4">
+            <div className="h-6 bg-gray-200 animate-pulse rounded"></div>
+            <div className="h-32 bg-gray-200 animate-pulse rounded"></div>
+            <div className="h-10 bg-gray-200 animate-pulse rounded"></div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // Initialize localStorage check on first load
   useEffect(() => {
     if (currentUser && courseIdFromParams && feedbacks) {
@@ -592,18 +616,7 @@ export default function CourseDetailPage() {
     }
   }, [selectedLesson]);
 
-  if (isLoading) {
-    return (
-      <div className="flex h-60 w-full items-center justify-center">
-        <Loader2 className="h-10 w-10 animate-spin text-primary" />
-        <p className="ml-2 text-muted-foreground">
-          Đang tải chi tiết khóa học...
-        </p>
-      </div>
-    );
-  }
-
-  if (courseError || !course) {
+  if (!course) {
     return (
       <Alert variant="destructive" className="max-w-xl mx-auto my-12">
         <AlertTriangle className="h-4 w-4" />
