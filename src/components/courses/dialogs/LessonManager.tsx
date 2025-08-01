@@ -41,6 +41,7 @@ import {
   useUpdateLesson,
   useDeleteLesson,
   useReorderLesson,
+  LESSONS_QUERY_KEY,
 } from "@/hooks/use-lessons";
 import {
   DndContext,
@@ -64,6 +65,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { CSS } from "@dnd-kit/utilities";
+import { useQueryClient } from "@tanstack/react-query";
 
 const renderLessonIcon = (contentType: LessonContentType | undefined) => {
   if (!contentType) return <FileText className="h-4 w-4 text-gray-400" />;
@@ -158,8 +160,9 @@ function SortableLessonItem({
 }
 
 export function LessonManager({ courseId }: LessonManagerProps) {
+  const queryClient = useQueryClient();
   const { toast } = useToast();
-  const { lessons, isLoading: isLoadingLessons, error: lessonsError, reloadLessons } =
+  const { lessons, isLoading: isLoadingLessons, error: lessonsError } =
     useLessons(courseId ?? undefined);
 
   const [isLessonDialogOpen, setIsLessonDialogOpen] = useState(false);
@@ -294,23 +297,22 @@ export function LessonManager({ courseId }: LessonManagerProps) {
       const oldIndex = lessons.findIndex((l) => l.id === active.id);
       const newIndex = lessons.findIndex((l) => l.id === over.id);
 
-      if (oldIndex === -1 || newIndex === -1) return;
+      if (oldIndex === -1 || newIndex === -1 || !courseId) return;
 
-      if (courseId) {
-        const reorderedLessons = arrayMove(lessons, oldIndex, newIndex);
-        const movedLesson = reorderedLessons[newIndex];
-        const previousLesson =
-          newIndex > 0 ? reorderedLessons[newIndex - 1] : null;
+      const reorderedLessons = arrayMove(lessons, oldIndex, newIndex);
+      const movedLesson = reorderedLessons[newIndex];
+      const previousLesson = newIndex > 0 ? reorderedLessons[newIndex - 1] : null;
+      
+      queryClient.setQueryData([LESSONS_QUERY_KEY, courseId], reorderedLessons);
 
-        const payload = {
-          LessonId: Number(movedLesson.id),
-          PreviousLessonId: previousLesson ? Number(previousLesson.id) : null,
-        };
-        reorderLessonMutation.mutate({
-          courseId: courseId,
-          payload,
-        });
-      }
+      const payload = {
+        LessonId: Number(movedLesson.id),
+        PreviousLessonId: previousLesson ? Number(previousLesson.id) : null,
+      };
+      reorderLessonMutation.mutate({
+        courseId: courseId,
+        payload,
+      });
     }
   };
 
@@ -502,9 +504,13 @@ export function LessonManager({ courseId }: LessonManagerProps) {
             <Button variant="outline" onClick={() => setDeletingItem(null)}>
               Hủy
             </Button>
-            <Button variant="destructive" onClick={executeDeleteLesson}>
+            <LoadingButton
+              variant="destructive"
+              onClick={executeDeleteLesson}
+              isLoading={deleteLessonMutation.isPending}
+            >
               Xác nhận xóa
-            </Button>
+            </LoadingButton>
           </DialogFooter>
         </DialogContent>
       </Dialog>
