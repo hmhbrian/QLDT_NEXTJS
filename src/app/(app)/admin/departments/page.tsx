@@ -131,7 +131,7 @@ export default function DepartmentsPage() {
       ) {
         return (
           user.position.positionId >= managerBaseLevelId &&
-          user.userStatus?.statusName === "Hoạt động"
+          user.userStatus?.name === "Hoạt động"
         );
       }
       return false;
