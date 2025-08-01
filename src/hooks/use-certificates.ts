@@ -25,8 +25,9 @@ export function useCertificates() {
       }
     },
     enabled: !!user,
-    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+    staleTime: 10 * 60 * 1000, // Cache for 10 minutes
     refetchOnWindowFocus: false,
+    refetchOnMount: false,
   });
 }
 
@@ -45,8 +46,9 @@ export function useCertificateByCourse(courseId: string) {
       }
     },
     enabled: !!user && !!courseId,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 10 * 60 * 1000,
     refetchOnWindowFocus: false,
+    refetchOnMount: false,
   });
 }
 
