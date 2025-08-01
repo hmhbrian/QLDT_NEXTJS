@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState, useMemo, useCallback, useRef } from "react";
@@ -168,7 +169,10 @@ const TestItem = ({
   courseId: string;
   isEnrolled: boolean;
 }) => {
-  const { hasSubmitted, isLoading } = useHasSubmittedTest(courseId, test.id);
+  const { hasSubmitted, isLoading } = useHasSubmittedTest(
+    courseId,
+    Number(test.id)
+  );
 
   return (
     <Card
@@ -193,18 +197,11 @@ const TestItem = ({
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Đang tải...
                 </Button>
               ) : hasSubmitted ? (
-                <>
-                  {/* <Button asChild variant="secondary" size="sm">
-                    <Link href={`/courses/${courseId}/tests/${test.id}`}>
-                      <Eye className="mr-2 h-4 w-4" /> Xem lại kết quả
-                    </Link>
-                  </Button> */}
-                  <Button asChild variant="outline" size="sm">
-                    <Link href={`/courses/${courseId}/tests/${test.id}`}>
-                      <Eye className="mr-2 h-4 w-4" /> Xem lại bài
-                    </Link>
-                  </Button>
-                </>
+                <Button asChild variant="outline" size="sm">
+                  <Link href={`/courses/${courseId}/tests/${test.id}`}>
+                    <Eye className="mr-2 h-4 w-4" /> Xem lại bài
+                  </Link>
+                </Button>
               ) : (
                 <Button
                   variant="outline"
@@ -272,7 +269,6 @@ export default function CourseDetailPage() {
   const {
     feedbacks,
     isLoading: isLoadingFeedbacks,
-    reloadFeedbacks,
   } = useFeedbacks(courseIdFromParams);
 
   // All hooks need to be before early returns to comply with Rules of Hooks
@@ -297,7 +293,6 @@ export default function CourseDetailPage() {
     tests,
     isLoading: isLoadingTests,
     error: testsError,
-    reloadTests,
   } = useTests(courseIdFromParams, canViewContent);
   const {
     attachedFiles,
@@ -361,32 +356,24 @@ export default function CourseDetailPage() {
       comment: "",
     });
 
+  const handleEvaluationRatingChange = (
+    key: keyof Omit<CreateFeedbackPayload, "comment">,
+    rating: number
+  ) => {
+    setEvaluationFormData((prev) => ({
+      ...prev,
+      [key]: rating,
+    }));
+  };
+
   const hasSubmittedEvaluation = useMemo(() => {
     if (!currentUser) return false;
-
-    // Check localStorage first for immediate feedback
-    const localKey = `feedback_submitted_${currentUser.id}_${courseIdFromParams}`;
-    const localSubmitted = localStorage.getItem(localKey) === "true";
-
-    // Check API data
-    let apiSubmitted = false;
-    if (feedbacks && feedbacks.length > 0) {
-      const userFeedback = feedbacks.find(
+    return (
+      feedbacks?.some(
         (fb) =>
           fb.userId === currentUser.id && fb.courseId === courseIdFromParams
-      );
-      apiSubmitted = !!userFeedback;
-      console.log("Current user:", currentUser.id);
-      console.log("Feedbacks:", feedbacks);
-      console.log("User feedback found:", userFeedback);
-
-      // If we found API feedback but localStorage doesn't reflect it, update localStorage
-      if (apiSubmitted && !localSubmitted) {
-        localStorage.setItem(localKey, "true");
-      }
-    }
-
-    return localSubmitted || apiSubmitted;
+      ) ?? false
+    );
   }, [feedbacks, currentUser, courseIdFromParams]);
 
   const showRegisterGate = useMemo(
@@ -397,50 +384,6 @@ export default function CourseDetailPage() {
       course.enrollmentType === "optional",
     [currentUser, course, isEnrolled]
   );
-
-  // Initialize localStorage check on first load
-  useEffect(() => {
-    if (currentUser && courseIdFromParams && feedbacks) {
-      const localKey = `feedback_submitted_${currentUser.id}_${courseIdFromParams}`;
-
-      // Check if user feedback exists in API response
-      const userFeedback = feedbacks.find(
-        (fb) =>
-          fb.userId === currentUser.id && fb.courseId === courseIdFromParams
-      );
-
-      if (userFeedback) {
-        // Update localStorage to reflect API state
-        localStorage.setItem(localKey, "true");
-        console.log("Found existing feedback, marked as submitted");
-      }
-    }
-  }, [currentUser, courseIdFromParams, feedbacks]);
-
-  // Check if user has already submitted evaluation when component mounts
-  useEffect(() => {
-    if (currentUser && courseIdFromParams) {
-      const localKey = `feedback_submitted_${currentUser.id}_${courseIdFromParams}`;
-      const hasSubmittedLocally = localStorage.getItem(localKey) === "true";
-
-      // If not marked locally, try to submit a test request to check
-      if (!hasSubmittedLocally && !isLoadingFeedbacks) {
-        // Check API by making a test call (this will trigger error if already submitted)
-        const testPayload = {
-          q1_relevance: 1,
-          q2_clarity: 1,
-          q3_structure: 1,
-          q4_duration: 1,
-          q5_material: 1,
-          comment: "test_check",
-        };
-
-        // We'll use this to silently check - don't actually submit
-        // Instead, let's check the feedbacks list
-        console.log("Checking feedbacks for user:", currentUser.id);
-      }
-    }
-  }, [currentUser, courseIdFromParams, isLoadingFeedbacks]);
 
   useEffect(() => {
     if (
@@ -472,19 +415,12 @@ export default function CourseDetailPage() {
     }
   }, [videoProgress.playedSeconds, selectedLesson, debouncedUpsert]);
 
-  // Auto reload tests when returning from a test detail page
+  // Cleanup progress on unmount
   useEffect(() => {
-    const handleFocus = () => {
-      if (typeof reloadTests === "function") {
-        reloadTests();
-      }
-    };
-    window.addEventListener("focus", handleFocus);
     return () => {
-      window.removeEventListener("focus", handleFocus);
       cleanupProgress();
     };
-  }, [cleanupProgress, reloadTests]);
+  }, [cleanupProgress]);
 
   useEffect(() => {
     if (hasPendingProgress()) {
@@ -514,23 +450,10 @@ export default function CourseDetailPage() {
     enrollCourseMutation.mutate(course.id);
   }, [course, currentUser, router, isEnrolled, enrollCourseMutation]);
 
-  const handleEvaluationRatingChange = useCallback(
-    (field: keyof Omit<CreateFeedbackPayload, "comment">, rating: number) => {
-      setEvaluationFormData((prev) => ({ ...prev, [field]: rating }));
-    },
-    []
-  );
-
   const handleSubmitEvaluation = useCallback(() => {
     if (!currentUser || !course) return;
     createFeedbackMutation.mutate(evaluationFormData, {
       onSuccess: () => {
-        console.log("Feedback submitted successfully");
-
-        // Immediately mark as submitted in localStorage for instant UI update
-        const localKey = `feedback_submitted_${currentUser.id}_${courseIdFromParams}`;
-        localStorage.setItem(localKey, "true");
-
         setIsEvaluationDialogOpen(false);
         setEvaluationFormData({
           q1_relevance: 0,
@@ -540,25 +463,6 @@ export default function CourseDetailPage() {
           q5_material: 0,
           comment: "",
         });
-
-        // Force reload feedbacks after successful submission
-        setTimeout(() => {
-          reloadFeedbacks();
-        }, 100);
-      },
-      onError: (error: any) => {
-        console.log("Feedback submission error:", error);
-        // Check if error indicates user has already submitted
-        const errorMessage = error?.message || error?.detail || "";
-        if (
-          errorMessage.includes("đã đánh giá") ||
-          errorMessage.includes("already")
-        ) {
-          // Mark as submitted since user has already evaluated
-          const localKey = `feedback_submitted_${currentUser.id}_${courseIdFromParams}`;
-          localStorage.setItem(localKey, "true");
-          setIsEvaluationDialogOpen(false);
-        }
       },
     });
   }, [
@@ -566,8 +470,6 @@ export default function CourseDetailPage() {
     course,
     evaluationFormData,
     createFeedbackMutation,
-    reloadFeedbacks,
-    courseIdFromParams,
   ]);
 
   const handleSelectLesson = useCallback((lesson: LessonWithProgress) => {
@@ -931,7 +833,6 @@ export default function CourseDetailPage() {
                 ) : selectedLesson.type === "pdf_url" ? (
                   selectedLesson.fileUrl ? (
                     <PdfLessonViewer
-                      lessonId={selectedLesson.id}
                       pdfUrl={selectedLesson.fileUrl}
                       initialPage={selectedLesson.currentPage || 1}
                       onVisiblePageChange={handleVisiblePageChange}
