@@ -1,3 +1,4 @@
+
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { questionsService } from "@/lib/services";
 import type {
@@ -8,6 +9,7 @@ import type {
 import { useToast } from "@/components/ui/use-toast";
 import { extractErrorMessage } from "@/lib/core";
 import { mapApiQuestionToUi } from "@/lib/mappers/question.mapper";
+import { TESTS_QUERY_KEY } from "./use-tests";
 
 export const QUESTIONS_QUERY_KEY = "questions";
 
@@ -18,7 +20,6 @@ export function useQuestions(testId: number | undefined) {
     data,
     isLoading,
     error,
-    refetch: reloadQuestions,
   } = useQuery<Question[], Error>({
     queryKey,
     queryFn: async () => {
@@ -26,14 +27,13 @@ export function useQuestions(testId: number | undefined) {
       const paginatedResponse = await questionsService.getQuestions(testId, {
         SortField: "position",
         SortType: "asc",
-        Limit: 50, // Reduced limit as requested
+        Limit: 200, // Fetch all questions for a test
       });
       return (paginatedResponse.items || []).map(mapApiQuestionToUi);
     },
     enabled: !!testId,
-    staleTime: 2 * 60 * 1000, // 2 minutes for questions
+    staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
-    refetchOnMount: false,
     placeholderData: (previousData) => previousData,
   });
 
@@ -41,7 +41,6 @@ export function useQuestions(testId: number | undefined) {
     questions: data ?? [],
     isLoading,
     error,
-    reloadQuestions,
   };
 }
 
@@ -61,10 +60,7 @@ export function useCreateQuestion() {
       );
       return mapApiQuestionToUi(apiQuestion);
     },
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({
-        queryKey: [QUESTIONS_QUERY_KEY, variables.testId],
-      });
+    onSuccess: (data, variables) => {
       toast({
         title: "Thành công",
         description: "Đã thêm câu hỏi mới.",
@@ -78,69 +74,12 @@ export function useCreateQuestion() {
         variant: "destructive",
       });
     },
-  });
-}
-
-export function useCreateQuestionSilent() {
-  const queryClient = useQueryClient();
-
-  return useMutation<
-    Question,
-    Error,
-    { testId: number; payload: CreateQuestionPayload }
-  >({
-    mutationFn: async (variables) => {
-      const apiQuestion = await questionsService.createQuestion(
-        variables.testId,
-        variables.payload
-      );
-      return mapApiQuestionToUi(apiQuestion);
-    },
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({
-        queryKey: [QUESTIONS_QUERY_KEY, variables.testId],
-      });
-    },
-  });
-}
-
-export function useCreateQuestions() {
-  const queryClient = useQueryClient();
-  const { toast } = useToast();
-
-  return useMutation<
-    void,
-    Error,
-    { testId: number; questions: CreateQuestionPayload[] }
-  >({
-    mutationFn: async (variables) => {
-      await questionsService.createQuestions(
-        variables.testId,
-        variables.questions
-      );
-      // API returns success message, not array of questions
-    },
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({
-        queryKey: [QUESTIONS_QUERY_KEY, variables.testId],
-      });
-      // Also invalidate tests to update countQuestion
-      queryClient.invalidateQueries({
-        queryKey: ["tests"],
-      });
-      toast({
-        title: "Thành công",
-        description: `Đã thêm ${variables.questions.length} câu hỏi mới.`,
-        variant: "success",
-      });
-    },
-    onError: (error) => {
-      toast({
-        title: "Thêm câu hỏi thất bại",
-        description: extractErrorMessage(error),
-        variant: "destructive",
-      });
-    },
+    onSettled: (data, error, variables) => {
+        queryClient.invalidateQueries({
+            queryKey: [QUESTIONS_QUERY_KEY, variables.testId],
+        });
+        queryClient.invalidateQueries({ queryKey: [TESTS_QUERY_KEY] });
+    }
   });
 }
 
@@ -152,20 +91,17 @@ export function useCreateQuestionsSilent() {
     Error,
     { testId: number; questions: CreateQuestionPayload[] }
   >({
-    mutationFn: async (variables) => {
-      await questionsService.createQuestions(
+    mutationFn: (variables) =>
+      questionsService.createQuestions(
         variables.testId,
         variables.questions
-      );
-      // API returns success message, not array of questions
-    },
+      ),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({
         queryKey: [QUESTIONS_QUERY_KEY, variables.testId],
       });
-      // Also invalidate tests to update countQuestion
       queryClient.invalidateQueries({
-        queryKey: ["tests"],
+        queryKey: [TESTS_QUERY_KEY],
       });
     },
   });
@@ -188,10 +124,7 @@ export function useUpdateQuestion() {
       );
       return mapApiQuestionToUi(apiQuestion);
     },
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({
-        queryKey: [QUESTIONS_QUERY_KEY, variables.testId],
-      });
+    onSuccess: (data, variables) => {
       toast({
         title: "Thành công",
         description: "Đã cập nhật câu hỏi.",
@@ -205,36 +138,11 @@ export function useUpdateQuestion() {
         variant: "destructive",
       });
     },
-  });
-}
-
-export function useUpdateQuestionSilent() {
-  const queryClient = useQueryClient();
-
-  return useMutation<
-    Question,
-    Error,
-    { testId: number; questionId: number; payload: UpdateQuestionPayload }
-  >({
-    mutationFn: async (variables) => {
-      const apiQuestion = await questionsService.updateQuestion(
-        variables.testId,
-        variables.questionId,
-        variables.payload
-      );
-      return mapApiQuestionToUi(apiQuestion);
-    },
-    // No onSuccess invalidation - will be handled manually
-  });
-}
-
-export function useDeleteQuestionSilent() {
-  const queryClient = useQueryClient();
-
-  return useMutation<void, Error, { testId: number; questionIds: number[] }>({
-    mutationFn: (variables) =>
-      questionsService.deleteQuestions(variables.testId, variables.questionIds),
-    // No onSuccess invalidation - will be handled manually
+    onSettled: (data, error, variables) => {
+       queryClient.invalidateQueries({
+        queryKey: [QUESTIONS_QUERY_KEY, variables.testId],
+      });
+    }
   });
 }
 
@@ -246,9 +154,6 @@ export function useDeleteQuestion() {
     mutationFn: (variables) =>
       questionsService.deleteQuestions(variables.testId, variables.questionIds),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({
-        queryKey: [QUESTIONS_QUERY_KEY, variables.testId],
-      });
       toast({
         title: "Thành công",
         description: "Đã xóa câu hỏi.",
@@ -262,5 +167,11 @@ export function useDeleteQuestion() {
         variant: "destructive",
       });
     },
+    onSettled: (data, error, variables) => {
+       queryClient.invalidateQueries({
+        queryKey: [QUESTIONS_QUERY_KEY, variables.testId],
+      });
+       queryClient.invalidateQueries({ queryKey: [TESTS_QUERY_KEY] });
+    }
   });
 }
