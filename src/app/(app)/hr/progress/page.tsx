@@ -86,17 +86,16 @@ export default function ProgressPage() {
     error: overallFeedbackError,
   } = useAvgFeedbackReport();
 
-  const isLoading =
-    isLoadingCourses ||
-    isLoadingUsers ||
-    isLoadingStudents ||
-    isLoadingCourseFeedback ||
-    isLoadingOverallFeedback;
-
-  const anyError = studentsError || courseFeedbackError || overallFeedbackError;
-
+  // ALL HOOKS MUST BE CALLED BEFORE ANY EARLY RETURNS - Rules of Hooks
   const reportData = useMemo(() => {
-    if (isLoading) {
+    const loadingState =
+      isLoadingCourses ||
+      isLoadingUsers ||
+      isLoadingStudents ||
+      isLoadingCourseFeedback ||
+      isLoadingOverallFeedback;
+
+    if (loadingState) {
       return {
         totalCourses: 0,
         totalTrainees: 0,
@@ -224,8 +223,42 @@ export default function ProgressPage() {
     studentsData,
     courseFeedback,
     overallFeedback,
-    isLoading,
+    isLoadingCourses,
+    isLoadingUsers,
+    isLoadingStudents,
+    isLoadingCourseFeedback,
+    isLoadingOverallFeedback,
   ]);
+
+  // Instant navigation - show loading skeleton while core data is loading
+  if (
+    isLoadingCourses ||
+    isLoadingUsers ||
+    isLoadingStudents ||
+    isLoadingCourseFeedback ||
+    isLoadingOverallFeedback
+  ) {
+    return (
+      <div className="space-y-6">
+        <div className="h-8 bg-gray-200 animate-pulse rounded w-48"></div>
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+          {[...Array(4)].map((_, i) => (
+            <div
+              key={i}
+              className="h-32 bg-gray-200 animate-pulse rounded"
+            ></div>
+          ))}
+        </div>
+        <div className="grid gap-6 lg:grid-cols-2">
+          <div className="h-96 bg-gray-200 animate-pulse rounded"></div>
+          <div className="h-96 bg-gray-200 animate-pulse rounded"></div>
+        </div>
+      </div>
+    );
+  }
+
+  const isLoading = false; // Already handled above
+  const anyError = studentsError || courseFeedbackError || overallFeedbackError;
 
   const statCards = [
     {
