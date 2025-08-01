@@ -19,7 +19,8 @@ export function LoadingProvider({ children }: { children: ReactNode }) {
 
   const showLoading = (text: string = "Đang tải...") => {
     setLoadingText(text);
-    setIsLoading(true);
+    // Don't show loading immediately - give navigation a chance
+    setTimeout(() => setIsLoading(true), 150);
   };
 
   const hideLoading = () => {
