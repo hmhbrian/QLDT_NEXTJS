@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, Suspense } from "react";
 import { useRouter } from "next/navigation";
 import {
   Card,
@@ -76,6 +76,9 @@ interface CourseFilters {
   levelId: string;
 }
 
+// Import at top to avoid conflicts
+import { PageLoader } from "@/components/common/PageLoader";
+
 export default function CoursesPage() {
   const { user: currentUser } = useAuth();
   const { showError } = useError();
@@ -132,14 +135,7 @@ export default function CoursesPage() {
     useDepartments();
   const { positions, loading: isLoadingPositions } = usePositions();
 
-  const isLoading =
-    isLoadingCourses ||
-    isLoadingStatuses ||
-    isLoadingDepts ||
-    isLoadingPositions;
-
-  const pageCount = paginationInfo?.totalPages ?? 0;
-
+  // All hooks must be called before any early returns
   const updateCourseMutation = useUpdateCourse();
   const deleteCourseMutation = useDeleteCourse();
 
@@ -173,6 +169,13 @@ export default function CoursesPage() {
     setPagination((p) => ({ ...p, pageIndex: 0 }));
   }, [filters, viewMode, pagination.pageSize]);
 
+  const isLoading =
+    isLoadingCourses ||
+    isLoadingStatuses ||
+    isLoadingDepts ||
+    isLoadingPositions;
+
+  // Handle event functions
   const handleOpenAddDialog = () => {
     router.push("/admin/courses/edit/new");
   };
@@ -226,6 +229,21 @@ export default function CoursesPage() {
     });
   };
 
+  const canDeleteCourse = (course: Course | null): boolean => {
+    if (!course) return false;
+    const registrationStarted =
+      course.registrationStartDate &&
+      new Date(course.registrationStartDate) <= new Date();
+    return course.status !== "Đang mở" && !registrationStarted;
+  };
+
+  const handleFilterChange = (
+    filterName: keyof CourseFilters,
+    value: string
+  ) => {
+    setFilters((prev) => ({ ...prev, [filterName]: value }));
+  };
+
   const columns = useMemo(
     () =>
       getColumns(
@@ -242,6 +260,13 @@ export default function CoursesPage() {
     [canManageCourses, allDepartments, positions]
   );
 
+  const pageCount = paginationInfo?.totalPages ?? 0;
+
+  // Show loading state without early return
+  const isInitialLoading =
+    isLoading && !courses.length && !courseStatuses.length;
+
+  // Show error state
   if (statusesError) {
     return (
       <div className="flex h-60 w-full items-center justify-center text-destructive">
@@ -254,20 +279,10 @@ export default function CoursesPage() {
     );
   }
 
-  const handleFilterChange = (
-    filterName: keyof CourseFilters,
-    value: string
-  ) => {
-    setFilters((prev) => ({ ...prev, [filterName]: value }));
-  };
-
-  const canDeleteCourse = (course: Course | null): boolean => {
-    if (!course) return false;
-    const registrationStarted =
-      course.registrationStartDate &&
-      new Date(course.registrationStartDate) <= new Date();
-    return course.status !== "Đang mở" && !registrationStarted;
-  };
+  // Show loading skeleton for initial load
+  if (isInitialLoading) {
+    return <PageLoader />;
+  }
 
   return (
     <>
