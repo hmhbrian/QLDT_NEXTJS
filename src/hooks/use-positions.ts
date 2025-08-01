@@ -8,8 +8,9 @@ export const usePositions = () => {
   const { data, error, isLoading } = useQuery<Position[], Error>({
     queryKey: [POSITIONS_QUERY_KEY],
     queryFn: () => positionsService.getPositions(),
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 10 * 60 * 1000, // Cache for 10 minutes
     refetchOnWindowFocus: false,
+    refetchOnMount: false,
   });
 
   return {
