@@ -52,7 +52,7 @@ import {
   Building2,
   BarChart3,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+
 import { useState, useMemo } from "react";
 import {
   useCourseAndAvgFeedbackReport,
@@ -148,6 +148,7 @@ export default function TrainingOverviewReportPage() {
     error: studentsError,
   } = useStudentsOfCourseReport();
 
+  // ALL REPORT HOOKS MUST BE CALLED BEFORE EARLY RETURN - Rules of Hooks
   const {
     data: monthlyReport,
     isLoading: isLoadingMonthlyReport,
@@ -188,12 +189,7 @@ export default function TrainingOverviewReportPage() {
     error: courseStatusError,
   } = useCourseStatusDistribution();
 
-  // Debug log để kiểm tra dữ liệu
-  console.log("🔍 Course Status Distribution Data:", courseStatusDistribution);
-  console.log("📊 Is Loading:", isLoadingCourseStatus);
-  console.log("❌ Error:", courseStatusError);
-
-  const isLoading = useMemo(() => {
+  const isLoadingAny = useMemo(() => {
     return (
       isLoadingOverallFeedback ||
       isLoadingCourseFeedback ||
@@ -357,6 +353,34 @@ export default function TrainingOverviewReportPage() {
     overallFeedback,
   ]);
 
+  // Instant navigation - show loading skeleton while any core data is loading
+  if (
+    isLoadingOverallFeedback ||
+    isLoadingCourseFeedback ||
+    isLoadingStudents
+  ) {
+    return (
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <div className="h-8 bg-gray-200 animate-pulse rounded w-64"></div>
+          <div className="h-10 bg-gray-200 animate-pulse rounded w-32"></div>
+        </div>
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+          {[...Array(4)].map((_, i) => (
+            <div
+              key={i}
+              className="h-32 bg-gray-200 animate-pulse rounded"
+            ></div>
+          ))}
+        </div>
+        <div className="grid gap-6 lg:grid-cols-2">
+          <div className="h-96 bg-gray-200 animate-pulse rounded"></div>
+          <div className="h-96 bg-gray-200 animate-pulse rounded"></div>
+        </div>
+      </div>
+    );
+  }
+
   const getFilterDisplayLabel = () => {
     switch (filterType) {
       case "month":
@@ -390,28 +414,6 @@ export default function TrainingOverviewReportPage() {
   const applyFilters = () => {
     setIsFilterOpen(false);
   };
-
-  if (isLoading && !anyError) {
-    return (
-      <div className="min-h-screen from-orange-50 via-amber-50/50 to-red-50/30 dark:from-slate-950 dark:via-orange-950/20 dark:to-red-950/10">
-        <div className="container mx-auto px-4 py-8">
-          <div className="flex h-60 w-full items-center justify-center">
-            <div className="text-center space-y-4">
-              <Loader2 className="h-12 w-12 animate-spin text-orange-500 mx-auto" />
-              <div className="space-y-2">
-                <p className="text-lg font-medium text-slate-700 dark:text-slate-300">
-                  Đang tải dữ liệu báo cáo...
-                </p>
-                <p className="text-sm text-slate-500 dark:text-slate-400">
-                  {getFilterDisplayLabel()}
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   if (anyError) {
     return (
@@ -707,63 +709,115 @@ export default function TrainingOverviewReportPage() {
           </CardHeader>
           <CardContent>
             {courseStatusDistribution && courseStatusDistribution.length > 0 ? (
-              <div className="h-[400px] w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={courseStatusDistribution}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={60}
-                      outerRadius={120}
-                      paddingAngle={5}
-                      dataKey="percent"
-                      nameKey="statusName"
-                      label={({ statusName, percent }) =>
-                        `${statusName}: ${percent}%`
-                      }
-                      labelLine={false}
-                    >
-                      {courseStatusDistribution.map((entry, index) => {
-                        const colors = [
-                          "#ef4444", // Red for "Đã kết thúc"
-                          "#f97316", // Orange for "Sắp khai giảng"
-                          "#22c55e", // Green for "Đang mở"
-                          "#64748b", // Gray for "Lưu nháp"
-                          "#9ca3af", // Light gray for "Hủy"
-                        ];
-                        return (
-                          <Cell
-                            key={`cell-${index}`}
-                            fill={colors[index % colors.length]}
-                          />
-                        );
-                      })}
-                    </Pie>
-                    <Tooltip
-                      formatter={(value: number) => [`${value}%`, "Tỷ lệ"]}
-                      labelFormatter={(label) => `Trạng thái: ${label}`}
-                      contentStyle={{
-                        backgroundColor: "rgba(255, 255, 255, 0.95)",
-                        border: "1px solid #e2e8f0",
-                        borderRadius: "8px",
-                        boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
-                      }}
-                    />
-                    <Legend
-                      verticalAlign="bottom"
-                      height={36}
-                      formatter={(value, entry) => (
-                        <span
-                          style={{ color: entry.color, fontWeight: "medium" }}
+              <>
+                {courseStatusDistribution.some((item) => item.percent > 0) ? (
+                  <div className="h-[400px] w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={courseStatusDistribution.filter(
+                            (item) => item.percent > 0
+                          )}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={60}
+                          outerRadius={120}
+                          paddingAngle={5}
+                          dataKey="percent"
+                          nameKey="statusName"
+                          label={({ statusName, percent }) =>
+                            `${statusName}: ${percent}%`
+                          }
+                          labelLine={false}
                         >
-                          {value}
+                          {courseStatusDistribution
+                            .filter((item) => item.percent > 0)
+                            .map((entry, index) => {
+                              const colors = [
+                                "#ef4444", // Red for "Đã kết thúc"
+                                "#f97316", // Orange for "Sắp khai giảng"
+                                "#22c55e", // Green for "Đang mở"
+                                "#64748b", // Gray for "Lưu nháp"
+                                "#9ca3af", // Light gray for "Hủy"
+                              ];
+                              return (
+                                <Cell
+                                  key={`cell-${index}`}
+                                  fill={colors[index % colors.length]}
+                                />
+                              );
+                            })}
+                        </Pie>
+                        <Tooltip
+                          formatter={(value: number) => [`${value}%`, "Tỷ lệ"]}
+                          labelFormatter={(label) => `Trạng thái: ${label}`}
+                          contentStyle={{
+                            backgroundColor: "rgba(255, 255, 255, 0.95)",
+                            border: "1px solid #e2e8f0",
+                            borderRadius: "8px",
+                            boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
+                          }}
+                        />
+                        <Legend
+                          verticalAlign="bottom"
+                          height={36}
+                          formatter={(value, entry) => (
+                            <span
+                              style={{
+                                color: entry.color,
+                                fontWeight: "medium",
+                              }}
+                            >
+                              {value}
+                            </span>
+                          )}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                ) : (
+                  <div className="h-[300px] flex items-center justify-center text-slate-500 dark:text-slate-400">
+                    <div className="text-center">
+                      <div className="text-6xl mb-4">📊</div>
+                      <p className="text-lg font-medium">
+                        Chưa có khóa học nào
+                      </p>
+                      <p className="text-sm">
+                        Tất cả trạng thái đều có 0 khóa học
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Custom Legend hiển thị tất cả trạng thái */}
+                <div className="mt-4 grid grid-cols-2 gap-2 text-sm">
+                  {courseStatusDistribution.map((entry, index) => {
+                    const colors = [
+                      "#ef4444", // Red for "Đã kết thúc"
+                      "#f97316", // Orange for "Sắp khai giảng"
+                      "#22c55e", // Green for "Đang mở"
+                      "#64748b", // Gray for "Lưu nháp"
+                      "#9ca3af", // Light gray for "Hủy"
+                    ];
+                    return (
+                      <div
+                        key={`legend-${index}`}
+                        className="flex items-center gap-2"
+                      >
+                        <div
+                          className="w-3 h-3 rounded-full flex-shrink-0"
+                          style={{
+                            backgroundColor: colors[index % colors.length],
+                          }}
+                        />
+                        <span className="text-slate-700 dark:text-slate-300">
+                          {entry.statusName}: {entry.percent}%
                         </span>
-                      )}
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
             ) : (
               <div className="text-center py-12">
                 <PieChartIcon className="h-12 w-12 text-slate-400 mx-auto mb-4" />
