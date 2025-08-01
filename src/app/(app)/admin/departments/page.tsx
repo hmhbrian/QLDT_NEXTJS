@@ -113,26 +113,7 @@ export default function DepartmentsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
 
-  // Instant navigation - show loading skeleton while loading
-  if (isDepartmentsLoading || isUsersLoading || isPositionsLoading) {
-    return (
-      <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <div className="h-8 bg-gray-200 animate-pulse rounded w-48"></div>
-          <div className="h-10 bg-gray-200 animate-pulse rounded w-32"></div>
-        </div>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {[...Array(6)].map((_, i) => (
-            <div
-              key={i}
-              className="h-32 bg-gray-200 animate-pulse rounded"
-            ></div>
-          ))}
-        </div>
-      </div>
-    );
-  }
-
+  // ALL useMemo hooks MUST be called before early returns - Rules of Hooks
   const managers = useMemo(() => {
     if (!users || !positions) {
       return [];
@@ -148,8 +129,10 @@ export default function DepartmentsPage() {
         typeof user.position === "object" &&
         user.position.positionId !== null
       ) {
-        const userLevelId = user.position.positionId;
-        return userLevelId >= managerBaseLevelId;
+        return (
+          user.position.positionId >= managerBaseLevelId &&
+          user.userStatus?.statusName === "Hoạt động"
+        );
       }
       return false;
     });
@@ -180,6 +163,34 @@ export default function DepartmentsPage() {
     });
   }, [departments, searchTerm, statusFilter, userStatuses]);
 
+  const columns = useMemo(
+    () =>
+      getColumns(
+        (dept: DepartmentInfo) => {
+          setEditingDepartment(dept);
+          setIsFormOpen(true);
+        },
+        setDeletingDepartment,
+        departments,
+        userStatuses
+      ),
+    [
+      departments,
+      userStatuses,
+      setEditingDepartment,
+      setIsFormOpen,
+      setDeletingDepartment,
+    ]
+  );
+
+  const departmentStatuses = useMemo(
+    () =>
+      userStatuses.filter(
+        (s) => s.name === "Đang hoạt động" || s.name === "Không hoạt động"
+      ),
+    [userStatuses]
+  );
+
   useEffect(() => {
     if (
       selectedDepartment &&
@@ -191,6 +202,26 @@ export default function DepartmentsPage() {
     }
   }, [departments, selectedDepartment]);
 
+  // Instant navigation - show loading skeleton while loading
+  if (isDepartmentsLoading || isUsersLoading || isPositionsLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <div className="h-8 bg-gray-200 animate-pulse rounded w-48"></div>
+          <div className="h-10 bg-gray-200 animate-pulse rounded w-32"></div>
+        </div>
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {[...Array(6)].map((_, i) => (
+            <div
+              key={i}
+              className="h-32 bg-gray-200 animate-pulse rounded"
+            ></div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   const handleOpenAddDialog = (parentId: string | null = null) => {
     setEditingDepartment(null);
     setIsFormOpen(true);
@@ -200,17 +231,6 @@ export default function DepartmentsPage() {
     setEditingDepartment(dept);
     setIsFormOpen(true);
   };
-
-  const columns = useMemo(
-    () =>
-      getColumns(
-        handleOpenEditDialog,
-        setDeletingDepartment,
-        departments,
-        userStatuses
-      ),
-    [departments, userStatuses]
-  );
 
   const handleSaveDepartment = async (
     payload: CreateDepartmentPayload | UpdateDepartmentPayload,
@@ -410,14 +430,6 @@ export default function DepartmentsPage() {
       </>
     );
   };
-
-  const departmentStatuses = useMemo(
-    () =>
-      userStatuses.filter(
-        (s) => s.name === "Đang hoạt động" || s.name === "Không hoạt động"
-      ),
-    [userStatuses]
-  );
 
   return (
     <div className="space-y-6">
