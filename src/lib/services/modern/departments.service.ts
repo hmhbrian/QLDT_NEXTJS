@@ -1,3 +1,4 @@
+
 import { BaseService, QueryParams } from "../../core";
 import { API_CONFIG } from "@/lib/config";
 import {
@@ -7,7 +8,6 @@ import {
   DepartmentApiResponse,
 } from "@/lib/types/department.types";
 import { mapDepartmentApiToUi } from "@/lib/mappers/department.mapper";
-import { ApiResponse } from "@/lib/core/types";
 
 export interface DepartmentQueryParams extends QueryParams {
   status?: string;
@@ -25,13 +25,10 @@ export class DepartmentsService extends BaseService<
   async getDepartments(
     params?: DepartmentQueryParams
   ): Promise<DepartmentInfo[]> {
-    // The 'get' method in BaseService already handles extracting the 'data' property
-    // from the ApiResponse wrapper. So, the response here should be the array itself.
     const apiDepartments = await this.get<DepartmentApiResponse[]>(
       this.endpoint,
       { params }
     );
-    // Ensure we handle cases where apiDepartments might be null or undefined.
     return (apiDepartments || []).map(mapDepartmentApiToUi);
   }
 
@@ -59,7 +56,17 @@ export class DepartmentsService extends BaseService<
     id: string,
     payload: UpdateDepartmentPayload
   ): Promise<void> {
-    await this.put<void>(API_CONFIG.endpoints.departments.update(id), payload);
+    // Backend API for PUT expects all required fields.
+    // Ensure the payload is complete before sending.
+    const completePayload: Required<UpdateDepartmentPayload> = {
+        DepartmentName: payload.DepartmentName || '',
+        DepartmentCode: payload.DepartmentCode || '',
+        Description: payload.Description || '',
+        ManagerId: payload.ManagerId || '',
+        StatusId: payload.StatusId || 0,
+        ParentId: payload.ParentId === undefined ? null : payload.ParentId,
+    };
+    await this.put<void>(API_CONFIG.endpoints.departments.update(id), completePayload);
   }
 
   async deleteDepartment(id: string): Promise<void> {
