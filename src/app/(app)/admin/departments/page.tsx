@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
@@ -61,30 +62,24 @@ import { extractErrorMessage } from "@/lib/core";
 import { Label } from "@/components/ui/label";
 import { DataTable } from "@/components/ui/data-table";
 import { getColumns } from "./columns";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 
 export default function DepartmentsPage() {
-  const queryClient = useQueryClient();
-
-  // Custom Hooks for data fetching and mutations - all hooks must come first
   const {
     departments,
     isLoading: isDepartmentsLoading,
     error: departmentsError,
-  } = useDepartments();
+  } = useDepartments({ status: "active" });
 
   const createDeptMutation = useCreateDepartment();
   const updateDeptMutation = useUpdateDepartment();
   const deleteDeptMutation = useDeleteDepartment();
 
-  // Fetching related data with optimization
   const { data: usersData = { items: [] }, isLoading: isUsersLoading } =
     useQuery({
       queryKey: ["users"],
       queryFn: () => usersService.getUsersWithPagination(),
       staleTime: 5 * 60 * 1000,
-      refetchOnMount: false,
-      refetchOnWindowFocus: false,
     });
   const users = usersData.items;
 
@@ -95,13 +90,10 @@ export default function DepartmentsPage() {
     queryKey: ["positions"],
     queryFn: () => positionsService.getPositions(),
     staleTime: 5 * 60 * 1000,
-    refetchOnMount: false,
-    refetchOnWindowFocus: false,
   });
 
   const { userStatuses, isLoading: isStatusesLoading } = useUserStatuses();
 
-  // Component State
   const [selectedDepartment, setSelectedDepartment] =
     useState<DepartmentInfo | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -112,26 +104,6 @@ export default function DepartmentsPage() {
   const [activeTab, setActiveTab] = useState<"tree" | "table">("tree");
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
-
-  // Instant navigation - show loading skeleton while loading
-  if (isDepartmentsLoading || isUsersLoading || isPositionsLoading) {
-    return (
-      <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <div className="h-8 bg-gray-200 animate-pulse rounded w-48"></div>
-          <div className="h-10 bg-gray-200 animate-pulse rounded w-32"></div>
-        </div>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {[...Array(6)].map((_, i) => (
-            <div
-              key={i}
-              className="h-32 bg-gray-200 animate-pulse rounded"
-            ></div>
-          ))}
-        </div>
-      </div>
-    );
-  }
 
   const managers = useMemo(() => {
     if (!users || !positions) {
@@ -148,8 +120,10 @@ export default function DepartmentsPage() {
         typeof user.position === "object" &&
         user.position.positionId !== null
       ) {
-        const userLevelId = user.position.positionId;
-        return userLevelId >= managerBaseLevelId;
+        return (
+          user.position.positionId >= managerBaseLevelId &&
+          user.userStatus?.name === "Hoạt động"
+        );
       }
       return false;
     });
@@ -180,6 +154,28 @@ export default function DepartmentsPage() {
     });
   }, [departments, searchTerm, statusFilter, userStatuses]);
 
+  const columns = useMemo(
+    () =>
+      getColumns(
+        (dept: DepartmentInfo) => {
+          setEditingDepartment(dept);
+          setIsFormOpen(true);
+        },
+        setDeletingDepartment,
+        departments,
+        userStatuses
+      ),
+    [departments, userStatuses]
+  );
+
+  const departmentStatuses = useMemo(
+    () =>
+      userStatuses.filter(
+        (s) => s.name === "Đang hoạt động" || s.name === "Không hoạt động"
+      ),
+    [userStatuses]
+  );
+
   useEffect(() => {
     if (
       selectedDepartment &&
@@ -191,7 +187,26 @@ export default function DepartmentsPage() {
     }
   }, [departments, selectedDepartment]);
 
-  const handleOpenAddDialog = (parentId: string | null = null) => {
+  if (isDepartmentsLoading || isUsersLoading || isPositionsLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <div className="h-8 bg-gray-200 animate-pulse rounded w-48"></div>
+          <div className="h-10 bg-gray-200 animate-pulse rounded w-32"></div>
+        </div>
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {[...Array(6)].map((_, i) => (
+            <div
+              key={i}
+              className="h-32 bg-gray-200 animate-pulse rounded"
+            ></div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  const handleOpenAddDialog = () => {
     setEditingDepartment(null);
     setIsFormOpen(true);
   };
@@ -201,30 +216,17 @@ export default function DepartmentsPage() {
     setIsFormOpen(true);
   };
 
-  const columns = useMemo(
-    () =>
-      getColumns(
-        handleOpenEditDialog,
-        setDeletingDepartment,
-        departments,
-        userStatuses
-      ),
-    [departments, userStatuses]
-  );
-
   const handleSaveDepartment = async (
     payload: CreateDepartmentPayload | UpdateDepartmentPayload,
     isEditing: boolean,
     deptId?: string
   ) => {
-    const mutation = isEditing ? updateDeptMutation : createDeptMutation;
-    const mutationPayload = isEditing ? { id: deptId!, payload } : payload;
-
-    await mutation.mutateAsync(mutationPayload as any, {
-      onSuccess: () => {
-        setIsFormOpen(false);
-      },
-    });
+    if (isEditing && deptId) {
+      updateDeptMutation.mutate({ id: deptId, payload: payload as UpdateDepartmentPayload });
+    } else {
+      createDeptMutation.mutate(payload as CreateDepartmentPayload);
+    }
+    setIsFormOpen(false);
   };
 
   const handleDeleteDepartmentSubmit = () => {
@@ -243,28 +245,22 @@ export default function DepartmentsPage() {
     }
   };
 
-  const handleUpdateDepartments = (updatedDepartments: DepartmentInfo[]) => {
-    updatedDepartments.forEach((dept) => {
-      const originalDept = departments.find(
-        (d) => d.departmentId === dept.departmentId
-      );
-      if (
-        originalDept &&
-        (originalDept.parentId !== dept.parentId ||
-          originalDept.level !== dept.level)
-      ) {
-        updateDeptMutation.mutate({
-          id: dept.departmentId,
-          payload: {
-            DepartmentName: originalDept.name,
-            DepartmentCode: originalDept.code,
-            Description: originalDept.description,
-            StatusId: originalDept.status.id,
-            ManagerId: originalDept.managerId,
-            ParentId: dept.parentId ? parseInt(dept.parentId) : null,
-          },
-        });
-      }
+  const handleUpdateDepartmentParent = (
+    draggedDept: DepartmentInfo,
+    newParentId: string | null
+  ) => {
+    const payload: UpdateDepartmentPayload = {
+      DepartmentName: draggedDept.name,
+      DepartmentCode: draggedDept.code,
+      Description: draggedDept.description,
+      ManagerId: draggedDept.managerId,
+      StatusId: draggedDept.status.id,
+      ParentId: newParentId ? parseInt(newParentId) : null,
+    };
+
+    updateDeptMutation.mutate({
+      id: draggedDept.departmentId,
+      payload: payload,
     });
   };
 
@@ -293,7 +289,7 @@ export default function DepartmentsPage() {
       <DraggableDepartmentTree
         departments={departments}
         onSelectDepartment={setSelectedDepartment}
-        onUpdateDepartments={handleUpdateDepartments}
+        onUpdateDepartments={handleUpdateDepartmentParent}
         className="p-2"
       />
     );
@@ -402,7 +398,7 @@ export default function DepartmentsPage() {
           <Button
             variant="secondary"
             className="w-full"
-            onClick={() => handleOpenAddDialog(selectedDepartment.departmentId)}
+            onClick={() => handleOpenAddDialog()}
           >
             <PlusCircle className="mr-2 h-4 w-4" /> Thêm phòng ban con
           </Button>
@@ -410,14 +406,6 @@ export default function DepartmentsPage() {
       </>
     );
   };
-
-  const departmentStatuses = useMemo(
-    () =>
-      userStatuses.filter(
-        (s) => s.name === "Đang hoạt động" || s.name === "Không hoạt động"
-      ),
-    [userStatuses]
-  );
 
   return (
     <div className="space-y-6">
@@ -464,13 +452,13 @@ export default function DepartmentsPage() {
               >
                 <List className="h-4 w-4" />
               </Button>
-              <Button onClick={() => handleOpenAddDialog()} className="ml-2">
+              <Button onClick={handleOpenAddDialog} className="ml-2">
                 <PlusCircle className="mr-2 h-4 w-4" /> Thêm phòng ban
               </Button>
             </div>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="pt-6">
           {activeTab === "tree" ? (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
               <Card className="shadow-sm">

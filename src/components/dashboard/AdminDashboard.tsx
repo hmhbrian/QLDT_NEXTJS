@@ -1,3 +1,4 @@
+
 "use client";
 
 import {
@@ -18,12 +19,10 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { Button } from "../ui/button";
-import { useUserStore } from "@/stores/user-store";
-import { useCookie } from "@/hooks/use-cookie";
 import type { Course } from "@/lib/types/course.types";
-import { useEffect, useState } from "react";
-
-const COURSES_COOKIE_KEY = "becamex-courses-data"; // Giống key ở admin/courses
+import { useUsers } from "@/hooks/use-users";
+import { useCourses } from "@/hooks/use-courses";
+import { useMemo } from "react";
 
 // Dữ liệu mẫu cho Nhật ký hoạt động
 const mockActivities = [
@@ -58,21 +57,20 @@ const mockActivities = [
 ];
 
 export function AdminDashboard() {
-  const allUsers = useUserStore((state) => state.users);
-  const [allCourses] = useCookie<Course[]>(COURSES_COOKIE_KEY, []);
+  const { users, paginationInfo: userPagination } = useUsers();
+  const { courses, paginationInfo: coursePagination } = useCourses();
 
-  const [totalUsers, setTotalUsers] = useState(0);
-  const [activeCoursesCount, setActiveCoursesCount] = useState(0);
-  const [pendingApprovals, setPendingApprovals] = useState(0); // Giả định, sẽ là 0
-
-  useEffect(() => {
-    setTotalUsers(allUsers.length);
-    setActiveCoursesCount(
-      allCourses.filter((course) => course.status === "published").length
-    );
-    // Đối với "Chờ duyệt", chúng ta chưa có logic cụ thể, tạm để là 0
-    setPendingApprovals(0);
-  }, [allUsers, allCourses]);
+  const { totalUsers, activeCoursesCount, pendingApprovals } = useMemo(() => {
+    return {
+      totalUsers: userPagination?.totalItems || 0,
+      activeCoursesCount: (courses || []).filter(
+        (c) =>
+          (typeof c.status === "string" && c.status === "Đang mở") ||
+          (typeof c.status === "object" && c.status.name === "Đang mở")
+      ).length,
+      pendingApprovals: 0, // Placeholder
+    };
+  }, [userPagination, courses]);
 
   const stats = [
     {

@@ -8,6 +8,7 @@ import {
   Copy,
   Archive,
   Trash2,
+  Eye,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -21,7 +22,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import type { Course } from "@/lib/types/course.types";
 import { DepartmentInfo } from "@/lib/types/department.types";
 import { Position } from "@/lib/types/user.types";
-import { getStatusBadgeVariant } from "@/lib/helpers";
+import { getStatusBadgeVariant, isRegistrationOpen } from "@/lib/helpers";
 import { formatDateVN } from "@/lib/utils/date.utils";
 import {
   Tooltip,
@@ -29,16 +30,30 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { LoadingButton } from "../ui/loading";
 
-export const getColumns = (
-  handleViewDetails: (courseId: string) => void,
-  handleEdit: (courseId: string) => void,
-  handleDuplicateCourse: (course: Course) => void,
-  setArchivingCourse: (course: Course | null) => void,
-  setDeletingCourse: (course: Course | null) => void,
-  canManageCourses: boolean,
-  departments: DepartmentInfo[],
-  positions: Position[]
+// --- Types for different column configurations ---
+type AdminActions = {
+  handleEdit: (courseId: string) => void;
+  handleDuplicateCourse: (course: Course) => void;
+  setArchivingCourse: (course: Course | null) => void;
+  setDeletingCourse: (course: Course | null) => void;
+  canManageCourses: boolean;
+};
+
+type UserActions = {
+  currentUserId: string | undefined;
+  handleEnroll: (courseId: string) => void;
+  isEnrolling: (courseId: string) => boolean;
+  isCourseAccessible: (course: Course) => boolean;
+  enrolledCourses: Course[];
+  currentUserRole?: string;
+};
+
+// --- Reusable Column Definitions ---
+
+const baseColumns = (
+  handleViewDetails: (courseId: string) => void
 ): ColumnDef<Course>[] => [
   {
     id: "select",
@@ -67,17 +82,15 @@ export const getColumns = (
   },
   {
     accessorKey: "title",
-    header: ({ column }) => {
-      return (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        >
-          Tên khóa học
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      );
-    },
+    header: ({ column }) => (
+      <Button
+        variant="ghost"
+        onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+      >
+        Tên khóa học
+        <ArrowUpDown className="ml-2 h-4 w-4" />
+      </Button>
+    ),
     cell: ({ row }) => (
       <div
         className="font-medium cursor-pointer hover:underline"
@@ -87,31 +100,88 @@ export const getColumns = (
       </div>
     ),
   },
+];
+
+const sharedInfoColumns = (
+  departments: DepartmentInfo[],
+  positions: Position[]
+): ColumnDef<Course>[] => [
   {
     accessorKey: "courseCode",
     header: "Mã",
+  },
+  {
+    accessorKey: "department",
+    header: "Phòng ban",
+    size: 160,
     cell: ({ row }) => {
-      const courseCode = row.original.courseCode;
-      console.log("🔍 Components Course courseCode data:", courseCode);
-
-      // Handle both object and string values with proper type checking
-      if (
-        typeof courseCode === "object" &&
-        courseCode &&
-        "code" in courseCode &&
-        typeof (courseCode as any).code === "string"
-      ) {
-        return (courseCode as any).code;
-      }
-      if (
-        typeof courseCode === "object" &&
-        courseCode &&
-        "name" in courseCode &&
-        typeof (courseCode as any).name === "string"
-      ) {
-        return (courseCode as any).name;
-      }
-      return String(courseCode || "N/A");
+      const departmentData = row.original.department;
+      if (!departmentData || departmentData.length === 0) return "N/A";
+      const departmentNames = departmentData.map((dept: any) => {
+        if (typeof dept === "object" && dept) {
+          if ("name" in dept && typeof dept.name === "string") return dept.name;
+          if ("departmentName" in dept && typeof dept.departmentName === "string")
+            return dept.departmentName;
+        }
+        if (typeof dept === "string") {
+          const foundDept = departments.find((d) => d.departmentId === dept);
+          return foundDept ? foundDept.name : `Dept-${dept}`;
+        }
+        return String(dept);
+      });
+      const displayText =
+        departmentNames.length > 1
+          ? `${departmentNames[0]} +${departmentNames.length - 1}`
+          : departmentNames.join(", ");
+      return (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="max-w-[160px] overflow-hidden truncate">
+                {displayText}
+              </div>
+            </TooltipTrigger>
+            <TooltipContent>
+              {departmentNames.map((name, idx) => <div key={idx}>• {name}</div>)}
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      );
+    },
+  },
+  {
+    accessorKey: "level",
+    header: "Cấp độ",
+    size: 120,
+    cell: ({ row }) => {
+      const levelData = row.original.level;
+      if (!levelData || levelData.length === 0) return "N/A";
+      const levelNames = levelData.map((level: any) => {
+        if (typeof level === "object" && level) {
+          if ("name" in level && typeof level.name === "string") return level.name;
+          if ("positionName" in level && typeof level.positionName === "string") return level.positionName;
+        }
+        if (typeof level === "string") {
+          const foundPosition = positions.find((p) => String(p.positionId) === level);
+          return foundPosition ? foundPosition.positionName : `Level-${level}`;
+        }
+        return String(level);
+      });
+      const displayText = levelNames.length > 1 ? `${levelNames[0]} +${levelNames.length - 1}` : levelNames.join(", ");
+      return (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="max-w-[120px] overflow-hidden truncate">
+                {displayText}
+              </div>
+            </TooltipTrigger>
+            <TooltipContent>
+              {levelNames.map((name, idx) => <div key={idx}>• {name}</div>)}
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      );
     },
   },
   {
@@ -131,22 +201,12 @@ export const getColumns = (
     header: "Trạng thái",
     cell: ({ row }) => {
       const status = row.original.status;
-      console.log("🔍 Components Course status data:", status);
-
-      // Handle case where status might be an object {id, name} or a string
-      const statusName =
-        typeof status === "object" &&
-        status &&
-        "name" in status &&
-        typeof status.name === "string"
+      const statusName = typeof status === "object" && status && "name" in status && typeof status.name === "string"
           ? status.name
           : typeof status === "string"
           ? status
           : "N/A";
-
-      return (
-        <Badge variant={getStatusBadgeVariant(statusName)}>{statusName}</Badge>
-      );
+      return <Badge variant={getStatusBadgeVariant(statusName)}>{statusName}</Badge>;
     },
   },
   {
@@ -154,147 +214,152 @@ export const getColumns = (
     header: "Công khai",
     cell: ({ row }) => {
       const isPublic = row.original.isPublic;
-      return (
-        <Badge variant={isPublic ? "default" : "outline"}>
-          {isPublic ? "Công khai" : "Nội bộ"}
-        </Badge>
-      );
+      return <Badge variant={isPublic ? "default" : "outline"}>{isPublic ? "Công khai" : "Nội bộ"}</Badge>;
     },
   },
+];
+
+const adminInfoColumns = (): ColumnDef<Course>[] => [
   {
     accessorKey: "createdBy",
     header: "Thông tin",
+    size: 140,
     cell: ({ row }) => {
       const course = row.original;
+      const createdByName = typeof course.createdBy === "object" && course.createdBy && "name" in course.createdBy ? course.createdBy.name : typeof course.createdBy === 'string' ? course.createdBy : null;
+      const modifiedByName = typeof course.modifiedBy === "object" && course.modifiedBy && "name" in course.modifiedBy ? course.modifiedBy.name : typeof course.modifiedBy === 'string' ? course.modifiedBy : null;
       return (
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
-              <div className="flex flex-col text-xs">
-                {course.createdBy && (
-                  <span className="truncate">
-                    Tạo bởi:{" "}
-                    <strong>
-                      {(() => {
-                        if (
-                          typeof course.createdBy === "object" &&
-                          course.createdBy &&
-                          "name" in course.createdBy &&
-                          typeof course.createdBy.name === "string"
-                        ) {
-                          return course.createdBy.name;
-                        } else if (typeof course.createdBy === "string") {
-                          return course.createdBy;
-                        }
-                        return "N/A";
-                      })()}
-                    </strong>
-                  </span>
-                )}
-                {course.modifiedBy && (
-                  <span className="truncate">
-                    Sửa bởi:{" "}
-                    <strong>
-                      {(() => {
-                        if (
-                          typeof course.modifiedBy === "object" &&
-                          course.modifiedBy &&
-                          "name" in course.modifiedBy &&
-                          typeof course.modifiedBy.name === "string"
-                        ) {
-                          return course.modifiedBy.name;
-                        } else if (typeof course.modifiedBy === "string") {
-                          return course.modifiedBy;
-                        }
-                        return "N/A";
-                      })()}
-                    </strong>
-                  </span>
-                )}
+              <div className="flex flex-col text-xs max-w-[200px] overflow-hidden">
+                {createdByName && <span className="truncate">Tạo bởi: <strong>{createdByName}</strong></span>}
+                {modifiedByName && <span className="truncate">Sửa bởi: <strong>{modifiedByName}</strong></span>}
               </div>
             </TooltipTrigger>
             <TooltipContent>
-              <p>
-                Ngày tạo: {formatDateVN(course.createdAt, "dd/MM/yyyy HH:mm")}
-              </p>
-              {course.modifiedAt && (
-                <p>
-                  Ngày sửa:{" "}
-                  {formatDateVN(course.modifiedAt, "dd/MM/yyyy HH:mm")}
-                </p>
-              )}
+              <p>Ngày tạo: {formatDateVN(course.createdAt, "dd/MM/yyyy HH:mm")}</p>
+              {course.modifiedAt && <p>Ngày sửa: {formatDateVN(course.modifiedAt, "dd/MM/yyyy HH:mm")}</p>}
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
       );
     },
   },
-  {
-    id: "actions",
-    header: "Thao tác",
-    size: 100,
-    enableResizing: false,
-    enableSorting: false,
-    enableHiding: false,
-    meta: {
-      sticky: "right",
-    },
-    cell: ({ row }) => {
-      const course = row.original;
+];
 
-      if (!canManageCourses) return null;
-
-      return (
-        <div className="flex justify-center">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                className="h-8 w-8 p-0 hover:bg-muted/50 transition-colors"
-              >
-                <span className="sr-only">Mở menu thao tác</span>
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              align="end"
-              className="w-56 shadow-lg border"
-              sideOffset={5}
-            >
-              <DropdownMenuItem
-                onClick={() => handleEdit(course.id)}
-                className="cursor-pointer hover:bg-muted/50"
-              >
-                <Pencil className="mr-3 h-4 w-4 text-blue-600" />
-                <span>Chỉnh sửa</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => handleDuplicateCourse(course)}
-                className="cursor-pointer hover:bg-muted/50"
-              >
-                <Copy className="mr-3 h-4 w-4 text-green-600" />
-                <span>Nhân bản</span>
-              </DropdownMenuItem>
-              {course.status !== "Hủy" && (
-                <DropdownMenuItem
-                  onClick={() => setArchivingCourse(course)}
-                  className="cursor-pointer hover:bg-muted/50"
-                >
-                  <Archive className="mr-3 h-4 w-4 text-amber-600" />
-                  <span>Lưu trữ</span>
-                </DropdownMenuItem>
-              )}
-              <DropdownMenuItem
-                onClick={() => setDeletingCourse(course)}
-                className="cursor-pointer hover:bg-destructive/10 text-destructive focus:text-destructive"
-              >
-                <Trash2 className="mr-3 h-4 w-4" />
-                <span>Xóa</span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      );
-    },
+const adminActionsColumn = (actions: AdminActions): ColumnDef<Course> => ({
+  id: "actions",
+  size: 60,
+  enableResizing: false,
+  enableSorting: false,
+  enableHiding: false,
+  meta: { sticky: "right" },
+  cell: ({ row }) => {
+    const course = row.original;
+    if (!actions.canManageCourses) return null;
+    return (
+      <div className="sticky right-0 bg-background/80 backdrop-blur-sm flex justify-center items-center h-full">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" className="h-8 w-8 p-0"><span className="sr-only">Mở menu</span><MoreHorizontal className="h-4 w-4" /></Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => actions.handleEdit(course.id)}><Pencil className="mr-2 h-4 w-4" /> Chỉnh sửa</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => actions.handleDuplicateCourse(course)}><Copy className="mr-2 h-4 w-4" /> Nhân bản</DropdownMenuItem>
+            {course.status !== "Hủy" && <DropdownMenuItem onClick={() => actions.setArchivingCourse(course)}><Archive className="mr-2 h-4 w-4" /> Lưu trữ</DropdownMenuItem>}
+            <DropdownMenuItem onClick={() => actions.setDeletingCourse(course)} className="text-destructive focus:text-destructive"><Trash2 className="mr-2 h-4 w-4" /> Xóa</DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    );
   },
+});
+
+const userActionsColumn = (actions: UserActions, handleViewDetails: (id: string) => void): ColumnDef<Course> => ({
+  id: "actions",
+  header: "Hành động",
+  size: 120,
+  enableResizing: false,
+  cell: ({ row }) => {
+    const course = row.original;
+    const enrolledCourseIds = new Set(actions.enrolledCourses.map(c => c.id));
+    const isEnrolled = enrolledCourseIds.has(course.id);
+    const registrationOpen = isRegistrationOpen(course.registrationDeadline);
+    const canEnroll = actions.currentUserRole === "HOCVIEN" && course.enrollmentType === "optional" && !isEnrolled && registrationOpen;
+
+    if (canEnroll) {
+      return <LoadingButton size="sm" onClick={() => actions.handleEnroll(course.id)} isLoading={actions.isEnrolling(course.id)}>Đăng ký</LoadingButton>;
+    }
+    if (isEnrolled) {
+      return <Button variant="default" size="sm" onClick={() => handleViewDetails(course.id)}><Eye className="mr-2 h-4 w-4" /> Vào học</Button>;
+    }
+    if (actions.currentUserRole === "HOCVIEN" && course.enrollmentType === "optional" && !registrationOpen) {
+      return <Button variant="outline" size="sm" disabled>Hết hạn đăng ký</Button>;
+    }
+    return (
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button variant="outline" size="sm" onClick={() => actions.isCourseAccessible(course) && handleViewDetails(course.id)} disabled={!actions.isCourseAccessible(course)}>Xem chi tiết</Button>
+          </TooltipTrigger>
+          {!actions.isCourseAccessible(course) && <TooltipContent><p>Khóa học này là nội bộ. Bạn không có quyền truy cập.</p></TooltipContent>}
+        </Tooltip>
+      </TooltipProvider>
+    );
+  },
+});
+
+// --- Exported Functions to Get Columns ---
+
+export const getAdminCourseColumns = (
+  handleViewDetails: (courseId: string) => void,
+  handleEdit: (courseId: string) => void,
+  handleDuplicateCourse: (course: Course) => void,
+  setArchivingCourse: (course: Course | null) => void,
+  setDeletingCourse: (course: Course | null) => void,
+  canManageCourses: boolean,
+  departments: DepartmentInfo[],
+  positions: Position[]
+): ColumnDef<Course>[] => {
+  const adminActions: AdminActions = {
+    handleEdit,
+    handleDuplicateCourse,
+    setArchivingCourse,
+    setDeletingCourse,
+    canManageCourses,
+  };
+
+  return [
+    ...baseColumns(handleViewDetails),
+    ...sharedInfoColumns(departments, positions),
+    ...adminInfoColumns(),
+    adminActionsColumn(adminActions),
+  ];
+};
+
+export const getUserCourseColumns = (
+  handleViewDetails: (courseId: string) => void,
+  actions: UserActions,
+  departments: DepartmentInfo[],
+  positions: Position[]
+): ColumnDef<Course>[] => [
+  ...baseColumns(handleViewDetails),
+  { accessorKey: "category", header: "Danh mục" },
+  { accessorKey: "instructor", header: "Giảng viên" },
+  {
+    accessorKey: "duration",
+    header: "Thời lượng",
+    cell: ({ row }) => `${row.original.duration.sessions} buổi (${row.original.duration.hoursPerSession}h/buổi)`,
+  },
+  {
+    accessorKey: "enrollmentType",
+    header: "Loại",
+    cell: ({ row }) => (
+      <Badge variant={row.original.enrollmentType === "mandatory" ? "default" : "secondary"}>
+        {row.original.enrollmentType === "mandatory" ? "Bắt buộc" : "Tùy chọn"}
+      </Badge>
+    ),
+  },
+  userActionsColumn(actions, handleViewDetails),
 ];

@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useMemo, useCallback, useEffect } from "react";
@@ -18,7 +19,10 @@ import {
 interface DraggableDepartmentTreeProps {
   departments: DepartmentInfo[];
   onSelectDepartment: (department: DepartmentInfo) => void;
-  onUpdateDepartments: (departments: DepartmentInfo[]) => void;
+  onUpdateDepartments: (
+    draggedDept: DepartmentInfo,
+    newParentId: string | null
+  ) => void;
   className?: string;
 }
 
@@ -35,7 +39,6 @@ export function DraggableDepartmentTree({
     isRoot: boolean;
   } | null>(null);
 
-  // Buộc tạo lại departmentTree và departmentMap khi departments thay đổi
   const departmentTree = useMemo(
     () => buildDepartmentTree(departments),
     [departments]
@@ -46,13 +49,10 @@ export function DraggableDepartmentTree({
     return map;
   }, [departments]);
 
-  // Reset trạng thái kéo thả khi departments thay đổi để tránh tham chiếu cũ
-  // Và tự động mở rộng các phòng ban có con để hiển thị đầy đủ cấu trúc
   useEffect(() => {
     setDraggedDeptId(null);
     setDropTarget(null);
 
-    // Tự động mở rộng tất cả phòng ban có con để hiển thị toàn bộ cấu trúc
     const departmentsWithChildren = departments.filter((dept) =>
       departments.some((d) => d.parentId === dept.departmentId)
     );
@@ -113,60 +113,17 @@ export function DraggableDepartmentTree({
     if (!sourceDept) return;
     if (sourceDept.parentId === targetId) return; // Thả vào chính parent của nó
 
-    // Kiểm tra tham chiếu vòng tròn
     if (targetId !== null) {
       const childIds = getAllChildDepartments(draggedId, departments).map(
         (d) => d.departmentId
       );
       if (childIds.includes(targetId)) {
-        console.error(
-          "Phát hiện thả vòng tròn: không thể di chuyển phòng ban vào phòng ban con của chính nó."
-        );
+        console.error("Circular drop detected.");
         return;
       }
     }
 
-    const newParent = targetId ? departmentMap.get(targetId) : null;
-
-    const updatedDepartmentsMap = new Map(
-      departments.map((d) => [d.departmentId, { ...d }])
-    );
-
-    const updatedSourceDept = {
-      ...sourceDept,
-      parentId: targetId,
-      level: newParent ? newParent.level + 1 : 1,
-      path: newParent
-        ? [...newParent.path, sourceDept.name]
-        : [sourceDept.name],
-    };
-    updatedDepartmentsMap.set(draggedId, updatedSourceDept);
-
-    const updateChildrenOf = (
-      parentId: string,
-      parentLevel: number,
-      parentPath: string[]
-    ) => {
-      const childrenToUpdate = departments.filter(
-        (d) => d.parentId === parentId
-      );
-      for (const child of childrenToUpdate) {
-        const childData = updatedDepartmentsMap.get(child.departmentId)!;
-        const newLevel = parentLevel + 1;
-        const newPath = [...parentPath, childData.name];
-        const updatedChild = { ...childData, level: newLevel, path: newPath };
-        updatedDepartmentsMap.set(child.departmentId, updatedChild);
-        updateChildrenOf(child.departmentId, newLevel, newPath);
-      }
-    };
-
-    updateChildrenOf(
-      draggedId,
-      updatedSourceDept.level,
-      updatedSourceDept.path
-    );
-
-    onUpdateDepartments(Array.from(updatedDepartmentsMap.values()));
+    onUpdateDepartments(sourceDept, targetId);
   };
 
   // Helper function to find department in tree recursively
@@ -196,7 +153,6 @@ export function DraggableDepartmentTree({
       );
       const isExpanded = expandedNodes.has(dept.departmentId);
 
-      // Lấy thông tin mới nhất từ departmentMap để đảm bảo tooltip hiển thị đúng
       const currentDept = departmentMap.get(dept.departmentId) || dept;
 
       return (
@@ -269,6 +225,11 @@ export function DraggableDepartmentTree({
       onSelectDepartment,
       departmentTree,
       findDepartmentInTree,
+      handleDragStart,
+      handleDragEnd,
+      handleDragOver,
+      handleDrop,
+      toggleExpand
     ]
   );
 

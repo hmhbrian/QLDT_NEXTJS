@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useParams, useRouter } from "next/navigation";
@@ -110,8 +111,13 @@ export default function TestDetailPage() {
   }, [fetchedTest]);
 
   useEffect(() => {
-    if (previousResult) setResult(previousResult);
-  }, [previousResult]);
+    if (previousResult) {
+      setResult(previousResult);
+      if (fetchedTest) {
+        setTestData((prev) => ({ ...fetchedTest, isDone: true }));
+      }
+    }
+  }, [previousResult, fetchedTest]);
 
   // Timer
   useEffect(() => {
@@ -194,60 +200,15 @@ export default function TestDetailPage() {
         startedAt
       );
 
-      // Sử dụng dữ liệu từ backend response để tạo kết quả ngay lập tức
-      const detailedResult: DetailedTestResult = {
-        id: response.id,
-        test: {
-          id: parseInt(testId),
-          title: testData.title,
-        },
-        score: response.score || 0,
-        user: {
-          id: response.user?.id || "",
-          name: response.user?.name || "Unknown",
-        },
-        submittedAt: response.submittedAt,
-        startedAt: response.startedAt || startedAt,
-        isPassed: response.isPassed,
-        correctAnswerCount: response.correctAnswerCount || 0,
-        incorrectAnswerCount: response.incorrectAnswerCount || 0,
-        userAnswers: testData.questions.map((q, idx) => {
-          const userAnswer = answers[q.id.toString()] || [];
-          const correctAnswer =
-            q.correctAnswerIndexes
-              ?.map((i) => String.fromCharCode(97 + i))
-              .join("") || "";
-          const isCorrect =
-            userAnswer.length > 0 &&
-            userAnswer.every((ans) => correctAnswer.includes(ans)) &&
-            correctAnswer.split("").every((ans) => userAnswer.includes(ans));
+      // Immediately fetch the new result
+      const detailedResult = await testsService.getTestResult(
+        courseId,
+        parseInt(testId)
+      );
 
-          return {
-            question: {
-              id: q.id,
-              questionText: q.text,
-              correctOption: correctAnswer,
-              questionType: (q.correctAnswerIndexes?.length ?? 0) > 1 ? 2 : 1,
-              explanation: q.explanation || "",
-              position: idx + 1,
-              a: q.options[0] || "",
-              b: q.options[1] || "",
-              c: q.options[2] || "",
-              d: q.options[3] || "",
-            },
-            selectedOptions: userAnswer.join(""),
-            correctAnswer: correctAnswer,
-            isCorrect: isCorrect,
-          };
-        }),
-      };
-
-      // Hiển thị kết quả ngay lập tức
       setResult(detailedResult);
-      setIsStarted(false); // End the test session on client
-      // Cập nhật trạng thái isDone để UI chuyển sang "Xem lại chi tiết"
+      setIsStarted(false);
       setTestData((prev) => (prev ? { ...prev, isDone: true } : prev));
-      // Refetch test data to get the latest state from backend
       if (typeof refetchTest === "function") {
         refetchTest();
       }
@@ -294,7 +255,7 @@ export default function TestDetailPage() {
         <AlertTriangle className="w-12 h-12 text-destructive" />
         <h2 className="mt-4 text-xl font-semibold">Lỗi tải bài kiểm tra</h2>
         <p className="text-muted-foreground mt-2">
-          {testError?.message || "Không tìm thấy bài kiểm tra."}
+          {(testError as Error)?.message || "Không tìm thấy bài kiểm tra."}
         </p>
         <Button onClick={() => router.back()} className="mt-6">
           Quay lại khóa học
@@ -304,13 +265,61 @@ export default function TestDetailPage() {
   }
 
   if (!isStarted) {
-    // Debug log để kiểm tra giá trị isDone
-    console.log("DEBUG isDone:", testData?.isDone, typeof testData?.isDone);
+    if (result || testData.isDone) {
+      return (
+        <div className="min-h-screen flex flex-col items-center justify-center p-4">
+          <Card className="max-w-2xl w-full">
+            <CardHeader className="text-center">
+              <Award className="h-12 w-12 mx-auto text-primary" />
+              <CardTitle className="text-2xl mt-4">{testData.title}</CardTitle>
+              <CardDescription>
+                Bạn đã hoàn thành bài kiểm tra này.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {result && (
+                <div className="mt-6 border-t pt-4 text-center">
+                  <h3 className="font-semibold mb-2">Kết quả lần làm trước</h3>
+                  <p
+                    className={`text-xl font-bold ${
+                      result.isPassed ? "text-green-600" : "text-red-600"
+                    }`}
+                  >
+                    {result.score.toFixed(1)}% -{" "}
+                    {result.isPassed ? "ĐẠT" : "CHƯA ĐẠT"}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    Số câu đúng: {result.correctAnswerCount}/
+                    {testData.countQuestion}
+                  </p>
+                </div>
+              )}
+            </CardContent>
+            <CardFooter className="flex flex-col sm:flex-row gap-2">
+              <Button
+                onClick={() => setIsStarted(true)}
+                className="w-full flex-1"
+                size="lg"
+              >
+                <Eye className="mr-2 h-4 w-4" /> Xem lại chi tiết
+              </Button>
+              <Button
+                onClick={() => router.back()}
+                variant="secondary"
+                className="w-full sm:w-auto"
+              >
+                Quay lại khóa học
+              </Button>
+            </CardFooter>
+          </Card>
+        </div>
+      );
+    }
+
     if (isSubmitting) {
       return (
         <div className="flex flex-col items-center justify-center min-h-screen p-4">
           <Loader2 className="w-12 h-12 animate-spin text-primary" />
-          {/* <p className="mt-4 text-lg font-semibold text-primary">Đang nộp bài, vui lòng chờ hệ thống xử lý...</p> */}
         </div>
       );
     }
@@ -350,7 +359,7 @@ export default function TestDetailPage() {
                   <div>
                     <p className="font-medium">Thời gian</p>
                     <p className="text-sm text-muted-foreground">
-                      {testData.timeTest}
+                      {testData.timeTest} phút
                     </p>
                   </div>
                 </div>
@@ -365,50 +374,22 @@ export default function TestDetailPage() {
                 </div>
               </div>
             </div>
-            {result && (
-              <div className="mt-6 border-t pt-4 text-center">
-                <h3 className="font-semibold mb-2">Kết quả lần làm trước</h3>
-                <p
-                  className={`text-xl font-bold ${
-                    result.isPassed ? "text-green-600" : "text-red-600"
-                  }`}
-                >
-                  {result.score.toFixed(1)}% -{" "}
-                  {result.isPassed ? "ĐẠT" : "CHƯA ĐẠT"}
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  Số câu đúng: {result.correctAnswerCount}/
-                  {result.correctAnswerCount + result.incorrectAnswerCount}
-                </p>
-              </div>
-            )}
           </CardContent>
           <CardFooter className="flex flex-col sm:flex-row gap-2">
-            {testData.isDone ? (
-              <Button
-                onClick={() => setIsStarted(true)}
-                variant="outline"
-                className="w-full flex-1 "
-                size="lg"
-              >
-                <Eye className="mr-2 h-4 w-4" /> Xem lại chi tiết
-              </Button>
-            ) : (
-              <Button
-                onClick={handleStartTest}
-                className="w-full sm:w-auto flex-1"
-                size="lg"
-              >
-                <BookOpen className="mr-2 h-5 w-5" />
-                Bắt đầu làm bài
-              </Button>
-            )}
+            <Button
+              onClick={handleStartTest}
+              className="w-full sm:w-auto flex-1"
+              size="lg"
+            >
+              <BookOpen className="mr-2 h-5 w-5" />
+              Bắt đầu làm bài
+            </Button>
             <Button
               onClick={() => router.back()}
               variant="secondary"
               className="w-full sm:w-auto"
             >
-              Quay lại
+              Quay lại khóa học
             </Button>
           </CardFooter>
         </Card>
@@ -740,8 +721,7 @@ export default function TestDetailPage() {
             <p className="text-muted-foreground mt-1">
               Điểm của bạn:{" "}
               <span className="font-semibold">{result.score.toFixed(1)}%</span>{" "}
-              ({result.correctAnswerCount}/
-              {result.correctAnswerCount + result.incorrectAnswerCount} câu
+              ({result.correctAnswerCount}/{testData.countQuestion} câu
               đúng)
             </p>
           </CardContent>
@@ -822,10 +802,6 @@ export default function TestDetailPage() {
             <Home className="h-4 w-4 mr-2" />
             Quay lại khóa học
           </Button>
-          {/* <Button onClick={handleStartTest}>
-            <RefreshCw className="h-4 w-4 mr-2" />
-            Làm lại bài
-          </Button> */}
         </div>
       </div>
     );
@@ -833,9 +809,9 @@ export default function TestDetailPage() {
 
   return (
     <div className="min-h-screen bg-muted/40">
-      {!result && renderHeader()}
+      {!result && !testData.isDone && renderHeader()}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        {result ? (
+        {result || testData.isDone ? (
           renderResults()
         ) : showReview ? (
           renderReview()

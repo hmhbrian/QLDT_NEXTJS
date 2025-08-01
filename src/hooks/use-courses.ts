@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -8,16 +9,19 @@ import type {
   UpdateCourseRequest,
   CourseApiResponse,
   UserEnrollCourseDto,
+  CompletedCourseDto,
   UserCourseProgressDto,
   UserCourseProgressDetailDto,
 } from "@/lib/types/course.types";
-import { useError } from "./use-error";
 import {
   mapCourseApiToUi,
   mapUserEnrollCourseDtoToCourse,
 } from "@/lib/mappers/course.mapper";
 import type { PaginatedResponse, QueryParams } from "@/lib/core";
 import { useAuth } from "./useAuth";
+import { API_CONFIG } from "@/lib/config";
+import { useToast } from "@/components/ui/use-toast";
+import { extractErrorMessage } from "@/lib/core";
 
 export const COURSES_QUERY_KEY = "courses";
 export const ENROLLED_COURSES_QUERY_KEY = "enrolledCourses";
@@ -26,174 +30,96 @@ export function useCourses(
   params: QueryParams & { publicOnly?: boolean } = {}
 ) {
   const { publicOnly = false, ...apiParams } = params;
-
-  const queryKey = [COURSES_QUERY_KEY, "public", apiParams];
+  const queryKey = [COURSES_QUERY_KEY, "list", apiParams];
 
   const {
     data,
     isLoading,
     error,
-    refetch: reloadCourses,
   } = useQuery<PaginatedResponse<Course>, Error>({
     queryKey,
     queryFn: async () => {
       const apiResponse = await coursesService.getCourses(apiParams);
-      const allCourses = (apiResponse.items || []).map(mapCourseApiToUi);
-
       return {
-        items: allCourses,
+        items: (apiResponse.items || []).map(mapCourseApiToUi),
         pagination: apiResponse.pagination,
       };
     },
-    enabled: true,
-    staleTime: 5 * 60 * 1000,
-    refetchOnWindowFocus: false,
-    placeholderData: (previousData) => previousData,
-    // Key changes for instant navigation:
-    refetchOnMount: false, // Don't refetch on every mount
+    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+    refetchOnWindowFocus: true,
   });
 
   return {
     courses: data?.items ?? [],
     paginationInfo: data?.pagination,
-    isLoading: isLoading,
+    isLoading,
     error,
-    reloadCourses,
   };
 }
 
 export function useEnrolledCourses(enabled: boolean = true) {
-  const queryClient = useQueryClient();
-  const queryKey = [ENROLLED_COURSES_QUERY_KEY];
+  const { user } = useAuth();
+  const queryKey = [ENROLLED_COURSES_QUERY_KEY, user?.id];
 
-  const { data, isLoading, error, refetch } = useQuery<Course[], Error>({
+  const {
+    data,
+    isLoading,
+    error,
+  } = useQuery<Course[], Error>({
     queryKey,
     queryFn: async () => {
       const enrolledResponse = await coursesService.getEnrolledCourses();
       return (enrolledResponse.items || []).map(mapUserEnrollCourseDtoToCourse);
     },
-    enabled: enabled,
+    enabled: enabled && !!user,
     staleTime: 5 * 60 * 1000,
-    refetchOnWindowFocus: false,
-    refetchOnMount: false,
+    refetchOnWindowFocus: true,
   });
 
   return {
     enrolledCourses: data ?? [],
     isLoadingEnrolled: isLoading,
     errorEnrolled: error,
-    reloadEnrolledCourses: refetch,
   };
 }
 
 export function useCourse(courseId: string) {
-  const queryKey = [COURSES_QUERY_KEY, courseId];
+  const queryKey = [COURSES_QUERY_KEY, "detail", courseId];
 
   const {
     data,
     isLoading,
     error,
-    refetch: reloadCourse,
   } = useQuery<Course, Error>({
     queryKey,
-    queryFn: async () => {
-      const apiCourse = await coursesService.getCourseById(courseId);
-      return mapCourseApiToUi(apiCourse);
-    },
+    queryFn: async () => mapCourseApiToUi(await coursesService.getCourseById(courseId)),
     enabled: !!courseId,
     staleTime: 5 * 60 * 1000,
-    refetchOnWindowFocus: false,
+    refetchOnWindowFocus: true,
   });
 
-  return {
-    course: data,
-    isLoading,
-    error,
-    reloadCourse,
-  };
+  return { course: data, isLoading, error };
 }
 
 export function useCreateCourse() {
   const queryClient = useQueryClient();
-  const { showError } = useError();
+  const { toast } = useToast();
 
-  return useMutation<any, Error, CreateCourseRequest>({
+  return useMutation<CourseApiResponse, Error, CreateCourseRequest>({
     mutationFn: (courseData) => coursesService.createCourse(courseData),
-    onSuccess: (response) => {
-      queryClient.invalidateQueries({ queryKey: [COURSES_QUERY_KEY] });
-      showError({ success: true, message: "Đã tạo khóa học thành công." });
-    },
-    onError: (error) => {
-      showError(error);
-    },
-  });
-}
-
-export function useUpdateCourse() {
-  const queryClient = useQueryClient();
-  const { showError } = useError();
-
-  return useMutation<
-    any,
-    Error,
-    { courseId: string; payload: UpdateCourseRequest }
-  >({
-    mutationFn: ({ courseId, payload }) =>
-      coursesService.updateCourse(courseId, payload),
-    onSuccess: (response, variables) => {
-      queryClient.invalidateQueries({
-        queryKey: [COURSES_QUERY_KEY, variables.courseId],
+    onSuccess: (data, variables) => {
+       toast({
+        title: "Thành công",
+        description: `Đã tạo khóa học "${variables.Name}" thành công.`,
+        variant: "success",
       });
-      queryClient.invalidateQueries({ queryKey: [COURSES_QUERY_KEY] });
-      queryClient.invalidateQueries({ queryKey: [ENROLLED_COURSES_QUERY_KEY] }); // Invalidate enrolled courses
-      showError({ success: true, message: "Đã cập nhật khóa học thành công." });
     },
     onError: (error) => {
-      showError(error);
-    },
-  });
-}
-
-export function useDeleteCourse() {
-  const queryClient = useQueryClient();
-  const { showError } = useError();
-
-  return useMutation<
-    any,
-    Error,
-    string[],
-    { previousCourses: PaginatedResponse<Course> | undefined }
-  >({
-    mutationFn: (ids) => coursesService.softDeleteCourses(ids),
-    onMutate: async (ids) => {
-      await queryClient.cancelQueries({ queryKey: [COURSES_QUERY_KEY] });
-      const previousCourses = queryClient.getQueryData<
-        PaginatedResponse<Course>
-      >([COURSES_QUERY_KEY]);
-
-      queryClient.setQueryData<PaginatedResponse<Course>>(
-        [COURSES_QUERY_KEY],
-        (old) => {
-          if (!old) return old;
-          return {
-            ...old,
-            items: old.items.filter((c) => !ids.includes(c.id)),
-          };
-        }
-      );
-
-      return { previousCourses };
-    },
-    onSuccess: (response) => {
-      showError(
-        response || { success: true, message: "Đã xóa khóa học thành công." }
-      );
-    },
-    onError: (error, variables, context) => {
-      if (context?.previousCourses) {
-        queryClient.setQueryData([COURSES_QUERY_KEY], context.previousCourses);
-      }
-      showError(error);
+      toast({
+        title: "Lỗi",
+        description: extractErrorMessage(error),
+        variant: "destructive",
+      });
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: [COURSES_QUERY_KEY] });
@@ -201,52 +127,206 @@ export function useDeleteCourse() {
   });
 }
 
-export function useEnrollCourse() {
+export function useUpdateCourse() {
   const queryClient = useQueryClient();
-  const { showError } = useError();
+  const { toast } = useToast();
 
-  return useMutation<any, Error, string>({
-    mutationFn: (courseId) => coursesService.enrollCourse(courseId),
-    onSuccess: (response) => {
-      queryClient.invalidateQueries({ queryKey: [ENROLLED_COURSES_QUERY_KEY] }); // Invalidate enrolled courses
-      showError({ success: true, message: "Đăng ký khóa học thành công." });
+  return useMutation<any, Error, { courseId: string; payload: UpdateCourseRequest }, { previousCourses?: PaginatedResponse<Course> | undefined, previousCourseDetail?: Course | undefined }>({
+    mutationFn: ({ courseId, payload }) => coursesService.updateCourse(courseId, payload),
+     onMutate: async ({ courseId, payload }) => {
+        const listQueryKey = [COURSES_QUERY_KEY, "list"];
+        const detailQueryKey = [COURSES_QUERY_KEY, "detail", courseId];
+
+        await queryClient.cancelQueries({ queryKey: listQueryKey });
+        await queryClient.cancelQueries({ queryKey: detailQueryKey });
+
+        const previousCourses = queryClient.getQueryData<PaginatedResponse<Course>>(listQueryKey);
+        const previousCourseDetail = queryClient.getQueryData<Course>(detailQueryKey);
+
+        if (previousCourses) {
+            queryClient.setQueryData<PaginatedResponse<Course>>(listQueryKey, (old) => old ? ({
+              ...old,
+              items: old.items.map(course => course.id === courseId ? { ...course, ...payload, title: payload.Name || course.title } : course),
+            }) : { items: [], pagination: { totalItems: 0, itemsPerPage: 10, currentPage: 1, totalPages: 0 }});
+        }
+        
+        if (previousCourseDetail) {
+             queryClient.setQueryData<Course>(detailQueryKey, (old) => old ? { ...old, ...payload, title: payload.Name || old.title } : undefined);
+        }
+
+        return { previousCourses, previousCourseDetail };
     },
-    onError: (error) => {
-      showError(error);
+    onSuccess: (data, variables) => {
+       toast({
+        title: "Thành công",
+        description: `Đã cập nhật khóa học "${variables.payload.Name}" thành công.`,
+        variant: "success",
+      });
+    },
+    onError: (err, { courseId }, context) => {
+       if (context?.previousCourses) {
+           queryClient.setQueryData([COURSES_QUERY_KEY, 'list'], context.previousCourses);
+       }
+       if (context?.previousCourseDetail) {
+           queryClient.setQueryData([COURSES_QUERY_KEY, 'detail', courseId], context.previousCourseDetail);
+       }
+       toast({
+        title: "Lỗi",
+        description: extractErrorMessage(err),
+        variant: "destructive",
+      });
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: [COURSES_QUERY_KEY] });
     },
   });
 }
 
-export function useCompletedCoursesCount() {
+export function useDeleteCourse() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation<void, Error, string[], { previousCourses?: PaginatedResponse<Course> | undefined }>({
+    mutationFn: (ids) => coursesService.softDeleteCourses(ids),
+     onMutate: async (idsToDelete) => {
+      const listQueryKey = [COURSES_QUERY_KEY, "list"];
+      await queryClient.cancelQueries({ queryKey: listQueryKey });
+      
+      const previousCourses = queryClient.getQueryData<PaginatedResponse<Course>>(listQueryKey);
+      
+      if(previousCourses) {
+        queryClient.setQueryData<PaginatedResponse<Course>>(listQueryKey, (old) => old ? ({
+          ...old,
+          items: old.items.filter(course => !idsToDelete.includes(course.id)),
+        }) : { items: [], pagination: { totalItems: 0, itemsPerPage: 10, currentPage: 1, totalPages: 0 } });
+      }
+      
+      return { previousCourses };
+    },
+    onSuccess: () => {
+      toast({
+        title: "Thành công",
+        description: "Đã xóa khóa học thành công.",
+        variant: "success",
+      });
+    },
+    onError: (err, id, context) => {
+      if (context?.previousCourses) {
+        queryClient.setQueryData([COURSES_QUERY_KEY, 'list'], context.previousCourses);
+      }
+      toast({
+        title: "Lỗi",
+        description: extractErrorMessage(err),
+        variant: "destructive",
+      });
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: [COURSES_QUERY_KEY, 'list'] });
+    },
+  });
+}
+
+export function useEnrollCourse() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation<any, Error, string>({
+    mutationFn: (courseId) => coursesService.enrollCourse(courseId),
+    onSuccess: () => {
+      toast({
+        title: "Thành công",
+        description: "Đăng ký khóa học thành công.",
+        variant: "success",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Lỗi",
+        description: extractErrorMessage(error),
+        variant: "destructive",
+      });
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: [ENROLLED_COURSES_QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: [COURSES_QUERY_KEY, 'list'] });
+    }
+  });
+}
+
+function getAbsoluteImageUrl(thumbUrl: string | null | undefined, name?: string): string {
+    const defaultImageUrl = `https://placehold.co/600x400/f97316/white?text=${encodeURIComponent(name || 'Course')}`;
+    if (!thumbUrl || thumbUrl.toLowerCase().includes("formfile")) return defaultImageUrl;
+    if (thumbUrl.startsWith("http") || thumbUrl.startsWith("data:")) return thumbUrl;
+    const baseUrl = API_CONFIG.baseURL.replace('/api', '');
+    return `${baseUrl}${thumbUrl.startsWith('/') ? '' : '/'}${thumbUrl}`;
+}
+
+export function useUpcomingCourses() {
   const { user } = useAuth();
 
-  return useQuery<{ count: number; courses: Course[] }, Error>({
-    queryKey: ["completedCoursesCount", user?.id],
+  return useQuery<Course[], Error>({
+    queryKey: ["upcomingCourses", user?.id],
     queryFn: async () => {
-      console.log("🚀 Starting to fetch completed courses data...");
+      const apiResponse = await coursesService.getUpcomingCourses();
+      return (apiResponse || []).map(mapCourseApiToUi);
+    },
+    enabled: !!user && user.role === "HOCVIEN",
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: true,
+  });
+}
 
-      // Call both APIs in parallel
-      const [coursesResponse, countResponse] = await Promise.all([
-        coursesService.getCompletedCourses(), // Changed to getCompletedCourses
-        coursesService.getCompletedCoursesCount(),
-      ]);
+export function useCourseProgressList(courseId: string, params?: QueryParams) {
+  return useQuery<PaginatedResponse<UserCourseProgressDto>, Error>({
+    queryKey: ["courseProgressList", courseId, params],
+    queryFn: () => coursesService.getCourseProgressList(courseId, params),
+    enabled: !!courseId,
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: true,
+  });
+}
 
-      console.log("🚀 Courses response:", coursesResponse);
-      console.log("🚀 Count response:", countResponse);
+export function useCourseProgressDetail(courseId: string, userId: string) {
+  return useQuery<UserCourseProgressDetailDto, Error>({
+    queryKey: ["courseProgressDetail", courseId, userId],
+    queryFn: () => coursesService.getCourseProgressDetail(courseId, userId),
+    enabled: !!courseId && !!userId,
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: true,
+  });
+}
 
-      // Map the API response to Course format
-      const courses = (coursesResponse.items || []).map((item) => {
-        console.log("🔄 Mapping item:", item);
-        return {
+export function useCompletedLessonsCount(courseId: string) {
+  return useQuery<number, Error>({
+    queryKey: ["completedLessonsCount", courseId],
+    queryFn: () => coursesService.getCompletedLessonsCountByCourseId(courseId),
+    enabled: !!courseId,
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: true,
+  });
+}
+
+export function useCompletedCoursesCount() {
+    const { user } = useAuth();
+  
+    return useQuery<{ count: number; courses: Course[] }, Error>({
+      queryKey: ["completedCoursesCount", user?.id],
+      queryFn: async () => {
+        const [coursesResponse, countResponse] = await Promise.all([
+          coursesService.getCompletedCourses(),
+          coursesService.getCompletedCoursesCount(),
+        ]);
+  
+        const courses = (coursesResponse.items || []).map((item) => ({
           id: item.id || "",
-          title: item.name || "", // API returns 'name', we need 'title'
+          title: item.name || "",
           courseCode: "",
           description: item.description || "",
           objectives: "",
-          image: item.thumbUrl || "",
+          image: getAbsoluteImageUrl(item.thumbUrl, item.name),
           location: "",
           status: "completed",
-          statusId: 1,
+          statusId: 4, 
           enrollmentType: "optional" as const,
           isPublic: true,
           instructor: "",
@@ -268,102 +348,17 @@ export function useCompletedCoursesCount() {
           modifiedAt: "",
           createdBy: "",
           modifiedBy: null,
+        }));
+  
+        const finalCount = countResponse ?? coursesResponse.pagination?.totalItems ?? 0;
+  
+        return {
+          count: finalCount,
+          courses,
         };
-      });
-
-      // Use the count from the dedicated endpoint if available, otherwise fall back to pagination
-      const finalCount =
-        countResponse ||
-        coursesResponse.pagination?.totalItems ||
-        coursesResponse.items?.length ||
-        0;
-
-      console.log("🔄 Final mapped courses:", courses);
-      console.log("🔄 Final count:", finalCount);
-
-      return {
-        count: finalCount,
-        courses,
-      };
-    },
-    enabled: !!user && user.role === "HOCVIEN", // Only fetch for students
-    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
-    refetchOnWindowFocus: false,
-  });
-}
-
-export function useUpcomingCourses() {
-  const { user } = useAuth();
-
-  return useQuery<Course[], Error>({
-    queryKey: ["upcomingCourses", user?.id],
-    queryFn: async () => {
-      console.log("🚀 Starting to fetch upcoming courses data...");
-      const apiResponse = await coursesService.getUpcomingCourses();
-      console.log("🚀 Raw Upcoming Courses API response:", apiResponse);
-      return (apiResponse || []).map(mapCourseApiToUi);
-    },
-    enabled: !!user && user.role === "HOCVIEN",
-    staleTime: 5 * 60 * 1000,
-    refetchOnWindowFocus: false,
-  });
-}
-
-export function useCourseProgressList(courseId: string, params?: QueryParams) {
-  return useQuery<PaginatedResponse<UserCourseProgressDto>, Error>({
-    queryKey: ["courseProgressList", courseId, params],
-    queryFn: async () => {
-      console.log(
-        `🚀 Starting to fetch progress list for course ${courseId}...`
-      );
-      const response = await coursesService.getCourseProgressList(
-        courseId,
-        params
-      );
-      console.log("🚀 Raw Course Progress List response:", response);
-      return response;
-    },
-    enabled: !!courseId, // Only fetch if courseId is provided
-    staleTime: 5 * 60 * 1000,
-    refetchOnWindowFocus: false,
-  });
-}
-
-export function useCourseProgressDetail(courseId: string, userId: string) {
-  return useQuery<UserCourseProgressDetailDto, Error>({
-    queryKey: ["courseProgressDetail", courseId, userId],
-    queryFn: async () => {
-      console.log(
-        `🚀 Starting to fetch progress detail for user ${userId} in course ${courseId}...`
-      );
-      const response = await coursesService.getCourseProgressDetail(
-        courseId,
-        userId
-      );
-      console.log("🚀 Raw Course Progress Detail response:", response);
-      return response;
-    },
-    enabled: !!courseId && !!userId, // Only fetch if both courseId and userId are provided
-    staleTime: 5 * 60 * 1000,
-    refetchOnWindowFocus: false,
-  });
-}
-
-export function useCompletedLessonsCount(courseId: string) {
-  return useQuery<number, Error>({
-    queryKey: ["completedLessonsCount", courseId],
-    queryFn: async () => {
-      console.log(
-        `🚀 Starting to fetch completed lessons count for course ${courseId}...`
-      );
-      const response = await coursesService.getCompletedLessonsCountByCourseId(
-        courseId
-      );
-      console.log("🚀 Raw Completed Lessons Count response:", response);
-      return response;
-    },
-    enabled: !!courseId, // Only fetch if courseId is provided
-    staleTime: 5 * 60 * 1000,
-    refetchOnWindowFocus: false,
-  });
-}
+      },
+      enabled: !!user && user.role === "HOCVIEN",
+      staleTime: 5 * 60 * 1000,
+      refetchOnWindowFocus: true,
+    });
+  }

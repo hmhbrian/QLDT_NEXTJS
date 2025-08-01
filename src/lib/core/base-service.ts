@@ -238,24 +238,21 @@ export abstract class BaseService<
   }
 
   protected extractData<T>(response: any): T {
-    // New logic to handle the API response structure { success, message, data }
+    // Correctly handle the API response structure { success, message, data }
     if (response && typeof response.success === "boolean") {
       if (response.success) {
-        // For successful responses, return the 'data' field if it exists,
-        // otherwise return the whole response object for mutations (POST, PUT, DELETE)
-        // that might just return { success: true, message: '...' }.
-        return response.data !== undefined ? response.data : (response as T);
+        // Return the 'data' field which contains the actual payload
+        return response.data as T;
       } else {
         // If success is false, create a more informative error message.
-        // The `detail` field is often more descriptive for business logic errors.
         const errorMessage =
           response.detail || response.message || "An API error occurred.";
         throw new Error(errorMessage);
       }
     }
 
-    // Fallback for responses that don't match the expected structure.
-    // This maintains compatibility with endpoints that might return data directly.
+    // Fallback for responses that might not match the expected structure,
+    // though this should be rare if the API is consistent.
     return response as T;
   }
 

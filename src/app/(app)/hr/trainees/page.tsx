@@ -34,7 +34,6 @@ import {
   UserCircle2,
   Calendar,
   Award,
-  Loader2,
   Eye,
   EyeOff,
 } from "lucide-react";
@@ -42,7 +41,6 @@ import { useState, useMemo, useCallback } from "react";
 import {
   User,
   Role,
-  Position,
   CreateUserRequest,
   UpdateUserRequest,
 } from "@/lib/types/user.types";
@@ -63,11 +61,10 @@ import {
   useUpdateUserMutation,
   useUsers,
 } from "@/hooks/use-users";
-import { extractErrorMessage } from "@/lib/core";
 import { rolesService } from "@/lib/services";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import type { PaginationState } from "@tanstack/react-table";
-import { mapUserApiToUi } from "@/lib/mappers/user.mapper";
+import { extractErrorMessage } from "@/lib/core";
 
 const initialNewTraineeState: Partial<
   User & { password?: string; confirmPassword?: string }
@@ -89,7 +86,6 @@ const initialNewTraineeState: Partial<
 export default function TraineesPage() {
   const { toast } = useToast();
   const { showError } = useError();
-  const queryClient = useQueryClient();
 
   const [searchQuery, setSearchQuery] = useState("");
   const debouncedSearchTerm = useDebounce(searchQuery, 300);
@@ -107,12 +103,10 @@ export default function TraineesPage() {
   const [isViewingTrainee, setIsViewingTrainee] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
-  // Form State
   const [formData, setFormData] = useState<
     Partial<User & { password?: string; confirmPassword?: string }>
   >({});
 
-  // Data fetching with TanStack Query and custom hook
   const {
     users: trainees,
     paginationInfo,
@@ -130,7 +124,7 @@ export default function TraineesPage() {
     [paginationInfo]
   );
 
-  const { data: roles = [], isLoading: isRolesLoading } = useQuery({
+  const { data: roles = [] } = useQuery({
     queryKey: ["roles"],
     queryFn: () => rolesService.getRoles(),
   });
@@ -140,7 +134,6 @@ export default function TraineesPage() {
   const { positions, loading: isPositionsLoading } = usePositions();
   const { userStatuses, isLoading: isStatusesLoading } = useUserStatuses();
 
-  // Use centralized mutation hooks
   const createTraineeMutation = useCreateUserMutation();
   const updateTraineeMutation = useUpdateUserMutation();
   const deleteTraineeMutation = useDeleteUserMutation();
@@ -155,19 +148,16 @@ export default function TraineesPage() {
     setEditingTrainee(trainee);
     setFormData({
       ...trainee,
-      department: trainee.department,
-      position: trainee.position,
+      password: "",
+      confirmPassword: "",
     });
     setIsFormOpen(true);
   }, []);
 
   const handleDeleteTrainee = () => {
     if (deletingTrainee) {
-      deleteTraineeMutation.mutate([deletingTrainee.id], {
-        onSuccess: () => {
-          setDeletingTrainee(null);
-        },
-      });
+      deleteTraineeMutation.mutate([deletingTrainee.id]);
+      setDeletingTrainee(null);
     }
   };
 
@@ -187,9 +177,7 @@ export default function TraineesPage() {
       return;
     }
     
-    const onMutationSuccess = () => {
-        setIsFormOpen(false);
-    };
+    setIsFormOpen(false);
 
     if (editingTrainee) {
       const updatePayload: UpdateUserRequest = {
@@ -204,8 +192,6 @@ export default function TraineesPage() {
       await updateTraineeMutation.mutateAsync({
           id: editingTrainee.id,
           payload: updatePayload,
-        }, {
-            onSuccess: onMutationSuccess
         });
     } else {
       const createPayload: CreateUserRequest = {
@@ -219,9 +205,7 @@ export default function TraineesPage() {
         DepartmentId: formData.department?.departmentId ? parseInt(formData.department.departmentId) : undefined,
         RoleId: hocvienRole.id,
       };
-      await createTraineeMutation.mutateAsync(createPayload, {
-        onSuccess: onMutationSuccess,
-      });
+      await createTraineeMutation.mutateAsync(createPayload);
     }
   };
 
@@ -527,11 +511,11 @@ export default function TraineesPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Xác nhận xóa</DialogTitle>
-            <DialogDescription>
-              Bạn có chắc muốn xóa học viên "{deletingTrainee?.fullName}"? Hành
-              động này không thể hoàn tác.
-            </DialogDescription>
           </DialogHeader>
+          <DialogDescription>
+            Bạn có chắc muốn xóa học viên "{deletingTrainee?.fullName}"? Hành
+            động này không thể hoàn tác.
+          </DialogDescription>
           <DialogFooter>
             <Button
               variant="outline"
@@ -556,9 +540,6 @@ export default function TraineesPage() {
         <DialogContent className="sm:max-w-[800px]">
           <DialogHeader>
             <DialogTitle>Chi tiết Học viên</DialogTitle>
-            <DialogDescription>
-              Thông tin chi tiết và lịch sử học tập của học viên
-            </DialogDescription>
           </DialogHeader>
           {selectedTrainee && (
             <Tabs defaultValue="info" className="mt-4">

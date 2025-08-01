@@ -1,16 +1,33 @@
 
 import { User, UserApiResponse } from "@/lib/types/user.types";
-import { DepartmentInfo } from "@/lib/types/department.types";
 
-export function mapUserApiToUi(apiUser: UserApiResponse): User {
+export function mapUserApiToUi(apiUser: UserApiResponse | null): User {
+  // Ensure apiUser is not null or undefined before mapping
+  if (!apiUser) {
+    // Return a default/empty user object to avoid crashing the app
+    console.error("mapUserApiToUi received null or undefined apiUser, returning default.");
+    return {
+        id: 'N/A',
+        fullName: 'N/A',
+        email: 'N/A',
+        idCard: 'N/A',
+        phoneNumber: 'N/A',
+        role: 'HOCVIEN', // Sensible default
+    };
+  }
+
+  // Ensure role is a valid value, defaulting to HOCVIEN if not
+  const validRoles = ["ADMIN", "HR", "HOCVIEN"];
+  const role = (apiUser.role?.toUpperCase() || 'HOCVIEN') as User["role"];
+  
   return {
-    id: apiUser.id || 'N/A',
+    id: apiUser.id || 'N/A', // Provide a default for ID
     fullName: apiUser.fullName || 'N/A',
     urlAvatar: apiUser.urlAvatar,
     idCard: apiUser.idCard || 'N/A',
     email: apiUser.email || 'N/A',
     phoneNumber: apiUser.phoneNumber || 'N/A',
-    role: (apiUser.role?.toUpperCase() as User["role"]) || 'HOCVIEN',
+    role: validRoles.includes(role) ? role : 'HOCVIEN',
     employeeId: apiUser.code,
     department: apiUser.department,
     position: apiUser.position,

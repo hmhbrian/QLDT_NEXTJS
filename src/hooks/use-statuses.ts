@@ -1,7 +1,7 @@
+
 "use client";
 
 import { useState, useEffect } from "react";
-import { useCourseStore } from "@/stores/course-store";
 import { useToast } from "@/components/ui/use-toast";
 import { extractErrorMessage } from "@/lib/core";
 import type {

@@ -1,3 +1,4 @@
+
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { usersService } from "@/lib/services";
 import {
@@ -9,206 +10,203 @@ import {
 import type { PaginatedResponse, QueryParams } from "@/lib/core";
 import { useError } from "./use-error";
 import { mapUserApiToUi } from "@/lib/mappers/user.mapper";
+import { useToast } from "@/components/ui/use-toast";
+import { extractErrorMessage } from "@/lib/core";
 
 export const USERS_QUERY_KEY = "users";
 
 export function useUsers(params?: QueryParams) {
-  const queryKey = [USERS_QUERY_KEY, params];
+  const queryKey = [USERS_QUERY_KEY, "list", params];
 
   const {
     data,
     isLoading,
     error,
-    refetch: reloadUsers,
-  } = useQuery<PaginatedResponse<UserApiResponse>, Error>({
+  } = useQuery<PaginatedResponse<User>, Error>({
     queryKey,
     queryFn: async () => {
       const response = await usersService.getUsersWithPagination(params);
       return {
-        items: response.items || [],
+        items: (response.items || []).map(mapUserApiToUi),
         pagination: response.pagination,
       };
     },
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
-    refetchOnMount: false,
+    refetchOnMount: true,
     placeholderData: (previousData) => previousData,
   });
 
   return {
-    users: (data?.items ?? []).map(mapUserApiToUi),
+    users: data?.items ?? [],
     paginationInfo: data?.pagination,
     isLoading,
     error,
     isError: !!error,
-    reloadUsers,
   };
 }
 
 export function useCreateUserMutation() {
   const queryClient = useQueryClient();
-  const { showError } = useError();
+  const { toast } = useToast();
 
-  return useMutation<
-    UserApiResponse,
-    Error,
-    CreateUserRequest,
-    { previousUsers: PaginatedResponse<UserApiResponse> | undefined }
-  >({
+  return useMutation<UserApiResponse, Error, CreateUserRequest>({
     mutationFn: (payload) => usersService.createUser(payload),
-    onMutate: async (newUser) => {
-      await queryClient.cancelQueries({ queryKey: [USERS_QUERY_KEY] });
-      const previousUsers = queryClient.getQueryData<
-        PaginatedResponse<UserApiResponse>
-      >([USERS_QUERY_KEY]);
-
-      const optimisticUser: User = {
-        id: `temp-${Date.now()}`,
-        fullName: newUser.FullName,
-        email: newUser.Email,
-        idCard: newUser.IdCard || "",
-        phoneNumber: newUser.NumberPhone || "",
-        role: "HOCVIEN", // Default role for optimistic update
-      };
-
-      queryClient.setQueryData<PaginatedResponse<UserApiResponse>>(
-        [USERS_QUERY_KEY],
-        (old) => {
-          const optimisticApiUser: UserApiResponse = {
-            id: optimisticUser.id,
-            fullName: optimisticUser.fullName,
-            email: optimisticUser.email,
-            role: optimisticUser.role,
-          };
-          return old
-            ? { ...old, items: [optimisticApiUser, ...old.items] }
-            : {
-                items: [optimisticApiUser],
-                pagination: {
-                  totalItems: 1,
-                  itemsPerPage: 10,
-                  currentPage: 1,
-                  totalPages: 1,
-                },
-              };
-        }
-      );
-
-      return { previousUsers };
-    },
     onSuccess: (response) => {
-      showError({
-        success: true,
-        message: `Đã tạo người dùng "${response.fullName}" thành công.`,
+      toast({
+        title: "Thành công",
+        description: `Đã tạo người dùng "${response.fullName}" thành công.`,
+        variant: "success",
       });
     },
-    onError: (error, newUser, context) => {
-      if (context?.previousUsers) {
-        queryClient.setQueryData([USERS_QUERY_KEY], context.previousUsers);
-      }
-      showError(error);
+    onError: (error) => {
+      toast({
+        title: "Lỗi",
+        description: extractErrorMessage(error),
+        variant: "destructive",
+      });
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: [USERS_QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: [USERS_QUERY_KEY, "list"] });
     },
   });
 }
 
 export function useUpdateUserMutation() {
   const queryClient = useQueryClient();
-  const { showError } = useError();
+  const { toast } = useToast();
 
   return useMutation<
     UserApiResponse,
     Error,
     { id: string; payload: UpdateUserRequest },
-    { previousUsers: PaginatedResponse<UserApiResponse> | undefined }
+    { previousUsers?: PaginatedResponse<User> | undefined }
   >({
     mutationFn: ({ id, payload }) =>
       usersService.updateUserByAdmin(id, payload),
     onMutate: async ({ id, payload }) => {
-      await queryClient.cancelQueries({ queryKey: [USERS_QUERY_KEY] });
-      const previousUsers = queryClient.getQueryData<
-        PaginatedResponse<UserApiResponse>
-      >([USERS_QUERY_KEY]);
+      const queryKey = [USERS_QUERY_KEY, "list"];
+      await queryClient.cancelQueries({ queryKey });
 
-      queryClient.setQueryData<PaginatedResponse<UserApiResponse>>(
-        [USERS_QUERY_KEY],
-        (old) => {
-          if (!old) return old;
-          return {
-            ...old,
-            items: old.items.map((u) =>
-              u.id === id ? { ...u, ...payload } : u
-            ),
-          };
-        }
-      );
+      const previousUsers =
+        queryClient.getQueryData<PaginatedResponse<User>>(queryKey);
+
+      if (previousUsers) {
+        queryClient.setQueryData<PaginatedResponse<User>>(
+          queryKey,
+          (old) => {
+            if (!old)
+              return {
+                items: [],
+                pagination: {
+                  totalItems: 0,
+                  itemsPerPage: 10,
+                  currentPage: 1,
+                  totalPages: 0,
+                },
+              };
+            return {
+              ...old,
+              items: old.items.map((user) =>
+                user.id === id ? { ...user, ...payload, fullName: payload.FullName || user.fullName } : user
+              ),
+            };
+          }
+        );
+      }
 
       return { previousUsers };
     },
-    onSuccess: (response) => {
-      showError({
-        success: true,
-        message: `Đã cập nhật người dùng "${response.fullName}" thành công.`,
+    onSuccess: (response, variables) => {
+      toast({
+        title: "Thành công",
+        description: `Đã cập nhật người dùng "${variables.payload.FullName}" thành công.`,
+        variant: "success",
       });
     },
-    onError: (error, variables, context) => {
+    onError: (err, variables, context) => {
       if (context?.previousUsers) {
-        queryClient.setQueryData([USERS_QUERY_KEY], context.previousUsers);
+        queryClient.setQueryData(
+          [USERS_QUERY_KEY, "list"],
+          context.previousUsers
+        );
       }
-      showError(error);
-    },
-    onSettled: (data, error, variables) => {
-      queryClient.invalidateQueries({ queryKey: [USERS_QUERY_KEY] });
-      queryClient.invalidateQueries({
-        queryKey: [USERS_QUERY_KEY, variables.id],
+      toast({
+        title: "Lỗi",
+        description: extractErrorMessage(err),
+        variant: "destructive",
       });
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: [USERS_QUERY_KEY, "list"] });
     },
   });
 }
 
 export function useDeleteUserMutation() {
   const queryClient = useQueryClient();
-  const { showError } = useError();
+  const { toast } = useToast();
 
   return useMutation<
     any,
     Error,
     string[],
-    { previousUsers: PaginatedResponse<UserApiResponse> | undefined }
+    { previousUsers?: PaginatedResponse<User> | undefined }
   >({
     mutationFn: (userIds: string[]) => usersService.deleteUsers(userIds),
-    onMutate: async (userIds) => {
-      await queryClient.cancelQueries({ queryKey: [USERS_QUERY_KEY] });
-      const previousUsers = queryClient.getQueryData<
-        PaginatedResponse<UserApiResponse>
-      >([USERS_QUERY_KEY]);
+    onMutate: async (idsToDelete) => {
+      const listQueryKey = [USERS_QUERY_KEY, "list"];
+      await queryClient.cancelQueries({ queryKey: listQueryKey });
 
-      queryClient.setQueryData<PaginatedResponse<UserApiResponse>>(
-        [USERS_QUERY_KEY],
-        (old) => {
-          if (!old) return old;
-          return {
-            ...old,
-            items: old.items.filter((u) => u.id && !userIds.includes(u.id)),
-          };
-        }
-      );
+      const previousUsers =
+        queryClient.getQueryData<PaginatedResponse<User>>(listQueryKey);
+
+      if (previousUsers) {
+        queryClient.setQueryData<PaginatedResponse<User>>(
+          listQueryKey,
+          (old) => {
+            if (!old)
+              return {
+                items: [],
+                pagination: {
+                  totalItems: 0,
+                  itemsPerPage: 10,
+                  currentPage: 1,
+                  totalPages: 0,
+                },
+              };
+            return {
+              ...old,
+              items: old.items.filter((user) => !idsToDelete.includes(user.id)),
+            };
+          }
+        );
+      }
 
       return { previousUsers };
     },
     onSuccess: () => {
-      showError({ success: true, message: "Đã xóa người dùng thành công." });
+      toast({
+        title: "Thành công",
+        description: "Đã xóa người dùng thành công.",
+        variant: "success",
+      });
     },
-    onError: (error, variables, context) => {
+    onError: (err, id, context) => {
       if (context?.previousUsers) {
-        queryClient.setQueryData([USERS_QUERY_KEY], context.previousUsers);
+        queryClient.setQueryData(
+          [USERS_QUERY_KEY, "list"],
+          context.previousUsers
+        );
       }
-      showError(error);
+      toast({
+        title: "Lỗi",
+        description: extractErrorMessage(err),
+        variant: "destructive",
+      });
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: [USERS_QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: [USERS_QUERY_KEY, "list"] });
     },
   });
 }

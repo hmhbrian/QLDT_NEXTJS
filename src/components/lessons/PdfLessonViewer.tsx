@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useCallback, useRef, useEffect, memo } from "react";
@@ -26,7 +27,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
 interface PdfLessonViewerProps {
-  lessonId: string | number;
   pdfUrl: string;
   initialPage?: number;
   onVisiblePageChange: (page: number) => void;

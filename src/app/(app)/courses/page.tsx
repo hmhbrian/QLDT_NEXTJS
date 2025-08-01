@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useMemo, useCallback } from "react";
@@ -28,7 +29,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Badge } from "@/components/ui/badge";
 import type { Course } from "@/lib/types/course.types";
 import { DataTable } from "@/components/ui/data-table";
-import { getColumns } from "./columns";
+import { getUserCourseColumns } from "@/components/courses/columns";
 import { isRegistrationOpen } from "@/lib/helpers";
 import {
   useCourses,
@@ -52,6 +53,8 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { useDepartments } from "@/hooks/use-departments";
+import { usePositions } from "@/hooks/use-positions";
 
 export default function CoursesPage() {
   const { user: currentUser } = useAuth();
@@ -71,7 +74,6 @@ export default function CoursesPage() {
     paginationInfo,
     isLoading: isFetchingCourses,
     error: coursesError,
-    reloadCourses: fetchCourses,
   } = useCourses({
     keyword: debouncedSearchTerm,
     Page: pagination.pageIndex + 1,
@@ -79,59 +81,42 @@ export default function CoursesPage() {
     publicOnly: true,
   });
 
-  const { enrolledCourses, isLoadingEnrolled, reloadEnrolledCourses } =
-    useEnrolledCourses(!!currentUser && currentUser.role === "HOCVIEN");
+  const { departments, isLoading: isLoadingDepts } = useDepartments();
+  const { positions, loading: isLoadingPositions } = usePositions();
+
+  const { enrolledCourses, isLoadingEnrolled } = useEnrolledCourses(
+    !!currentUser && currentUser.role === "HOCVIEN"
+  );
 
   const pageCount = paginationInfo?.totalPages ?? 0;
 
   // Compute loading states
   const isLoading = isFetchingCourses || isLoadingEnrolled;
-  const isInitialLoading = isLoading && !publicCourses.length;
+  const isInitialLoading =
+    (isLoading || isLoadingDepts || isLoadingPositions) &&
+    !publicCourses.length;
 
   const enrollMutation = useEnrollCourse();
 
-  // Filter out enrolled courses for trainees
   const filteredCourses = useMemo(() => {
-    console.log("Filtering courses:", {
-      totalCourses: publicCourses.length,
-      currentUser: currentUser?.id,
-      role: currentUser?.role,
-      enrolledCoursesCount: enrolledCourses.length,
-    });
-
     if (!currentUser || currentUser.role !== "HOCVIEN") {
-      console.log("Admin/HR - showing all courses");
-      return publicCourses; // Admin và HR thấy tất cả
+      return publicCourses;
     }
-
-    // Với HOCVIEN, ẩn các khóa học đã đăng ký
     const enrolledCourseIds = new Set(
       enrolledCourses.map((course) => course.id)
     );
-    const filtered = publicCourses.filter((course) => {
-      const isEnrolled = enrolledCourseIds.has(course.id);
-      console.log(
-        `Course ${course.title}: enrolled=${isEnrolled}, courseId=${course.id}`
-      );
-      return !isEnrolled; // Chỉ hiện khóa học chưa đăng ký
-    });
-
-    console.log(`Filtered: ${filtered.length}/${publicCourses.length} courses`);
-    return filtered;
+    return publicCourses.filter((course) => !enrolledCourseIds.has(course.id));
   }, [publicCourses, currentUser, enrolledCourses]);
 
   const isCourseAccessible = useCallback(
     (course: Course): boolean => {
       if (!currentUser) return false;
-      // Admins and HR can see everything
       if (currentUser.role === "ADMIN" || currentUser.role === "HR") {
         return true;
       }
-      // All users can see public courses
       if (course.isPublic) {
         return true;
       }
-      // Trainees can see internal courses for their department
       if (
         currentUser.department &&
         course.department?.includes(currentUser.department.departmentId)
@@ -150,36 +135,26 @@ export default function CoursesPage() {
         router.push("/login");
         return;
       }
-      enrollMutation.mutate(courseId, {
-        onSuccess: () => {
-          console.log(`Successfully enrolled in course ${courseId}`);
-          // Reload enrolled courses để cập nhật danh sách khóa học đã đăng ký
-          reloadEnrolledCourses();
-          // Reload public courses để cập nhật danh sách
-          fetchCourses();
-        },
-      });
+      enrollMutation.mutate(courseId);
     },
-    [
-      currentUser,
-      router,
-      showError,
-      enrollMutation,
-      reloadEnrolledCourses,
-      fetchCourses,
-    ]
+    [currentUser, router, showError, enrollMutation]
   );
 
   const columns = useMemo(
     () =>
-      getColumns(
-        currentUser?.id,
-        handleEnroll,
+      getUserCourseColumns(
         (id) => router.push(`/courses/${id}`),
-        (id) => enrollMutation.isPending && enrollMutation.variables === id,
-        isCourseAccessible,
-        enrolledCourses,
-        currentUser?.role
+        {
+          currentUserId: currentUser?.id,
+          handleEnroll,
+          isEnrolling: (id) =>
+            enrollMutation.isPending && enrollMutation.variables === id,
+          isCourseAccessible,
+          enrolledCourses,
+          currentUserRole: currentUser?.role,
+        },
+        departments,
+        positions
       ),
     [
       currentUser?.id,
@@ -190,10 +165,11 @@ export default function CoursesPage() {
       enrollMutation.variables,
       isCourseAccessible,
       enrolledCourses,
+      departments,
+      positions,
     ]
   );
 
-  // Show loading skeleton for initial load
   if (isInitialLoading) {
     return (
       <div className="space-y-6">
@@ -238,7 +214,7 @@ export default function CoursesPage() {
         <XCircle className="h-10 w-10 mb-3" />
         <p className="text-lg font-semibold">Lỗi tải khóa học:</p>
         <p className="text-sm text-muted-foreground">{coursesError.message}</p>
-        <Button onClick={() => fetchCourses()} className="mt-4">
+        <Button onClick={() => router.refresh()} className="mt-4">
           Thử lại
         </Button>
       </div>
@@ -284,7 +260,6 @@ export default function CoursesPage() {
 
       {viewMode === "card" ? (
         <>
-          {/* Loading State */}
           {isFetchingCourses && filteredCourses.length === 0 ? (
             <div className="grid gap-6 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {Array.from({ length: pagination.pageSize }).map((_, index) => (
@@ -311,7 +286,6 @@ export default function CoursesPage() {
           ) : (
             <div className="grid gap-6 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {filteredCourses.map((course) => {
-                // Kiểm tra enrollment từ enrolled courses data thay vì course.userIds
                 const enrolledCourseIds = new Set(
                   enrolledCourses.map((c) => c.id)
                 );
@@ -325,16 +299,6 @@ export default function CoursesPage() {
                   course.enrollmentType === "optional" &&
                   registrationOpen;
                 const accessible = isCourseAccessible(course);
-
-                // Debug log để kiểm tra
-                console.log(`Course ${course.title}:`, {
-                  isEnrolled,
-                  courseId: course.id,
-                  enrolledCourseIds: Array.from(enrolledCourseIds),
-                  currentUserId: currentUser?.id,
-                  registrationOpen,
-                  registrationDeadline: course.registrationDeadline,
-                });
 
                 return (
                   <Card
@@ -499,7 +463,6 @@ export default function CoursesPage() {
               })}
             </div>
           )}
-          {/* Pagination Controls - Always show if there are multiple pages */}
           {pageCount > 1 && (
             <div className="flex items-center justify-between pt-6">
               <div className="flex-1 text-sm text-muted-foreground">
@@ -574,8 +537,6 @@ export default function CoursesPage() {
               </div>
             </div>
           )}
-
-          {/* Empty State */}
           {filteredCourses.length === 0 && !isFetchingCourses && (
             <div className="text-center py-12">
               <BookOpen className="mx-auto h-12 w-12 text-muted-foreground" />

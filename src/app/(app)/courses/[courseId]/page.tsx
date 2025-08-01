@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState, useMemo, useCallback, useRef } from "react";
@@ -168,7 +169,10 @@ const TestItem = ({
   courseId: string;
   isEnrolled: boolean;
 }) => {
-  const { hasSubmitted, isLoading } = useHasSubmittedTest(courseId, test.id);
+  const { hasSubmitted, isLoading } = useHasSubmittedTest(
+    courseId,
+    Number(test.id)
+  );
 
   return (
     <Card
@@ -193,18 +197,11 @@ const TestItem = ({
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Đang tải...
                 </Button>
               ) : hasSubmitted ? (
-                <>
-                  {/* <Button asChild variant="secondary" size="sm">
-                    <Link href={`/courses/${courseId}/tests/${test.id}`}>
-                      <Eye className="mr-2 h-4 w-4" /> Xem lại kết quả
-                    </Link>
-                  </Button> */}
-                  <Button asChild variant="outline" size="sm">
-                    <Link href={`/courses/${courseId}/tests/${test.id}`}>
-                      <Eye className="mr-2 h-4 w-4" /> Xem lại bài
-                    </Link>
-                  </Button>
-                </>
+                <Button asChild variant="outline" size="sm">
+                  <Link href={`/courses/${courseId}/tests/${test.id}`}>
+                    <Eye className="mr-2 h-4 w-4" /> Xem lại bài
+                  </Link>
+                </Button>
               ) : (
                 <Button
                   variant="outline"
@@ -272,105 +269,9 @@ export default function CourseDetailPage() {
   const {
     feedbacks,
     isLoading: isLoadingFeedbacks,
-    reloadFeedbacks,
   } = useFeedbacks(courseIdFromParams);
 
-  // Instant navigation - show skeleton while loading
-  if (isLoading || courseError) {
-    return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-2">
-            <div className="h-8 bg-gray-200 animate-pulse rounded mb-4"></div>
-            <div className="h-64 bg-gray-200 animate-pulse rounded mb-6"></div>
-            <div className="space-y-4">
-              <div className="h-4 bg-gray-200 animate-pulse rounded"></div>
-              <div className="h-4 bg-gray-200 animate-pulse rounded"></div>
-              <div className="h-4 bg-gray-200 animate-pulse rounded w-3/4"></div>
-            </div>
-          </div>
-          <div className="space-y-4">
-            <div className="h-6 bg-gray-200 animate-pulse rounded"></div>
-            <div className="h-32 bg-gray-200 animate-pulse rounded"></div>
-            <div className="h-10 bg-gray-200 animate-pulse rounded"></div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Initialize localStorage check on first load
-  useEffect(() => {
-    if (currentUser && courseIdFromParams && feedbacks) {
-      const localKey = `feedback_submitted_${currentUser.id}_${courseIdFromParams}`;
-
-      // Check if user feedback exists in API response
-      const userFeedback = feedbacks.find(
-        (fb) =>
-          fb.userId === currentUser.id && fb.courseId === courseIdFromParams
-      );
-
-      if (userFeedback) {
-        // Update localStorage to reflect API state
-        localStorage.setItem(localKey, "true");
-        console.log("Found existing feedback, marked as submitted");
-      }
-    }
-  }, [currentUser, courseIdFromParams, feedbacks]);
-
-  // Check if user has already submitted evaluation when component mounts
-  useEffect(() => {
-    if (currentUser && courseIdFromParams) {
-      const localKey = `feedback_submitted_${currentUser.id}_${courseIdFromParams}`;
-      const hasSubmittedLocally = localStorage.getItem(localKey) === "true";
-
-      // If not marked locally, try to submit a test request to check
-      if (!hasSubmittedLocally && !isLoadingFeedbacks) {
-        // Check API by making a test call (this will trigger error if already submitted)
-        const testPayload = {
-          q1_relevance: 1,
-          q2_clarity: 1,
-          q3_structure: 1,
-          q4_duration: 1,
-          q5_material: 1,
-          comment: "test_check",
-        };
-
-        // We'll use this to silently check - don't actually submit
-        // Instead, let's check the feedbacks list
-        console.log("Checking feedbacks for user:", currentUser.id);
-      }
-    }
-  }, [currentUser, courseIdFromParams, isLoadingFeedbacks]);
-
-  const hasSubmittedEvaluation = useMemo(() => {
-    if (!currentUser) return false;
-
-    // Check localStorage first for immediate feedback
-    const localKey = `feedback_submitted_${currentUser.id}_${courseIdFromParams}`;
-    const localSubmitted = localStorage.getItem(localKey) === "true";
-
-    // Check API data
-    let apiSubmitted = false;
-    if (feedbacks && feedbacks.length > 0) {
-      const userFeedback = feedbacks.find(
-        (fb) =>
-          fb.userId === currentUser.id && fb.courseId === courseIdFromParams
-      );
-      apiSubmitted = !!userFeedback;
-      console.log("Current user:", currentUser.id);
-      console.log("Feedbacks:", feedbacks);
-      console.log("User feedback found:", userFeedback);
-
-      // If we found API feedback but localStorage doesn't reflect it, update localStorage
-      if (apiSubmitted && !localSubmitted) {
-        localStorage.setItem(localKey, "true");
-      }
-    }
-
-    return localSubmitted || apiSubmitted;
-  }, [feedbacks, currentUser, courseIdFromParams]);
-
+  // All hooks need to be before early returns to comply with Rules of Hooks
   const isEnrolled = useMemo(() => {
     if (!currentUser || !course) return false;
     if (course.enrollmentType === "mandatory") return true;
@@ -392,7 +293,6 @@ export default function CourseDetailPage() {
     tests,
     isLoading: isLoadingTests,
     error: testsError,
-    reloadTests,
   } = useTests(courseIdFromParams, canViewContent);
   const {
     attachedFiles,
@@ -409,69 +309,6 @@ export default function CourseDetailPage() {
   const lastReportedPageRef = useRef(0);
   const [videoProgress, setVideoProgress] = useState({ playedSeconds: 0 });
   const lastReportedTimeRef = useRef(0);
-
-  useEffect(() => {
-    if (
-      selectedLesson?.type === "pdf_url" &&
-      debouncedVisiblePage > 0 &&
-      debouncedVisiblePage !== lastReportedPageRef.current
-    ) {
-      lastReportedPageRef.current = debouncedVisiblePage;
-      debouncedUpsert({
-        lessonId: selectedLesson.id,
-        currentPage: debouncedVisiblePage,
-      });
-    }
-  }, [debouncedVisiblePage, selectedLesson, debouncedUpsert]);
-
-  useEffect(() => {
-    if (
-      selectedLesson?.type === "video_url" &&
-      videoProgress.playedSeconds > 0
-    ) {
-      const currentTime = Math.round(videoProgress.playedSeconds);
-      if (Math.abs(currentTime - lastReportedTimeRef.current) > 2) {
-        lastReportedTimeRef.current = currentTime;
-        debouncedUpsert({
-          lessonId: selectedLesson.id,
-          currentTimeSecond: currentTime,
-        });
-      }
-    }
-  }, [videoProgress.playedSeconds, selectedLesson, debouncedUpsert]);
-
-  // Auto reload tests when returning from a test detail page
-  useEffect(() => {
-    const handleFocus = () => {
-      if (typeof reloadTests === "function") {
-        reloadTests();
-      }
-    };
-    window.addEventListener("focus", handleFocus);
-    return () => {
-      window.removeEventListener("focus", handleFocus);
-      cleanupProgress();
-    };
-  }, [cleanupProgress, reloadTests]);
-
-  useEffect(() => {
-    if (hasPendingProgress()) {
-      if (
-        selectedLesson?.type === "video_url" &&
-        videoProgress.playedSeconds > 0
-      ) {
-        saveImmediately({
-          lessonId: selectedLesson.id,
-          currentTimeSecond: Math.round(videoProgress.playedSeconds),
-        });
-      } else if (selectedLesson?.type === "pdf_url" && visiblePage > 0) {
-        saveImmediately({
-          lessonId: selectedLesson.id,
-          currentPage: visiblePage,
-        });
-      }
-    }
-  }, [selectedLesson?.id]);
 
   const lessonsWithProgress: LessonWithProgress[] = useMemo(() => {
     if (!lessonProgresses || !Array.isArray(lessonProgresses)) return [];
@@ -519,6 +356,26 @@ export default function CourseDetailPage() {
       comment: "",
     });
 
+  const handleEvaluationRatingChange = (
+    key: keyof Omit<CreateFeedbackPayload, "comment">,
+    rating: number
+  ) => {
+    setEvaluationFormData((prev) => ({
+      ...prev,
+      [key]: rating,
+    }));
+  };
+
+  const hasSubmittedEvaluation = useMemo(() => {
+    if (!currentUser) return false;
+    return (
+      feedbacks?.some(
+        (fb) =>
+          fb.userId === currentUser.id && fb.courseId === courseIdFromParams
+      ) ?? false
+    );
+  }, [feedbacks, currentUser, courseIdFromParams]);
+
   const showRegisterGate = useMemo(
     () =>
       currentUser?.role === "HOCVIEN" &&
@@ -527,6 +384,62 @@ export default function CourseDetailPage() {
       course.enrollmentType === "optional",
     [currentUser, course, isEnrolled]
   );
+
+  useEffect(() => {
+    if (
+      selectedLesson?.type === "pdf_url" &&
+      debouncedVisiblePage > 0 &&
+      debouncedVisiblePage !== lastReportedPageRef.current
+    ) {
+      lastReportedPageRef.current = debouncedVisiblePage;
+      debouncedUpsert({
+        lessonId: selectedLesson.id,
+        currentPage: debouncedVisiblePage,
+      });
+    }
+  }, [debouncedVisiblePage, selectedLesson, debouncedUpsert]);
+
+  useEffect(() => {
+    if (
+      selectedLesson?.type === "video_url" &&
+      videoProgress.playedSeconds > 0
+    ) {
+      const currentTime = Math.round(videoProgress.playedSeconds);
+      if (Math.abs(currentTime - lastReportedTimeRef.current) > 2) {
+        lastReportedTimeRef.current = currentTime;
+        debouncedUpsert({
+          lessonId: selectedLesson.id,
+          currentTimeSecond: currentTime,
+        });
+      }
+    }
+  }, [videoProgress.playedSeconds, selectedLesson, debouncedUpsert]);
+
+  // Cleanup progress on unmount
+  useEffect(() => {
+    return () => {
+      cleanupProgress();
+    };
+  }, [cleanupProgress]);
+
+  useEffect(() => {
+    if (hasPendingProgress()) {
+      if (
+        selectedLesson?.type === "video_url" &&
+        videoProgress.playedSeconds > 0
+      ) {
+        saveImmediately({
+          lessonId: selectedLesson.id,
+          currentTimeSecond: Math.round(videoProgress.playedSeconds),
+        });
+      } else if (selectedLesson?.type === "pdf_url" && visiblePage > 0) {
+        saveImmediately({
+          lessonId: selectedLesson.id,
+          currentPage: visiblePage,
+        });
+      }
+    }
+  }, [selectedLesson?.id]);
 
   const handleEnroll = useCallback(() => {
     if (!course || !currentUser) {
@@ -537,23 +450,10 @@ export default function CourseDetailPage() {
     enrollCourseMutation.mutate(course.id);
   }, [course, currentUser, router, isEnrolled, enrollCourseMutation]);
 
-  const handleEvaluationRatingChange = useCallback(
-    (field: keyof Omit<CreateFeedbackPayload, "comment">, rating: number) => {
-      setEvaluationFormData((prev) => ({ ...prev, [field]: rating }));
-    },
-    []
-  );
-
   const handleSubmitEvaluation = useCallback(() => {
     if (!currentUser || !course) return;
     createFeedbackMutation.mutate(evaluationFormData, {
       onSuccess: () => {
-        console.log("Feedback submitted successfully");
-
-        // Immediately mark as submitted in localStorage for instant UI update
-        const localKey = `feedback_submitted_${currentUser.id}_${courseIdFromParams}`;
-        localStorage.setItem(localKey, "true");
-
         setIsEvaluationDialogOpen(false);
         setEvaluationFormData({
           q1_relevance: 0,
@@ -563,25 +463,6 @@ export default function CourseDetailPage() {
           q5_material: 0,
           comment: "",
         });
-
-        // Force reload feedbacks after successful submission
-        setTimeout(() => {
-          reloadFeedbacks();
-        }, 100);
-      },
-      onError: (error: any) => {
-        console.log("Feedback submission error:", error);
-        // Check if error indicates user has already submitted
-        const errorMessage = error?.message || error?.detail || "";
-        if (
-          errorMessage.includes("đã đánh giá") ||
-          errorMessage.includes("already")
-        ) {
-          // Mark as submitted since user has already evaluated
-          const localKey = `feedback_submitted_${currentUser.id}_${courseIdFromParams}`;
-          localStorage.setItem(localKey, "true");
-          setIsEvaluationDialogOpen(false);
-        }
       },
     });
   }, [
@@ -589,8 +470,6 @@ export default function CourseDetailPage() {
     course,
     evaluationFormData,
     createFeedbackMutation,
-    reloadFeedbacks,
-    courseIdFromParams,
   ]);
 
   const handleSelectLesson = useCallback((lesson: LessonWithProgress) => {
@@ -615,6 +494,30 @@ export default function CourseDetailPage() {
       playerRef.current.seekTo(selectedLesson.currentTimeSecond, "seconds");
     }
   }, [selectedLesson]);
+
+  // Instant navigation - show skeleton while loading
+  if (isLoading || courseError) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="lg:col-span-2">
+            <div className="h-8 bg-gray-200 animate-pulse rounded mb-4"></div>
+            <div className="h-64 bg-gray-200 animate-pulse rounded mb-6"></div>
+            <div className="space-y-4">
+              <div className="h-4 bg-gray-200 animate-pulse rounded"></div>
+              <div className="h-4 bg-gray-200 animate-pulse rounded"></div>
+              <div className="h-4 bg-gray-200 animate-pulse rounded w-3/4"></div>
+            </div>
+          </div>
+          <div className="space-y-4">
+            <div className="h-6 bg-gray-200 animate-pulse rounded"></div>
+            <div className="h-32 bg-gray-200 animate-pulse rounded"></div>
+            <div className="h-10 bg-gray-200 animate-pulse rounded"></div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (!course) {
     return (
@@ -930,7 +833,6 @@ export default function CourseDetailPage() {
                 ) : selectedLesson.type === "pdf_url" ? (
                   selectedLesson.fileUrl ? (
                     <PdfLessonViewer
-                      lessonId={selectedLesson.id}
                       pdfUrl={selectedLesson.fileUrl}
                       initialPage={selectedLesson.currentPage || 1}
                       onVisiblePageChange={handleVisiblePageChange}

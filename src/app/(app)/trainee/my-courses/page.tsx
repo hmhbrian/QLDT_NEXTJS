@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useMemo, useEffect } from "react";
@@ -22,6 +23,7 @@ import Link from "next/link";
 import { useAuth } from "@/hooks/useAuth";
 import { useEnrolledCourses } from "@/hooks/use-courses";
 import type { Course } from "@/lib/types/course.types";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface DisplayCourse {
   id: string;
@@ -34,21 +36,22 @@ interface DisplayCourse {
 
 export default function MyCoursesPage() {
   const { user: currentUser, loadingAuth } = useAuth();
-  const { enrolledCourses, isLoadingEnrolled, reloadEnrolledCourses } =
-    useEnrolledCourses(!!currentUser);
+  const queryClient = useQueryClient();
+  const { enrolledCourses, isLoadingEnrolled } = useEnrolledCourses(
+    !!currentUser
+  );
 
-  // Tự động reload khi người dùng quay lại tab hoặc trang (dùng focus cho nhanh và ổn định hơn)
   useEffect(() => {
     const handleFocus = () => {
       if (currentUser) {
-        reloadEnrolledCourses();
+        queryClient.invalidateQueries({ queryKey: ["enrolledCourses"] });
       }
     };
     window.addEventListener("focus", handleFocus);
     return () => {
       window.removeEventListener("focus", handleFocus);
     };
-  }, [reloadEnrolledCourses, currentUser]);
+  }, [queryClient, currentUser]);
 
   const myDisplayCourses = useMemo(() => {
     return enrolledCourses.map(

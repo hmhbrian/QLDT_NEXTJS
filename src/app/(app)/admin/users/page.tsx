@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useMemo, useCallback } from "react";
@@ -38,7 +39,6 @@ import {
   UpdateUserRequest,
   Position,
   ResetPasswordRequest,
-  UserApiResponse,
 } from "@/lib/types/user.types";
 import { DepartmentInfo } from "@/lib/types/department.types";
 import { useToast } from "@/components/ui/use-toast";
@@ -47,12 +47,7 @@ import { getColumns } from "./columns";
 import { cn } from "@/lib/utils";
 import { extractErrorMessage } from "@/lib/core";
 import { generateEmployeeId } from "@/lib/utils/code-generator";
-import {
-  rolesService,
-  departmentsService,
-  positionsService,
-  usersService,
-} from "@/lib/services";
+import { rolesService, usersService } from "@/lib/services";
 import {
   useUsers,
   useCreateUserMutation,
@@ -60,7 +55,7 @@ import {
   useDeleteUserMutation,
 } from "@/hooks/use-users";
 import { useUserStatuses } from "@/hooks/use-statuses";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import {
   PlusCircle,
   Search,
@@ -72,8 +67,8 @@ import {
 } from "lucide-react";
 import { NO_DEPARTMENT_VALUE } from "@/lib/config/constants";
 import type { PaginationState } from "@tanstack/react-table";
-import { mapUserApiToUi } from "@/lib/mappers/user.mapper";
-import { useRouter } from "next/navigation";
+import { useDepartments } from "@/hooks/use-departments";
+import { usePositions } from "@/hooks/use-positions";
 
 type UserFormState = Partial<
   Omit<User, "department" | "position"> & {
@@ -88,8 +83,6 @@ export default function UsersPage() {
   const { user: currentUser } = useAuth();
   const { showError } = useError();
   const { toast } = useToast();
-  const queryClient = useQueryClient();
-  const router = useRouter();
 
   // UI State
   const [searchTerm, setSearchTerm] = useState("");
@@ -150,26 +143,9 @@ export default function UsersPage() {
   });
 
   const { userStatuses, isLoading: isStatusesLoading } = useUserStatuses();
-
-  const { data: activeDepartments = [], isLoading: isDepartmentsLoading } =
-    useQuery<DepartmentInfo[], Error>({
-      queryKey: ["departments", { status: "active" }],
-      queryFn: () => departmentsService.getDepartments({ status: "active" }),
-      staleTime: 5 * 60 * 1000,
-      refetchOnWindowFocus: false,
-      refetchOnMount: false,
-    });
-
-  const { data: positions = [], isLoading: isPositionsLoading } = useQuery<
-    Position[],
-    Error
-  >({
-    queryKey: ["positions"],
-    queryFn: () => positionsService.getPositions(),
-    staleTime: 5 * 60 * 1000,
-    refetchOnWindowFocus: false,
-    refetchOnMount: false,
-  });
+  const { departments: activeDepartments, isLoading: isDepartmentsLoading } =
+    useDepartments({ status: "active" });
+  const { positions, loading: isPositionsLoading } = usePositions();
 
   // Mutations from hooks
   const createUserMutation = useCreateUserMutation();
@@ -187,16 +163,6 @@ export default function UsersPage() {
     isPositionsLoading;
   const isInitialLoading = isLoading && !users?.length && !roles.length;
 
-  const sortedUsers = useMemo(
-    () =>
-      [...(users || [])].sort((a, b) => {
-        if (a.email === currentUser?.email) return -1;
-        if (b.email === currentUser?.email) return 1;
-        return (a.fullName || "").localeCompare(b.fullName || "");
-      }),
-    [users, currentUser]
-  );
-
   const getPositionName = (user: User): string => {
     if (user.position && typeof user.position === "object") {
       return user.position.positionName;
@@ -213,21 +179,14 @@ export default function UsersPage() {
 
   const handleOpenEditDialog = useCallback((userToEdit: User) => {
     setEditingUser(userToEdit);
-
     setNewUser({
-      fullName: userToEdit.fullName || "",
-      idCard: userToEdit.idCard || "",
-      role: userToEdit.role || "HOCVIEN",
-      phoneNumber: userToEdit.phoneNumber || "",
-      email: userToEdit.email || "",
-      password: "",
-      confirmPassword: "",
+      ...userToEdit,
       department: userToEdit.department?.departmentId,
       position: userToEdit.position
         ? String(userToEdit.position.positionId)
         : "",
-      userStatus: userToEdit.userStatus,
-      employeeId: userToEdit.employeeId || (userToEdit as any).code || "",
+      password: "",
+      confirmPassword: "",
     });
     setErrors({});
     setIsFormOpen(true);
@@ -280,12 +239,10 @@ export default function UsersPage() {
       return;
     }
 
-    // Close dialog immediately for better UX
     setIsFormOpen(false);
 
     try {
       if (isEdit && editingUser) {
-        // Build the update payload in one go
         const updatePayload: UpdateUserRequest = {
           FullName: newUser.fullName,
           Email: newUser.email,
@@ -302,13 +259,11 @@ export default function UsersPage() {
           Code: newUser.employeeId || undefined,
         };
 
-        // Update user info first
         await updateUserMutation.mutateAsync({
           id: editingUser.id,
           payload: updatePayload,
         });
 
-        // If password is provided, call resetPassword separately
         if (newUser.password && newUser.password.trim()) {
           const resetPayload: ResetPasswordRequest = {
             NewPassword: newUser.password,
@@ -317,7 +272,6 @@ export default function UsersPage() {
           await usersService.resetPassword(editingUser.id, resetPayload);
         }
       } else {
-        // Create new user
         const createUserPayload: CreateUserRequest = {
           FullName: newUser.fullName!,
           Email: newUser.email!,
@@ -338,7 +292,6 @@ export default function UsersPage() {
         await createUserMutation.mutateAsync(createUserPayload);
       }
     } catch (error) {
-      // Errors from mutations are handled by the hooks themselves (toast).
       console.error("Failed to save user:", error);
     }
   };
@@ -379,16 +332,9 @@ export default function UsersPage() {
   const getEmployeeCode = (user: any): string => {
     if (user.employeeId) return user.employeeId;
     if (user.code) return user.code;
-    if (user.Code) return user.Code;
-    if (typeof user.userData === "object" && user.userData) {
-      if (user.userData.employeeId) return user.userData.employeeId;
-      if (user.userData.code) return user.userData.code;
-      if (user.userData.Code) return user.userData.Code;
-    }
     return "N/A";
   };
 
-  // Show loading skeleton for initial load
   if (isInitialLoading) {
     return (
       <div className="space-y-6">
@@ -478,9 +424,6 @@ export default function UsersPage() {
         <DialogContent className="sm:max-w-[800px]">
           <DialogHeader>
             <DialogTitle>Chi tiết Học viên</DialogTitle>
-            <DialogDescription>
-              Thông tin chi tiết và lịch sử học tập của học viên
-            </DialogDescription>
           </DialogHeader>
           {selectedUser && (
             <Tabs defaultValue="info" className="mt-4">
@@ -884,11 +827,11 @@ export default function UsersPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Xác nhận xóa</DialogTitle>
-            <DialogDescription>
-              Bạn có chắc muốn xóa người dùng "{deletingUser?.fullName}"? Hành
-              động này không thể hoàn tác.
-            </DialogDescription>
           </DialogHeader>
+          <DialogDescription>
+            Bạn có chắc muốn xóa người dùng "{deletingUser?.fullName}"? Hành
+            động này không thể hoàn tác.
+          </DialogDescription>
           <DialogFooter>
             <Button
               variant="outline"

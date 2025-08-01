@@ -123,7 +123,7 @@ export function DepartmentFormDialog({
               : "Điền thông tin chi tiết để tạo phòng ban mới."}
           </DialogDescription>
         </DialogHeader>
-        <div className="grid gap-4 py-4">
+        <div className="grid gap-4 py-4 max-h-[70vh] overflow-y-auto pr-2">
           <div className="grid gap-2">
             <Label htmlFor="name">Tên phòng ban *</Label>
             <Input
