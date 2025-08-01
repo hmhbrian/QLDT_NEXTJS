@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -27,7 +28,7 @@ export function useTests(
     data,
     isLoading,
     error,
-    refetch: reloadTests,
+    refetch,
   } = useQuery<Test[], Error>({
     queryKey,
     queryFn: async () => {
@@ -46,19 +47,15 @@ export function useTests(
     tests: data ?? [],
     isLoading,
     error,
-    reloadTests,
+    refetch,
   };
 }
 
 export function useCreateTest() {
   const queryClient = useQueryClient();
-  const { showError } = useError();
+  const { toast } = useToast();
 
-  return useMutation<
-    Test,
-    Error,
-    { courseId: string; payload: CreateTestPayload }
-  >({
+  return useMutation<Test, Error, { courseId: string; payload: CreateTestPayload }, { previousTests?: Test[] }>({
     mutationFn: async (variables) => {
       const apiTest = await testsService.createTest(
         variables.courseId,
@@ -66,35 +63,54 @@ export function useCreateTest() {
       );
       return mapApiTestToUiTest(apiTest);
     },
-    onSuccess: (newTest, variables) => {
-      queryClient.invalidateQueries({
-        queryKey: [TESTS_QUERY_KEY, variables.courseId],
-      });
+    onMutate: async ({ courseId, payload }) => {
+        const queryKey = [TESTS_QUERY_KEY, courseId];
+        await queryClient.cancelQueries({ queryKey });
 
-      showError({
-        success: true,
-        message: `Bài kiểm tra "${newTest.title}" đã được tạo thành công.`,
+        const previousTests = queryClient.getQueryData<Test[]>(queryKey);
+
+        const optimisticTest: Test = {
+            id: Date.now(),
+            title: payload.Title,
+            passingScorePercentage: payload.PassThreshold,
+            timeTest: payload.TimeTest,
+            questions: [],
+            countQuestion: payload.Questions.length,
+            isDone: false,
+        };
+
+        queryClient.setQueryData<Test[]>(queryKey, (old = []) => [...old, optimisticTest]);
+
+        return { previousTests };
+    },
+    onSuccess: (data, variables) => {
+       toast({
+        title: "Thành công",
+        description: `Bài kiểm tra "${variables.payload.Title}" đã được tạo thành công.`,
+        variant: "success",
       });
     },
-    onError: (error) => {
-      showError(error);
+    onError: (error, variables, context) => {
+        if (context?.previousTests) {
+            queryClient.setQueryData([TESTS_QUERY_KEY, variables.courseId], context.previousTests);
+        }
+      toast({
+        title: "Lỗi",
+        description: extractErrorMessage(error),
+        variant: "destructive",
+      });
+    },
+    onSettled: (data, error, variables) => {
+        queryClient.invalidateQueries({ queryKey: [TESTS_QUERY_KEY, variables.courseId] });
     },
   });
 }
 
 export function useUpdateTest() {
   const queryClient = useQueryClient();
-  const { showError } = useError();
+  const { toast } = useToast();
 
-  return useMutation<
-    any,
-    Error,
-    {
-      courseId: string;
-      testId: number;
-      payload: UpdateTestPayload;
-    }
-  >({
+  return useMutation<any, Error, { courseId: string; testId: number; payload: UpdateTestPayload }, { previousTests?: Test[] }>({
     mutationFn: async (variables) => {
       const response = await testsService.updateTest(
         variables.courseId,
@@ -103,43 +119,84 @@ export function useUpdateTest() {
       );
       return response;
     },
-    onSuccess: (response, variables) => {
-      queryClient.invalidateQueries({
-        queryKey: [TESTS_QUERY_KEY, variables.courseId],
-      });
+    onMutate: async ({ courseId, testId, payload }) => {
+        const queryKey = [TESTS_QUERY_KEY, courseId];
+        await queryClient.cancelQueries({ queryKey });
 
-      showError(response);
+        const previousTests = queryClient.getQueryData<Test[]>(queryKey);
+        
+        queryClient.setQueryData<Test[]>(queryKey, (old = []) => 
+            old.map(test => test.id === testId ? { ...test, ...payload } : test)
+        );
+
+        return { previousTests };
     },
-    onError: (error) => {
-      showError(error);
+    onSuccess: (data, variables) => {
+      toast({
+        title: "Thành công",
+        description: `Bài kiểm tra "${variables.payload.Title}" đã được cập nhật.`,
+        variant: "success",
+      });
+    },
+    onError: (error, variables, context) => {
+      if (context?.previousTests) {
+        queryClient.setQueryData([TESTS_QUERY_KEY, variables.courseId], context.previousTests);
+      }
+      toast({
+        title: "Lỗi",
+        description: extractErrorMessage(error),
+        variant: "destructive",
+      });
+    },
+    onSettled: (data, error, variables) => {
+      queryClient.invalidateQueries({ queryKey: [TESTS_QUERY_KEY, variables.courseId] });
     },
   });
 }
 
 export function useDeleteTest() {
   const queryClient = useQueryClient();
-  const { showError } = useError();
+  const { toast } = useToast();
 
-  return useMutation<void, Error, { courseId: string; testId: number }>({
+  return useMutation<void, Error, { courseId: string; testId: number }, { previousTests: Test[] | undefined }>({
     mutationFn: (variables) =>
       testsService.deleteTest(variables.courseId, variables.testId),
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({
-        queryKey: [TESTS_QUERY_KEY, variables.courseId],
-      });
-      showError({
-        success: true,
-        message: "Đã xóa bài kiểm tra thành công.",
+    onMutate: async ({ courseId, testId }) => {
+      const queryKey = [TESTS_QUERY_KEY, courseId];
+      await queryClient.cancelQueries({ queryKey });
+      
+      const previousTests = queryClient.getQueryData<Test[]>(queryKey);
+      
+      queryClient.setQueryData<Test[]>(queryKey, (old) =>
+        old?.filter((t) => t.id !== testId)
+      );
+      return { previousTests };
+    },
+    onSuccess: () => {
+      toast({
+        title: "Thành công",
+        description: "Đã xóa bài kiểm tra thành công.",
+        variant: "success",
       });
     },
-    onError: (error) => {
-      showError(error);
+    onError: (err, { courseId }, context) => {
+      if (context?.previousTests) {
+        queryClient.setQueryData([TESTS_QUERY_KEY, courseId], context.previousTests);
+      }
+      toast({
+        title: "Lỗi",
+        description: extractErrorMessage(err),
+        variant: "destructive",
+      });
+    },
+    onSettled: (data, error, { courseId }) => {
+      queryClient.invalidateQueries({ queryKey: [TESTS_QUERY_KEY, courseId] });
     },
   });
 }
 
 export function useSubmitTest(courseId: string, testId: number) {
-  const { showError } = useError();
+  const { toast } = useToast();
   const queryClient = useQueryClient();
 
   return useMutation<
@@ -148,34 +205,31 @@ export function useSubmitTest(courseId: string, testId: number) {
     { answers: SelectedAnswer[]; startedAt: string }
   >({
     mutationFn: async ({ answers, startedAt }) => {
-      return await testsService.submitTest(
-        courseId,
-        testId,
-        answers,
-        startedAt
-      );
+      return await testsService.submitTest(courseId, testId, answers, startedAt);
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: [TESTS_QUERY_KEY, courseId] });
-      queryClient.invalidateQueries({
-        queryKey: ["testResult", courseId, testId],
-      });
-
       const scorePercent =
         typeof data.score === "number" ? data.score.toFixed(1) : "N/A";
       const correctCount = data.correctAnswerCount ?? 0;
       const totalQuestions = correctCount + (data.incorrectAnswerCount ?? 0);
 
-      showError({
-        success: true,
+      toast({
         title: "Nộp bài thành công!",
-        message: `Điểm: ${scorePercent}% (${correctCount}/${totalQuestions}) - ${
-          data.isPassed ? "ĐẠT" : "KHÔNG ĐẠT"
-        }`,
+        description: `Điểm: ${scorePercent}% (${correctCount}/${totalQuestions}) - ${data.isPassed ? "ĐẠT" : "KHÔNG ĐẠT"}`,
+        variant: "success",
       });
     },
     onError: (error) => {
-      showError(error);
+      toast({
+        title: "Lỗi",
+        description: extractErrorMessage(error),
+        variant: "destructive",
+      });
+    },
+    onSettled: () => {
+      // Invalidate both the list of tests and the specific test result
+      queryClient.invalidateQueries({ queryKey: [TESTS_QUERY_KEY, courseId] });
+      queryClient.invalidateQueries({ queryKey: ["testResult", courseId, testId] });
     },
   });
 }
@@ -207,7 +261,7 @@ export function useHasSubmittedTest(courseId: string, testId: number) {
     data: testResult,
     isLoading,
     error,
-  } = useTestResult(courseId, testId, true); // Always enable to check for submission
+  } = useTestResult(courseId, testId, true);
 
   const hasSubmitted = !!testResult && !error;
 
