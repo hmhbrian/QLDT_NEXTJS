@@ -17,7 +17,6 @@ export function useAttachedFiles(courseId: string | null) {
     data,
     isLoading,
     error,
-    refetch: reloadAttachedFiles,
   } = useQuery<CourseMaterial[], Error>({
     queryKey,
     queryFn: async () => {
@@ -33,7 +32,6 @@ export function useAttachedFiles(courseId: string | null) {
     attachedFiles: data ?? [],
     isLoading,
     error,
-    reloadAttachedFiles,
   };
 }
 
@@ -51,7 +49,7 @@ export function useCreateAttachedFiles() {
         variables.courseId,
         variables.files
       ),
-    onSuccess: (data, variables) => {
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({
         queryKey: [ATTACHED_FILES_QUERY_KEY, variables.courseId],
       });
@@ -79,24 +77,15 @@ export function useDeleteAttachedFile() {
   return useMutation<any, Error, { courseId: string; fileId: number }>({
     mutationFn: (variables) =>
       courseAttachedFilesService.deleteAttachedFile(variables),
-    onSuccess: (data, variables) => {
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({
         queryKey: [ATTACHED_FILES_QUERY_KEY, variables.courseId],
       });
-
-      if (data && typeof data === "object" && "message" in data) {
-        toast({
-          title: "Thành công",
-          description: data.message,
-          variant: "success",
-        });
-      } else {
-        toast({
-          title: "Thành công",
-          description: "Đã xóa tài liệu thành công.",
-          variant: "success",
-        });
-      }
+      toast({
+        title: "Thành công",
+        description: "Đã xóa tài liệu thành công.",
+        variant: "success",
+      });
     },
     onError: (error) => {
       toast({
@@ -107,3 +96,5 @@ export function useDeleteAttachedFile() {
     },
   });
 }
+
+    
