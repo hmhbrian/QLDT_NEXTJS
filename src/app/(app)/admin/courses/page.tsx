@@ -1,6 +1,7 @@
+
 "use client";
 
-import { useState, useEffect, useMemo, useCallback, Suspense } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import {
   Card,
@@ -64,10 +65,11 @@ import { useCourseStatuses } from "@/hooks/use-statuses";
 import { DataTable } from "@/components/ui/data-table";
 import { extractErrorMessage } from "@/lib/core";
 import { getStatusBadgeVariant } from "@/lib/helpers";
-import { getColumns } from "./columns";
+import { getAdminCourseColumns } from "@/components/courses/columns";
 import { useDebounce } from "@/hooks/use-debounce";
 import { useError } from "@/hooks/use-error";
 import type { PaginationState } from "@tanstack/react-table";
+import { PageLoader } from "@/components/common/PageLoader";
 
 interface CourseFilters {
   keyword: string;
@@ -75,9 +77,6 @@ interface CourseFilters {
   departmentId: string;
   levelId: string;
 }
-
-// Import at top to avoid conflicts
-import { PageLoader } from "@/components/common/PageLoader";
 
 export default function CoursesPage() {
   const { user: currentUser } = useAuth();
@@ -135,7 +134,6 @@ export default function CoursesPage() {
     useDepartments();
   const { positions, loading: isLoadingPositions } = usePositions();
 
-  // All hooks must be called before any early returns
   const updateCourseMutation = useUpdateCourse();
   const deleteCourseMutation = useDeleteCourse();
 
@@ -175,7 +173,6 @@ export default function CoursesPage() {
     isLoadingDepts ||
     isLoadingPositions;
 
-  // Handle event functions
   const handleOpenAddDialog = () => {
     router.push("/admin/courses/edit/new");
   };
@@ -246,7 +243,7 @@ export default function CoursesPage() {
 
   const columns = useMemo(
     () =>
-      getColumns(
+      getAdminCourseColumns(
         handleViewDetails,
         handleEditCourse,
         handleDuplicateCourse,
@@ -256,17 +253,14 @@ export default function CoursesPage() {
         allDepartments || [],
         positions || []
       ),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [canManageCourses, allDepartments, positions]
   );
 
   const pageCount = paginationInfo?.totalPages ?? 0;
 
-  // Show loading state without early return
   const isInitialLoading =
     isLoading && !courses.length && !courseStatuses.length;
 
-  // Show error state
   if (statusesError) {
     return (
       <div className="flex h-60 w-full items-center justify-center text-destructive">
@@ -279,7 +273,6 @@ export default function CoursesPage() {
     );
   }
 
-  // Show loading skeleton for initial load
   if (isInitialLoading) {
     return <PageLoader />;
   }
