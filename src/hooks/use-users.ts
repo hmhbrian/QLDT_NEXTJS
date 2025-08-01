@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { usersService } from "@/lib/services";
 import {
@@ -32,6 +31,7 @@ export function useUsers(params?: QueryParams) {
     },
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
+    refetchOnMount: false,
     placeholderData: (previousData) => previousData,
   });
 
@@ -48,32 +48,52 @@ export function useUsers(params?: QueryParams) {
 export function useCreateUserMutation() {
   const queryClient = useQueryClient();
   const { showError } = useError();
-  
-  return useMutation<UserApiResponse, Error, CreateUserRequest, { previousUsers: PaginatedResponse<UserApiResponse> | undefined }>({
+
+  return useMutation<
+    UserApiResponse,
+    Error,
+    CreateUserRequest,
+    { previousUsers: PaginatedResponse<UserApiResponse> | undefined }
+  >({
     mutationFn: (payload) => usersService.createUser(payload),
     onMutate: async (newUser) => {
       await queryClient.cancelQueries({ queryKey: [USERS_QUERY_KEY] });
-      const previousUsers = queryClient.getQueryData<PaginatedResponse<UserApiResponse>>([USERS_QUERY_KEY]);
-      
+      const previousUsers = queryClient.getQueryData<
+        PaginatedResponse<UserApiResponse>
+      >([USERS_QUERY_KEY]);
+
       const optimisticUser: User = {
         id: `temp-${Date.now()}`,
         fullName: newUser.FullName,
         email: newUser.Email,
-        idCard: newUser.IdCard || '',
-        phoneNumber: newUser.NumberPhone || '',
+        idCard: newUser.IdCard || "",
+        phoneNumber: newUser.NumberPhone || "",
         role: "HOCVIEN", // Default role for optimistic update
       };
 
-      queryClient.setQueryData<PaginatedResponse<UserApiResponse>>([USERS_QUERY_KEY], (old) => {
-        const optimisticApiUser: UserApiResponse = {
-          id: optimisticUser.id,
-          fullName: optimisticUser.fullName,
-          email: optimisticUser.email,
-          role: optimisticUser.role,
-        };
-        return old ? { ...old, items: [optimisticApiUser, ...old.items] } : { items: [optimisticApiUser], pagination: { totalItems: 1, itemsPerPage: 10, currentPage: 1, totalPages: 1 } };
-      });
-      
+      queryClient.setQueryData<PaginatedResponse<UserApiResponse>>(
+        [USERS_QUERY_KEY],
+        (old) => {
+          const optimisticApiUser: UserApiResponse = {
+            id: optimisticUser.id,
+            fullName: optimisticUser.fullName,
+            email: optimisticUser.email,
+            role: optimisticUser.role,
+          };
+          return old
+            ? { ...old, items: [optimisticApiUser, ...old.items] }
+            : {
+                items: [optimisticApiUser],
+                pagination: {
+                  totalItems: 1,
+                  itemsPerPage: 10,
+                  currentPage: 1,
+                  totalPages: 1,
+                },
+              };
+        }
+      );
+
       return { previousUsers };
     },
     onSuccess: (response) => {
@@ -89,35 +109,42 @@ export function useCreateUserMutation() {
       showError(error);
     },
     onSettled: () => {
-        queryClient.invalidateQueries({ queryKey: [USERS_QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: [USERS_QUERY_KEY] });
     },
   });
 }
 
-
 export function useUpdateUserMutation() {
   const queryClient = useQueryClient();
   const { showError } = useError();
-  
+
   return useMutation<
     UserApiResponse,
     Error,
     { id: string; payload: UpdateUserRequest },
     { previousUsers: PaginatedResponse<UserApiResponse> | undefined }
   >({
-    mutationFn: ({ id, payload }) => usersService.updateUserByAdmin(id, payload),
+    mutationFn: ({ id, payload }) =>
+      usersService.updateUserByAdmin(id, payload),
     onMutate: async ({ id, payload }) => {
       await queryClient.cancelQueries({ queryKey: [USERS_QUERY_KEY] });
-      const previousUsers = queryClient.getQueryData<PaginatedResponse<UserApiResponse>>([USERS_QUERY_KEY]);
-      
-      queryClient.setQueryData<PaginatedResponse<UserApiResponse>>([USERS_QUERY_KEY], (old) => {
-        if (!old) return old;
-        return {
-          ...old,
-          items: old.items.map(u => u.id === id ? { ...u, ...payload } : u),
-        };
-      });
-      
+      const previousUsers = queryClient.getQueryData<
+        PaginatedResponse<UserApiResponse>
+      >([USERS_QUERY_KEY]);
+
+      queryClient.setQueryData<PaginatedResponse<UserApiResponse>>(
+        [USERS_QUERY_KEY],
+        (old) => {
+          if (!old) return old;
+          return {
+            ...old,
+            items: old.items.map((u) =>
+              u.id === id ? { ...u, ...payload } : u
+            ),
+          };
+        }
+      );
+
       return { previousUsers };
     },
     onSuccess: (response) => {
@@ -134,7 +161,9 @@ export function useUpdateUserMutation() {
     },
     onSettled: (data, error, variables) => {
       queryClient.invalidateQueries({ queryKey: [USERS_QUERY_KEY] });
-      queryClient.invalidateQueries({ queryKey: [USERS_QUERY_KEY, variables.id] });
+      queryClient.invalidateQueries({
+        queryKey: [USERS_QUERY_KEY, variables.id],
+      });
     },
   });
 }
@@ -142,21 +171,31 @@ export function useUpdateUserMutation() {
 export function useDeleteUserMutation() {
   const queryClient = useQueryClient();
   const { showError } = useError();
-  
-  return useMutation<any, Error, string[], { previousUsers: PaginatedResponse<UserApiResponse> | undefined }>({
+
+  return useMutation<
+    any,
+    Error,
+    string[],
+    { previousUsers: PaginatedResponse<UserApiResponse> | undefined }
+  >({
     mutationFn: (userIds: string[]) => usersService.deleteUsers(userIds),
     onMutate: async (userIds) => {
       await queryClient.cancelQueries({ queryKey: [USERS_QUERY_KEY] });
-      const previousUsers = queryClient.getQueryData<PaginatedResponse<UserApiResponse>>([USERS_QUERY_KEY]);
+      const previousUsers = queryClient.getQueryData<
+        PaginatedResponse<UserApiResponse>
+      >([USERS_QUERY_KEY]);
 
-      queryClient.setQueryData<PaginatedResponse<UserApiResponse>>([USERS_QUERY_KEY], (old) => {
-        if (!old) return old;
-        return {
-          ...old,
-          items: old.items.filter(u => u.id && !userIds.includes(u.id)),
-        };
-      });
-      
+      queryClient.setQueryData<PaginatedResponse<UserApiResponse>>(
+        [USERS_QUERY_KEY],
+        (old) => {
+          if (!old) return old;
+          return {
+            ...old,
+            items: old.items.filter((u) => u.id && !userIds.includes(u.id)),
+          };
+        }
+      );
+
       return { previousUsers };
     },
     onSuccess: () => {
