@@ -24,7 +24,7 @@ export const API_ENDPOINTS = {
   users: {
     base: "/Users",
     create: "/Users/create",
-    me: "/Users/me",
+    me: "/Users",
     update: "/Users/update",
     search: "/Users/search",
     updateAdmin: (userId: string) => `/Users/admin/${userId}/update`,
