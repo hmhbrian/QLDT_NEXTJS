@@ -65,7 +65,8 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 export default function DepartmentsPage() {
   const queryClient = useQueryClient();
-  // Custom Hooks for data fetching and mutations
+
+  // Custom Hooks for data fetching and mutations - all hooks must come first
   const {
     departments,
     isLoading: isDepartmentsLoading,
@@ -76,11 +77,14 @@ export default function DepartmentsPage() {
   const updateDeptMutation = useUpdateDepartment();
   const deleteDeptMutation = useDeleteDepartment();
 
-  // Fetching related data
+  // Fetching related data with optimization
   const { data: usersData = { items: [] }, isLoading: isUsersLoading } =
     useQuery({
       queryKey: ["users"],
       queryFn: () => usersService.getUsersWithPagination(),
+      staleTime: 5 * 60 * 1000,
+      refetchOnMount: false,
+      refetchOnWindowFocus: false,
     });
   const users = usersData.items;
 
@@ -90,12 +94,47 @@ export default function DepartmentsPage() {
   >({
     queryKey: ["positions"],
     queryFn: () => positionsService.getPositions(),
+    staleTime: 5 * 60 * 1000,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
   });
 
   const { userStatuses, isLoading: isStatusesLoading } = useUserStatuses();
 
+  // Component State
+  const [selectedDepartment, setSelectedDepartment] =
+    useState<DepartmentInfo | null>(null);
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [editingDepartment, setEditingDepartment] =
+    useState<DepartmentInfo | null>(null);
+  const [deletingDepartment, setDeletingDepartment] =
+    useState<DepartmentInfo | null>(null);
+  const [activeTab, setActiveTab] = useState<"tree" | "table">("tree");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+
+  // Instant navigation - show loading skeleton while loading
+  if (isDepartmentsLoading || isUsersLoading || isPositionsLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <div className="h-8 bg-gray-200 animate-pulse rounded w-48"></div>
+          <div className="h-10 bg-gray-200 animate-pulse rounded w-32"></div>
+        </div>
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {[...Array(6)].map((_, i) => (
+            <div
+              key={i}
+              className="h-32 bg-gray-200 animate-pulse rounded"
+            ></div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   const managers = useMemo(() => {
-    if (isUsersLoading || isPositionsLoading || !users || !positions) {
+    if (!users || !positions) {
       return [];
     }
     const managerPosition = positions.find(
@@ -114,19 +153,7 @@ export default function DepartmentsPage() {
       }
       return false;
     });
-  }, [users, positions, isUsersLoading, isPositionsLoading]);
-
-  // Component State
-  const [selectedDepartment, setSelectedDepartment] =
-    useState<DepartmentInfo | null>(null);
-  const [isFormOpen, setIsFormOpen] = useState(false);
-  const [editingDepartment, setEditingDepartment] =
-    useState<DepartmentInfo | null>(null);
-  const [deletingDepartment, setDeletingDepartment] =
-    useState<DepartmentInfo | null>(null);
-  const [activeTab, setActiveTab] = useState<"tree" | "table">("tree");
-  const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
+  }, [users, positions]);
 
   const validation = useMemo(
     () => validateDepartmentTree(departments),
