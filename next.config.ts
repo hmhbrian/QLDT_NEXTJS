@@ -45,6 +45,8 @@ const nextConfig: NextConfig = {
     ];
   },
   async headers() {
+    const isDevelopment = process.env.NODE_ENV === "development";
+
     return [
       {
         source: "/api/:path*",
@@ -57,14 +59,26 @@ const nextConfig: NextConfig = {
           {
             key: "Access-Control-Allow-Headers",
             value:
-              "Content-Type, Authorization, X-Requested-With, Accept, Origin",
+              "Content-Type, Authorization, X-Requested-With, Accept, Origin, If-None-Match, If-Modified-Since",
           },
           { key: "Access-Control-Allow-Credentials", value: "true" },
         ],
       },
       {
         source: "/:path*",
-        headers: [{ key: "Access-Control-Allow-Origin", value: "*" }],
+        headers: [
+          { key: "Access-Control-Allow-Origin", value: "*" },
+          // Only set CSP in production
+          ...(isDevelopment
+            ? []
+            : [
+                {
+                  key: "Content-Security-Policy",
+                  value:
+                    "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https: wss: ws:; media-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none';",
+                },
+              ]),
+        ],
       },
     ];
   },
