@@ -1,4 +1,3 @@
-
 import type { Course, Lesson } from "@/lib/types/course.types";
 import type { Question, Test } from "@/lib/types/test.types";
 import { categoryOptions } from "../config/constants";
@@ -58,7 +57,8 @@ const sampleTests: Test[] = [
     title: "Kiểm tra cuối Chương 1",
     questions: sampleQuestions,
     passingScorePercentage: 70,
-    time: 30,
+    isDone: false, // Ensure isDone is initialized
+    timeTest: 30,
     countQuestion: sampleQuestions.length,
   },
   {
@@ -75,7 +75,8 @@ const sampleTests: Test[] = [
       },
     ],
     passingScorePercentage: 70,
-    time: 45,
+    isDone: false, // Ensure isDone is initialized
+    timeTest: 45,
     countQuestion: 3,
   },
 ];

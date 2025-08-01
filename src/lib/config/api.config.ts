@@ -24,7 +24,7 @@ export const API_ENDPOINTS = {
   users: {
     base: "/Users",
     create: "/Users/create",
-    me: "/Users/me",
+    me: "/Users",
     update: "/Users/update",
     search: "/Users/search",
     updateAdmin: (userId: string) => `/Users/admin/${userId}/update`,
@@ -56,8 +56,16 @@ export const API_ENDPOINTS = {
     update: (id: string) => `/Courses/${id}`,
     enroll: (courseId: string) => `/Courses/${courseId}/enroll`,
     getEnrolled: "/Courses/enroll-courses",
+    completedCount: "/Courses/completed-count",
+    completedEnrollCourses: "/Courses/completed-enroll-courses",
     search: "/Courses/search",
     softDelete: "/Courses/soft-delete",
+    upcomingCourses: "/Courses/upcoming-courses",
+    progressList: (courseId: string) => `/Courses/progress-list/${courseId}`,
+    progressDetail: (courseId: string, userId: string) =>
+      `/Courses/progress-detail/${courseId}/${userId}`,
+    countCompletedLessons: (courseId: string) =>
+      `/Courses/${courseId}/lessons/count-completed`, // New endpoint
   },
   tests: {
     base: (courseId: string) => `/courses/${courseId}/tests`,
@@ -132,10 +140,19 @@ export const API_ENDPOINTS = {
   },
   report: {
     avgFeedback: "/Report/avg-feedback",
-    monthlyReport: (month: number) => `/Report/data-report/${month}`,
+    monthlyReport: (month: number, year: number) =>
+      `/Report/data-report?month=${month}&year=${year}`,
+    quarterlyReport: (quarter: number, year: number) =>
+      `/Report/data-report?quarter=${quarter}&year=${year}`,
+    yearReport: (year: number) => `/Report/data-report?year=${year}`,
     courseAndAvgFeedback: "/Report/course-and-avg-feedback",
     studentsOfCourse: "/Report/students-of-course",
     topDepartment: "/Report/top-department",
+    reportStatus: "/Report/report-status",
+  },
+  certs: {
+    base: "/Certs",
+    byCourseId: (courseId: string) => `/Certs/${courseId}`,
   },
 } as const;
 

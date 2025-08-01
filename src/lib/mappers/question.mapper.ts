@@ -1,4 +1,3 @@
-
 import {
   Question,
   CreateQuestionPayload,
@@ -25,7 +24,7 @@ export function mapUiQuestionToApiPayload(
     correctOption = String.fromCharCode(97 + uiQuestion.correctAnswerIndex);
   }
 
-  return {
+  const payload: CreateQuestionPayload = {
     QuestionText: uiQuestion.text || "",
     CorrectOption: correctOption,
     QuestionType: uiQuestion.correctAnswerIndexes?.length || 1,
@@ -34,8 +33,14 @@ export function mapUiQuestionToApiPayload(
     B: options[1] || "",
     C: options[2] || "",
     D: options[3] || "",
-    Position: uiQuestion.position,
   };
+
+  // Only add Position if it's defined and greater than 0
+  if (uiQuestion.position !== undefined && uiQuestion.position > 0) {
+    payload.Position = uiQuestion.position;
+  }
+
+  return payload;
 }
 
 export function mapApiQuestionToUi(apiQuestion: ApiQuestion): Question {

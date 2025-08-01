@@ -68,6 +68,8 @@ export function ApiDataCharts({
   // Chuẩn bị dữ liệu cho biểu đồ học viên theo khóa học
   const studentChartData =
     studentsData
+      ?.filter((course) => course.totalStudent > 0)
+      ?.sort((a, b) => b.totalStudent - a.totalStudent)
       ?.map((course) => ({
         name:
           course.courseName.length > 20
@@ -301,7 +303,7 @@ export function ApiDataCharts({
       </div>
 
       {/* Biểu đồ xu hướng - Mock data cho demo */}
-      <Card>
+      {/* <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <TrendingUp className="h-5 w-5" />
@@ -352,7 +354,7 @@ export function ApiDataCharts({
             </ResponsiveContainer>
           </div>
         </CardContent>
-      </Card>
+      </Card> */}
     </div>
   );
 }

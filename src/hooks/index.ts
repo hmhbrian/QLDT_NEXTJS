@@ -1,4 +1,3 @@
-
 /**
  * Enterprise Hooks Index
  * Central export point for all custom hooks following clean architecture
@@ -8,9 +7,13 @@
 export * from "./useAuth";
 export * from "./useLogin";
 
+// Navigation hooks
+export * from "./useInstantNavigation";
+
 // Data fetching & API hooks
 export * from "./useAsync";
 export * from "./use-courses";
+export * from "./use-certificates";
 export * from "./use-departments";
 export * from "./use-positions";
 export * from "./use-users";
@@ -29,5 +32,3 @@ export * from "./use-cookie";
 export * from "./use-debounce";
 export * from "./use-mobile";
 export * from "./use-error";
-
-    

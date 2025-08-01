@@ -14,6 +14,7 @@ export * from "./auth";
 export * from "./layout";
 export * from "./departments";
 export * from "./courses";
+export * from "./certificates";
 export * from "./lessons";
 export * from "./users";
 export * from "./dashboard";

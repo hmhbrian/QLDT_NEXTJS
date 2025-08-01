@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
@@ -41,16 +40,22 @@ import { Badge } from "@/components/ui/badge";
 import { useError } from "@/hooks/use-error";
 import type { User, Position } from "@/lib/types/user.types";
 import type { DepartmentInfo } from "@/lib/types/department.types";
+import type { Course } from "@/lib/types/course.types";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  getLevelBadgeColor,
-  getStatusColor,
-} from "@/lib/helpers";
+import { getLevelBadgeColor, getStatusColor } from "@/lib/helpers";
+import { useCompletedCoursesCount } from "@/hooks/use-courses";
+import { CourseCard } from "@/components/courses/CourseCard";
+import { useCertificates } from "@/hooks/use-certificates";
+import { CertificatesList } from "@/components/certificates";
 
 export default function UserProfilePage() {
   const { user, updateAvatar, changePassword } = useAuth();
   const { toast } = useToast();
   const { showError } = useError();
+  const { data: completedCoursesData, isLoading: isLoadingCompletedCourses } =
+    useCompletedCoursesCount();
+  const { data: certificates, isLoading: isLoadingCertificates } =
+    useCertificates();
 
   const [isEditing, setIsEditing] = useState(false);
 
@@ -203,9 +208,7 @@ export default function UserProfilePage() {
     }
   };
 
-  const renderDepartment = (
-    department: DepartmentInfo | undefined
-  ) => {
+  const renderDepartment = (department: DepartmentInfo | undefined) => {
     if (!department) return "N/A";
     return department.name;
   };
@@ -256,7 +259,7 @@ export default function UserProfilePage() {
                 <span>{profileData.email}</span>
                 {profileData.role === "HOCVIEN" && profileData.position && (
                   <Badge
-                      className={getLevelBadgeColor(
+                    className={getLevelBadgeColor(
                       (profileData.position as Position).positionName
                     )}
                   >
@@ -373,17 +376,54 @@ export default function UserProfilePage() {
 
         {user.role === "HOCVIEN" && (
           <TabsContent value="courses">
-            <Card>
-              <CardHeader>
-                <CardTitle>Khóa học đã hoàn thành</CardTitle>
-                <CardDescription>
-                  Danh sách các khóa học đã hoàn thành và kết quả
-                </CardDescription>
+            <Card className="shadow-xl border-2 border-primary/20">
+              <CardHeader className="pb-2 bg-gradient-to-r from-primary/5 to-transparent rounded-t-md border-b border-primary/10">
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                  <div className="mb-2 md:mb-0">
+                    <CardTitle className="text-2xl font-bold text-primary flex items-center gap-2">
+                      <Award className="h-7 w-7 text-primary" />
+                      Khóa học đã hoàn thành
+                    </CardTitle>
+                    <CardDescription className="mt-1 text-base text-muted-foreground">
+                      Danh sách các khóa học bạn đã hoàn thành cùng kết quả học tập
+                    </CardDescription>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-2xl font-bold text-primary">
+                      {completedCoursesData?.count || 0}
+                    </span>
+                    <span className="text-sm font-medium text-muted-foreground">Khóa học đã hoàn thành</span>
+                  </div>
+                </div>
               </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground">
-                  Chức năng đang được phát triển.
-                </p>
+              <CardContent className="pt-5">
+                {isLoadingCompletedCourses ? (
+                  <div className="flex justify-center items-center gap-2">
+                    <p className="text-muted-foreground">Đang tải...</p>
+                  </div>
+                ) : (completedCoursesData?.count || 0) === 0 ? (
+                  <div className="flex flex-col items-center justify-center min-h-[120px] gap-2">
+                    <Award className="h-10 w-10 text-muted-foreground mb-1" />
+                    <p className="text-muted-foreground text-sm text-center font-normal">
+                      Bạn chưa hoàn thành khóa học nào.<br />Hãy tham gia học tập để tích lũy kiến thức!
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    {/* <div className="mb-4">
+                      <p className="text-muted-foreground text-sm font-normal">
+                        🎉 Chúc mừng bạn đã hoàn thành <span className="font-semibold text-primary">{completedCoursesData?.count}</span> khóa học. Tiếp tục phát triển bản thân!
+                      </p>
+                    </div> */}
+                    <div className="w-full overflow-x-auto pb-2">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-1 gap-1 min-w-[320px]">
+                        {completedCoursesData?.courses?.map((course, idx) => (
+                          <CourseCard key={course.id || idx} course={course} />
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -395,13 +435,14 @@ export default function UserProfilePage() {
               <CardHeader>
                 <CardTitle>Chứng chỉ đã đạt được</CardTitle>
                 <CardDescription>
-                  Danh sách các chứng chỉ và thành tích
+                  Danh sách các chứng chỉ và thành tích học tập của bạn
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                 <p className="text-muted-foreground">
-                  Chưa có chứng chỉ nào.
-                </p>
+                <CertificatesList
+                  certificates={certificates || []}
+                  isLoading={isLoadingCertificates}
+                />
               </CardContent>
             </Card>
           </TabsContent>
@@ -417,9 +458,7 @@ export default function UserProfilePage() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <p className="text-muted-foreground">
-                  Chưa có đánh giá nào.
-                </p>
+                <p className="text-muted-foreground">Chưa có đánh giá nào.</p>
               </CardContent>
             </Card>
           </TabsContent>

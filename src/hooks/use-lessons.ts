@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -17,7 +16,10 @@ import { mapApiLessonToUi } from "@/lib/mappers/lesson.mapper";
 
 export const LESSONS_QUERY_KEY = "lessons";
 
-export function useLessons(courseId: string | undefined, enabled: boolean = true) {
+export function useLessons(
+  courseId: string | undefined,
+  enabled: boolean = true
+) {
   const queryKey = [LESSONS_QUERY_KEY, courseId];
 
   const {
@@ -35,6 +37,8 @@ export function useLessons(courseId: string | undefined, enabled: boolean = true
     enabled: !!courseId && enabled,
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
+    refetchOnMount: false,
+    placeholderData: (previousData) => previousData,
   });
 
   return {

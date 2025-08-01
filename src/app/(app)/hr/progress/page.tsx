@@ -22,7 +22,9 @@ import {
   Activity,
   AlertTriangle,
 } from "lucide-react";
+import { ReportFilter, FilterType } from "@/components/common/ReportFilter";
 import dynamic from "next/dynamic";
+import { useMemo, useState } from "react";
 import { useCourses } from "@/hooks/use-courses";
 import { useUsers } from "@/hooks/use-users";
 import {
@@ -30,7 +32,6 @@ import {
   useCourseAndAvgFeedbackReport,
   useAvgFeedbackReport,
 } from "@/hooks/use-reports";
-import { useMemo } from "react";
 import { extractErrorMessage } from "@/lib/core";
 
 const ProgressCharts = dynamic(
@@ -48,6 +49,18 @@ const ProgressCharts = dynamic(
 );
 
 export default function ProgressPage() {
+  // Filter states
+  const [filterType, setFilterType] = useState<FilterType>("all");
+  const [selectedMonth, setSelectedMonth] = useState<number>(
+    new Date().getMonth() + 1
+  );
+  const [selectedQuarter, setSelectedQuarter] = useState<number>(
+    Math.ceil((new Date().getMonth() + 1) / 3)
+  );
+  const [selectedYear, setSelectedYear] = useState<number>(
+    new Date().getFullYear()
+  );
+
   const { courses, isLoading: isLoadingCourses } = useCourses({ Limit: 50 });
   const { users: allUsers, isLoading: isLoadingUsers } = useUsers({
     RoleName: "HOCVIEN",
@@ -73,17 +86,16 @@ export default function ProgressPage() {
     error: overallFeedbackError,
   } = useAvgFeedbackReport();
 
-  const isLoading =
-    isLoadingCourses ||
-    isLoadingUsers ||
-    isLoadingStudents ||
-    isLoadingCourseFeedback ||
-    isLoadingOverallFeedback;
-
-  const anyError = studentsError || courseFeedbackError || overallFeedbackError;
-
+  // ALL HOOKS MUST BE CALLED BEFORE ANY EARLY RETURNS - Rules of Hooks
   const reportData = useMemo(() => {
-    if (isLoading) {
+    const loadingState =
+      isLoadingCourses ||
+      isLoadingUsers ||
+      isLoadingStudents ||
+      isLoadingCourseFeedback ||
+      isLoadingOverallFeedback;
+
+    if (loadingState) {
       return {
         totalCourses: 0,
         totalTrainees: 0,
@@ -104,12 +116,15 @@ export default function ProgressPage() {
     // Tính toán khóa học hoàn thành từ dữ liệu thực
     const completedCourses =
       courses.length > 0
-        ? courses.filter((c) => c.status === "Đã kết thúc").length
+        ? Math.min(
+            courses.filter((c) => c.status === "Đã kết thúc").length,
+            totalCourses
+          )
         : Math.floor(totalCourses * 0.3); // 30% completion estimate
 
     const completionRate =
       totalCourses > 0
-        ? Math.round((completedCourses / totalCourses) * 100)
+        ? Math.min(Math.round((completedCourses / totalCourses) * 100), 100)
         : 30;
 
     // Tạo courseStats từ dữ liệu API
@@ -208,8 +223,42 @@ export default function ProgressPage() {
     studentsData,
     courseFeedback,
     overallFeedback,
-    isLoading,
+    isLoadingCourses,
+    isLoadingUsers,
+    isLoadingStudents,
+    isLoadingCourseFeedback,
+    isLoadingOverallFeedback,
   ]);
+
+  // Instant navigation - show loading skeleton while core data is loading
+  if (
+    isLoadingCourses ||
+    isLoadingUsers ||
+    isLoadingStudents ||
+    isLoadingCourseFeedback ||
+    isLoadingOverallFeedback
+  ) {
+    return (
+      <div className="space-y-6">
+        <div className="h-8 bg-gray-200 animate-pulse rounded w-48"></div>
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+          {[...Array(4)].map((_, i) => (
+            <div
+              key={i}
+              className="h-32 bg-gray-200 animate-pulse rounded"
+            ></div>
+          ))}
+        </div>
+        <div className="grid gap-6 lg:grid-cols-2">
+          <div className="h-96 bg-gray-200 animate-pulse rounded"></div>
+          <div className="h-96 bg-gray-200 animate-pulse rounded"></div>
+        </div>
+      </div>
+    );
+  }
+
+  const isLoading = false; // Already handled above
+  const anyError = studentsError || courseFeedbackError || overallFeedbackError;
 
   const statCards = [
     {
@@ -234,9 +283,46 @@ export default function ProgressPage() {
       title: "Điểm Đánh giá TB",
       value: `${reportData.overallRating.toFixed(1)}/5`,
       icon: BarChart2,
-      description: "Điểm đánh giá trung bình từ API.",
+      description: "Điểm đánh giá trung bình.",
     },
   ];
+
+  // Filter handlers
+  const handleFilterChange = (newFilterType: FilterType) => {
+    setFilterType(newFilterType);
+  };
+
+  const applyFilters = () => {
+    // This would typically trigger data refetch with new filters
+    console.log("Applying filters:", {
+      filterType,
+      selectedYear,
+      selectedQuarter,
+      selectedMonth,
+    });
+  };
+
+  const resetFilters = () => {
+    setFilterType("all");
+    setSelectedYear(new Date().getFullYear());
+    setSelectedQuarter(Math.ceil((new Date().getMonth() + 1) / 3));
+    setSelectedMonth(new Date().getMonth() + 1);
+  };
+
+  const hasActiveFilter = filterType !== "all";
+
+  const getFilterDisplayLabel = () => {
+    switch (filterType) {
+      case "month":
+        return `Tháng ${selectedMonth}/${selectedYear}`;
+      case "quarter":
+        return `Quý ${selectedQuarter}/${selectedYear}`;
+      case "year":
+        return `Năm ${selectedYear}`;
+      default:
+        return "Toàn bộ thời gian";
+    }
+  };
 
   // Loading state
   if (isLoading && !anyError) {
@@ -271,20 +357,24 @@ export default function ProgressPage() {
             Báo cáo Tiến độ Học tập
           </h1>
           <p className="text-muted-foreground mt-1">
-            Tổng quan về hoạt động đào tạo và tiến độ của học viên dựa trên dữ
-            liệu API thực tế.
+            Tổng quan về hoạt động đào tạo và tiến độ của học viên •{" "}
+            {getFilterDisplayLabel()}
           </p>
         </div>
         <div className="w-full md:w-auto">
-          <Select defaultValue="all_time">
-            <SelectTrigger className="w-full md:w-[240px] bg-background shadow-sm">
-              <SelectValue placeholder="Chọn Giai đoạn" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all_time">Toàn bộ thời gian</SelectItem>
-              {/* Add other time ranges later if needed */}
-            </SelectContent>
-          </Select>
+          <ReportFilter
+            filterType={filterType}
+            selectedYear={selectedYear}
+            selectedQuarter={selectedQuarter}
+            selectedMonth={selectedMonth}
+            onFilterChange={handleFilterChange}
+            onYearChange={setSelectedYear}
+            onQuarterChange={setSelectedQuarter}
+            onMonthChange={setSelectedMonth}
+            onApplyFilters={applyFilters}
+            onResetFilters={resetFilters}
+            hasActiveFilter={hasActiveFilter}
+          />
         </div>
       </div>
 
@@ -350,8 +440,11 @@ export default function ProgressPage() {
                       </div>
                       <div>
                         <div className="text-2xl font-bold text-blue-600">
-                          {reportData.totalCourses -
-                            reportData.completedCourses}
+                          {Math.max(
+                            0,
+                            reportData.totalCourses -
+                              reportData.completedCourses
+                          )}
                         </div>
                         <div className="text-sm text-muted-foreground">
                           Đang thực hiện

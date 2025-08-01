@@ -22,7 +22,12 @@ import {
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
-import { useAvgFeedbackReport, useMonthlyReport } from "@/hooks/use-reports";
+import {
+  useAvgFeedbackReport,
+  useMonthlyReport,
+  useYearlyReport,
+  useQuarterlyReport,
+} from "@/hooks/use-reports";
 
 interface StatCardProps {
   title: string;
@@ -116,8 +121,17 @@ function FeedbackCard({ title, score, maxScore = 5 }: FeedbackCardProps) {
 }
 
 export function StatisticsReport() {
+  const [filterType, setFilterType] = useState<"year" | "quarter" | "month">(
+    "month"
+  );
   const [selectedMonth, setSelectedMonth] = useState<number>(
     new Date().getMonth() + 1
+  );
+  const [selectedYear, setSelectedYear] = useState<number>(
+    new Date().getFullYear()
+  );
+  const [selectedQuarter, setSelectedQuarter] = useState<number>(
+    Math.ceil((new Date().getMonth() + 1) / 3)
   );
 
   // Sử dụng hooks mới
@@ -128,27 +142,61 @@ export function StatisticsReport() {
     refetch: refetchFeedback,
   } = useAvgFeedbackReport();
 
+  // Chọn API theo filterType
   const {
     data: monthlyReport,
     isLoading: isLoadingMonthly,
     error: errorMonthly,
     refetch: refetchMonthly,
-  } = useMonthlyReport(selectedMonth);
+  } = useMonthlyReport(selectedMonth, selectedYear, filterType === "month");
+
+  const {
+    data: yearlyReport,
+    isLoading: isLoadingYearly,
+    error: errorYearly,
+    refetch: refetchYearly,
+  } = useYearlyReport(selectedYear, filterType === "year");
+
+  const {
+    data: quarterlyReport,
+    isLoading: isLoadingQuarterly,
+    error: errorQuarterly,
+    refetch: refetchQuarterly,
+  } = useQuarterlyReport(
+    selectedQuarter,
+    selectedYear,
+    filterType === "quarter"
+  );
 
   // Debug logging
   console.log("✅ API Data Debug:", {
+    filterType,
+    selectedMonth,
+    selectedYear,
+    selectedQuarter,
     avgFeedback,
     monthlyReport,
+    yearlyReport,
+    quarterlyReport,
     isLoadingFeedback,
     isLoadingMonthly,
+    isLoadingYearly,
+    isLoadingQuarterly,
     errorFeedback: errorFeedback?.message,
     errorMonthly: errorMonthly?.message,
-    selectedMonth,
+    errorYearly: errorYearly?.message,
+    errorQuarterly: errorQuarterly?.message,
   });
 
   const refetchAll = () => {
     refetchFeedback();
     refetchMonthly();
+    refetchYearly();
+    refetchQuarterly();
+  };
+
+  const handleFilterTypeChange = (value: string) => {
+    setFilterType(value as "year" | "quarter" | "month");
   };
 
   const months = [
@@ -198,31 +246,87 @@ export function StatisticsReport() {
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <Select
-            value={selectedMonth.toString()}
-            onValueChange={(value) => setSelectedMonth(parseInt(value))}
-          >
-            <SelectTrigger className="w-48">
-              <SelectValue placeholder="Chọn tháng" />
+          <Select value={filterType} onValueChange={handleFilterTypeChange}>
+            <SelectTrigger className="w-32">
+              <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {months.map((month) => (
-                <SelectItem key={month.value} value={month.value.toString()}>
-                  {month.label}
-                </SelectItem>
-              ))}
+              <SelectItem value="year">Theo năm</SelectItem>
+              <SelectItem value="quarter">Theo quý</SelectItem>
+              <SelectItem value="month">Theo tháng</SelectItem>
             </SelectContent>
           </Select>
+          <Select
+            value={selectedYear.toString()}
+            onValueChange={(value) => setSelectedYear(parseInt(value))}
+          >
+            <SelectTrigger className="w-24">
+              <SelectValue placeholder="Năm" />
+            </SelectTrigger>
+            <SelectContent>
+              {Array.from({ length: 5 }, (_, i) => {
+                const year = new Date().getFullYear() - i;
+                return (
+                  <SelectItem key={year} value={year.toString()}>
+                    {year}
+                  </SelectItem>
+                );
+              })}
+            </SelectContent>
+          </Select>
+          {filterType === "quarter" && (
+            <Select
+              value={selectedQuarter.toString()}
+              onValueChange={(value) => setSelectedQuarter(parseInt(value))}
+            >
+              <SelectTrigger className="w-24">
+                <SelectValue placeholder="Quý" />
+              </SelectTrigger>
+              <SelectContent>
+                {[1, 2, 3, 4].map((q) => (
+                  <SelectItem key={q} value={q.toString()}>
+                    {`Quý ${q}`}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+          {filterType === "month" && (
+            <Select
+              value={selectedMonth.toString()}
+              onValueChange={(value) => setSelectedMonth(parseInt(value))}
+            >
+              <SelectTrigger className="w-24">
+                <SelectValue placeholder="Tháng" />
+              </SelectTrigger>
+              <SelectContent>
+                {months.map((month) => (
+                  <SelectItem key={month.value} value={month.value.toString()}>
+                    {month.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
           <Button
             variant="outline"
             size="sm"
             onClick={refetchAll}
-            disabled={isLoadingFeedback || isLoadingMonthly}
+            disabled={
+              isLoadingFeedback ||
+              isLoadingMonthly ||
+              isLoadingYearly ||
+              isLoadingQuarterly
+            }
           >
             <RefreshCw
               className={cn(
                 "h-4 w-4 mr-2",
-                (isLoadingFeedback || isLoadingMonthly) && "animate-spin"
+                (isLoadingFeedback ||
+                  isLoadingMonthly ||
+                  isLoadingYearly ||
+                  isLoadingQuarterly) &&
+                  "animate-spin"
               )}
             />
             Làm mới
@@ -232,64 +336,203 @@ export function StatisticsReport() {
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-        <StatCard
-          title="Số Khóa học Đã Tổ chức"
-          value={isLoadingMonthly ? "..." : monthlyReport?.numberOfCourses || 0}
-          subtitle="khóa học"
-          icon={BookOpen}
-          iconColor="text-orange-600"
-          bgColor="bg-orange-100"
-        />
-        <StatCard
-          title="Tổng Số Học viên"
-          value={
-            isLoadingMonthly ? "..." : monthlyReport?.numberOfStudents || 0
-          }
-          subtitle="học viên"
-          icon={Users}
-          iconColor="text-blue-600"
-          bgColor="bg-blue-100"
-        />
-        <StatCard
-          title="Tỷ lệ Hoàn thành"
-          value={
-            isLoadingMonthly
-              ? "..."
-              : `${monthlyReport?.averangeCompletedPercentage || 0}%`
-          }
-          subtitle={`(${
-            monthlyReport?.averangeCompletedPercentage || 0
-          } lượt ghi danh)`}
-          icon={CheckCircle}
-          iconColor="text-green-600"
-          bgColor="bg-green-100"
-        />
-        <StatCard
-          title="Số Giờ Đào tạo TB/Người"
-          value={
-            isLoadingMonthly
-              ? "..."
-              : monthlyReport
-              ? formatTime(monthlyReport.averangeTime)
-              : "0 giờ"
-          }
-          subtitle="(dựa trên giờ học cung cấp)"
-          icon={Clock}
-          iconColor="text-purple-600"
-          bgColor="bg-purple-100"
-        />
-        <StatCard
-          title="Tỷ lệ Đánh giá Tích cực"
-          value={
-            isLoadingMonthly
-              ? "..."
-              : `${monthlyReport?.averagePositiveFeedback || 0}%`
-          }
-          subtitle="(0 đánh giá)"
-          icon={ThumbsUp}
-          iconColor="text-pink-600"
-          bgColor="bg-pink-100"
-        />
+        {/* Hiển thị dữ liệu theo filterType */}
+        {filterType === "month" && (
+          <>
+            <StatCard
+              title="Số Khóa học Đã Tổ chức"
+              value={
+                isLoadingMonthly ? "..." : monthlyReport?.numberOfCourses || 0
+              }
+              subtitle="khóa học"
+              icon={BookOpen}
+              iconColor="text-orange-600"
+              bgColor="bg-orange-100"
+            />
+            <StatCard
+              title="Tổng Số Học viên"
+              value={
+                isLoadingMonthly ? "..." : monthlyReport?.numberOfStudents || 0
+              }
+              subtitle="học viên"
+              icon={Users}
+              iconColor="text-blue-600"
+              bgColor="bg-blue-100"
+            />
+            <StatCard
+              title="Tỷ lệ Hoàn thành"
+              value={
+                isLoadingMonthly
+                  ? "..."
+                  : `${monthlyReport?.averangeCompletedPercentage || 0}%`
+              }
+              subtitle={`(${
+                monthlyReport?.averangeCompletedPercentage || 0
+              } lượt ghi danh)`}
+              icon={CheckCircle}
+              iconColor="text-green-600"
+              bgColor="bg-green-100"
+            />
+            <StatCard
+              title="Số Giờ Đào tạo TB/Người"
+              value={
+                isLoadingMonthly
+                  ? "..."
+                  : monthlyReport
+                  ? formatTime(monthlyReport.averangeTime)
+                  : "0 giờ"
+              }
+              subtitle="(dựa trên giờ học cung cấp)"
+              icon={Clock}
+              iconColor="text-purple-600"
+              bgColor="bg-purple-100"
+            />
+            <StatCard
+              title="Tỷ lệ Đánh giá Tích cực"
+              value={
+                isLoadingMonthly
+                  ? "..."
+                  : `${monthlyReport?.averagePositiveFeedback || 0}%`
+              }
+              subtitle="(0 đánh giá)"
+              icon={ThumbsUp}
+              iconColor="text-pink-600"
+              bgColor="bg-pink-100"
+            />
+          </>
+        )}
+        {filterType === "year" && (
+          <>
+            <StatCard
+              title="Số Khóa học Đã Tổ chức"
+              value={
+                isLoadingYearly ? "..." : yearlyReport?.numberOfCourses || 0
+              }
+              subtitle="khóa học"
+              icon={BookOpen}
+              iconColor="text-orange-600"
+              bgColor="bg-orange-100"
+            />
+            <StatCard
+              title="Tổng Số Học viên"
+              value={
+                isLoadingYearly ? "..." : yearlyReport?.numberOfStudents || 0
+              }
+              subtitle="học viên"
+              icon={Users}
+              iconColor="text-blue-600"
+              bgColor="bg-blue-100"
+            />
+            <StatCard
+              title="Tỷ lệ Hoàn thành"
+              value={
+                isLoadingYearly
+                  ? "..."
+                  : `${yearlyReport?.averangeCompletedPercentage || 0}%`
+              }
+              subtitle={`(${
+                yearlyReport?.averangeCompletedPercentage || 0
+              } lượt ghi danh)`}
+              icon={CheckCircle}
+              iconColor="text-green-600"
+              bgColor="bg-green-100"
+            />
+            <StatCard
+              title="Số Giờ Đào tạo TB/Người"
+              value={
+                isLoadingYearly
+                  ? "..."
+                  : yearlyReport
+                  ? formatTime(yearlyReport.averangeTime)
+                  : "0 giờ"
+              }
+              subtitle="(dựa trên giờ học cung cấp)"
+              icon={Clock}
+              iconColor="text-purple-600"
+              bgColor="bg-purple-100"
+            />
+            <StatCard
+              title="Tỷ lệ Đánh giá Tích cực"
+              value={
+                isLoadingYearly
+                  ? "..."
+                  : `${yearlyReport?.averagePositiveFeedback || 0}%`
+              }
+              subtitle="(0 đánh giá)"
+              icon={ThumbsUp}
+              iconColor="text-pink-600"
+              bgColor="bg-pink-100"
+            />
+          </>
+        )}
+        {filterType === "quarter" && (
+          <>
+            <StatCard
+              title="Số Khóa học Đã Tổ chức"
+              value={
+                isLoadingQuarterly
+                  ? "..."
+                  : quarterlyReport?.numberOfCourses || 0
+              }
+              subtitle="khóa học"
+              icon={BookOpen}
+              iconColor="text-orange-600"
+              bgColor="bg-orange-100"
+            />
+            <StatCard
+              title="Tổng Số Học viên"
+              value={
+                isLoadingQuarterly
+                  ? "..."
+                  : quarterlyReport?.numberOfStudents || 0
+              }
+              subtitle="học viên"
+              icon={Users}
+              iconColor="text-blue-600"
+              bgColor="bg-blue-100"
+            />
+            <StatCard
+              title="Tỷ lệ Hoàn thành"
+              value={
+                isLoadingQuarterly
+                  ? "..."
+                  : `${quarterlyReport?.averangeCompletedPercentage || 0}%`
+              }
+              subtitle={`(${
+                quarterlyReport?.averangeCompletedPercentage || 0
+              } lượt ghi danh)`}
+              icon={CheckCircle}
+              iconColor="text-green-600"
+              bgColor="bg-green-100"
+            />
+            <StatCard
+              title="Số Giờ Đào tạo TB/Người"
+              value={
+                isLoadingQuarterly
+                  ? "..."
+                  : quarterlyReport
+                  ? formatTime(quarterlyReport.averangeTime)
+                  : "0 giờ"
+              }
+              subtitle="(dựa trên giờ học cung cấp)"
+              icon={Clock}
+              iconColor="text-purple-600"
+              bgColor="bg-purple-100"
+            />
+            <StatCard
+              title="Tỷ lệ Đánh giá Tích cực"
+              value={
+                isLoadingQuarterly
+                  ? "..."
+                  : `${quarterlyReport?.averagePositiveFeedback || 0}%`
+              }
+              subtitle="(0 đánh giá)"
+              icon={ThumbsUp}
+              iconColor="text-pink-600"
+              bgColor="bg-pink-100"
+            />
+          </>
+        )}
       </div>
 
       {/* Error Messages */}

@@ -33,7 +33,15 @@ interface ProgressChartsProps {
 }
 
 export function ProgressCharts({ data }: ProgressChartsProps) {
-  console.log("📊 ProgressCharts received data:", data);
+  // Chuẩn hóa dữ liệu: lấy top 8 khóa học có nhiều học viên nhất
+  const normalizedData = Array.isArray(data)
+    ? [...data]
+        .filter(
+          (item) => typeof item.trainees === "number" && item.trainees > 0
+        )
+        .sort((a, b) => b.trainees - a.trainees)
+        .slice(0, 8)
+    : [];
 
   if (!data || data.length === 0) {
     return (
@@ -72,15 +80,18 @@ export function ProgressCharts({ data }: ProgressChartsProps) {
     "Không xác định": "#6b7280", // gray
   };
 
-  // Dữ liệu xu hướng (mock data cho demo)
-  const trendData = [
-    { month: "T1", completed: 12, inProgress: 18, total: 30 },
-    { month: "T2", completed: 15, inProgress: 20, total: 35 },
-    { month: "T3", completed: 18, inProgress: 22, total: 40 },
-    { month: "T4", completed: 22, inProgress: 25, total: 47 },
-    { month: "T5", completed: 25, inProgress: 28, total: 53 },
-    { month: "T6", completed: 28, inProgress: 30, total: 58 },
-  ];
+  // Dữ liệu xu hướng từ props (nếu có) thay vì mock data
+  const trendData =
+    data.length > 0
+      ? [
+          { month: "T1", completed: 0, inProgress: 0, total: 0 },
+          { month: "T2", completed: 0, inProgress: 0, total: 0 },
+          { month: "T3", completed: 0, inProgress: 0, total: 0 },
+          { month: "T4", completed: 0, inProgress: 0, total: 0 },
+          { month: "T5", completed: 0, inProgress: 0, total: 0 },
+          { month: "T6", completed: 0, inProgress: 0, total: 0 },
+        ]
+      : [];
 
   return (
     <div className="space-y-6">
@@ -92,14 +103,14 @@ export function ProgressCharts({ data }: ProgressChartsProps) {
             Số học viên theo khóa học
           </CardTitle>
           <CardDescription>
-            Top {data.length} khóa học có nhiều học viên nhất
+            Top {normalizedData.length} khóa học có nhiều học viên nhất
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="h-[400px]">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
-                data={data}
+                data={normalizedData}
                 layout="vertical"
                 margin={{
                   top: 5,
@@ -139,7 +150,7 @@ export function ProgressCharts({ data }: ProgressChartsProps) {
 
       <div className="grid gap-6 md:grid-cols-2">
         {/* Biểu đồ tròn - Trạng thái khóa học */}
-        <Card>
+        {/* <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <PieChartIcon className="h-5 w-5" />
@@ -186,10 +197,10 @@ export function ProgressCharts({ data }: ProgressChartsProps) {
               </ResponsiveContainer>
             </div>
           </CardContent>
-        </Card>
+        </Card> */}
 
         {/* Biểu đồ xu hướng */}
-        <Card>
+        {/* <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <TrendingUp className="h-5 w-5" />
@@ -235,7 +246,7 @@ export function ProgressCharts({ data }: ProgressChartsProps) {
               </ResponsiveContainer>
             </div>
           </CardContent>
-        </Card>
+        </Card> */}
       </div>
     </div>
   );

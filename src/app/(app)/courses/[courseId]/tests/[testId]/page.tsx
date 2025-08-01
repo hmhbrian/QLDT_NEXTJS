@@ -73,6 +73,7 @@ export default function TestDetailPage() {
     data: fetchedTest,
     isLoading: isLoadingTest,
     error: testError,
+    refetch: refetchTest,
   } = useQuery({
     queryKey: ["test", courseId, testId],
     queryFn: async () => {
@@ -99,7 +100,13 @@ export default function TestDetailPage() {
   });
 
   useEffect(() => {
-    if (fetchedTest) setTestData(fetchedTest);
+    // Đảm bảo isDone từ backend được gán vào testData
+    if (fetchedTest) {
+      setTestData((prev) => ({
+        ...fetchedTest,
+        isDone: fetchedTest.isDone,
+      }));
+    }
   }, [fetchedTest]);
 
   useEffect(() => {
@@ -108,10 +115,10 @@ export default function TestDetailPage() {
 
   // Timer
   useEffect(() => {
-    if (!isStarted || result || !testData?.time) return;
+    if (!isStarted || result || !testData?.timeTest) return;
 
     if (timeRemaining === null) {
-      setTimeRemaining(testData.time * 60);
+      setTimeRemaining(testData.timeTest * 60);
       return;
     }
 
@@ -238,6 +245,12 @@ export default function TestDetailPage() {
       // Hiển thị kết quả ngay lập tức
       setResult(detailedResult);
       setIsStarted(false); // End the test session on client
+      // Cập nhật trạng thái isDone để UI chuyển sang "Xem lại chi tiết"
+      setTestData((prev) => (prev ? { ...prev, isDone: true } : prev));
+      // Refetch test data to get the latest state from backend
+      if (typeof refetchTest === "function") {
+        refetchTest();
+      }
     } catch (error) {
       toast({
         variant: "destructive",
@@ -291,6 +304,16 @@ export default function TestDetailPage() {
   }
 
   if (!isStarted) {
+    // Debug log để kiểm tra giá trị isDone
+    console.log("DEBUG isDone:", testData?.isDone, typeof testData?.isDone);
+    if (isSubmitting) {
+      return (
+        <div className="flex flex-col items-center justify-center min-h-screen p-4">
+          <Loader2 className="w-12 h-12 animate-spin text-primary" />
+          {/* <p className="mt-4 text-lg font-semibold text-primary">Đang nộp bài, vui lòng chờ hệ thống xử lý...</p> */}
+        </div>
+      );
+    }
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-4">
         <Card className="max-w-2xl w-full">
@@ -321,13 +344,13 @@ export default function TestDetailPage() {
                   </p>
                 </div>
               </div>
-              {testData.time > 0 && (
+              {testData.timeTest > 0 && (
                 <div className="p-4 bg-muted/50 rounded-lg flex items-center gap-4">
                   <Timer className="h-5 w-5 text-primary" />{" "}
                   <div>
                     <p className="font-medium">Thời gian</p>
                     <p className="text-sm text-muted-foreground">
-                      {testData.time} phút
+                      {testData.timeTest}
                     </p>
                   </div>
                 </div>
@@ -361,21 +384,23 @@ export default function TestDetailPage() {
             )}
           </CardContent>
           <CardFooter className="flex flex-col sm:flex-row gap-2">
-            <Button
-              onClick={handleStartTest}
-              className="w-full sm:w-auto flex-1"
-              size="lg"
-            >
-              <BookOpen className="mr-2 h-5 w-5" />
-              {result ? "Làm lại bài" : "Bắt đầu làm bài"}
-            </Button>
-            {result && (
+            {testData.isDone ? (
               <Button
                 onClick={() => setIsStarted(true)}
                 variant="outline"
-                className="w-full sm:w-auto"
+                className="w-full flex-1 "
+                size="lg"
               >
                 <Eye className="mr-2 h-4 w-4" /> Xem lại chi tiết
+              </Button>
+            ) : (
+              <Button
+                onClick={handleStartTest}
+                className="w-full sm:w-auto flex-1"
+                size="lg"
+              >
+                <BookOpen className="mr-2 h-5 w-5" />
+                Bắt đầu làm bài
               </Button>
             )}
             <Button
@@ -663,9 +688,16 @@ export default function TestDetailPage() {
               }}
               className="flex items-center space-x-2 bg-green-600 hover:bg-green-700"
               size="lg"
+              disabled={isSubmitting}
             >
-              <Send className="h-4 w-4" />
-              <span>Nộp bài kiểm tra</span>
+              {isSubmitting ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Send className="h-4 w-4 mr-2" />
+              )}
+              <span>
+                {isSubmitting ? "Đang nộp bài..." : "Nộp bài kiểm tra"}
+              </span>
             </Button>
           </div>
         </div>
@@ -790,10 +822,10 @@ export default function TestDetailPage() {
             <Home className="h-4 w-4 mr-2" />
             Quay lại khóa học
           </Button>
-          <Button onClick={handleStartTest}>
+          {/* <Button onClick={handleStartTest}>
             <RefreshCw className="h-4 w-4 mr-2" />
             Làm lại bài
-          </Button>
+          </Button> */}
         </div>
       </div>
     );

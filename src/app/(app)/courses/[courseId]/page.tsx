@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState, useMemo, useCallback, useRef } from "react";
@@ -56,6 +55,7 @@ import {
   UserCircle2,
   Eye,
   RefreshCw,
+  Timer, // Added Timer import
 } from "lucide-react";
 import {
   Tooltip,
@@ -80,6 +80,7 @@ import {
   useCourse,
   useEnrollCourse,
   useEnrolledCourses,
+  useCompletedLessonsCount, // Import the new hook
 } from "@/hooks/use-courses";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useTests, useHasSubmittedTest } from "@/hooks/use-tests";
@@ -94,6 +95,8 @@ import { AuditLog } from "@/components/audit-log";
 import { useFeedbacks, useCreateFeedback } from "@/hooks/use-feedback";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ClientTime } from "@/components/ClientTime";
+import { CourseProgressList } from "@/components/courses/CourseProgressList";
+import { useCourseProgressList } from "@/hooks/use-courses";
 
 const PdfLessonViewer = dynamic(
   () => import("@/components/lessons/PdfLessonViewer"),
@@ -165,10 +168,7 @@ const TestItem = ({
   courseId: string;
   isEnrolled: boolean;
 }) => {
-  const { hasSubmitted, isLoading } = useHasSubmittedTest(
-    courseId,
-    test.id
-  );
+  const { hasSubmitted, isLoading } = useHasSubmittedTest(courseId, test.id);
 
   return (
     <Card
@@ -190,8 +190,7 @@ const TestItem = ({
             <div className="mt-3 flex items-center gap-2">
               {isLoading ? (
                 <Button variant="outline" size="sm" disabled>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Đang
-                  tải...
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Đang tải...
                 </Button>
               ) : hasSubmitted ? (
                 <>
@@ -202,7 +201,7 @@ const TestItem = ({
                   </Button> */}
                   <Button asChild variant="outline" size="sm">
                     <Link href={`/courses/${courseId}/tests/${test.id}`}>
-                      <RefreshCw className="mr-2 h-4 w-4" /> Làm lại bài
+                      <Eye className="mr-2 h-4 w-4" /> Xem lại bài
                     </Link>
                   </Button>
                 </>
@@ -253,6 +252,9 @@ export default function CourseDetailPage() {
   const enrollCourseMutation = useEnrollCourse();
   const createFeedbackMutation = useCreateFeedback(courseIdFromParams);
 
+  const { data: completedLessonsCount, isLoading: isLoadingCompletedLessons } =
+    useCompletedLessonsCount(courseIdFromParams);
+
   const {
     debouncedUpsert,
     saveImmediately,
@@ -272,6 +274,30 @@ export default function CourseDetailPage() {
     isLoading: isLoadingFeedbacks,
     reloadFeedbacks,
   } = useFeedbacks(courseIdFromParams);
+
+  // Instant navigation - show skeleton while loading
+  if (isLoading || courseError) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="lg:col-span-2">
+            <div className="h-8 bg-gray-200 animate-pulse rounded mb-4"></div>
+            <div className="h-64 bg-gray-200 animate-pulse rounded mb-6"></div>
+            <div className="space-y-4">
+              <div className="h-4 bg-gray-200 animate-pulse rounded"></div>
+              <div className="h-4 bg-gray-200 animate-pulse rounded"></div>
+              <div className="h-4 bg-gray-200 animate-pulse rounded w-3/4"></div>
+            </div>
+          </div>
+          <div className="space-y-4">
+            <div className="h-6 bg-gray-200 animate-pulse rounded"></div>
+            <div className="h-32 bg-gray-200 animate-pulse rounded"></div>
+            <div className="h-10 bg-gray-200 animate-pulse rounded"></div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // Initialize localStorage check on first load
   useEffect(() => {
@@ -366,6 +392,7 @@ export default function CourseDetailPage() {
     tests,
     isLoading: isLoadingTests,
     error: testsError,
+    reloadTests,
   } = useTests(courseIdFromParams, canViewContent);
   const {
     attachedFiles,
@@ -413,11 +440,19 @@ export default function CourseDetailPage() {
     }
   }, [videoProgress.playedSeconds, selectedLesson, debouncedUpsert]);
 
+  // Auto reload tests when returning from a test detail page
   useEffect(() => {
+    const handleFocus = () => {
+      if (typeof reloadTests === "function") {
+        reloadTests();
+      }
+    };
+    window.addEventListener("focus", handleFocus);
     return () => {
+      window.removeEventListener("focus", handleFocus);
       cleanupProgress();
     };
-  }, [cleanupProgress]);
+  }, [cleanupProgress, reloadTests]);
 
   useEffect(() => {
     if (hasPendingProgress()) {
@@ -581,18 +616,7 @@ export default function CourseDetailPage() {
     }
   }, [selectedLesson]);
 
-  if (isLoading) {
-    return (
-      <div className="flex h-60 w-full items-center justify-center">
-        <Loader2 className="h-10 w-10 animate-spin text-primary" />
-        <p className="ml-2 text-muted-foreground">
-          Đang tải chi tiết khóa học...
-        </p>
-      </div>
-    );
-  }
-
-  if (courseError || !course) {
+  if (!course) {
     return (
       <Alert variant="destructive" className="max-w-xl mx-auto my-12">
         <AlertTriangle className="h-4 w-4" />
@@ -781,7 +805,6 @@ export default function CourseDetailPage() {
                     ? "default"
                     : "secondary"
                 }
-                className="text-base"
               >
                 {course.enrollmentType === "mandatory"
                   ? "Bắt buộc"
@@ -806,6 +829,28 @@ export default function CourseDetailPage() {
                 )}
             </CardContent>
           </Card>
+
+          {/* New Card for Completed Lessons */}
+          <Card className="shadow-md hover:shadow-lg transition-shadow">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">
+                Bài học đã hoàn thành
+              </CardTitle>
+              <CheckCircle className="h-5 w-5 text-primary" />
+            </CardHeader>
+            <CardContent>
+              {isLoadingCompletedLessons ? (
+                <Loader2 className="h-4 w-4 animate-spin text-primary" />
+              ) : (
+                <div className="text-xl font-bold">
+                  {completedLessonsCount}
+                  <span className="text-sm text-muted-foreground ml-1">
+                    bài
+                  </span>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </div>
 
         <Tabs
@@ -814,81 +859,22 @@ export default function CourseDetailPage() {
           className="space-y-6"
         >
           <TabsList className="flex w-full overflow-x-auto h-auto items-center rounded-md bg-muted p-1 text-muted-foreground justify-start">
-            <TabsTrigger value="content" className="text-base">
-              Nội dung chính
-            </TabsTrigger>
-            <TabsTrigger value="objectives" className="text-base">
-              Mục tiêu
-            </TabsTrigger>
-            <TabsTrigger value="lessons" className="text-base">
-              Bài học
-            </TabsTrigger>
-            <TabsTrigger
-              value="tests"
-              className="text-base"
-              disabled={!canViewContent}
-            >
+            <TabsTrigger value="content">Nội dung chính</TabsTrigger>
+            <TabsTrigger value="objectives">Mục tiêu</TabsTrigger>
+            <TabsTrigger value="lessons">Bài học</TabsTrigger>
+            <TabsTrigger value="tests" disabled={!canViewContent}>
               Bài kiểm tra
             </TabsTrigger>
-            <TabsTrigger value="requirements" className="text-base">
-              Yêu cầu
-            </TabsTrigger>
-            <TabsTrigger value="materials" className="text-base">
-              Tài liệu
-            </TabsTrigger>
+            <TabsTrigger value="requirements">Yêu cầu</TabsTrigger>
+            <TabsTrigger value="materials">Tài liệu</TabsTrigger>
             {(currentUser?.role === "ADMIN" || currentUser?.role === "HR") && (
-              <TabsTrigger value="activity-logs" className="text-base">
-                Nhật ký hoạt động
-              </TabsTrigger>
+              <TabsTrigger value="activity-logs">Nhật ký hoạt động</TabsTrigger>
             )}
-            <TabsTrigger value="evaluations" className="text-base">
-              Phản hồi học viên
-            </TabsTrigger>
+            <TabsTrigger value="evaluations">Phản hồi học viên</TabsTrigger>
+            {currentUser?.role === "ADMIN" && (
+              <TabsTrigger value="students">Học viên & Tiến độ</TabsTrigger>
+            )}
           </TabsList>
-
-          {showRegisterGate && (
-            <div className="my-6 p-6 border-2 border-dashed rounded-lg bg-muted/30 text-center">
-              <GraduationCap className="mx-auto h-16 w-16 text-primary/70 mb-4" />
-              <h3 className="text-xl font-semibold">
-                Bạn cần đăng ký khóa học này để xem nội dung
-              </h3>
-              <p className="mt-2 text-muted-foreground mb-4">
-                Đây là khóa học tùy chọn, vui lòng đăng ký để truy cập nội dung
-                chi tiết.
-              </p>
-              {isRegistrationOpen(course.registrationDeadline) ? (
-                <Button
-                  onClick={handleEnroll}
-                  disabled={enrollCourseMutation.isPending}
-                  size="lg"
-                >
-                  {enrollCourseMutation.isPending ? (
-                    <>
-                      <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                      Đang đăng ký...
-                    </>
-                  ) : (
-                    <>
-                      <UserPlus className="mr-2 h-5 w-5" />
-                      Đăng ký ngay
-                    </>
-                  )}
-                </Button>
-              ) : (
-                <div className="space-y-2">
-                  <div className="text-sm text-destructive font-medium">
-                    Đã hết hạn đăng ký
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                    Hạn đăng ký:{" "}
-                    {new Date(course.registrationDeadline!).toLocaleDateString(
-                      "vi-VN"
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
 
           <TabsContent value="content">
             <Card>
@@ -923,27 +909,37 @@ export default function CourseDetailPage() {
                       Nội dung chi tiết của bài học sẽ được hiển thị tại đây.
                     </p>
                   </div>
-                ) : selectedLesson.type === "pdf_url" &&
-                  selectedLesson.fileUrl ? (
-                  <PdfLessonViewer
-                    lessonId={selectedLesson.id}
-                    pdfUrl={selectedLesson.fileUrl}
-                    initialPage={selectedLesson.currentPage || 1}
-                    onVisiblePageChange={handleVisiblePageChange}
-                  />
-                ) : selectedLesson.type === "video_url" &&
+                ) : selectedLesson.type === "video_url" ? (
                   selectedLesson.link ? (
-                  <div className="w-full aspect-video border rounded-md overflow-hidden bg-black">
-                    <ReactPlayer
-                      ref={playerRef}
-                      url={selectedLesson.link}
-                      width="100%"
-                      height="100%"
-                      controls
-                      onReady={handlePlayerReady}
-                      onProgress={setVideoProgress}
+                    <div className="w-full aspect-video border rounded-md overflow-hidden bg-black">
+                      <ReactPlayer
+                        ref={playerRef}
+                        url={selectedLesson.link}
+                        width="100%"
+                        height="100%"
+                        controls
+                        onReady={handlePlayerReady}
+                        onProgress={setVideoProgress}
+                      />
+                    </div>
+                  ) : (
+                    <div className="text-center text-muted-foreground h-[500px] flex flex-col justify-center items-center">
+                      <p>Nội dung video không có sẵn.</p>
+                    </div>
+                  )
+                ) : selectedLesson.type === "pdf_url" ? (
+                  selectedLesson.fileUrl ? (
+                    <PdfLessonViewer
+                      lessonId={selectedLesson.id}
+                      pdfUrl={selectedLesson.fileUrl}
+                      initialPage={selectedLesson.currentPage || 1}
+                      onVisiblePageChange={handleVisiblePageChange}
                     />
-                  </div>
+                  ) : (
+                    <div className="text-center text-muted-foreground h-[500px] flex flex-col justify-center items-center">
+                      <p>Nội dung PDF không có sẵn.</p>
+                    </div>
+                  )
                 ) : (
                   <div className="text-center text-muted-foreground h-[500px] flex flex-col justify-center items-center">
                     <p>
@@ -1402,6 +1398,12 @@ export default function CourseDetailPage() {
               </CardContent>
             </Card>
           </TabsContent>
+
+          {currentUser?.role === "ADMIN" && (
+            <TabsContent value="students">
+              <CourseProgressList courseId={courseIdFromParams} />
+            </TabsContent>
+          )}
         </Tabs>
       </div>
 

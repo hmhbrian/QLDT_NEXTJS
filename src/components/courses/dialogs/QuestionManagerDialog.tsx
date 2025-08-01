@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useMemo, useRef } from "react";
@@ -106,7 +105,14 @@ export function QuestionManagerDialog({
 
   useEffect(() => {
     if (isOpen) {
-      setTestFormData(initialTestState);
+      setTestFormData((prev) => ({
+        ...initialTestState,
+        timeTest:
+          initialTestState.timeTest === 0 ||
+          initialTestState.timeTest === undefined
+            ? 30
+            : initialTestState.timeTest,
+      }));
       setQuestionsPage(1);
     }
   }, [isOpen, initialTestState]);
@@ -271,7 +277,7 @@ export function QuestionManagerDialog({
         const headers = (jsonData[0] as string[]).map(
           (h) => h?.toString().trim().toLowerCase() || ""
         );
-        const newQuestions: Omit<Question, 'id'>[] = [];
+        const newQuestions: Omit<Question, "id">[] = [];
 
         const headerMap = {
           question:
@@ -361,7 +367,7 @@ export function QuestionManagerDialog({
             ),
             explanation: explanation,
             position:
-              (testFormData.questions?.length || 0) + newQuestions.length,
+              (testFormData.questions?.length || 0) + newQuestions.length + 1,
           });
         }
 
@@ -373,7 +379,9 @@ export function QuestionManagerDialog({
         if (isEditingExistingTest && testId) {
           await createQuestionsSilentMutation.mutateAsync({
             testId,
-            questions: newQuestions.map(q => mapUiQuestionToApiPayload(q as Question)),
+            questions: newQuestions.map((q) =>
+              mapUiQuestionToApiPayload(q as Question)
+            ),
           });
           // Reload questions to update UI
           await reloadQuestions();
@@ -385,7 +393,10 @@ export function QuestionManagerDialog({
         } else {
           setTestFormData((prev) => ({
             ...prev,
-            questions: [...(prev.questions || []), ...newQuestions.map((q, i) => ({...q, id: Date.now() + i}))],
+            questions: [
+              ...(prev.questions || []),
+              ...newQuestions.map((q, i) => ({ ...q, id: Date.now() + i })),
+            ],
           }));
           toast({
             title: "Thành công",
@@ -470,6 +481,24 @@ export function QuestionManagerDialog({
                     setTestFormData((p) => ({
                       ...p,
                       passingScorePercentage: parseInt(e.target.value) || 70,
+                    }))
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="timeTest">
+                  Thời gian làm bài (phút){" "}
+                  <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id="timeTest"
+                  type="number"
+                  min={1}
+                  value={testFormData.timeTest || 30} // Default to 30 minutes
+                  onChange={(e) =>
+                    setTestFormData((p) => ({
+                      ...p,
+                      timeTest: parseInt(e.target.value) || 30,
                     }))
                   }
                 />

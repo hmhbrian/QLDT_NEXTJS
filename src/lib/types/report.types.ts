@@ -13,10 +13,10 @@ export interface CourseAndAvgFeedback {
 }
 
 export interface TopDepartment {
-  departmentId: string;
   departmentName: string;
-  courseCount: number;
-  userCount: number;
+  numberOfUsersParticipated: number;
+  totalUsers: number;
+  participationRate: number;
 }
 
 export interface TrainingOverviewStats {

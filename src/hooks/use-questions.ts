@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { questionsService } from "@/lib/services";
 import type {
@@ -32,9 +31,10 @@ export function useQuestions(testId: number | undefined) {
       return (paginatedResponse.items || []).map(mapApiQuestionToUi);
     },
     enabled: !!testId,
-    staleTime: 30 * 1000, // Giảm stale time xuống 30 giây để refresh thường xuyên hơn
-    refetchOnWindowFocus: true, // Bật refetch khi focus lại window
-    refetchOnMount: true, // Luôn refetch khi mount
+    staleTime: 2 * 60 * 1000, // 2 minutes for questions
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+    placeholderData: (previousData) => previousData,
   });
 
   return {

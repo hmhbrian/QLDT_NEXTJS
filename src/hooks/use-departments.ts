@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { departmentsService } from "@/lib/services";
 import type {
@@ -19,8 +18,9 @@ export function useDepartments(params?: { status?: "active" }) {
   } = useQuery<DepartmentInfo[], Error>({
     queryKey: [DEPARTMENTS_QUERY_KEY, params],
     queryFn: () => departmentsService.getDepartments(params),
-    staleTime: 5 * 60 * 1000, 
+    staleTime: 10 * 60 * 1000, // Cache for 10 minutes
     refetchOnWindowFocus: false,
+    refetchOnMount: false,
   });
 
   return {
@@ -39,7 +39,10 @@ export function useCreateDepartment() {
     mutationFn: (payload) => departmentsService.createDepartment(payload),
     onSuccess: (response) => {
       queryClient.invalidateQueries({ queryKey: [DEPARTMENTS_QUERY_KEY] });
-      showError({ success: true, message: `Đã tạo phòng ban "${response.name}" thành công.` });
+      showError({
+        success: true,
+        message: `Đã tạo phòng ban "${response.name}" thành công.`,
+      });
     },
     onError: (error) => {
       showError(error);
@@ -51,12 +54,19 @@ export function useUpdateDepartment() {
   const queryClient = useQueryClient();
   const { showError } = useError();
 
-  return useMutation<void, Error, { id: string; payload: UpdateDepartmentPayload }>({
+  return useMutation<
+    void,
+    Error,
+    { id: string; payload: UpdateDepartmentPayload }
+  >({
     mutationFn: ({ id, payload }) =>
       departmentsService.updateDepartment(id, payload),
     onSuccess: (_, { payload }) => {
       queryClient.invalidateQueries({ queryKey: [DEPARTMENTS_QUERY_KEY] });
-      showError({ success: true, message: `Đã cập nhật phòng ban "${payload.DepartmentName}" thành công.` });
+      showError({
+        success: true,
+        message: `Đã cập nhật phòng ban "${payload.DepartmentName}" thành công.`,
+      });
     },
     onError: (error) => {
       showError(error);
@@ -72,7 +82,7 @@ export function useDeleteDepartment() {
     mutationFn: (id) => departmentsService.deleteDepartment(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [DEPARTMENTS_QUERY_KEY] });
-      showError({ success: true, message: "Đã xóa phòng ban thành công."});
+      showError({ success: true, message: "Đã xóa phòng ban thành công." });
     },
     onError: (error) => {
       showError(error);

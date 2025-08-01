@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -24,6 +23,8 @@ export function useFeedbacks(courseId: string) {
     queryFn: () => feedbackService.getFeedbacks(courseId),
     enabled: !!courseId, // Enable for all roles to check if trainee has submitted
     staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
   });
 
   return {
@@ -42,9 +43,11 @@ export function useCreateFeedback(courseId: string) {
     mutationFn: (payload) => feedbackService.createFeedback(courseId, payload),
     onSuccess: () => {
       // Invalidate both feedbacks and the specific course to update UI states
-      queryClient.invalidateQueries({ queryKey: [FEEDBACK_QUERY_KEY, courseId] });
+      queryClient.invalidateQueries({
+        queryKey: [FEEDBACK_QUERY_KEY, courseId],
+      });
       queryClient.invalidateQueries({ queryKey: ["courses", courseId] });
-      
+
       toast({
         title: "Cảm ơn bạn!",
         description: "Đánh giá của bạn đã được gửi thành công.",
@@ -53,9 +56,12 @@ export function useCreateFeedback(courseId: string) {
     },
     onError: (error) => {
       const errorMessage = extractErrorMessage(error);
-      
+
       // Check if error indicates user has already submitted
-      if (errorMessage.includes('đã đánh giá') || errorMessage.includes('already')) {
+      if (
+        errorMessage.includes("đã đánh giá") ||
+        errorMessage.includes("already")
+      ) {
         toast({
           title: "Thông báo",
           description: "Bạn đã đánh giá khóa học này rồi.",
@@ -63,7 +69,7 @@ export function useCreateFeedback(courseId: string) {
         });
         return;
       }
-      
+
       toast({
         title: "Gửi đánh giá thất bại",
         description: errorMessage,

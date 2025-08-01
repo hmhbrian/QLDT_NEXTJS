@@ -6,6 +6,9 @@ import {
   CreateCourseRequest,
   UpdateCourseRequest,
   UserEnrollCourseDto,
+  CompletedCourseDto,
+  UserCourseProgressDto,
+  UserCourseProgressDetailDto,
 } from "@/lib/types/course.types";
 import { API_CONFIG } from "@/lib/config";
 
@@ -91,6 +94,120 @@ export class CoursesService extends BaseService<
     );
   }
 
+  async getCompletedCoursesCount(): Promise<number> {
+    console.log(
+      "🔥 Calling getCompletedCoursesCount endpoint:",
+      API_CONFIG.endpoints.courses.completedCount
+    );
+
+    const response = await this.get<number>(
+      API_CONFIG.endpoints.courses.completedCount
+    );
+
+    console.log(
+      "🔥 Raw Count API response from BaseService (already extracted):",
+      response
+    );
+
+    return response || 0;
+  }
+
+  async getCompletedCourses(): Promise<PaginatedResponse<CompletedCourseDto>> {
+    console.log(
+      "🔥 Calling getCompletedCourses endpoint:",
+      API_CONFIG.endpoints.courses.completedEnrollCourses
+    );
+
+    const response = await this.get<PaginatedResponse<CompletedCourseDto>>(
+      API_CONFIG.endpoints.courses.completedEnrollCourses
+    );
+
+    return (
+      response || {
+        items: [],
+        pagination: {
+          totalItems: 0,
+          itemsPerPage: 24,
+          currentPage: 1,
+          totalPages: 0,
+        },
+      }
+    );
+  }
+
+  async getUpcomingCourses(): Promise<CourseApiResponse[]> {
+    console.log(
+      "🔥 Calling getUpcomingCourses endpoint:",
+      API_CONFIG.endpoints.courses.upcomingCourses
+    );
+
+    const response = await this.get<CourseApiResponse[]>(
+      API_CONFIG.endpoints.courses.upcomingCourses
+    );
+
+    console.log(
+      "🔥 Raw Upcoming Courses API response from BaseService:",
+      response
+    );
+
+    return response || [];
+  }
+
+  async getCourseProgressList(
+    courseId: string,
+    params?: QueryParams
+  ): Promise<PaginatedResponse<UserCourseProgressDto>> {
+    console.log(
+      "🔥 Calling getCourseProgressList endpoint:",
+      API_CONFIG.endpoints.courses.progressList(courseId)
+    );
+
+    const response = await this.get<PaginatedResponse<UserCourseProgressDto>>(
+      API_CONFIG.endpoints.courses.progressList(courseId),
+      {
+        params: params,
+      }
+    );
+
+    console.log(
+      "🔥 Raw Course Progress List API response from BaseService:",
+      response
+    );
+
+    return (
+      response || {
+        items: [],
+        pagination: {
+          totalItems: 0,
+          itemsPerPage: 24,
+          currentPage: 1,
+          totalPages: 0,
+        },
+      }
+    );
+  }
+
+  async getCourseProgressDetail(
+    courseId: string,
+    userId: string
+  ): Promise<UserCourseProgressDetailDto> {
+    console.log(
+      "🔥 Calling getCourseProgressDetail endpoint:",
+      API_CONFIG.endpoints.courses.progressDetail(courseId, userId)
+    );
+
+    const response = await this.get<UserCourseProgressDetailDto>(
+      API_CONFIG.endpoints.courses.progressDetail(courseId, userId)
+    );
+
+    console.log(
+      "🔥 Raw Course Progress Detail API response from BaseService:",
+      response
+    );
+
+    return response;
+  }
+
   async enrollCourse(courseId: string): Promise<any> {
     return this.post<any>(API_CONFIG.endpoints.courses.enroll(courseId));
   }
@@ -138,9 +255,23 @@ export class CoursesService extends BaseService<
     if (courseIds.length === 0) {
       return;
     }
-    await this.delete(API_CONFIG.endpoints.courses.softDelete, {
-      ids: courseIds,
-    });
+    // Xóa từng khóa học một vì API chỉ nhận 1 id
+    for (const courseId of courseIds) {
+      await this.delete(
+        `${API_CONFIG.endpoints.courses.softDelete}?id=${courseId}`
+      );
+    }
+  }
+
+  async getCompletedLessonsCountByCourseId(courseId: string): Promise<number> {
+    console.log(
+      "🔥 Calling getCompletedLessonsCountByCourseId endpoint:",
+      API_CONFIG.endpoints.courses.countCompletedLessons(courseId)
+    );
+    const response = await this.get<number>(
+      API_CONFIG.endpoints.courses.countCompletedLessons(courseId)
+    );
+    return response || 0;
   }
 }
 

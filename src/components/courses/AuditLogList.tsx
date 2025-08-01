@@ -134,10 +134,15 @@ const formatFieldName = (fieldName: string): string => {
   return fieldMap[fieldName] || fieldName;
 };
 
-const formatFieldValue = (value: any): string => {
+const formatFieldValue = (value: any, fieldName?: string): string => {
   if (value === null || value === undefined) return "Trống";
   if (value === "Unknown") return "Không xác định";
   if (typeof value === "boolean") return value ? "Có" : "Không";
+
+  // Định dạng cho TimeTest (phút)
+  if (fieldName === "TimeTest" && typeof value === "number") {
+    return `${value} phút`;
+  }
 
   // Định dạng ngày tháng
   if (typeof value === "string" && value.includes("T")) {
@@ -171,16 +176,16 @@ function FieldChangeDisplay({ field }: { field: AuditLogField }) {
       {hasOldValue ? (
         <div className="flex items-center gap-2 text-xs flex-wrap">
           <span className="text-red-600 line-through bg-red-50 px-2 py-1 rounded">
-            {formatFieldValue(field.oldValue)}
+            {formatFieldValue(field.oldValue, field.fieldName)}
           </span>
           <ArrowRight className="h-3 w-3 text-muted-foreground" />
           <span className="text-green-700 font-semibold bg-green-50 px-2 py-1 rounded">
-            {formatFieldValue(field.newValue)}
+            {formatFieldValue(field.newValue, field.fieldName)}
           </span>
         </div>
       ) : (
         <div className="text-xs text-green-700 font-semibold bg-green-50 px-2 py-1 rounded inline-block">
-          {formatFieldValue(field.value)}
+          {formatFieldValue(field.value, field.fieldName)}
         </div>
       )}
     </div>
