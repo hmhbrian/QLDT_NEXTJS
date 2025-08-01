@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -7,7 +8,6 @@ import type {
   CreateLessonPayload,
   UpdateLessonPayload,
   ApiLesson,
-  LessonContentType,
 } from "@/lib/types/course.types";
 import { useToast } from "@/components/ui/use-toast";
 import { extractErrorMessage } from "@/lib/core";
@@ -26,7 +26,6 @@ export function useLessons(
     data,
     isLoading,
     error,
-    refetch: reloadLessons,
   } = useQuery<Lesson[], Error>({
     queryKey,
     queryFn: async () => {
@@ -45,7 +44,6 @@ export function useLessons(
     lessons: data ?? [],
     isLoading,
     error,
-    reloadLessons,
   };
 }
 
@@ -56,26 +54,47 @@ export function useCreateLesson() {
   return useMutation<
     ApiLesson,
     Error,
-    { courseId: string } & CreateLessonPayload
+    { courseId: string } & CreateLessonPayload,
+    { previousLessons?: Lesson[] }
   >({
     mutationFn: (variables) =>
       lessonsService.createLesson(variables.courseId, variables),
+    onMutate: async ({ courseId, Title }) => {
+      const queryKey = [LESSONS_QUERY_KEY, courseId];
+      await queryClient.cancelQueries({ queryKey });
+
+      const previousLessons = queryClient.getQueryData<Lesson[]>(queryKey) || [];
+      
+      const optimisticLesson: Lesson = {
+        id: Date.now(), // Temporary ID
+        title: Title,
+        type: "pdf_url", // Default type, will be updated on refetch
+        content: "Đang tải lên...",
+      };
+
+      queryClient.setQueryData<Lesson[]>(queryKey, (old = []) => [...old, optimisticLesson]);
+
+      return { previousLessons };
+    },
     onSuccess: (data, variables) => {
-      queryClient.invalidateQueries({
-        queryKey: [LESSONS_QUERY_KEY, variables.courseId],
-      });
       toast({
         title: "Thành công",
         description: `Bài học "${variables.Title}" đã được tạo.`,
         variant: "success",
       });
     },
-    onError: (error) => {
+    onError: (error, variables, context) => {
+      if (context?.previousLessons) {
+        queryClient.setQueryData([LESSONS_QUERY_KEY, variables.courseId], context.previousLessons);
+      }
       toast({
         title: "Tạo bài học thất bại",
         description: extractErrorMessage(error),
         variant: "destructive",
       });
+    },
+    onSettled: (data, error, variables) => {
+      queryClient.invalidateQueries({ queryKey: [LESSONS_QUERY_KEY, variables.courseId] });
     },
   });
 }
@@ -87,11 +106,8 @@ export function useUpdateLesson() {
   return useMutation<
     ApiLesson,
     Error,
-    {
-      courseId: string;
-      lessonId: number | string;
-      payload: UpdateLessonPayload;
-    }
+    { courseId: string; lessonId: number | string; payload: UpdateLessonPayload },
+    { previousLessons?: Lesson[] }
   >({
     mutationFn: (variables) =>
       lessonsService.updateLesson(
@@ -99,22 +115,39 @@ export function useUpdateLesson() {
         Number(variables.lessonId),
         variables.payload
       ),
+    onMutate: async ({ courseId, lessonId, payload }) => {
+      const queryKey = [LESSONS_QUERY_KEY, courseId];
+      await queryClient.cancelQueries({ queryKey });
+
+      const previousLessons = queryClient.getQueryData<Lesson[]>(queryKey);
+
+      queryClient.setQueryData<Lesson[]>(queryKey, (old = []) =>
+        old.map(lesson => 
+          lesson.id === lessonId ? { ...lesson, title: payload.Title || lesson.title } : lesson
+        )
+      );
+      
+      return { previousLessons };
+    },
     onSuccess: (data, variables) => {
-      queryClient.invalidateQueries({
-        queryKey: [LESSONS_QUERY_KEY, variables.courseId],
-      });
       toast({
         title: "Thành công",
         description: `Bài học "${variables.payload.Title}" đã được cập nhật.`,
         variant: "success",
       });
     },
-    onError: (error) => {
+    onError: (error, variables, context) => {
+      if (context?.previousLessons) {
+        queryClient.setQueryData([LESSONS_QUERY_KEY, variables.courseId], context.previousLessons);
+      }
       toast({
         title: "Cập nhật bài học thất bại",
         description: extractErrorMessage(error),
         variant: "destructive",
       });
+    },
+    onSettled: (data, error, variables) => {
+      queryClient.invalidateQueries({ queryKey: [LESSONS_QUERY_KEY, variables.courseId] });
     },
   });
 }
@@ -123,25 +156,40 @@ export function useDeleteLesson() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  return useMutation<void, Error, { courseId: string; lessonIds: number[] }>({
+  return useMutation<void, Error, { courseId: string; lessonIds: number[] }, { previousLessons?: Lesson[] }>({
     mutationFn: (variables) =>
       lessonsService.deleteLessons(variables.courseId, variables.lessonIds),
+    onMutate: async ({ courseId, lessonIds }) => {
+      const queryKey = [LESSONS_QUERY_KEY, courseId];
+      await queryClient.cancelQueries({ queryKey });
+
+      const previousLessons = queryClient.getQueryData<Lesson[]>(queryKey);
+      
+      queryClient.setQueryData<Lesson[]>(queryKey, (old = []) =>
+        old.filter(lesson => !lessonIds.includes(Number(lesson.id)))
+      );
+      
+      return { previousLessons };
+    },
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({
-        queryKey: [LESSONS_QUERY_KEY, variables.courseId],
-      });
       toast({
         title: "Thành công",
         description: `Đã xóa ${variables.lessonIds.length} bài học.`,
         variant: "success",
       });
     },
-    onError: (error) => {
+    onError: (error, variables, context) => {
+      if (context?.previousLessons) {
+        queryClient.setQueryData([LESSONS_QUERY_KEY, variables.courseId], context.previousLessons);
+      }
       toast({
         title: "Xóa bài học thất bại",
         description: extractErrorMessage(error),
         variant: "destructive",
       });
+    },
+    onSettled: (data, error, variables) => {
+      queryClient.invalidateQueries({ queryKey: [LESSONS_QUERY_KEY, variables.courseId] });
     },
   });
 }
@@ -150,34 +198,29 @@ export function useReorderLesson() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  return useMutation<
-    void,
-    Error,
-    { courseId: string; payload: ReorderLessonPayload }
-  >({
+  return useMutation<void, Error, { courseId: string; payload: ReorderLessonPayload }, { previousLessons?: Lesson[] }>({
     mutationFn: (variables) =>
       lessonsService.reorderLesson(variables.courseId, variables.payload),
+    // Optimistic update for reordering is complex, so we'll just invalidate on success.
+    // The onMutate in the component handles local state update.
     onSuccess: (_, variables) => {
-      // Optimistically update the UI, but still refetch from the server to ensure consistency
-      queryClient.invalidateQueries({
-        queryKey: [LESSONS_QUERY_KEY, variables.courseId],
-      });
       toast({
         title: "Thành công",
         description: "Đã sắp xếp lại thứ tự bài học.",
         variant: "success",
       });
     },
-    onError: (error, variables) => {
+    onError: (error, variables, context) => {
+      // Revert if optimistic update was implemented
       toast({
         title: "Sắp xếp bài học thất bại",
         description: extractErrorMessage(error),
         variant: "destructive",
       });
-      // Invalidate to revert optimistic updates if any
-      queryClient.invalidateQueries({
-        queryKey: [LESSONS_QUERY_KEY, variables.courseId],
-      });
+    },
+    onSettled: (data, error, variables) => {
+      // Always invalidate to ensure the order is correct from the server
+      queryClient.invalidateQueries({ queryKey: [LESSONS_QUERY_KEY, variables.courseId] });
     },
   });
 }
