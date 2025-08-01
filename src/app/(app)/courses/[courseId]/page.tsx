@@ -275,29 +275,128 @@ export default function CourseDetailPage() {
     reloadFeedbacks,
   } = useFeedbacks(courseIdFromParams);
 
-  // Instant navigation - show skeleton while loading
-  if (isLoading || courseError) {
-    return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-2">
-            <div className="h-8 bg-gray-200 animate-pulse rounded mb-4"></div>
-            <div className="h-64 bg-gray-200 animate-pulse rounded mb-6"></div>
-            <div className="space-y-4">
-              <div className="h-4 bg-gray-200 animate-pulse rounded"></div>
-              <div className="h-4 bg-gray-200 animate-pulse rounded"></div>
-              <div className="h-4 bg-gray-200 animate-pulse rounded w-3/4"></div>
-            </div>
-          </div>
-          <div className="space-y-4">
-            <div className="h-6 bg-gray-200 animate-pulse rounded"></div>
-            <div className="h-32 bg-gray-200 animate-pulse rounded"></div>
-            <div className="h-10 bg-gray-200 animate-pulse rounded"></div>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  // All hooks need to be before early returns to comply with Rules of Hooks
+  const isEnrolled = useMemo(() => {
+    if (!currentUser || !course) return false;
+    if (course.enrollmentType === "mandatory") return true;
+    const isInEnrolledList =
+      enrolledCourses?.some(
+        (enrolledCourse) => enrolledCourse.id === course.id
+      ) ?? false;
+    const isInUserIds = course.userIds?.includes(currentUser.id) ?? false;
+    return isInEnrolledList || isInUserIds;
+  }, [currentUser, course, enrolledCourses]);
+
+  const canViewContent = useMemo(
+    () =>
+      isEnrolled || currentUser?.role === "ADMIN" || currentUser?.role === "HR",
+    [isEnrolled, currentUser?.role]
+  );
+
+  const {
+    tests,
+    isLoading: isLoadingTests,
+    error: testsError,
+    reloadTests,
+  } = useTests(courseIdFromParams, canViewContent);
+  const {
+    attachedFiles,
+    isLoading: isLoadingAttachedFiles,
+    error: attachedFilesError,
+  } = useAttachedFiles(courseIdFromParams);
+  const { lessonProgresses, isLoading: isLoadingProgress } = useLessonProgress(
+    courseIdFromParams,
+    canViewContent
+  );
+
+  const [visiblePage, setVisiblePage] = useState(1);
+  const debouncedVisiblePage = useDebounce(visiblePage, 1000);
+  const lastReportedPageRef = useRef(0);
+  const [videoProgress, setVideoProgress] = useState({ playedSeconds: 0 });
+  const lastReportedTimeRef = useRef(0);
+
+  const lessonsWithProgress: LessonWithProgress[] = useMemo(() => {
+    if (!lessonProgresses || !Array.isArray(lessonProgresses)) return [];
+    return lessonProgresses.map((progress) => {
+      let contentType: LessonContentType = "text";
+      let fileUrl: string | null = null;
+      let link: string | null = null;
+      const apiType = progress.type?.toUpperCase();
+      if (apiType === "PDF" && progress.urlPdf) {
+        contentType = "pdf_url";
+        fileUrl = progress.urlPdf;
+      } else if (apiType === "LINK" && progress.urlPdf) {
+        if (
+          progress.urlPdf.includes("youtube.com") ||
+          progress.urlPdf.includes("youtu.be")
+        ) {
+          contentType = "video_url";
+        } else {
+          contentType = "external_link";
+        }
+        link = progress.urlPdf;
+      }
+      return {
+        id: progress.id,
+        title: progress.title,
+        type: contentType,
+        fileUrl: fileUrl,
+        link: link,
+        progressPercentage: progress.progressPercentage
+          ? Math.round(progress.progressPercentage * 100)
+          : 0,
+        currentPage: progress.currentPage,
+        currentTimeSecond: progress.currentTimeSecond,
+      };
+    });
+  }, [lessonProgresses]);
+
+  const [evaluationFormData, setEvaluationFormData] =
+    useState<CreateFeedbackPayload>({
+      q1_relevance: 0,
+      q2_clarity: 0,
+      q3_structure: 0,
+      q4_duration: 0,
+      q5_material: 0,
+      comment: "",
+    });
+
+  const hasSubmittedEvaluation = useMemo(() => {
+    if (!currentUser) return false;
+
+    // Check localStorage first for immediate feedback
+    const localKey = `feedback_submitted_${currentUser.id}_${courseIdFromParams}`;
+    const localSubmitted = localStorage.getItem(localKey) === "true";
+
+    // Check API data
+    let apiSubmitted = false;
+    if (feedbacks && feedbacks.length > 0) {
+      const userFeedback = feedbacks.find(
+        (fb) =>
+          fb.userId === currentUser.id && fb.courseId === courseIdFromParams
+      );
+      apiSubmitted = !!userFeedback;
+      console.log("Current user:", currentUser.id);
+      console.log("Feedbacks:", feedbacks);
+      console.log("User feedback found:", userFeedback);
+
+      // If we found API feedback but localStorage doesn't reflect it, update localStorage
+      if (apiSubmitted && !localSubmitted) {
+        localStorage.setItem(localKey, "true");
+      }
+    }
+
+    return localSubmitted || apiSubmitted;
+  }, [feedbacks, currentUser, courseIdFromParams]);
+
+  const showRegisterGate = useMemo(
+    () =>
+      currentUser?.role === "HOCVIEN" &&
+      course &&
+      !isEnrolled &&
+      course.enrollmentType === "optional",
+    [currentUser, course, isEnrolled]
+  );
 
   // Initialize localStorage check on first load
   useEffect(() => {
@@ -342,73 +441,6 @@ export default function CourseDetailPage() {
       }
     }
   }, [currentUser, courseIdFromParams, isLoadingFeedbacks]);
-
-  const hasSubmittedEvaluation = useMemo(() => {
-    if (!currentUser) return false;
-
-    // Check localStorage first for immediate feedback
-    const localKey = `feedback_submitted_${currentUser.id}_${courseIdFromParams}`;
-    const localSubmitted = localStorage.getItem(localKey) === "true";
-
-    // Check API data
-    let apiSubmitted = false;
-    if (feedbacks && feedbacks.length > 0) {
-      const userFeedback = feedbacks.find(
-        (fb) =>
-          fb.userId === currentUser.id && fb.courseId === courseIdFromParams
-      );
-      apiSubmitted = !!userFeedback;
-      console.log("Current user:", currentUser.id);
-      console.log("Feedbacks:", feedbacks);
-      console.log("User feedback found:", userFeedback);
-
-      // If we found API feedback but localStorage doesn't reflect it, update localStorage
-      if (apiSubmitted && !localSubmitted) {
-        localStorage.setItem(localKey, "true");
-      }
-    }
-
-    return localSubmitted || apiSubmitted;
-  }, [feedbacks, currentUser, courseIdFromParams]);
-
-  const isEnrolled = useMemo(() => {
-    if (!currentUser || !course) return false;
-    if (course.enrollmentType === "mandatory") return true;
-    const isInEnrolledList =
-      enrolledCourses?.some(
-        (enrolledCourse) => enrolledCourse.id === course.id
-      ) ?? false;
-    const isInUserIds = course.userIds?.includes(currentUser.id) ?? false;
-    return isInEnrolledList || isInUserIds;
-  }, [currentUser, course, enrolledCourses]);
-
-  const canViewContent = useMemo(
-    () =>
-      isEnrolled || currentUser?.role === "ADMIN" || currentUser?.role === "HR",
-    [isEnrolled, currentUser?.role]
-  );
-
-  const {
-    tests,
-    isLoading: isLoadingTests,
-    error: testsError,
-    reloadTests,
-  } = useTests(courseIdFromParams, canViewContent);
-  const {
-    attachedFiles,
-    isLoading: isLoadingAttachedFiles,
-    error: attachedFilesError,
-  } = useAttachedFiles(courseIdFromParams);
-  const { lessonProgresses, isLoading: isLoadingProgress } = useLessonProgress(
-    courseIdFromParams,
-    canViewContent
-  );
-
-  const [visiblePage, setVisiblePage] = useState(1);
-  const debouncedVisiblePage = useDebounce(visiblePage, 1000);
-  const lastReportedPageRef = useRef(0);
-  const [videoProgress, setVideoProgress] = useState({ playedSeconds: 0 });
-  const lastReportedTimeRef = useRef(0);
 
   useEffect(() => {
     if (
@@ -472,61 +504,6 @@ export default function CourseDetailPage() {
       }
     }
   }, [selectedLesson?.id]);
-
-  const lessonsWithProgress: LessonWithProgress[] = useMemo(() => {
-    if (!lessonProgresses || !Array.isArray(lessonProgresses)) return [];
-    return lessonProgresses.map((progress) => {
-      let contentType: LessonContentType = "text";
-      let fileUrl: string | null = null;
-      let link: string | null = null;
-      const apiType = progress.type?.toUpperCase();
-      if (apiType === "PDF" && progress.urlPdf) {
-        contentType = "pdf_url";
-        fileUrl = progress.urlPdf;
-      } else if (apiType === "LINK" && progress.urlPdf) {
-        if (
-          progress.urlPdf.includes("youtube.com") ||
-          progress.urlPdf.includes("youtu.be")
-        ) {
-          contentType = "video_url";
-        } else {
-          contentType = "external_link";
-        }
-        link = progress.urlPdf;
-      }
-      return {
-        id: progress.id,
-        title: progress.title,
-        type: contentType,
-        fileUrl: fileUrl,
-        link: link,
-        progressPercentage: progress.progressPercentage
-          ? Math.round(progress.progressPercentage * 100)
-          : 0,
-        currentPage: progress.currentPage,
-        currentTimeSecond: progress.currentTimeSecond,
-      };
-    });
-  }, [lessonProgresses]);
-
-  const [evaluationFormData, setEvaluationFormData] =
-    useState<CreateFeedbackPayload>({
-      q1_relevance: 0,
-      q2_clarity: 0,
-      q3_structure: 0,
-      q4_duration: 0,
-      q5_material: 0,
-      comment: "",
-    });
-
-  const showRegisterGate = useMemo(
-    () =>
-      currentUser?.role === "HOCVIEN" &&
-      course &&
-      !isEnrolled &&
-      course.enrollmentType === "optional",
-    [currentUser, course, isEnrolled]
-  );
 
   const handleEnroll = useCallback(() => {
     if (!course || !currentUser) {
@@ -615,6 +592,30 @@ export default function CourseDetailPage() {
       playerRef.current.seekTo(selectedLesson.currentTimeSecond, "seconds");
     }
   }, [selectedLesson]);
+
+  // Instant navigation - show skeleton while loading
+  if (isLoading || courseError) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="lg:col-span-2">
+            <div className="h-8 bg-gray-200 animate-pulse rounded mb-4"></div>
+            <div className="h-64 bg-gray-200 animate-pulse rounded mb-6"></div>
+            <div className="space-y-4">
+              <div className="h-4 bg-gray-200 animate-pulse rounded"></div>
+              <div className="h-4 bg-gray-200 animate-pulse rounded"></div>
+              <div className="h-4 bg-gray-200 animate-pulse rounded w-3/4"></div>
+            </div>
+          </div>
+          <div className="space-y-4">
+            <div className="h-6 bg-gray-200 animate-pulse rounded"></div>
+            <div className="h-32 bg-gray-200 animate-pulse rounded"></div>
+            <div className="h-10 bg-gray-200 animate-pulse rounded"></div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (!course) {
     return (
