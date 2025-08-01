@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -39,6 +38,8 @@ export function useTests(
     enabled: !!courseId && enabled,
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
+    refetchOnMount: false,
+    placeholderData: (previousData) => previousData,
   });
 
   return {
@@ -147,7 +148,12 @@ export function useSubmitTest(courseId: string, testId: number) {
     { answers: SelectedAnswer[]; startedAt: string }
   >({
     mutationFn: async ({ answers, startedAt }) => {
-      return await testsService.submitTest(courseId, testId, answers, startedAt);
+      return await testsService.submitTest(
+        courseId,
+        testId,
+        answers,
+        startedAt
+      );
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: [TESTS_QUERY_KEY, courseId] });
