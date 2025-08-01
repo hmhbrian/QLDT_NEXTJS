@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useMemo, useCallback } from "react";
@@ -126,7 +125,7 @@ export default function UsersPage() {
     Partial<Record<keyof CreateUserRequest, string>>
   >({});
 
-  // Data Fetching with TanStack Query
+  // Data Fetching with TanStack Query - optimize for instant navigation
   const {
     users,
     paginationInfo,
@@ -139,14 +138,15 @@ export default function UsersPage() {
     limit: pagination.pageSize,
   });
 
-  const pageCount = paginationInfo?.totalPages ?? 0;
-
   const { data: roles = [], isLoading: isRolesLoading } = useQuery<
     any[],
     Error
   >({
     queryKey: ["roles"],
     queryFn: () => rolesService.getRoles(),
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
   });
 
   const { userStatuses, isLoading: isStatusesLoading } = useUserStatuses();
@@ -155,6 +155,9 @@ export default function UsersPage() {
     useQuery<DepartmentInfo[], Error>({
       queryKey: ["departments", { status: "active" }],
       queryFn: () => departmentsService.getDepartments({ status: "active" }),
+      staleTime: 5 * 60 * 1000,
+      refetchOnWindowFocus: false,
+      refetchOnMount: false,
     });
 
   const { data: positions = [], isLoading: isPositionsLoading } = useQuery<
@@ -163,12 +166,26 @@ export default function UsersPage() {
   >({
     queryKey: ["positions"],
     queryFn: () => positionsService.getPositions(),
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
   });
 
   // Mutations from hooks
   const createUserMutation = useCreateUserMutation();
   const updateUserMutation = useUpdateUserMutation();
   const deleteUserMutation = useDeleteUserMutation();
+
+  const pageCount = paginationInfo?.totalPages ?? 0;
+
+  // Compute loading states
+  const isLoading =
+    isUsersLoading ||
+    isRolesLoading ||
+    isStatusesLoading ||
+    isDepartmentsLoading ||
+    isPositionsLoading;
+  const isInitialLoading = isLoading && !users?.length && !roles.length;
 
   const sortedUsers = useMemo(
     () =>
@@ -370,6 +387,38 @@ export default function UsersPage() {
     }
     return "N/A";
   };
+
+  // Show loading skeleton for initial load
+  if (isInitialLoading) {
+    return (
+      <div className="space-y-6">
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div className="space-y-2">
+                <div className="h-6 w-32 bg-gray-200 rounded animate-pulse"></div>
+                <div className="h-4 w-64 bg-gray-200 rounded animate-pulse"></div>
+              </div>
+              <div className="h-10 w-32 bg-gray-200 rounded animate-pulse"></div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="h-10 w-full bg-gray-200 rounded animate-pulse"></div>
+              <div className="space-y-3">
+                {[...Array(5)].map((_, i) => (
+                  <div
+                    key={i}
+                    className="h-16 w-full bg-gray-200 rounded animate-pulse"
+                  ></div>
+                ))}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -704,9 +753,7 @@ export default function UsersPage() {
               <Label htmlFor="status">Trạng thái</Label>
               <Select
                 value={
-                  newUser.userStatus?.id
-                    ? String(newUser.userStatus.id)
-                    : ""
+                  newUser.userStatus?.id ? String(newUser.userStatus.id) : ""
                 }
                 onValueChange={(value: string) => {
                   const selectedStatus = userStatuses.find(
