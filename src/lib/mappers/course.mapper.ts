@@ -56,8 +56,10 @@ export function mapCourseApiToUi(apiCourse: CourseApiResponse): Course {
     endDate: apiCourse.endDate || null,
     registrationStartDate: apiCourse.registrationStartDate || null,
     registrationDeadline: apiCourse.registrationClosingDate || null,
-    department: (apiCourse.departments || []).map((d) => String(d.departmentId)),
-    level: (apiCourse.positions || []).map((p) => String(p.positionId)),
+    department: (apiCourse.departments || []).map((d) =>
+      String(d.departmentId)
+    ),
+    level: (apiCourse.EmployeeLevel || []).map((p) => String(p.positionId)),
     userIds: (apiCourse.students || apiCourse.users || []).map((user) =>
       "id" in user ? user.id : (user as any).id
     ),

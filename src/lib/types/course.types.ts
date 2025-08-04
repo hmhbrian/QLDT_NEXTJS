@@ -227,7 +227,7 @@ export interface CourseApiResponse {
   category?: CourseCategoryDto;
   lecturer?: any; // Define LecturerDto if needed
   departments?: DepartmentInfo[];
-  positions?: Position[];
+  EmployeeLevel?: Position[];
   users?: User[]; // For enrolled users (legacy)
   students?: { id: string; name: string }[]; // For enrolled students (new API format)
 }
