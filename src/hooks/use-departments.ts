@@ -5,22 +5,25 @@ import type {
   DepartmentInfo,
   CreateDepartmentPayload,
   UpdateDepartmentPayload,
+  DepartmentApiResponse,
 } from "@/lib/types/department.types";
-import { useError } from "./use-error";
-import { mapDepartmentApiToUi } from "@/lib/mappers/department.mapper";
 import { extractErrorMessage } from "@/lib/core";
 import { useToast } from "@/components/ui/use-toast";
+import type { PaginatedResponse } from "@/lib/core";
+import { mapDepartmentApiToUi } from "@/lib/mappers/department.mapper";
 
 export const DEPARTMENTS_QUERY_KEY = "departments";
 
 export function useDepartments(params?: { status?: "active" }) {
   const queryKey = [DEPARTMENTS_QUERY_KEY, "list", params];
 
+  // Sửa lỗi logic: API trả về mảng DepartmentApiResponse[] trực tiếp, không phải PaginatedResponse
+  // Do đó, ta cần map trực tiếp mảng này.
   const { data, isLoading, error } = useQuery<DepartmentInfo[], Error>({
     queryKey,
     queryFn: async () => {
-      const apiDepartments = await departmentsService.getDepartments(params);
-      return apiDepartments || [];
+      const apiResponse = await departmentsService.getDepartments(params);
+      return (apiResponse || []).map(mapDepartmentApiToUi);
     },
     staleTime: 10 * 60 * 1000,
     refetchOnWindowFocus: false,
@@ -54,7 +57,7 @@ export function useCreateDepartment() {
       });
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: [DEPARTMENTS_QUERY_KEY, "list"] });
+      queryClient.invalidateQueries({ queryKey: [DEPARTMENTS_QUERY_KEY] });
     },
   });
 }
@@ -69,37 +72,37 @@ export function useUpdateDepartment() {
     { id: string; payload: UpdateDepartmentPayload },
     { previousDepartments?: DepartmentInfo[] }
   >({
-    mutationFn: ({ id, payload }) =>
-      departmentsService.updateDepartment(id, payload),
+    mutationFn: ({ id, payload }) => {
+        return departmentsService.updateDepartment(id, payload);
+    },
     onMutate: async ({ id, payload }) => {
-      const queryKey = [DEPARTMENTS_QUERY_KEY, "list", { status: "active" }];
-      await queryClient.cancelQueries({ queryKey });
+      // Cancel any outgoing refetches (so they don't overwrite our optimistic update)
+      await queryClient.cancelQueries({ queryKey: [DEPARTMENTS_QUERY_KEY] });
 
-      const previousDepartments =
-        queryClient.getQueryData<DepartmentInfo[]>(queryKey);
+      // Snapshot the previous value
+      const previousDepartments = queryClient.getQueryData<DepartmentInfo[]>([DEPARTMENTS_QUERY_KEY, 'list', { status: undefined }]);
 
-      queryClient.setQueryData<DepartmentInfo[]>(queryKey, (old) => {
-        if (!old) return [];
-        return old.map((d) =>
-          d.departmentId === id
-            ? {
-                ...d,
-                name: payload.DepartmentName ?? d.name,
-                code: payload.DepartmentCode ?? d.code,
-                description: payload.Description ?? d.description,
-                managerId: payload.ManagerId ?? d.managerId,
-                parentId:
-                  payload.ParentId !== undefined
-                    ? String(payload.ParentId)
-                    : d.parentId,
-                status: {
-                  ...d.status,
-                  id: payload.StatusId ?? d.status.id,
-                },
-              }
-            : d
-        );
-      });
+      // Optimistically update to the new value
+      if (previousDepartments) {
+          queryClient.setQueryData<DepartmentInfo[]>([DEPARTMENTS_QUERY_KEY, 'list', { status: undefined }], old => {
+              if (!old) return [];
+              return old.map(d => 
+                  d.departmentId === id 
+                  ? { 
+                      ...d, 
+                      name: payload.DepartmentName ?? d.name,
+                      code: payload.DepartmentCode ?? d.code,
+                      description: payload.Description ?? d.description,
+                      managerId: payload.ManagerId ?? d.managerId,
+                      parentId: payload.ParentId !== undefined ? String(payload.ParentId) : d.parentId,
+                      status: { ...d.status, id: payload.StatusId ?? d.status.id },
+                    } 
+                  : d
+              );
+          });
+      }
+
+      // Return a context object with the snapshotted value
       return { previousDepartments };
     },
     onSuccess: (_, { payload }) => {
@@ -110,9 +113,10 @@ export function useUpdateDepartment() {
       });
     },
     onError: (err, variables, context) => {
+      // Rollback to the previous value if the mutation fails
       if (context?.previousDepartments) {
         queryClient.setQueryData(
-          [DEPARTMENTS_QUERY_KEY, "list", { status: "active" }],
+          [DEPARTMENTS_QUERY_KEY, "list", { status: undefined }],
           context.previousDepartments
         );
       }
@@ -123,6 +127,7 @@ export function useUpdateDepartment() {
       });
     },
     onSettled: () => {
+      // Always refetch after error or success to ensure data consistency
       queryClient.invalidateQueries({
         queryKey: [DEPARTMENTS_QUERY_KEY, "list"],
       });
@@ -138,7 +143,7 @@ export function useDeleteDepartment() {
     void,
     Error,
     string,
-    { previousDepartments?: DepartmentInfo[] }
+    { previousDepartments?: PaginatedResponse<DepartmentInfo> }
   >({
     mutationFn: (id) => departmentsService.deleteDepartment(id),
     onMutate: async (idToDelete) => {
@@ -146,12 +151,14 @@ export function useDeleteDepartment() {
       await queryClient.cancelQueries({ queryKey });
 
       const previousDepartments =
-        queryClient.getQueryData<DepartmentInfo[]>(queryKey);
+        queryClient.getQueryData<PaginatedResponse<DepartmentInfo>>(queryKey);
 
-      queryClient.setQueryData<DepartmentInfo[]>(
-        queryKey,
-        (old) => old?.filter((d) => d.departmentId !== idToDelete) ?? []
-      );
+      if (previousDepartments) {
+        queryClient.setQueryData<PaginatedResponse<DepartmentInfo>>(
+          queryKey,
+          (old) => old ? { ...old, items: old.items.filter((d) => d.departmentId !== idToDelete) } : old
+        );
+      }
 
       return { previousDepartments };
     },
@@ -176,7 +183,7 @@ export function useDeleteDepartment() {
       });
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: [DEPARTMENTS_QUERY_KEY, "list"] });
+      queryClient.invalidateQueries({ queryKey: [DEPARTMENTS_QUERY_KEY] });
     },
   });
 }
