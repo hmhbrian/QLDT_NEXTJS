@@ -43,6 +43,7 @@ import {
   Role,
   CreateUserRequest,
   UpdateUserRequest,
+  ServiceRole,
 } from "@/lib/types/user.types";
 import { DepartmentInfo } from "@/lib/types/department.types";
 import { useToast } from "@/components/ui/use-toast";
@@ -63,6 +64,7 @@ import {
 } from "@/hooks/use-users";
 import { rolesService } from "@/lib/services";
 import { useQuery } from "@tanstack/react-query";
+import type { PaginatedResponse } from "@/lib/core";
 import type { PaginationState } from "@tanstack/react-table";
 import { extractErrorMessage } from "@/lib/core";
 
@@ -113,7 +115,7 @@ export default function TraineesPage() {
     isLoading: isTraineesLoading,
     error: traineesError,
   } = useUsers({
-    RoleName: "HOCVIEN",
+    // RoleName: "HOCVIEN",
     keyword: debouncedSearchTerm,
     page: pagination.pageIndex + 1,
     limit: pagination.pageSize,
@@ -124,10 +126,11 @@ export default function TraineesPage() {
     [paginationInfo]
   );
 
-  const { data: roles = [] } = useQuery({
+  const { data: rolesResponse } = useQuery<PaginatedResponse<ServiceRole>>({
     queryKey: ["roles"],
     queryFn: () => rolesService.getRoles(),
   });
+  const roles = rolesResponse?.items || [];
 
   const { departments: activeDepartments, isLoading: isDepartmentsLoading } =
     useDepartments({ status: "active" });
