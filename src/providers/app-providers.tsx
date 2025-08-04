@@ -8,7 +8,6 @@ import React from "react";
 import { QueryProvider } from "./query-provider";
 import { CustomThemeProvider } from "./theme-provider";
 import { ToastProvider } from "./toast-provider";
-import { LoadingProvider } from "./loading-provider";
 import { AuthProvider } from "@/hooks/useAuth";
 
 interface AppProvidersProps {
@@ -24,11 +23,9 @@ export function AppProviders({ children }: AppProvidersProps) {
       disableTransitionOnChange
     >
       <QueryProvider>
-        <LoadingProvider>
-          <AuthProvider>
-            <ToastProvider>{children}</ToastProvider>
-          </AuthProvider>
-        </LoadingProvider>
+        <AuthProvider>
+          <ToastProvider>{children}</ToastProvider>
+        </AuthProvider>
       </QueryProvider>
     </CustomThemeProvider>
   );

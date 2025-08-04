@@ -1,3 +1,4 @@
+
 'use client';
 
 import { ToastProvider as Provider } from '@/components/ui/toast';
@@ -10,4 +11,4 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       <Toaster />
     </Provider>
   );
-} 
+}
