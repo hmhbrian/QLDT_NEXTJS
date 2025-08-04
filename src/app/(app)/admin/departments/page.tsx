@@ -43,7 +43,7 @@ import type {
   CreateDepartmentPayload,
   UpdateDepartmentPayload,
 } from "@/lib/types/department.types";
-import type { User, Position } from "@/lib/types/user.types";
+import type { User, EmployeeLevel } from "@/lib/types/user.types";
 import { usersService, EmployeeLevelService } from "@/lib/services";
 import {
   useDepartments,
@@ -82,14 +82,12 @@ export default function DepartmentsPage() {
     });
   const users = usersData.items;
 
-  const { data: EmployeeLevel = [], isLoading: isEmployeeLevelLoading } = useQuery<
-    Position[],
-    Error
-  >({
-    queryKey: ["EmployeeLevel"],
-    queryFn: () => EmployeeLevelService.getEmployeeLevel(),
-    staleTime: 5 * 60 * 1000,
-  });
+  const { data: EmployeeLevel = [], isLoading: isEmployeeLevelLoading } =
+    useQuery<EmployeeLevel[], Error>({
+      queryKey: ["EmployeeLevel"],
+      queryFn: () => EmployeeLevelService.getEmployeeLevel(),
+      staleTime: 5 * 60 * 1000,
+    });
 
   const { userStatuses, isLoading: isStatusesLoading } = useUserStatuses();
 
@@ -124,37 +122,39 @@ export default function DepartmentsPage() {
     }
 
     // Tìm vị trí "Quản Lý Cấp Trung" (ID = 4) trở lên
-    const managerPosition = EmployeeLevel.find(
+    const managerEmployeeLevel = EmployeeLevel.find(
       (p) =>
-        p.positionId === 4 || // Quản Lý Cấp Trung
-        p.positionName?.toLowerCase().includes("quản lý cấp trung")
+        p.eLevelId === 4 || // Quản Lý Cấp Trung
+        p.eLevelName?.toLowerCase().includes("quản lý cấp trung")
     );
 
-    console.log("- managerPosition found:", managerPosition);
+    console.log("- managerEmployeeLevel found:", managerEmployeeLevel);
 
-    if (!managerPosition) {
-      console.log("- No manager position found, returning all active users");
-      // If no specific manager position, return all active users
+    if (!managerEmployeeLevel) {
+      console.log(
+        "- No manager employeeLevel found, returning all active users"
+      );
+      // If no specific manager employeeLevel, return all active users
       return users.filter((user) => user.userStatus?.name === "Đang làm việc");
     }
 
-    const managerBaseLevelId = managerPosition.positionId; // Should be 4
+    const managerBaseLevelId = managerEmployeeLevel.eLevelId; // Should be 4
     console.log("- managerBaseLevelId:", managerBaseLevelId);
 
     const filteredManagers = users.filter((user) => {
-      const hasPosition =
-        user.position &&
-        typeof user.position === "object" &&
-        user.position.positionId !== null;
+      const hasEmployeeLevel =
+        user.employeeLevel &&
+        typeof user.employeeLevel === "object" &&
+        user.employeeLevel.eLevelId !== null;
       const isActive = user.userStatus?.name === "Đang làm việc"; // Fixed: changed from "Hoạt động" to "Đang làm việc"
       const hasValidLevel =
-        hasPosition && user.position.positionId >= managerBaseLevelId; // >= 4 (Cấp trung trở lên)
+        hasEmployeeLevel && user.employeeLevel.eLevelId >= managerBaseLevelId; // >= 4 (Cấp trung trở lên)
 
       console.log(
-        `- User ${user.fullName}: hasPosition=${hasPosition}, isActive=${isActive}, hasValidLevel=${hasValidLevel}, positionId=${user.position?.positionId}, status="${user.userStatus?.name}"`
+        `- User ${user.fullName}: hasEmployeeLevel=${hasEmployeeLevel}, isActive=${isActive}, hasValidLevel=${hasValidLevel}, eLevelId=${user.employeeLevel?.eLevelId}, status="${user.userStatus?.name}"`
       );
 
-      return hasPosition && isActive && hasValidLevel;
+      return hasEmployeeLevel && isActive && hasValidLevel;
     });
 
     console.log(
