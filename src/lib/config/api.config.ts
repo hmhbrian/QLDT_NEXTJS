@@ -42,11 +42,11 @@ export const API_ENDPOINTS = {
     update: (id: string) => `/Departments/${id}`,
     delete: (id: string) => `/Departments/${id}`,
   },
-  positions: {
-    base: "/Positions",
-    byId: (id: number) => `/Positions/${id}`,
-    update: (id: number) => `/Positions/${id}`,
-    delete: (id: number) => `/Positions/${id}`,
+  EmployeeLevel: {
+    base: "/EmployeeLevel",
+    byId: (id: number) => `/EmployeeLevel/${id}`,
+    update: (id: number) => `/EmployeeLevel/${id}`,
+    delete: (id: number) => `/EmployeeLevel/${id}`,
   },
   courses: {
     base: "/Courses",

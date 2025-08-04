@@ -149,8 +149,8 @@ export const QueryKeys = {
   departments: () => ['departments'],
   department: (id: string) => ['department', id],
   
-  // Positions
-  positions: () => ['positions'],
+  // EmployeeLevel
+  EmployeeLevel: () => ['EmployeeLevel'],
   position: (id: string) => ['position', id],
   
   // Enrollments

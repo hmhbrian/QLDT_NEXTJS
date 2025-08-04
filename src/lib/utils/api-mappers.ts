@@ -38,7 +38,7 @@ export function mapCourseApiToUi(course: any): Course {
     image: course.thumbUrl || course.image || "/placeholder-course.jpg",
     instructor: course.lecturer?.name || course.instructor || "N/A",
     department: course.departments?.map((d: any) => String(d.departmentId || d.id)) || course.department || [],
-    level: course.positions?.map((p: any) => String(p.positionId || p.id)) || course.level || [],
+    level: course.EmployeeLevel?.map((p: any) => String(p.positionId || p.id)) || course.level || [],
   };
 }
 

@@ -8,7 +8,7 @@ export * from "./modern/auth.service";
 export * from "./modern/courses.service";
 export * from "./modern/certificates.service";
 export * from "./modern/departments.service";
-export * from "./modern/positions.service";
+export * from "./modern/employeeLevel.service";
 export * from "./modern/roles.service";
 export * from "./modern/users.service";
 export * from "./modern/course-attached-files.service";
@@ -23,7 +23,7 @@ export * from "./modern/feedback.service";
 import { authService } from "./modern/auth.service";
 import { coursesService } from "./modern/courses.service";
 import { departmentsService } from "./modern/departments.service";
-import { positionsService } from "./modern/positions.service";
+import { EmployeeLevelService } from "./modern/employeeLevel.service";
 import { rolesService } from "./modern/roles.service";
 import { usersService } from "./modern/users.service";
 import { courseAttachedFilesService } from "./modern/course-attached-files.service";
@@ -39,7 +39,7 @@ export const services = {
   auth: authService,
   courses: coursesService,
   departments: departmentsService,
-  positions: positionsService,
+  EmployeeLevel: EmployeeLevelService,
   roles: rolesService,
   users: usersService,
   courseAttachedFiles: courseAttachedFilesService,
