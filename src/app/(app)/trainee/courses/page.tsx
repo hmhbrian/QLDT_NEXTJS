@@ -109,7 +109,7 @@ export default function StudentCourseCatalog() {
       params.statusIds = debouncedFilters.statusId;
     }
     if (debouncedFilters.levelId !== "all") {
-      params.positionIds = debouncedFilters.levelId;
+      params.eLevelIds = debouncedFilters.levelId;
     }
     return params;
   }, [debouncedFilters, pagination]);
@@ -133,10 +133,10 @@ export default function StudentCourseCatalog() {
   const levelOptions = useMemo(() => {
     if (!Array.isArray(EmployeeLevel)) return [];
     return EmployeeLevel.filter(
-      (p) => p.positionName && p.positionName !== "N/A"
+      (p) => p.eLevelName && p.eLevelName !== "N/A"
     ).map((p) => ({
-      value: String(p.positionId),
-      label: p.positionName,
+      value: String(p.eLevelId),
+      label: p.eLevelName,
     }));
   }, [EmployeeLevel]);
 
