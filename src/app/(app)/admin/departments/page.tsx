@@ -44,7 +44,7 @@ import type {
   UpdateDepartmentPayload,
 } from "@/lib/types/department.types";
 import type { User, Position } from "@/lib/types/user.types";
-import { usersService, positionsService } from "@/lib/services";
+import { usersService, EmployeeLevelService } from "@/lib/services";
 import {
   useDepartments,
   useCreateDepartment,
@@ -82,12 +82,12 @@ export default function DepartmentsPage() {
     });
   const users = usersData.items;
 
-  const { data: positions = [], isLoading: isPositionsLoading } = useQuery<
+  const { data: EmployeeLevel = [], isLoading: isEmployeeLevelLoading } = useQuery<
     Position[],
     Error
   >({
-    queryKey: ["positions"],
-    queryFn: () => positionsService.getPositions(),
+    queryKey: ["EmployeeLevel"],
+    queryFn: () => EmployeeLevelService.getEmployeeLevel(),
     staleTime: 5 * 60 * 1000,
   });
 
@@ -119,12 +119,12 @@ export default function DepartmentsPage() {
   });
 
   const managers = useMemo(() => {
-    if (!users || !positions) {
+    if (!users || !EmployeeLevel) {
       return [];
     }
 
     // Tìm vị trí "Quản Lý Cấp Trung" (ID = 4) trở lên
-    const managerPosition = positions.find(
+    const managerPosition = EmployeeLevel.find(
       (p) =>
         p.positionId === 4 || // Quản Lý Cấp Trung
         p.positionName?.toLowerCase().includes("quản lý cấp trung")
@@ -163,7 +163,7 @@ export default function DepartmentsPage() {
       filteredManagers
     );
     return filteredManagers;
-  }, [users, positions]);
+  }, [users, EmployeeLevel]);
 
   const validation = useMemo(
     () => validateDepartmentTree(departments),
@@ -215,7 +215,7 @@ export default function DepartmentsPage() {
     }
   }, [departments, selectedDepartment]);
 
-  if (isDepartmentsLoading || isUsersLoading || isPositionsLoading) {
+  if (isDepartmentsLoading || isUsersLoading || isEmployeeLevelLoading) {
     return (
       <div className="space-y-6">
         <div className="flex justify-between items-center">
@@ -558,7 +558,7 @@ export default function DepartmentsPage() {
         existingDepartments={departments}
         managers={managers}
         isLoading={createDeptMutation.isPending || updateDeptMutation.isPending}
-        isLoadingManagers={isUsersLoading || isPositionsLoading}
+        isLoadingManagers={isUsersLoading || isEmployeeLevelLoading}
         departmentStatuses={departmentStatuses || []}
       />
 
