@@ -3,9 +3,6 @@
  * Central export point for reusable common components
  */
 
-// Error handling components
-export * from "./ErrorBoundary";
-
 // Loading components
 export * from "./Loading";
 export * from "./PageLoader";
@@ -13,21 +10,11 @@ export * from "./PageLoader";
 // Navigation components
 export * from "./InstantLink";
 
-// Error handling components
-export * from "./ErrorBoundary";
-
 // Loading components
 export * from "./Loading";
 export * from "./PageLoader";
 
 // Re-exports for convenience
-export {
-  ErrorBoundary,
-  PageErrorBoundary,
-  ComponentErrorBoundary,
-  DefaultErrorFallback,
-} from "./ErrorBoundary";
-
 export {
   LoadingSpinner,
   PageLoading,
