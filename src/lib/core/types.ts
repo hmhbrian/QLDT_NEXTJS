@@ -1,4 +1,3 @@
-
 /**
  * Core API Types
  * Shared types across all API services
@@ -46,7 +45,7 @@ export interface FilterParams {
   keyword?: string;
   statusIds?: string;
   departmentIds?: string;
-  positionIds?: string;
+  eLevelIds?: string;
   publicOnly?: boolean;
 }
 
@@ -61,7 +60,8 @@ export interface PaginationParams {
   SortType?: "asc" | "desc";
 }
 
-export type QueryParams = PaginationParams & FilterParams & { [key: string]: unknown };
+export type QueryParams = PaginationParams &
+  FilterParams & { [key: string]: unknown };
 
 // HTTP Request Configuration
 export interface RequestConfig {
@@ -77,7 +77,7 @@ export interface BaseCreatePayload {
 }
 
 export interface BaseUpdatePayload {
-  [key:string]: unknown;
+  [key: string]: unknown;
 }
 
 // Utility Types

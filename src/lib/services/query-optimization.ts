@@ -16,12 +16,12 @@ class QueryCache {
   get<T>(key: string): T | null {
     const entry = this.cache.get(key);
     if (!entry) return null;
-    
+
     if (Date.now() - entry.timestamp > entry.ttl) {
       this.cache.delete(key);
       return null;
     }
-    
+
     return entry.data;
   }
 
@@ -29,15 +29,15 @@ class QueryCache {
     this.cache.set(key, {
       data,
       timestamp: Date.now(),
-      ttl
+      ttl,
     });
   }
 
   invalidate(pattern: string): void {
-    const keys = Array.from(this.cache.keys()).filter(key => 
+    const keys = Array.from(this.cache.keys()).filter((key) =>
       key.includes(pattern)
     );
-    keys.forEach(key => this.cache.delete(key));
+    keys.forEach((key) => this.cache.delete(key));
   }
 
   clear(): void {
@@ -52,7 +52,7 @@ export const queryCache = new QueryCache();
 const pendingQueries = new Map<string, Promise<any>>();
 
 export function dedupedQuery<T>(
-  key: string, 
+  key: string,
   queryFn: () => Promise<T>
 ): Promise<T> {
   // Check if query is already pending
@@ -68,7 +68,7 @@ export function dedupedQuery<T>(
 
   // Execute query
   const promise = queryFn()
-    .then(result => {
+    .then((result) => {
       queryCache.set(key, result);
       return result;
     })
@@ -85,7 +85,11 @@ export class DataLoader<K, V> {
   private readonly batchLoadFn: (keys: K[]) => Promise<V[]>;
   private readonly maxBatchSize: number;
   private readonly batchDelay: number;
-  private batch: { key: K; resolve: (value: V) => void; reject: (error: any) => void }[] = [];
+  private batch: {
+    key: K;
+    resolve: (value: V) => void;
+    reject: (error: any) => void;
+  }[] = [];
   private timeoutId: NodeJS.Timeout | null = null;
 
   constructor(
@@ -119,14 +123,14 @@ export class DataLoader<K, V> {
     if (currentBatch.length === 0) return;
 
     try {
-      const keys = currentBatch.map(item => item.key);
+      const keys = currentBatch.map((item) => item.key);
       const results = await this.batchLoadFn(keys);
 
       currentBatch.forEach((item, index) => {
         item.resolve(results[index]);
       });
     } catch (error) {
-      currentBatch.forEach(item => {
+      currentBatch.forEach((item) => {
         item.reject(error);
       });
     }
@@ -136,26 +140,26 @@ export class DataLoader<K, V> {
 // Optimized query keys
 export const QueryKeys = {
   // Users
-  users: (params?: any) => ['users', params],
-  user: (id: string) => ['user', id],
-  userProfile: (id: string) => ['user-profile', id],
-  
+  users: (params?: any) => ["users", params],
+  user: (id: string) => ["user", id],
+  userProfile: (id: string) => ["user-profile", id],
+
   // Courses
-  courses: (params?: any) => ['courses', params],
-  course: (id: string) => ['course', id],
-  courseDetails: (id: string) => ['course-details', id],
-  
+  courses: (params?: any) => ["courses", params],
+  course: (id: string) => ["course", id],
+  courseDetails: (id: string) => ["course-details", id],
+
   // Departments
-  departments: () => ['departments'],
-  department: (id: string) => ['department', id],
-  
+  departments: () => ["departments"],
+  department: (id: string) => ["department", id],
+
   // EmployeeLevel
-  EmployeeLevel: () => ['EmployeeLevel'],
-  position: (id: string) => ['position', id],
-  
+  EmployeeLevel: () => ["EmployeeLevel"],
+  employeeLevel: (id: string) => ["employeeLevel", id],
+
   // Enrollments
-  enrollments: (userId?: string) => ['enrollments', userId],
-  userEnrollments: (userId: string) => ['user-enrollments', userId],
+  enrollments: (userId?: string) => ["enrollments", userId],
+  userEnrollments: (userId: string) => ["user-enrollments", userId],
 } as const;
 
 // Cache invalidation helpers
@@ -166,24 +170,24 @@ export const CacheInvalidation = {
       queryCache.invalidate(`user-profile-${userId}`);
       queryCache.invalidate(`user-enrollments-${userId}`);
     }
-    queryCache.invalidate('users');
+    queryCache.invalidate("users");
   },
-  
+
   invalidateCourse: (courseId?: string) => {
     if (courseId) {
       queryCache.invalidate(`course-${courseId}`);
       queryCache.invalidate(`course-details-${courseId}`);
     }
-    queryCache.invalidate('courses');
-    queryCache.invalidate('enrollments');
+    queryCache.invalidate("courses");
+    queryCache.invalidate("enrollments");
   },
-  
+
   invalidateDepartment: (deptId?: string) => {
     if (deptId) {
       queryCache.invalidate(`department-${deptId}`);
     }
-    queryCache.invalidate('departments');
-    queryCache.invalidate('users'); // Users have department info
+    queryCache.invalidate("departments");
+    queryCache.invalidate("users"); // Users have department info
   },
 };
 
@@ -215,11 +219,11 @@ export class PrefetchManager {
       try {
         await prefetchFn();
       } catch (error) {
-        console.warn('Prefetch failed:', error);
+        console.warn("Prefetch failed:", error);
       }
-      
+
       // Small delay to prevent overwhelming the server
-      await new Promise(resolve => setTimeout(resolve, 50));
+      await new Promise((resolve) => setTimeout(resolve, 50));
     }
 
     this.isProcessing = false;
