@@ -110,7 +110,7 @@ export default function UserProfilePage() {
     );
   }
 
-  const getPositionName = (user: User): string => {
+  const getEmployeeLevel = (user: User): string => {
     if (user.position && typeof user.position === "object") {
       return user.position.positionName;
     }
@@ -263,7 +263,7 @@ export default function UserProfilePage() {
                       (profileData.position as Position).positionName
                     )}
                   >
-                    {getPositionName(profileData)}
+                    {getEmployeeLevel(profileData)}
                   </Badge>
                 )}
                 <Badge variant="secondary">{profileData.role}</Badge>
@@ -307,7 +307,7 @@ export default function UserProfilePage() {
                         <strong>Chức vụ:</strong> Chưa có
                       </p>
                       <p className="text-sm">
-                        <strong>Cấp bậc:</strong> {getPositionName(profileData)}
+                        <strong>Cấp bậc:</strong> {getEmployeeLevel(profileData)}
                       </p>
                       <p className="text-sm">
                         <strong>Ngày vào công ty:</strong>{" "}
