@@ -39,6 +39,7 @@ import {
   UpdateUserRequest,
   Position,
   ResetPasswordRequest,
+  ServiceRole,
 } from "@/lib/types/user.types";
 import { DepartmentInfo } from "@/lib/types/department.types";
 import { useToast } from "@/components/ui/use-toast";
@@ -66,6 +67,7 @@ import {
   EyeOff,
 } from "lucide-react";
 import { NO_DEPARTMENT_VALUE } from "@/lib/config/constants";
+import type { PaginatedResponse } from "@/lib/core";
 import type { PaginationState } from "@tanstack/react-table";
 import { useDepartments } from "@/hooks/use-departments";
 import { usePositions } from "@/hooks/use-positions";
@@ -131,8 +133,8 @@ export default function UsersPage() {
     limit: pagination.pageSize,
   });
 
-  const { data: roles = [], isLoading: isRolesLoading } = useQuery<
-    any[],
+  const { data: rolesResponse, isLoading: isRolesLoading } = useQuery<
+    PaginatedResponse<ServiceRole>,
     Error
   >({
     queryKey: ["roles"],
@@ -141,6 +143,7 @@ export default function UsersPage() {
     refetchOnWindowFocus: false,
     refetchOnMount: false,
   });
+  const roles = rolesResponse?.items || [];
 
   const { userStatuses, isLoading: isStatusesLoading } = useUserStatuses();
   const { departments: activeDepartments, isLoading: isDepartmentsLoading } =
@@ -164,10 +167,7 @@ export default function UsersPage() {
   const isInitialLoading = isLoading && !users?.length && !roles.length;
 
   const getPositionName = (user: User): string => {
-    if (user.position && typeof user.position === "object") {
-      return user.position.positionName;
-    }
-    return "Chưa có cấp bậc";
+    return user.position?.positionName || "Chưa có cấp bậc";
   };
 
   const handleOpenAddDialog = () => {
@@ -325,14 +325,11 @@ export default function UsersPage() {
   );
 
   const renderDepartment = (department?: DepartmentInfo) => {
-    if (!department) return "Chưa có phòng ban";
-    return department.name || "Không xác định";
+    return department?.name || "Chưa có phòng ban";
   };
 
   const getEmployeeCode = (user: any): string => {
-    if (user.employeeId) return user.employeeId;
-    if (user.code) return user.code;
-    return "N/A";
+    return user.employeeId || user.code || "N/A";
   };
 
   if (isInitialLoading) {

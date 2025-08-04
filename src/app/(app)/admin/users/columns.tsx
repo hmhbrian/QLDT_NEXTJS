@@ -1,3 +1,4 @@
+
 "use client";
 
 import { ColumnDef } from "@tanstack/react-table";
@@ -96,6 +97,13 @@ export const getColumns = (
         {roleTranslations[row.original.role]}
       </Badge>
     ),
+  },
+  {
+    accessorKey: "department.name",
+    header: "Phòng ban",
+    cell: ({ row }) => {
+      return row.original.department?.name || "N/A";
+    },
   },
   {
     accessorKey: "status",
