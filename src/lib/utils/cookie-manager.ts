@@ -219,96 +219,83 @@ export class CookieManager {
     });
   }
 
-  // Clear all cookies (that can be cleared from client-side)
-  clearAll(): void {
-    const cookies = this.getAll();
-    Object.keys(cookies).forEach((name) => {
-      this.remove(name);
-    });
-    this.cookieRegistry.clear();
+  // Enhanced security: obfuscate sensitive cookie names
+  private obfuscateCookieName(name: string): string {
+    if (name.includes("auth") || name.includes("token")) {
+      return `__${name.slice(0, 2)}${btoa(name.slice(2))
+        .replace(/[=+/]/g, "")
+        .slice(0, 6)}`;
+    }
+    return name;
   }
 
-  // Get cookie with metadata
-  getCookieInfo(name: string): CookieInfo | null {
-    return this.cookieRegistry.get(name) || null;
-  }
+  // Đơn giản hóa: chỉ lưu token, persistent cho đến khi logout
+  setSecureAuth(token: string, rememberMe: boolean = true): void {
+    // Default persistent
+    const tokenCookieName = "qldt_auth_token";
 
-  // Get cookies by pattern
-  getByPattern(pattern: RegExp): Record<string, string> {
-    const allCookies = this.getAll();
-    const matchingCookies: Record<string, string> = {};
-
-    Object.entries(allCookies).forEach(([name, value]) => {
-      if (pattern.test(name)) {
-        matchingCookies[name] = value;
-      }
+    console.log("🔒 [CookieManager] Setting secure auth:", {
+      tokenCookieName,
+      rememberMe,
+      tokenLength: token.length,
     });
 
-    return matchingCookies;
-  }
+    // Luôn lưu persistent (30 days) trừ khi rõ ràng muốn session
+    if (rememberMe) {
+      this.setPersistentAuth(tokenCookieName, token, 30);
+    } else {
+      this.setSessionAuth(tokenCookieName, token);
+    }
 
-  // Cookie consent management
-  setConsent(categories: string[]): void {
-    this.set(
-      "cookie_consent",
-      JSON.stringify({
-        categories,
-        timestamp: Date.now(),
-        version: "1.0",
-      }),
-      {
-        expires: 365, // 1 year
-        secure: true,
-        sameSite: "lax",
-      }
-    );
-  }
+    // Verify token was set
+    const verifyToken = this.get(tokenCookieName);
+    console.log("✅ [CookieManager] Cookie verification:", {
+      tokenSet: !!verifyToken,
+      tokenMatches: verifyToken === token,
+      tokenPreview: verifyToken ? verifyToken.slice(0, 10) + "..." : null,
+    });
 
-  getConsent(): {
-    categories: string[];
-    timestamp: number;
-    version: string;
-  } | null {
-    const consent = this.get("cookie_consent");
-    if (!consent) return null;
-
-    try {
-      return JSON.parse(consent);
-    } catch (error) {
-      console.warn("Failed to parse cookie consent:", error);
-      return null;
+    if (!verifyToken) {
+      console.error("❌ [CookieManager] Failed to set token cookie!");
+      throw new Error("Failed to set authentication cookie");
     }
   }
 
-  hasConsent(category: string): boolean {
-    const consent = this.getConsent();
-    return consent ? consent.categories.includes(category) : false;
-  }
-
-  // GDPR compliance helpers
-  exportCookieData(): CookieInfo[] {
-    return Array.from(this.cookieRegistry.values());
-  }
-
-  // Clean up expired cookies from registry
-  cleanupRegistry(): void {
-    const now = Date.now();
-    this.cookieRegistry.forEach((info, name) => {
-      if (info.options.expires) {
-        let expiryTime: number;
-
-        if (typeof info.options.expires === "number") {
-          expiryTime =
-            info.createdAt + info.options.expires * 24 * 60 * 60 * 1000;
-        } else {
-          expiryTime = info.options.expires.getTime();
-        }
-
-        if (now > expiryTime) {
-          this.cookieRegistry.delete(name);
-        }
-      }
+  // Get auth token
+  getSecureAuth(): string | null {
+    const cookieName = "qldt_auth_token";
+    const token = this.get(cookieName);
+    console.log("🔍 [CookieManager] Getting secure auth token:", {
+      cookieName,
+      hasToken: !!token,
+      tokenPreview: token ? token.slice(0, 10) + "..." : null,
     });
+    return token;
+  }
+
+  // Remove auth data
+  removeSecureAuth(): void {
+    const tokenCookieName = "qldt_auth_token";
+
+    console.log("🗑️ [CookieManager] Removing secure auth:", {
+      tokenCookieName,
+    });
+    this.remove(tokenCookieName);
+    this.remove("session_id"); // remove decoy
+
+    // Verify removal
+    const verifyToken = this.get(tokenCookieName);
+    console.log("✅ [CookieManager] Removal verification:", {
+      tokenRemoved: !verifyToken,
+    });
+  }
+
+  // Generate decoy value
+  private generateDecoyValue(): string {
+    return (
+      Math.random().toString(36).substring(2, 15) +
+      Math.random().toString(36).substring(2, 15)
+    );
   }
 
   // Get cookie statistics
@@ -325,56 +312,6 @@ export class CookieManager {
       persistent: registry.filter((c) => c.options.expires || c.options.maxAge)
         .length,
     };
-  }
-
-  // Enhanced security: obfuscate sensitive cookie names
-  private obfuscateCookieName(name: string): string {
-    if (name.includes("auth") || name.includes("token")) {
-      return `__${name.slice(0, 2)}${btoa(name.slice(2))
-        .replace(/[=+/]/g, "")
-        .slice(0, 6)}`;
-    }
-    return name;
-  }
-
-  // Set auth token with obfuscation và enhanced security
-  setSecureAuth(token: string, rememberMe: boolean = false): void {
-    const obfuscatedName = this.obfuscateCookieName("auth_token");
-
-    if (rememberMe) {
-      this.setPersistentAuth(obfuscatedName, token, 30);
-    } else {
-      this.setSessionAuth(obfuscatedName, token);
-    }
-
-    // Also set a decoy cookie to confuse potential attackers
-    this.set("session_id", this.generateDecoyValue(), {
-      secure: window.location.protocol === "https:",
-      sameSite: "strict",
-      path: "/",
-    });
-  }
-
-  // Get auth token with obfuscation support
-  getSecureAuth(): string | null {
-    const obfuscatedName = this.obfuscateCookieName("auth_token");
-    return this.get(obfuscatedName) || this.get("auth_token"); // fallback
-  }
-
-  // Remove auth token with obfuscation support
-  removeSecureAuth(): void {
-    const obfuscatedName = this.obfuscateCookieName("auth_token");
-    this.remove(obfuscatedName);
-    this.remove("auth_token"); // fallback
-    this.remove("session_id"); // remove decoy
-  }
-
-  // Generate decoy value
-  private generateDecoyValue(): string {
-    return (
-      Math.random().toString(36).substring(2, 15) +
-      Math.random().toString(36).substring(2, 15)
-    );
   }
 }
 
