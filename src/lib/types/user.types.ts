@@ -4,9 +4,9 @@ import type { Status } from "./status.types";
 
 export type Role = "ADMIN" | "HR" | "HOCVIEN";
 
-export interface Position {
-  positionId: number;
-  positionName: string;
+export interface EmployeeLevel {
+  eLevelId: number;
+  eLevelName: string;
 }
 
 export interface ServiceRole {
@@ -33,7 +33,7 @@ export interface User {
   role: Role;
   employeeId?: string;
   department?: DepartmentInfo;
-  position?: Position;
+  employeeLevel?: EmployeeLevel;
   userStatus?: Status;
   manager?: string;
   startWork?: string;
@@ -54,7 +54,7 @@ export interface CreateUserRequest {
   FullName: string;
   IdCard?: string;
   Code?: string;
-  PositionId?: number;
+  eLevelId?: number;
   RoleId: string;
   ManagerUId?: string;
   DepartmentId?: number;
@@ -71,7 +71,7 @@ export interface UpdateUserRequest {
   FullName?: string;
   IdCard?: string;
   Code?: string;
-  PositionId?: number;
+  eLevelId?: number;
   RoleId?: string;
   ManagerUId?: string;
   DepartmentId?: number;
@@ -113,7 +113,7 @@ export interface UserApiResponse {
   createdBy?: string;
   updatedBy?: string;
   managerBy?: string;
-  positionName?: string;
+  eLevelName?: string;
   departmentName?: string; // Navigation property
   userStatus?: Status;
   startWork?: string;
@@ -121,6 +121,6 @@ export interface UserApiResponse {
   createdAt?: string;
   modifedAt?: string; // Typo from backend DTO
   accessToken?: string;
-  position?: Position;
+  employeeLevel?: EmployeeLevel;
   department?: DepartmentInfo;
 }

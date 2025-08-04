@@ -1,4 +1,3 @@
-
 import type { User } from "../types/user.types";
 
 export const mockUsers: User[] = [
@@ -25,7 +24,7 @@ export const mockUsers: User[] = [
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     },
-    position: { positionId: 1, positionName: "System Administrator" },
+    employeeLevel: { eLevelId: 1, eLevelName: "System Administrator" },
   },
   {
     id: "2",
@@ -50,7 +49,7 @@ export const mockUsers: User[] = [
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     },
-    position: { positionId: 2, positionName: "HR Manager" },
+    employeeLevel: { eLevelId: 2, eLevelName: "HR Manager" },
   },
   {
     id: "3",
@@ -75,11 +74,10 @@ export const mockUsers: User[] = [
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     },
-    position: { positionId: 3, positionName: "Intern" },
+    employeeLevel: { eLevelId: 3, eLevelName: "Intern" },
     employeeId: "EMP001",
   },
 ];
-
 
 export const getUserByEmailAndPassword = (
   email: string,
