@@ -36,7 +36,7 @@ import {
   Role,
   CreateUserRequest,
   UpdateUserRequest,
-  Position,
+  EmployeeLevel,
   ResetPasswordRequest,
   ServiceRole,
 } from "@/lib/types/user.types";
@@ -72,11 +72,11 @@ import { useDepartments } from "@/hooks/use-departments";
 import { useEmployeeLevel } from "@/hooks/use-employeeLevel";
 
 type UserFormState = Partial<
-  Omit<User, "department" | "position"> & {
+  Omit<User, "department" | "employeeLevel"> & {
     password?: string;
     confirmPassword?: string;
     department?: string; // Storing as ID
-    position?: string; // Storing as ID
+    employeeLevel?: string; // Storing as ID
   }
 >;
 
@@ -110,7 +110,7 @@ export default function UsersPage() {
     password: "",
     confirmPassword: "",
     department: "",
-    position: "",
+    employeeLevel: "",
     userStatus: { id: 0, name: "" },
     employeeId: "",
   };
@@ -166,7 +166,7 @@ export default function UsersPage() {
   const isInitialLoading = isLoading && !users?.length && !roles.length;
 
   const getEmployeeLevel = (user: User): string => {
-    return user.position?.positionName || "Chưa có cấp bậc";
+    return user.employeeLevel?.eLevelName || "Chưa có cấp bậc";
   };
 
   const handleOpenAddDialog = () => {
@@ -181,8 +181,8 @@ export default function UsersPage() {
     setNewUser({
       ...userToEdit,
       department: userToEdit.department?.departmentId,
-      position: userToEdit.position
-        ? String(userToEdit.position.positionId)
+      employeeLevel: userToEdit.employeeLevel
+        ? String(userToEdit.employeeLevel.eLevelId)
         : "",
       password: "",
       confirmPassword: "",
@@ -251,8 +251,8 @@ export default function UsersPage() {
             ? parseInt(newUser.department, 10)
             : undefined,
           RoleId: selectedRole.id,
-          PositionId: newUser.position
-            ? parseInt(newUser.position, 10)
+          eLevelId: newUser.employeeLevel
+            ? parseInt(newUser.employeeLevel, 10)
             : undefined,
           StatusId: newUser.userStatus?.id,
           Code: newUser.employeeId || undefined,
@@ -279,8 +279,8 @@ export default function UsersPage() {
           RoleId: selectedRole.id,
           IdCard: newUser.idCard,
           NumberPhone: newUser.phoneNumber,
-          PositionId: newUser.position
-            ? parseInt(newUser.position, 10)
+          eLevelId: newUser.employeeLevel
+            ? parseInt(newUser.employeeLevel, 10)
             : undefined,
           DepartmentId: newUser.department
             ? parseInt(newUser.department, 10)
@@ -623,11 +623,11 @@ export default function UsersPage() {
               </Select>
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="position">Cấp bậc</Label>
+              <Label htmlFor="employeeLevel">Cấp bậc</Label>
               <Select
-                value={newUser.position}
+                value={newUser.employeeLevel}
                 onValueChange={(value: string) =>
-                  setNewUser({ ...newUser, position: value })
+                  setNewUser({ ...newUser, employeeLevel: value })
                 }
               >
                 <SelectTrigger>
@@ -641,10 +641,10 @@ export default function UsersPage() {
                   ) : EmployeeLevel.length > 0 ? (
                     EmployeeLevel.map((pos) => (
                       <SelectItem
-                        key={pos.positionId}
-                        value={String(pos.positionId)}
+                        key={pos.eLevelId}
+                        value={String(pos.eLevelId)}
                       >
-                        {pos.positionName}
+                        {pos.eLevelName}
                       </SelectItem>
                     ))
                   ) : (
