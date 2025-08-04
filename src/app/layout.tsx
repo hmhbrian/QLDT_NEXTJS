@@ -5,8 +5,12 @@ import { AuthProvider } from "@/hooks/useAuth";
 import { Inter } from "next/font/google";
 import { ToastProvider } from "@/providers/toast-provider";
 import { CustomThemeProvider } from "@/providers/theme-provider";
-import { LoadingProvider } from "@/providers/loading-provider";
 import { QueryProvider } from "@/providers/query-provider";
+
+// Import cookie security monitor (chỉ chạy trong development)
+if (typeof window !== "undefined" && process.env.NODE_ENV === "development") {
+  import("@/lib/security/cookie-monitor");
+}
 
 const inter = Inter({
   subsets: ["latin"],
@@ -43,9 +47,7 @@ export default function RootLayout({
         >
           <QueryProvider>
             <AuthProvider>
-              <LoadingProvider>
-                <ToastProvider>{children}</ToastProvider>
-              </LoadingProvider>
+              <ToastProvider>{children}</ToastProvider>
             </AuthProvider>
           </QueryProvider>
         </CustomThemeProvider>
