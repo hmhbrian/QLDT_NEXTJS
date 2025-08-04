@@ -40,7 +40,7 @@ const nextConfig: NextConfig = {
     return [
       {
         source: "/api/:path*",
-        destination: "http://localhost:5228/api/:path*", // Proxy tới server API thực tế
+        destination: "http://localhost:5228/api/:path*",
       },
     ];
   },

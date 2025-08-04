@@ -22,20 +22,8 @@ class LessonsService extends BaseService<
 
   async getLessons(courseId: string): Promise<ApiLesson[]> {
     const endpoint = API_CONFIG.endpoints.lessons.base(courseId);
-    try {
-      const response = await this.get<ApiLesson[]>(endpoint);
-      return response || [];
-    } catch (error: any) {
-      if (
-        error.message &&
-        (error.message.includes("404") ||
-          error.message.includes("không tồn tại") ||
-          error.message.includes("not found"))
-      ) {
-        return [];
-      }
-      this.handleError("GET", endpoint, error);
-    }
+    // Let BaseService handle errors and data extraction
+    return this.get<ApiLesson[]>(endpoint);
   }
 
   async createLesson(
@@ -108,22 +96,7 @@ class LessonsService extends BaseService<
     ) {
       formData.append("PreviousLessonId", String(payload.PreviousLessonId));
     }
-    // If PreviousLessonId is null/undefined, don't append it (means moving to first position)
-
-    try {
-      console.log("Reordering lesson with payload:", {
-        LessonId: payload.LessonId,
-        PreviousLessonId: payload.PreviousLessonId,
-      });
-      await this.put<void>(endpoint, formData);
-    } catch (error: any) {
-      console.error("Failed to reorder lesson:", {
-        courseId,
-        payload,
-        error: error.message || error,
-      });
-      throw error;
-    }
+    await this.put<void>(endpoint, formData);
   }
 }
 

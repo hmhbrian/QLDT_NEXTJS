@@ -6,7 +6,7 @@ import type {
 export function mapDepartmentApiToUi(
   apiDept: DepartmentApiResponse
 ): DepartmentInfo {
-  return {
+  const uiDept: DepartmentInfo = {
     departmentId: String(apiDept.departmentId),
     name: apiDept.departmentName || "N/A",
     code: apiDept.departmentCode || "N/A",
@@ -22,4 +22,5 @@ export function mapDepartmentApiToUi(
     updatedAt: apiDept.updatedAt,
     children: (apiDept.children || []).map(mapDepartmentApiToUi),
   };
+  return uiDept;
 }

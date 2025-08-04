@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState } from "react";
@@ -8,6 +7,7 @@ import * as z from "zod";
 import { Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Form,
   FormControl,
@@ -31,8 +31,9 @@ const formSchema = z.object({
 export function LoginForm() {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
   const { showError } = useError();
-  const { login } = useAuth();
+  const { login, loadingAuth } = useAuth();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -43,11 +44,14 @@ export function LoginForm() {
   });
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
-    if (isLoading) return;
+    if (isLoading || loadingAuth) return;
 
     try {
       setIsLoading(true);
-      await login({ email: values.email, password: values.password }); // Pass the whole values object
+      await login(
+        { email: values.email, password: values.password },
+        rememberMe
+      );
     } catch (error) {
       showError("AUTH001");
     } finally {
@@ -110,11 +114,27 @@ export function LoginForm() {
             </FormItem>
           )}
         />
+
+        {/* Remember Me Checkbox */}
+        <div className="flex items-center space-x-2">
+          <Checkbox
+            id="rememberMe"
+            checked={rememberMe}
+            onCheckedChange={(checked) => setRememberMe(checked as boolean)}
+          />
+          <label
+            htmlFor="rememberMe"
+            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+          >
+            Ghi nhớ đăng nhập
+          </label>
+        </div>
+
         <LoadingButton
           type="submit"
           className="w-full h-12 rounded-lg bg-primary text-primary-foreground font-medium text-base shadow-lg hover:bg-primary/90 transition-all duration-200"
-          isLoading={isLoading}
-          disabled={isLoading}
+          isLoading={isLoading || loadingAuth}
+          disabled={isLoading || loadingAuth}
         >
           Đăng nhập
         </LoadingButton>

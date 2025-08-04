@@ -11,12 +11,10 @@ import { Loader2 } from 'lucide-react';
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, loadingAuth } = useAuth();
 
-  // Show a loading spinner while checking authentication state.
-  // This is crucial to prevent rendering the layout with a null user
-  // during the initial auth check, which causes the "N/A" issue.
+  // Hiển thị màn hình loading toàn trang trong khi chờ xác thực
   if (loadingAuth) {
     return (
-      <div className="flex h-screen w-screen items-center justify-center bg-background">
+      <div className="flex h-screen w-screen items-center justify-center bg-background" suppressHydrationWarning={true}>
         <div className="flex flex-col items-center gap-2">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
           <p className="text-sm text-muted-foreground">Đang xác thực...</p>
@@ -25,14 +23,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // If the auth check is complete and there's still no user,
-  // it means the user should be redirected to login. The AuthProvider handles this.
-  // We render null here to avoid a flash of the layout.
+  // Nếu quá trình xác thực hoàn tất và không có người dùng,
+  // AuthProvider sẽ xử lý việc điều hướng. Trả về null để tránh render bất cứ thứ gì.
   if (!user) {
     return null;
   }
 
-  // Render the full app layout only for authenticated users
+  // Nếu có người dùng, render layout hoàn chỉnh của ứng dụng
   return (
     <SidebarProvider defaultOpen={true}>
       <ActualSidebar />

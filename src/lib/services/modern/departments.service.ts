@@ -1,5 +1,5 @@
 
-import { BaseService, QueryParams } from "../../core";
+import { BaseService, QueryParams, PaginatedResponse } from "../../core";
 import { API_CONFIG } from "@/lib/config";
 import {
   DepartmentInfo,
@@ -22,23 +22,29 @@ export class DepartmentsService extends BaseService<
     super(API_CONFIG.endpoints.departments.base);
   }
 
+  // Sửa lại kiểu dữ liệu trả về để khớp với API
   async getDepartments(
-    params?: DepartmentQueryParams
-  ): Promise<DepartmentInfo[]> {
-    const apiDepartments = await this.get<DepartmentApiResponse[]>(
+    params: DepartmentQueryParams = {}
+  ): Promise<DepartmentApiResponse[]> {
+    const backendParams: Record<string, any> = {};
+    if (params.status) backendParams.status = params.status;
+    if (params.Page) backendParams.Page = params.Page;
+    if (params.Limit) backendParams.Limit = params.Limit;
+    if (params.SortField) backendParams.SortField = params.SortField;
+    if (params.SortType) backendParams.SortType = params.SortType;
+
+    const apiResponse = await this.get<DepartmentApiResponse[]>(
       this.endpoint,
-      { params }
+      { params: backendParams }
     );
-    return (apiDepartments || []).map(mapDepartmentApiToUi);
+    // API trả về một mảng phẳng, không phải object có `items`
+    return apiResponse;
   }
 
   async getDepartmentById(id: string): Promise<DepartmentInfo> {
     const rawData = await this.get<DepartmentApiResponse>(
       API_CONFIG.endpoints.departments.getById(id)
     );
-    if (!rawData) {
-      throw new Error(`Department with ID ${id} not found.`);
-    }
     return mapDepartmentApiToUi(rawData);
   }
 
@@ -56,17 +62,7 @@ export class DepartmentsService extends BaseService<
     id: string,
     payload: UpdateDepartmentPayload
   ): Promise<void> {
-    // Backend API for PUT expects all required fields.
-    // Ensure the payload is complete before sending.
-    const completePayload: Required<UpdateDepartmentPayload> = {
-        DepartmentName: payload.DepartmentName || '',
-        DepartmentCode: payload.DepartmentCode || '',
-        Description: payload.Description || '',
-        ManagerId: payload.ManagerId || '',
-        StatusId: payload.StatusId || 0,
-        ParentId: payload.ParentId === undefined ? null : payload.ParentId,
-    };
-    await this.put<void>(API_CONFIG.endpoints.departments.update(id), completePayload);
+    await this.put<void>(API_CONFIG.endpoints.departments.update(id), payload);
   }
 
   async deleteDepartment(id: string): Promise<void> {

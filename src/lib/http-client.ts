@@ -1,8 +1,9 @@
-
 /**
  * Custom HTTP Client - Thay thế axios với native fetch
- * Cung cấp interface tương thự axios nhưng sử dụng fetch API
+ * Cung cấp interface tương tự axios nhưng sử dụng fetch API
  */
+
+import { cookieManager } from "./utils/cookie-manager";
 
 export interface HttpResponse<T = any> {
   data: T;
@@ -57,6 +58,7 @@ class CustomHttpClient implements HttpClient {
   private baseURL: string;
   private defaultHeaders: Record<string, string>;
   private timeout: number;
+  private authorizationHeader: string | null = null;
 
   constructor(config: {
     baseURL: string;
@@ -65,7 +67,30 @@ class CustomHttpClient implements HttpClient {
   }) {
     this.baseURL = config.baseURL;
     this.defaultHeaders = config.headers || {};
-    this.timeout = config.timeout || 30000; // Tăng timeout lên 30s
+    this.timeout = config.timeout || 30000;
+  }
+
+  public setAuthorizationHeader(token: string | null): void {
+    if (token) {
+      this.authorizationHeader = `Bearer ${token}`;
+    } else {
+      this.authorizationHeader = null;
+    }
+  }
+
+  public getAuthorizationToken(): string | null {
+    if (
+      this.authorizationHeader &&
+      this.authorizationHeader.startsWith("Bearer ")
+    ) {
+      return this.authorizationHeader.replace("Bearer ", "");
+    }
+    // Fallback: get token from cookie if not in memory
+    return cookieManager.getSecureAuth();
+  }
+
+  public clearAuthorizationHeader(): void {
+    this.authorizationHeader = null;
   }
 
   private async request<T>(
@@ -76,26 +101,37 @@ class CustomHttpClient implements HttpClient {
   ): Promise<HttpResponse<T>> {
     const fullUrl = url.startsWith("http") ? url : `${this.baseURL}${url}`;
 
-    // Gộp headers
-    const headers = {
+    const headers: Record<string, string> = {
       ...this.defaultHeaders,
       ...config?.headers,
     };
 
-    // Nếu data là FormData, xóa Content-Type để trình duyệt tự động đặt với boundary
+    // Ưu tiên sử dụng authorization header đã được set
+    if (this.authorizationHeader) {
+      headers["Authorization"] = this.authorizationHeader;
+    }
+    // Fallback: lấy token từ secure cookie nếu chưa có header
+    else if (typeof window !== "undefined") {
+      try {
+        const token = cookieManager.getSecureAuth();
+        if (token) {
+          headers["Authorization"] = `Bearer ${token}`;
+        }
+      } catch (error) {
+        console.warn("Could not get token from cookie:", error);
+      }
+    }
+
     if (data instanceof FormData) {
       delete headers["Content-Type"];
-    } else if (!(data instanceof FormData) && data) { // Ensure data exists before setting JSON header
+    } else if (data) {
       headers["Content-Type"] = "application/json";
     }
 
-
-    // Thêm query params
     const finalUrl = config?.params
       ? `${fullUrl}?${new URLSearchParams(config.params).toString()}`
       : fullUrl;
 
-    // Tạo AbortController cho timeout
     const controller = new AbortController();
     const timeoutId = setTimeout(
       () => controller.abort(),
@@ -106,20 +142,23 @@ class CustomHttpClient implements HttpClient {
       const response = await fetch(finalUrl, {
         method,
         headers,
-        body: data ? (data instanceof FormData ? data : JSON.stringify(data)) : undefined,
+        body: data
+          ? data instanceof FormData
+            ? data
+            : JSON.stringify(data)
+          : undefined,
         signal: controller.signal,
-        credentials: config?.withCredentials ? "include" : "same-origin",
+        credentials: "include",
       });
 
       clearTimeout(timeoutId);
 
-      // Chuyển đổi headers thành object thuần
       const responseHeaders: Record<string, string> = {};
       response.headers.forEach((value, key) => {
         responseHeaders[key] = value;
       });
 
-      let responseData: T;
+      let responseData: any;
       const contentType = response.headers.get("content-type");
 
       if (contentType && contentType.includes("json")) {
@@ -141,7 +180,7 @@ class CustomHttpClient implements HttpClient {
       }
 
       return {
-        data: responseData,
+        data: responseData as T,
         status: response.status,
         statusText: response.statusText,
         headers: responseHeaders,
@@ -192,7 +231,7 @@ class CustomHttpClient implements HttpClient {
 
   async delete<T = any>(
     url: string,
-    data?:any,
+    data?: any, // Allow body for delete
     config?: HttpRequestConfig
   ): Promise<HttpResponse<T>> {
     return this.request<T>("DELETE", url, data, config);

@@ -525,8 +525,9 @@ export default function CoursesPage() {
                         {course.department
                           ?.map(
                             (id) =>
-                              departmentOptions.find((opt) => opt.value === id)
-                                ?.label
+                              departmentOptions.find(
+                                (opt) => String(opt.value) === String(id)
+                              )?.label
                           )
                           .join(", ") || "N/A"}
                       </div>
@@ -535,8 +536,9 @@ export default function CoursesPage() {
                         {course.level
                           ?.map(
                             (id) =>
-                              levelOptions.find((opt) => opt.value === id)
-                                ?.label
+                              levelOptions.find(
+                                (opt) => String(opt.value) === String(id)
+                              )?.label
                           )
                           .join(", ") || "N/A"}
                       </div>

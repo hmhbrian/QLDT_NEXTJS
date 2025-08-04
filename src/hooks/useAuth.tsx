@@ -1,4 +1,3 @@
-
 "use client";
 
 import {
@@ -16,16 +15,15 @@ import React, {
   ReactNode,
   useCallback,
 } from "react";
-import { useRouter, usePathname } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useToast } from "@/components/ui/use-toast";
-import { API_CONFIG } from "@/lib/config";
-import { authService } from "@/lib/services";
+import { authService, httpClient } from "@/lib/services";
 import { extractErrorMessage } from "@/lib/core";
 import { useQueryClient } from "@tanstack/react-query";
-import { cookieManager } from "@/lib/cache";
 import { useInstantNavigation } from "@/hooks/useInstantNavigation";
 import { mapUserApiToUi } from "@/lib/mappers/user.mapper";
-import { Loading } from "@/components/ui/loading";
+import { API_CONFIG } from "@/lib/config";
+import { cookieManager } from "@/lib/utils/cookie-manager";
 
 interface AuthContextType {
   user: User | null;
@@ -43,57 +41,102 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export function AuthProvider({ children }: { children: ReactNode }) {
+export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [loadingAuth, setLoadingAuth] = useState(true); // Always start loading
+  const [loadingAuth, setLoadingAuth] = useState(true);
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { navigateInstant } = useInstantNavigation();
   const pathname = usePathname();
 
-  const clearAuthData = useCallback(() => {
-    cookieManager.remove("auth_token");
-    cookieManager.remove("refresh_token");
-    setUser(null); // Ensure user state is cleared
-  }, []);
-  
+  const logout = useCallback(() => {
+    console.log("🔒 [AuthProvider] Logging out...");
+    authService.logout(); // This will also clear the auth header in httpClient
+    setUser(null);
+    localStorage.removeItem(API_CONFIG.storage.token);
+    localStorage.removeItem("qldt_user_info"); // Xóa user info
+    cookieManager.removeSecureAuth(); // Clear secure auth cookies
+    queryClient.clear();
+    navigateInstant("/login");
+  }, [queryClient, navigateInstant]);
+
+  const refreshUserData = useCallback(async () => {
+    try {
+      console.log("🔄 [AuthProvider] Refreshing user data...");
+      const currentUserData = await authService.getCurrentUser();
+      const mappedUser = mapUserApiToUi(currentUserData);
+      setUser(mappedUser);
+      console.log("✅ [AuthProvider] User data refreshed:", mappedUser);
+    } catch (error) {
+      console.warn("Could not refresh user data, logging out.", error);
+      logout();
+    }
+  }, [logout]);
+
   const initializeAuth = useCallback(async () => {
     console.log("🔄 [AuthProvider] Initializing authentication...");
-    const token = cookieManager.get("auth_token");
 
-    if (token) {
-      try {
-        const currentUserData = await authService.getCurrentUser();
-        if (currentUserData && currentUserData.id) {
-            const mappedUser = mapUserApiToUi(currentUserData);
-            console.log("✅ [AuthProvider] User authenticated from token:", mappedUser);
-            setUser(mappedUser);
-        } else {
-            console.warn("⚠️ [AuthProvider] Token found, but failed to get user data. Clearing data.");
-            clearAuthData();
-        }
-      } catch (error) {
-        console.error("❌ [AuthProvider] Auth initialization failed:", error);
-        clearAuthData();
-      }
-    } else {
-        console.log("ℹ️ [AuthProvider] No auth token found.");
-        setUser(null);
+    // Check for token from secure cookies first
+    const token = cookieManager.getSecureAuth();
+    console.log(
+      "🔍 [AuthProvider] Token from cookie:",
+      token ? "Found" : "Not found"
+    );
+
+    if (!token) {
+      console.log("ℹ️ [AuthProvider] No auth token found in cookies.");
+      setUser(null);
+      httpClient.clearAuthorizationHeader();
+      setLoadingAuth(false);
+      return;
     }
-    // Defer setting loading to false to prevent race conditions
-    setTimeout(() => {
-        console.log("🏁 [AuthProvider] Authentication check finished.");
-        setLoadingAuth(false)
-    }, 100);
-  }, [clearAuthData]);
+
+    // Set the authorization header with the token
+    httpClient.setAuthorizationHeader(token);
+
+    try {
+      const currentUserData = await authService.getCurrentUser();
+      console.log("🔍 [AuthProvider] Raw user data from API:", currentUserData);
+
+      const mappedUser = mapUserApiToUi(currentUserData);
+      console.log("🔍 [AuthProvider] Mapped user data:", mappedUser);
+
+      // Validation đơn giản hơn - chỉ cần có ID
+      if (!mappedUser || !mappedUser.id) {
+        console.warn(
+          "⚠️ [AuthProvider] Invalid user data received, clearing auth:",
+          mappedUser
+        );
+        throw new Error("Invalid user data - missing ID");
+      }
+
+      setUser(mappedUser);
+      console.log(
+        "✅ [AuthProvider] User authenticated from token:",
+        mappedUser
+      );
+    } catch (error) {
+      console.log(
+        "ℹ️ [AuthProvider] Token is invalid or user data invalid, clearing auth data.",
+        error
+      );
+      setUser(null);
+      cookieManager.removeSecureAuth();
+      httpClient.clearAuthorizationHeader();
+    } finally {
+      console.log("🏁 [AuthProvider] Authentication check finished.");
+      setLoadingAuth(false);
+    }
+  }, []);
 
   useEffect(() => {
     initializeAuth();
-  }, []);
+  }, [initializeAuth]);
 
-  // Effect to handle redirection based on auth state
   useEffect(() => {
-    // Don't redirect until the initial auth check is complete
+    console.log(
+      `🔄 [RedirectEffect] Running... loadingAuth: ${loadingAuth}, user: ${!!user}, pathname: ${pathname}`
+    );
     if (loadingAuth) {
       console.log("⏳ [RedirectEffect] Waiting for auth to complete...");
       return;
@@ -101,59 +144,86 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const isAuthPage = pathname === "/login";
 
-    if (user && user.id !== 'N/A') {
-      console.log(`➡️ [RedirectEffect] User is logged in (Role: ${user.role}). Current path: ${pathname}`);
-      // If user is logged in and on the login page, redirect them away
+    // Đơn giản hóa: chỉ cần có user object və ID hợp lệ
+    const isValidUser = user && user.id && user.id.length > 0;
+
+    console.log("🔍 [RedirectEffect] Debug info:", {
+      hasUser: !!user,
+      userId: user?.id,
+      userIdLength: user?.id?.length,
+      isValidUser,
+      userRole: user?.role,
+    });
+
+    if (isValidUser) {
       if (isAuthPage) {
-        const redirectUrl = (() => {
-          switch (user.role) {
-            case "ADMIN": return "/admin/users";
-            case "HR": return "/hr/trainees";
-            default: return "/dashboard";
-          }
-        })();
-        console.log(`➡️ [RedirectEffect] Redirecting to ${redirectUrl}...`);
+        const redirectUrl =
+          user.role === "ADMIN"
+            ? "/admin/users"
+            : user.role === "HR"
+            ? "/hr/trainees"
+            : "/dashboard";
+        console.log(
+          `➡️ [RedirectEffect] User is on auth page, redirecting to ${redirectUrl}`
+        );
         navigateInstant(redirectUrl);
       }
     } else {
-      console.log(`➡️ [RedirectEffect] User is not logged in. Current path: ${pathname}`);
-      // If user is not logged in and not on the login page, redirect them to login
       if (!isAuthPage) {
-        console.log("➡️ [RedirectEffect] Redirecting to /login...");
+        console.log(
+          "➡️ [RedirectEffect] User not logged in, redirecting to /login"
+        );
         navigateInstant("/login");
       }
     }
   }, [user, loadingAuth, pathname, navigateInstant]);
 
   const login = async (credentials: LoginDTO, rememberMe: boolean = false) => {
-    setLoadingAuth(true); // Set loading true during login process
+    console.log(
+      `🚀 [AuthProvider] Attempting login for ${credentials.email}...`
+    );
+    setLoadingAuth(true);
     try {
-      const response = await authService.login(credentials);
-      if (response && response.accessToken && response.id) {
-        const userToStore = mapUserApiToUi(response);
-        console.log("✅ [Login] Mapped user data:", userToStore);
+      const loginResponse = await authService.login(credentials);
+      console.log("🔍 [Login] Login response:", loginResponse);
 
-        const cookieOptions = rememberMe ? { expires: 30 } : undefined;
-        cookieManager.setAuth("auth_token", response.accessToken, cookieOptions);
-        
-        console.log("✅ [Login] Setting user state...");
-        setUser(userToStore);
+      const mappedUser = mapUserApiToUi(loginResponse);
+      console.log("🔍 [Login] Mapped user:", mappedUser);
 
-        toast({
-          title: "Đăng nhập thành công",
-          description: "Chào mừng bạn đã quay trở lại!",
-          variant: "success",
-        });
-        // Redirection is now handled by the useEffect hook
-      } else {
-        throw new Error("Phản hồi đăng nhập không hợp lệ từ API.");
+      // Lưu token vào cookie và httpClient
+      if (loginResponse.accessToken) {
+        // Set token vào httpClient
+        httpClient.setAuthorizationHeader(loginResponse.accessToken);
+
+        // Lưu token vào cookie - persistent cho đến khi logout
+        cookieManager.setSecureAuth(loginResponse.accessToken, true);
+        console.log("🔒 [Login] Set persistent secure auth cookie");
+
+        // Lưu user info vào localStorage cho đến khi logout
+        localStorage.setItem("qldt_user_info", JSON.stringify(loginResponse));
+        console.log("💾 [Login] Saved user info to localStorage");
       }
+
+      // Set user state
+      setUser(mappedUser);
+      console.log("✅ [Login] User state set successfully:", mappedUser);
+
+      console.log(
+        "✅ [AuthProvider] Login successful, user state set:",
+        mappedUser
+      );
+
+      toast({
+        title: "Đăng nhập thành công",
+        description: "Chào mừng bạn đã quay trở lại!",
+        variant: "success",
+      });
     } catch (error: any) {
-      console.error("❌ [Login] Login failed:", error);
-      clearAuthData(); // Ensure cleanup on failed login
+      setUser(null);
+      httpClient.clearAuthorizationHeader(); // Clear header on failed login
       toast({
         title: "Đăng nhập thất bại",
-        description: "Email hoặc mật khẩu không chính xác. Vui lòng thử lại.",
+        description: extractErrorMessage(error),
         variant: "destructive",
       });
       throw error;
@@ -162,40 +232,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const logout = useCallback(() => {
-    console.log("🚪 [Logout] Logging out user...");
-    authService.logout();
-    setUser(null);
-    queryClient.clear();
-    // Redirection is handled by the useEffect hook
-  }, [queryClient]);
-  
-  const refreshUserData = useCallback(async () => {
-    if (!user) return;
-    try {
-      const response = await authService.getCurrentUser();
-      const updatedUser = mapUserApiToUi(response);
-      setUser(updatedUser);
-    } catch (error) {
-      console.error("Failed to refresh user data:", error);
-      logout();
-    }
-  }, [user, logout]);
-
   const updateAvatar = async (newAvatarFile: File) => {
     if (!user) {
-      toast({
-        title: "Lỗi xác thực",
-        description: "Vui lòng đăng nhập để thực hiện thao tác này.",
-        variant: "destructive",
-      });
       throw new Error("User not authenticated.");
     }
     const payload: UserProfileUpdateRequest = { UrlAvatar: newAvatarFile };
     try {
       const response = await authService.updateUserProfile(payload);
       const updatedUser = mapUserApiToUi(response);
-      setUser((prevUser) => (prevUser ? { ...prevUser, ...updatedUser } : updatedUser));
+      setUser((prevUser) =>
+        prevUser ? { ...prevUser, ...updatedUser } : updatedUser
+      );
       toast({
         title: "Thành công",
         description: "Ảnh đại diện đã được cập nhật.",
@@ -213,20 +260,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const changePassword = async (oldPassword: string, newPassword: string) => {
     if (!user) {
-      toast({
-        title: "Lỗi xác thực",
-        description: "Vui lòng đăng nhập để thực hiện thao tác này.",
-        variant: "destructive",
-      });
       throw new Error("User not authenticated");
     }
     try {
-      if (newPassword.length < 6) {
-        throw new Error("Mật khẩu mới phải có ít nhất 6 ký tự.");
-      }
-      if (oldPassword === newPassword) {
-        throw new Error("Mật khẩu mới không được trùng với mật khẩu cũ.");
-      }
       await authService.changePassword({
         OldPassword: oldPassword,
         NewPassword: newPassword,
@@ -258,21 +294,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     changePassword,
     refreshUserData,
   };
-  
-  // Render a loading screen while the initial auth check is in progress.
-  // This prevents the app from rendering with a null user and then flickering.
-  if (loadingAuth && pathname !== '/login') {
-    return (
-        <div className="flex h-screen w-screen items-center justify-center bg-background">
-            <Loading variant="page" text="Đang xác thực..." />
-        </div>
-    );
-  }
 
   return (
-    <AuthContext.Provider value={contextValue}>
-      {children}
-    </AuthContext.Provider>
+    <AuthContext.Provider value={contextValue}>{children}</AuthContext.Provider>
   );
 }
 

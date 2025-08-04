@@ -101,11 +101,8 @@ export interface Course {
   endDate: string | null;
   registrationStartDate: string | null;
   registrationDeadline: string | null;
-  department: (
-    | string
-    | { id: number; name: string; departmentName?: string }
-  )[]; // Handle both string and object arrays
-  level: (string | { id: number; name: string; positionName?: string })[]; // Handle both string and object arrays
+  department: string[]; // Changed to array of strings
+  level: string[]; // Changed to array of strings
   category: string;
   materials: CourseMaterial[];
   lessons: Lesson[];

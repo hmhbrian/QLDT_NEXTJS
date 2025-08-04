@@ -1,6 +1,67 @@
 import { NextRequest, NextResponse } from "next/server";
 
+// Protected routes that require authentication
+const PROTECTED_ROUTES = [
+  "/admin",
+  "/hr",
+  "/dashboard",
+  "/profile",
+  "/settings",
+  "/courses",
+  "/trainee",
+];
+
+// Public routes that don't require authentication
+const PUBLIC_ROUTES = ["/login", "/api/public", "/api/health"];
+
+function isProtectedRoute(pathname: string): boolean {
+  return PROTECTED_ROUTES.some((route) => pathname.startsWith(route));
+}
+
+function isPublicRoute(pathname: string): boolean {
+  return PUBLIC_ROUTES.some((route) => pathname.startsWith(route));
+}
+
+function hasAuthCookie(request: NextRequest): boolean {
+  // Check for the new simplified auth token name
+  const authToken = request.cookies.get("qldt_auth_token");
+  console.log(`🔍 [Middleware] Checking auth cookie:`, {
+    hasToken: !!authToken?.value,
+    tokenPreview: authToken?.value
+      ? authToken.value.slice(0, 10) + "..."
+      : null,
+  });
+
+  return !!authToken?.value;
+}
+
 export function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+  const hasAuth = hasAuthCookie(request);
+
+  console.log(`🔍 [Middleware] Processing request:`, {
+    pathname,
+    hasAuth,
+    isProtected: isProtectedRoute(pathname),
+    isPublic: isPublicRoute(pathname),
+  });
+
+  // Check authentication for protected routes
+  if (isProtectedRoute(pathname) && !hasAuth) {
+    console.log(
+      `🔒 [Middleware] Redirecting unauthenticated user from ${pathname} to /login`
+    );
+    return NextResponse.redirect(new URL("/login", request.url));
+  }
+
+  // Redirect authenticated users away from login page
+  if (pathname === "/login" && hasAuth) {
+    console.log(
+      `🔒 [Middleware] Redirecting authenticated user from /login to /dashboard`
+    );
+    return NextResponse.redirect(new URL("/dashboard", request.url));
+  }
+
   // Handle RSC requests that cause navigation delays
   const url = request.nextUrl.clone();
 

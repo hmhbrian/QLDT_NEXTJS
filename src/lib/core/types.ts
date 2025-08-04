@@ -4,15 +4,23 @@
  * Shared types across all API services
  */
 
-// Base API Response structure from your backend
+// Generic API Response wrapper from your backend.
+// It's assumed the actual data is in the `data` property.
 export interface ApiResponse<T = unknown> {
   success: boolean;
   message: string | null;
-  data?: T;
+  data: T; // The actual payload is here
   statusCode?: number;
   errors?: string[];
-  accessToken?: string; // For login response
-  code?: string;
+  accessToken?: string;
+}
+
+// HTTP Response from the client (includes status, headers)
+export interface HttpResponse<T = any> {
+  data: T; // This will hold the entire ApiResponse<T>
+  status: number;
+  statusText: string;
+  headers: Record<string, string>;
 }
 
 // Pagination Types
@@ -59,7 +67,8 @@ export type QueryParams = PaginationParams & FilterParams & { [key: string]: unk
 export interface RequestConfig {
   headers?: Record<string, string>;
   timeout?: number;
-  params?: Record<string, unknown>;
+  params?: Record<string, any>;
+  withCredentials?: boolean;
 }
 
 // Generic CRUD Payload Types
@@ -68,15 +77,7 @@ export interface BaseCreatePayload {
 }
 
 export interface BaseUpdatePayload {
-  [key: string]: unknown;
-}
-
-// Error Types
-export interface ApiError {
-  message: string;
-  code: string;
-  statusCode: number;
-  errors?: string[];
+  [key:string]: unknown;
 }
 
 // Utility Types

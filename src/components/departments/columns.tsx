@@ -1,3 +1,4 @@
+
 "use client";
 
 import { ColumnDef } from "@tanstack/react-table";
@@ -11,14 +12,14 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import type { DepartmentInfo } from "@/lib/types/department.types";
+import { DepartmentInfo } from "@/lib/types/department.types";
+import type { Status } from "@/lib/types/status.types";
 import {
   TooltipProvider,
   Tooltip,
   TooltipTrigger,
   TooltipContent,
 } from "@/components/ui/tooltip";
-import type { Status } from "@/lib/types/status.types";
 import { getStatusColor } from "@/lib/helpers";
 import { cn } from "@/lib/utils";
 
@@ -123,15 +124,17 @@ export const getColumns = (
   },
   {
     id: "actions",
-
     size: 60,
     enableResizing: false,
     enableSorting: false,
     enableHiding: false,
+    meta: {
+      sticky: "right",
+    },
     cell: ({ row }) => {
       const department = row.original;
       return (
-        <div className="flex flex-col justify-center">
+        <div className="sticky right-0 bg-background/80 backdrop-blur-sm flex justify-center items-center h-full">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="h-8 w-8 p-0">

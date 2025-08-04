@@ -1,3 +1,4 @@
+
 "use client";
 
 import { ColumnDef } from "@tanstack/react-table";
@@ -115,24 +116,21 @@ const sharedInfoColumns = (
     header: "Phòng ban",
     size: 160,
     cell: ({ row }) => {
-      const departmentData = row.original.department;
-      if (!departmentData || departmentData.length === 0) return "N/A";
-      const departmentNames = departmentData.map((dept: any) => {
-        if (typeof dept === "object" && dept) {
-          if ("name" in dept && typeof dept.name === "string") return dept.name;
-          if ("departmentName" in dept && typeof dept.departmentName === "string")
-            return dept.departmentName;
-        }
-        if (typeof dept === "string") {
-          const foundDept = departments.find((d) => d.departmentId === dept);
-          return foundDept ? foundDept.name : `Dept-${dept}`;
-        }
-        return String(dept);
+      const departmentIds = row.original.department;
+      if (!departmentIds || departmentIds.length === 0) return "N/A";
+
+      const departmentNames = departmentIds.map((id) => {
+        const foundDept = departments.find(
+          (d) => String(d.departmentId) === String(id)
+        );
+        return foundDept ? foundDept.name : `Dept-${id}`;
       });
+
       const displayText =
         departmentNames.length > 1
           ? `${departmentNames[0]} +${departmentNames.length - 1}`
           : departmentNames.join(", ");
+
       return (
         <TooltipProvider>
           <Tooltip>
@@ -142,7 +140,9 @@ const sharedInfoColumns = (
               </div>
             </TooltipTrigger>
             <TooltipContent>
-              {departmentNames.map((name, idx) => <div key={idx}>• {name}</div>)}
+              {departmentNames.map((name, idx) => (
+                <div key={idx}>• {name}</div>
+              ))}
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
@@ -154,20 +154,20 @@ const sharedInfoColumns = (
     header: "Cấp độ",
     size: 120,
     cell: ({ row }) => {
-      const levelData = row.original.level;
-      if (!levelData || levelData.length === 0) return "N/A";
-      const levelNames = levelData.map((level: any) => {
-        if (typeof level === "object" && level) {
-          if ("name" in level && typeof level.name === "string") return level.name;
-          if ("positionName" in level && typeof level.positionName === "string") return level.positionName;
-        }
-        if (typeof level === "string") {
-          const foundPosition = positions.find((p) => String(p.positionId) === level);
-          return foundPosition ? foundPosition.positionName : `Level-${level}`;
-        }
-        return String(level);
+      const levelIds = row.original.level;
+      if (!levelIds || levelIds.length === 0) return "N/A";
+
+      const levelNames = levelIds.map((id) => {
+        const foundLevel = positions.find(
+          (p) => String(p.positionId) === String(id)
+        );
+        return foundLevel ? foundLevel.positionName : `Level-${id}`;
       });
-      const displayText = levelNames.length > 1 ? `${levelNames[0]} +${levelNames.length - 1}` : levelNames.join(", ");
+
+      const displayText =
+        levelNames.length > 1
+          ? `${levelNames[0]} +${levelNames.length - 1}`
+          : levelNames.join(", ");
       return (
         <TooltipProvider>
           <Tooltip>
@@ -177,7 +177,9 @@ const sharedInfoColumns = (
               </div>
             </TooltipTrigger>
             <TooltipContent>
-              {levelNames.map((name, idx) => <div key={idx}>• {name}</div>)}
+              {levelNames.map((name, idx) => (
+                <div key={idx}>• {name}</div>
+              ))}
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
@@ -201,12 +203,15 @@ const sharedInfoColumns = (
     header: "Trạng thái",
     cell: ({ row }) => {
       const status = row.original.status;
-      const statusName = typeof status === "object" && status && "name" in status && typeof status.name === "string"
+      const statusName =
+        typeof status === "object" && status && "name" in status && typeof status.name === "string"
           ? status.name
           : typeof status === "string"
           ? status
           : "N/A";
-      return <Badge variant={getStatusBadgeVariant(statusName)}>{statusName}</Badge>;
+      return (
+        <Badge variant={getStatusBadgeVariant(statusName)}>{statusName}</Badge>
+      );
     },
   },
   {
@@ -214,7 +219,11 @@ const sharedInfoColumns = (
     header: "Công khai",
     cell: ({ row }) => {
       const isPublic = row.original.isPublic;
-      return <Badge variant={isPublic ? "default" : "outline"}>{isPublic ? "Công khai" : "Nội bộ"}</Badge>;
+      return (
+        <Badge variant={isPublic ? "default" : "outline"}>
+          {isPublic ? "Công khai" : "Nội bộ"}
+        </Badge>
+      );
     },
   },
 ];
@@ -226,20 +235,48 @@ const adminInfoColumns = (): ColumnDef<Course>[] => [
     size: 140,
     cell: ({ row }) => {
       const course = row.original;
-      const createdByName = typeof course.createdBy === "object" && course.createdBy && "name" in course.createdBy ? course.createdBy.name : typeof course.createdBy === 'string' ? course.createdBy : null;
-      const modifiedByName = typeof course.modifiedBy === "object" && course.modifiedBy && "name" in course.modifiedBy ? course.modifiedBy.name : typeof course.modifiedBy === 'string' ? course.modifiedBy : null;
+      const createdByName =
+        typeof course.createdBy === "object" &&
+        course.createdBy &&
+        "name" in course.createdBy
+          ? course.createdBy.name
+          : typeof course.createdBy === "string"
+          ? course.createdBy
+          : null;
+      const modifiedByName =
+        typeof course.modifiedBy === "object" &&
+        course.modifiedBy &&
+        "name" in course.modifiedBy
+          ? course.modifiedBy.name
+          : typeof course.modifiedBy === "string"
+          ? course.modifiedBy
+          : null;
       return (
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
               <div className="flex flex-col text-xs max-w-[200px] overflow-hidden">
-                {createdByName && <span className="truncate">Tạo bởi: <strong>{createdByName}</strong></span>}
-                {modifiedByName && <span className="truncate">Sửa bởi: <strong>{modifiedByName}</strong></span>}
+                {createdByName && (
+                  <span className="truncate">
+                    Tạo bởi: <strong>{createdByName}</strong>
+                  </span>
+                )}
+                {modifiedByName && (
+                  <span className="truncate">
+                    Sửa bởi: <strong>{modifiedByName}</strong>
+                  </span>
+                )}
               </div>
             </TooltipTrigger>
             <TooltipContent>
-              <p>Ngày tạo: {formatDateVN(course.createdAt, "dd/MM/yyyy HH:mm")}</p>
-              {course.modifiedAt && <p>Ngày sửa: {formatDateVN(course.modifiedAt, "dd/MM/yyyy HH:mm")}</p>}
+              <p>
+                Ngày tạo: {formatDateVN(course.createdAt, "dd/MM/yyyy HH:mm")}
+              </p>
+              {course.modifiedAt && (
+                <p>
+                  Ngày sửa: {formatDateVN(course.modifiedAt, "dd/MM/yyyy HH:mm")}
+                </p>
+              )}
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
@@ -262,13 +299,29 @@ const adminActionsColumn = (actions: AdminActions): ColumnDef<Course> => ({
       <div className="sticky right-0 bg-background/80 backdrop-blur-sm flex justify-center items-center h-full">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="h-8 w-8 p-0"><span className="sr-only">Mở menu</span><MoreHorizontal className="h-4 w-4" /></Button>
+            <Button variant="ghost" className="h-8 w-8 p-0">
+              <span className="sr-only">Mở menu</span>
+              <MoreHorizontal className="h-4 w-4" />
+            </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => actions.handleEdit(course.id)}><Pencil className="mr-2 h-4 w-4" /> Chỉnh sửa</DropdownMenuItem>
-            <DropdownMenuItem onClick={() => actions.handleDuplicateCourse(course)}><Copy className="mr-2 h-4 w-4" /> Nhân bản</DropdownMenuItem>
-            {course.status !== "Hủy" && <DropdownMenuItem onClick={() => actions.setArchivingCourse(course)}><Archive className="mr-2 h-4 w-4" /> Lưu trữ</DropdownMenuItem>}
-            <DropdownMenuItem onClick={() => actions.setDeletingCourse(course)} className="text-destructive focus:text-destructive"><Trash2 className="mr-2 h-4 w-4" /> Xóa</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => actions.handleEdit(course.id)}>
+              <Pencil className="mr-2 h-4 w-4" /> Chỉnh sửa
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => actions.handleDuplicateCourse(course)}>
+              <Copy className="mr-2 h-4 w-4" /> Nhân bản
+            </DropdownMenuItem>
+            {course.status !== "Hủy" && (
+              <DropdownMenuItem onClick={() => actions.setArchivingCourse(course)}>
+                <Archive className="mr-2 h-4 w-4" /> Lưu trữ
+              </DropdownMenuItem>
+            )}
+            <DropdownMenuItem
+              onClick={() => actions.setDeletingCourse(course)}
+              className="text-destructive focus:text-destructive"
+            >
+              <Trash2 className="mr-2 h-4 w-4" /> Xóa
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
@@ -276,34 +329,79 @@ const adminActionsColumn = (actions: AdminActions): ColumnDef<Course> => ({
   },
 });
 
-const userActionsColumn = (actions: UserActions, handleViewDetails: (id: string) => void): ColumnDef<Course> => ({
+const userActionsColumn = (
+  actions: UserActions,
+  handleViewDetails: (id: string) => void
+): ColumnDef<Course> => ({
   id: "actions",
   header: "Hành động",
   size: 120,
   enableResizing: false,
   cell: ({ row }) => {
     const course = row.original;
-    const enrolledCourseIds = new Set(actions.enrolledCourses.map(c => c.id));
+    const enrolledCourseIds = new Set(actions.enrolledCourses.map((c) => c.id));
     const isEnrolled = enrolledCourseIds.has(course.id);
     const registrationOpen = isRegistrationOpen(course.registrationDeadline);
-    const canEnroll = actions.currentUserRole === "HOCVIEN" && course.enrollmentType === "optional" && !isEnrolled && registrationOpen;
+    const canEnroll =
+      actions.currentUserRole === "HOCVIEN" &&
+      course.enrollmentType === "optional" &&
+      !isEnrolled &&
+      registrationOpen;
 
     if (canEnroll) {
-      return <LoadingButton size="sm" onClick={() => actions.handleEnroll(course.id)} isLoading={actions.isEnrolling(course.id)}>Đăng ký</LoadingButton>;
+      return (
+        <LoadingButton
+          size="sm"
+          onClick={() => actions.handleEnroll(course.id)}
+          isLoading={actions.isEnrolling(course.id)}
+        >
+          Đăng ký
+        </LoadingButton>
+      );
     }
     if (isEnrolled) {
-      return <Button variant="default" size="sm" onClick={() => handleViewDetails(course.id)}><Eye className="mr-2 h-4 w-4" /> Vào học</Button>;
+      return (
+        <Button
+          variant="default"
+          size="sm"
+          onClick={() => handleViewDetails(course.id)}
+        >
+          <Eye className="mr-2 h-4 w-4" /> Vào học
+        </Button>
+      );
     }
-    if (actions.currentUserRole === "HOCVIEN" && course.enrollmentType === "optional" && !registrationOpen) {
-      return <Button variant="outline" size="sm" disabled>Hết hạn đăng ký</Button>;
+    if (
+      actions.currentUserRole === "HOCVIEN" &&
+      course.enrollmentType === "optional" &&
+      !registrationOpen
+    ) {
+      return (
+        <Button variant="outline" size="sm" disabled>
+          Hết hạn đăng ký
+        </Button>
+      );
     }
     return (
       <TooltipProvider>
         <Tooltip>
           <TooltipTrigger asChild>
-            <Button variant="outline" size="sm" onClick={() => actions.isCourseAccessible(course) && handleViewDetails(course.id)} disabled={!actions.isCourseAccessible(course)}>Xem chi tiết</Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() =>
+                actions.isCourseAccessible(course) &&
+                handleViewDetails(course.id)
+              }
+              disabled={!actions.isCourseAccessible(course)}
+            >
+              Xem chi tiết
+            </Button>
           </TooltipTrigger>
-          {!actions.isCourseAccessible(course) && <TooltipContent><p>Khóa học này là nội bộ. Bạn không có quyền truy cập.</p></TooltipContent>}
+          {!actions.isCourseAccessible(course) && (
+            <TooltipContent>
+              <p>Khóa học này là nội bộ. Bạn không có quyền truy cập.</p>
+            </TooltipContent>
+          )}
         </Tooltip>
       </TooltipProvider>
     );
@@ -350,13 +448,18 @@ export const getUserCourseColumns = (
   {
     accessorKey: "duration",
     header: "Thời lượng",
-    cell: ({ row }) => `${row.original.duration.sessions} buổi (${row.original.duration.hoursPerSession}h/buổi)`,
+    cell: ({ row }) =>
+      `${row.original.duration.sessions} buổi (${row.original.duration.hoursPerSession}h/buổi)`,
   },
   {
     accessorKey: "enrollmentType",
     header: "Loại",
     cell: ({ row }) => (
-      <Badge variant={row.original.enrollmentType === "mandatory" ? "default" : "secondary"}>
+      <Badge
+        variant={
+          row.original.enrollmentType === "mandatory" ? "default" : "secondary"
+        }
+      >
         {row.original.enrollmentType === "mandatory" ? "Bắt buộc" : "Tùy chọn"}
       </Badge>
     ),

@@ -110,8 +110,14 @@ export function DraggableDepartmentTree({
     if (draggedId === targetId) return;
 
     const sourceDept = departmentMap.get(draggedId);
-    if (!sourceDept) return;
-    if (sourceDept.parentId === targetId) return; // Thả vào chính parent của nó
+    if (!sourceDept) {
+        return;
+    }
+    
+    const isDroppingOnSameParent = (sourceDept.parentId === null && targetId === null) || String(sourceDept.parentId) === String(targetId);
+    if (isDroppingOnSameParent) {
+        return;
+    }
 
     if (targetId !== null) {
       const childIds = getAllChildDepartments(draggedId, departments).map(
@@ -126,7 +132,6 @@ export function DraggableDepartmentTree({
     onUpdateDepartments(sourceDept, targetId);
   };
 
-  // Helper function to find department in tree recursively
   const findDepartmentInTree = useCallback(
     (
       tree: (DepartmentInfo & { children?: DepartmentInfo[] })[],
