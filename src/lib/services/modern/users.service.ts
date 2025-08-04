@@ -1,10 +1,12 @@
+
 import {
   BaseService,
   PaginatedResponse,
   QueryParams,
 } from "@/lib/core";
-import { User, CreateUserRequest, UpdateUserRequest, UserApiResponse, ResetPasswordRequest } from "@/lib/types/user.types";
+import { UserApiResponse, CreateUserRequest, UpdateUserRequest, ResetPasswordRequest } from "@/lib/types/user.types";
 import { API_CONFIG } from "@/lib/config";
+import { mapUserApiToUi } from "@/lib/mappers/user.mapper";
 
 export class UsersService extends BaseService<
   UserApiResponse,
@@ -16,43 +18,34 @@ export class UsersService extends BaseService<
   }
 
   async getUsersWithPagination(
-    params?: QueryParams
+    params: QueryParams = {}
   ): Promise<PaginatedResponse<UserApiResponse>> {
-    const isSearch = params?.keyword && String(params.keyword).trim() !== "";
+    const backendParams: Record<string, any> = {};
+    if (params.Page) backendParams.Page = params.Page;
+    if (params.Limit) backendParams.Limit = params.Limit;
+    if (params.SortField) backendParams.SortField = params.SortField;
+    if (params.SortType) backendParams.SortType = params.SortType;
+    if (params.keyword) backendParams.Keyword = params.keyword;
+    if (params.RoleName) backendParams.RoleName = params.RoleName;
+    
+    const isSearch = !!params.keyword || !!params.RoleName;
     const endpoint = isSearch
       ? API_CONFIG.endpoints.users.search
       : this.endpoint;
 
-    const backendParams: Record<string, any> = {};
-    if (params) {
-      if (params.page) backendParams.Page = params.page;
-      if (params.limit) backendParams.Limit = params.limit;
-      if (params.sortBy) backendParams.SortField = params.sortBy;
-      if (params.sortOrder) backendParams.SortType = params.sortOrder;
-      if (params.role) backendParams.RoleName = params.role;
-      if (isSearch) {
-        backendParams.keyword = params.keyword;
-      }
-    }
-
     const response = await this.get<PaginatedResponse<UserApiResponse>>(endpoint, {
       params: backendParams,
     });
-
-    return {
-      items: response.items || [],
-      pagination: response.pagination,
-    };
+    
+    return response;
   }
 
   async getUserById(id: string): Promise<UserApiResponse> {
-    const response = await this.get<UserApiResponse>(`${this.endpoint}/${id}`);
-    return response;
+    return this.get<UserApiResponse>(`${this.endpoint}/${id}`);
   }
 
   async createUser(payload: CreateUserRequest): Promise<UserApiResponse> {
-    const response = await this.post<UserApiResponse>(API_CONFIG.endpoints.users.create, payload);
-    return response;
+    return this.post<UserApiResponse>(API_CONFIG.endpoints.users.create, payload);
   }
 
   async updateUserByAdmin(
@@ -60,18 +53,32 @@ export class UsersService extends BaseService<
     payload: UpdateUserRequest
   ): Promise<UserApiResponse> {
     const url = API_CONFIG.endpoints.users.updateAdmin(userId);
-    const response = await this.put<UserApiResponse>(url, payload);
-    return response;
+    return this.put<UserApiResponse>(url, payload);
   }
   
   async deleteUsers(userIds: string[]): Promise<any> {
-    if (userIds.length === 0) return;
+    if (!userIds || userIds.length === 0) {
+      return Promise.resolve({ success: true, message: "No users to delete." });
+    }
     
-    // Backend expects array of strings in the body for bulk delete.
-    const promises = userIds.map(id => 
-        this.delete(API_CONFIG.endpoints.users.softDelete(id))
+    // The backend seems to expect individual delete requests.
+    // Promise.allSettled is safer than Promise.all for this use case.
+    const deletePromises = userIds.map(id => 
+        this.delete(API_CONFIG.endpoints.users.softDelete(id)).catch(e => ({ id, error: e }))
     );
-    return Promise.all(promises);
+    
+    const results = await Promise.allSettled(deletePromises);
+
+    const failedDeletes = results.filter(result => result.status === 'rejected');
+
+    if (failedDeletes.length > 0) {
+      // Aggregate error messages or handle partial success scenario
+      const errorMessage = `Failed to delete ${failedDeletes.length} user(s).`;
+      console.error(errorMessage, failedDeletes);
+      throw new Error(errorMessage);
+    }
+
+    return { success: true, message: "All selected users deleted successfully."};
   }
 
   async resetPassword(
