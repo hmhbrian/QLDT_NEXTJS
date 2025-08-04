@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useMemo, useCallback } from "react";
@@ -70,7 +69,7 @@ import { NO_DEPARTMENT_VALUE } from "@/lib/config/constants";
 import type { PaginatedResponse } from "@/lib/core";
 import type { PaginationState } from "@tanstack/react-table";
 import { useDepartments } from "@/hooks/use-departments";
-import { usePositions } from "@/hooks/use-positions";
+import { useEmployeeLevel } from "@/hooks/use-employeeLevel";
 
 type UserFormState = Partial<
   Omit<User, "department" | "position"> & {
@@ -148,7 +147,7 @@ export default function UsersPage() {
   const { userStatuses, isLoading: isStatusesLoading } = useUserStatuses();
   const { departments: activeDepartments, isLoading: isDepartmentsLoading } =
     useDepartments({ status: "active" });
-  const { positions, loading: isPositionsLoading } = usePositions();
+  const { EmployeeLevel, loading: isEmployeeLevelLoading } = useEmployeeLevel();
 
   // Mutations from hooks
   const createUserMutation = useCreateUserMutation();
@@ -163,10 +162,10 @@ export default function UsersPage() {
     isRolesLoading ||
     isStatusesLoading ||
     isDepartmentsLoading ||
-    isPositionsLoading;
+    isEmployeeLevelLoading;
   const isInitialLoading = isLoading && !users?.length && !roles.length;
 
-  const getPositionName = (user: User): string => {
+  const getEmployeeLevel = (user: User): string => {
     return user.position?.positionName || "Chưa có cấp bậc";
   };
 
@@ -471,7 +470,7 @@ export default function UsersPage() {
                       </p>
                       <p className="text-sm">
                         <strong>Cấp bậc:</strong>{" "}
-                        {getPositionName(selectedUser)}
+                        {getEmployeeLevel(selectedUser)}
                       </p>
                       <p className="text-sm">
                         <strong>Quản lý:</strong>{" "}
@@ -635,12 +634,12 @@ export default function UsersPage() {
                   <SelectValue placeholder="Chọn cấp bậc" />
                 </SelectTrigger>
                 <SelectContent>
-                  {isPositionsLoading ? (
+                  {isEmployeeLevelLoading ? (
                     <SelectItem value="loading_pos" disabled>
                       Đang tải...
                     </SelectItem>
-                  ) : positions.length > 0 ? (
-                    positions.map((pos) => (
+                  ) : EmployeeLevel.length > 0 ? (
+                    EmployeeLevel.map((pos) => (
                       <SelectItem
                         key={pos.positionId}
                         value={String(pos.positionId)}
