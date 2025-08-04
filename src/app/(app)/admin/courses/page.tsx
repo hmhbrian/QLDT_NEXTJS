@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useMemo, useCallback } from "react";
@@ -60,7 +59,7 @@ import {
   useDeleteCourse,
 } from "@/hooks/use-courses";
 import { useDepartments } from "@/hooks/use-departments";
-import { usePositions } from "@/hooks/use-positions";
+import { useEmployeeLevel } from "@/hooks/use-employeeLevel";
 import { useCourseStatuses } from "@/hooks/use-statuses";
 import { DataTable } from "@/components/ui/data-table";
 import { extractErrorMessage } from "@/lib/core";
@@ -132,7 +131,7 @@ export default function CoursesPage() {
 
   const { departments: allDepartments, isLoading: isLoadingDepts } =
     useDepartments();
-  const { positions, loading: isLoadingPositions } = usePositions();
+  const { EmployeeLevel, loading: isLoadingEmployeeLevel } = useEmployeeLevel();
 
   const updateCourseMutation = useUpdateCourse();
   const deleteCourseMutation = useDeleteCourse();
@@ -151,14 +150,14 @@ export default function CoursesPage() {
   }, [allDepartments]);
 
   const levelOptions = useMemo(() => {
-    if (!positions) return [];
-    return positions
-      .filter((p) => p.positionName && p.positionName !== "N/A")
-      .map((p) => ({
-        value: String(p.positionId),
-        label: p.positionName,
-      }));
-  }, [positions]);
+    if (!EmployeeLevel) return [];
+    return EmployeeLevel.filter(
+      (p) => p.positionName && p.positionName !== "N/A"
+    ).map((p) => ({
+      value: String(p.positionId),
+      label: p.positionName,
+    }));
+  }, [EmployeeLevel]);
 
   const canManageCourses =
     currentUser?.role === "ADMIN" || currentUser?.role === "HR";
@@ -171,7 +170,7 @@ export default function CoursesPage() {
     isLoadingCourses ||
     isLoadingStatuses ||
     isLoadingDepts ||
-    isLoadingPositions;
+    isLoadingEmployeeLevel;
 
   const handleOpenAddDialog = () => {
     router.push("/admin/courses/edit/new");
@@ -251,9 +250,9 @@ export default function CoursesPage() {
         setDeletingCourse,
         canManageCourses,
         allDepartments || [],
-        positions || []
+        EmployeeLevel || []
       ),
-    [canManageCourses, allDepartments, positions]
+    [canManageCourses, allDepartments, EmployeeLevel]
   );
 
   const pageCount = paginationInfo?.totalPages ?? 0;
