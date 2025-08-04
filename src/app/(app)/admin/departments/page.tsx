@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
@@ -222,7 +221,10 @@ export default function DepartmentsPage() {
     deptId?: string
   ) => {
     if (isEditing && deptId) {
-      updateDeptMutation.mutate({ id: deptId, payload: payload as UpdateDepartmentPayload });
+      updateDeptMutation.mutate({
+        id: deptId,
+        payload: payload as UpdateDepartmentPayload,
+      });
     } else {
       createDeptMutation.mutate(payload as CreateDepartmentPayload);
     }
@@ -257,7 +259,7 @@ export default function DepartmentsPage() {
       StatusId: draggedDept.status.id,
       ParentId: newParentId ? parseInt(newParentId) : null,
     };
-    
+
     updateDeptMutation.mutate({
       id: draggedDept.departmentId,
       payload: payload,
@@ -461,15 +463,14 @@ export default function DepartmentsPage() {
         <CardContent className="pt-6">
           {activeTab === "tree" ? (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
-              <Card className="shadow-sm">
-                <CardHeader>
-                  <CardTitle>Cấu trúc</CardTitle>
-                  <CardDescription>Kéo-thả để sắp xếp.</CardDescription>
-                </CardHeader>
-                <CardContent className="min-h-[400px]">
-                  {renderLeftPanelContent()}
-                </CardContent>
-              </Card>
+              <div className="space-y-4">
+                <DraggableDepartmentTree
+                  departments={departments}
+                  onSelectDepartment={setSelectedDepartment}
+                  onUpdateDepartments={handleUpdateDepartmentParent}
+                  className="shadow-sm"
+                />
+              </div>
               <Card className="shadow-sm min-h-[580px]">
                 {renderRightPanelContent()}
               </Card>
