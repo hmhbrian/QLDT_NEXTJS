@@ -1,48 +1,52 @@
 import { BaseService, QueryParams } from "../../core";
 import { API_CONFIG } from "@/lib/config";
-import type { Position } from "@/lib/types/user.types";
+import type { EmployeeLevel } from "@/lib/types/user.types";
 
-export interface CreatePositionPayload {
-  PositionName: string;
+export interface CreateEmployeeLevelPayload {
+  eLevelName: string;
 }
 
-export interface UpdatePositionPayload {
-  PositionName?: string;
+export interface UpdateEmployeeLevelPayload {
+  eLevelName?: string;
 }
 
-export interface PositionQueryParams extends QueryParams {
+export interface EmployeeLevelQueryParams extends QueryParams {
   name?: string;
 }
 
 class EmployeeLevelServiceClass extends BaseService<
-  Position,
-  CreatePositionPayload,
-  UpdatePositionPayload
+  EmployeeLevel,
+  CreateEmployeeLevelPayload,
+  UpdateEmployeeLevelPayload
 > {
   constructor() {
     super(API_CONFIG.endpoints.EmployeeLevel.base);
   }
 
-  async getEmployeeLevel(params?: PositionQueryParams): Promise<Position[]> {
-    return this.get<Position[]>(this.endpoint, { params });
+  async getEmployeeLevel(
+    params?: EmployeeLevelQueryParams
+  ): Promise<EmployeeLevel[]> {
+    return this.get<EmployeeLevel[]>(this.endpoint, { params });
   }
 
-  async getPositionById(id: string | number): Promise<Position> {
-    return this.get<Position>(`${this.endpoint}/${id}`);
+  async getEmployeeLevelById(id: string | number): Promise<EmployeeLevel> {
+    return this.get<EmployeeLevel>(`${this.endpoint}/${id}`);
   }
 
-  async createPosition(payload: CreatePositionPayload): Promise<Position> {
-    return this.post<Position>(this.endpoint, payload);
+  async createEmployeeLevel(
+    payload: CreateEmployeeLevelPayload
+  ): Promise<EmployeeLevel> {
+    return this.post<EmployeeLevel>(this.endpoint, payload);
   }
 
-  async updatePosition(
+  async updateEmployeeLevel(
     id: string | number,
-    payload: UpdatePositionPayload
-  ): Promise<Position> {
-    return this.put<Position>(`${this.endpoint}/${id}`, payload);
+    payload: UpdateEmployeeLevelPayload
+  ): Promise<EmployeeLevel> {
+    return this.put<EmployeeLevel>(`${this.endpoint}/${id}`, payload);
   }
 
-  async deletePosition(id: string | number): Promise<void> {
+  async deleteEmployeeLevel(id: string | number): Promise<void> {
     await this.delete<void>(`${this.endpoint}/${id}`);
   }
 }
