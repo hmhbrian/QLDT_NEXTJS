@@ -5,14 +5,16 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useCookie } from "@/hooks/use-cookie";
+import { useState } from "react";
 
 export function HRSettings() {
-  const [autoAssign, setAutoAssign] = useCookie('hr_auto_assign', false);
-  const [notifyTrainees, setNotifyTrainees] = useCookie('hr_notify_trainees', true);
-  const [departmentName, setDepartmentName] = useCookie('hr_department_name', 'Phòng Nhân sự');
-  const [hrEmail, setHrEmail] = useCookie('hr_email', 'hr@example.com');
-  const [maxStudents, setMaxStudents] = useCookie('hr_max_students', '30');
+  const [autoAssign, setAutoAssign] = useState(true);
+  const [notifyTrainees, setNotifyTrainees] = useState(true); 
+  const [departmentName, setDepartmentName] = useState('Phòng Nhân sự');
+  const [hrEmail, setHrEmail] = useState('hr@example.com');
+  const [maxStudents, setMaxStudents] = useState('30');
+
+  // Note: For a real app, these settings would be saved to a backend via a "Save" button.
 
   return (
     <Tabs defaultValue="general" className="space-y-4">
@@ -129,4 +131,4 @@ export function HRSettings() {
       </TabsContent>
     </Tabs>
   );
-} 
+}
