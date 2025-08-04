@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useMemo, useCallback } from "react";
@@ -54,7 +53,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useDepartments } from "@/hooks/use-departments";
-import { usePositions } from "@/hooks/use-positions";
+import { useEmployeeLevel } from "@/hooks/use-employeeLevel";
 
 export default function CoursesPage() {
   const { user: currentUser } = useAuth();
@@ -82,7 +81,7 @@ export default function CoursesPage() {
   });
 
   const { departments, isLoading: isLoadingDepts } = useDepartments();
-  const { positions, loading: isLoadingPositions } = usePositions();
+  const { EmployeeLevel, loading: isLoadingEmployeeLevel } = useEmployeeLevel();
 
   const { enrolledCourses, isLoadingEnrolled } = useEnrolledCourses(
     !!currentUser && currentUser.role === "HOCVIEN"
@@ -93,7 +92,7 @@ export default function CoursesPage() {
   // Compute loading states
   const isLoading = isFetchingCourses || isLoadingEnrolled;
   const isInitialLoading =
-    (isLoading || isLoadingDepts || isLoadingPositions) &&
+    (isLoading || isLoadingDepts || isLoadingEmployeeLevel) &&
     !publicCourses.length;
 
   const enrollMutation = useEnrollCourse();
@@ -154,7 +153,7 @@ export default function CoursesPage() {
           currentUserRole: currentUser?.role,
         },
         departments,
-        positions
+        EmployeeLevel
       ),
     [
       currentUser?.id,
@@ -166,7 +165,7 @@ export default function CoursesPage() {
       isCourseAccessible,
       enrolledCourses,
       departments,
-      positions,
+      EmployeeLevel,
     ]
   );
 
