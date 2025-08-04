@@ -53,7 +53,7 @@ import {
 } from "@/hooks/use-departments";
 import { useUserStatuses } from "@/hooks/use-statuses";
 import { DraggableDepartmentTree } from "@/components/departments/DraggableDepartmentTree";
-import { DepartmentFormDialog } from "@/components/departments/DepartmentFormDialog";
+import DepartmentFormDialog from "@/components/departments/DepartmentFormDialog";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { validateDepartmentTree } from "@/lib/utils/department-tree";
 import { LoadingButton } from "@/components/ui/loading";
@@ -104,28 +104,65 @@ export default function DepartmentsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
 
+  // Fetch department statuses from API
+  const { data: departmentStatuses } = useQuery({
+    queryKey: ["departmentStatuses"],
+    queryFn: async () => {
+      const response = await fetch(
+        "http://localhost:5228/api/status/department"
+      );
+      if (!response.ok) throw new Error("Failed to fetch department statuses");
+      const result = await response.json();
+      return result.data || [];
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+
   const managers = useMemo(() => {
     if (!users || !positions) {
       return [];
     }
+
+    // Tìm vị trí "Quản Lý Cấp Trung" (ID = 4) trở lên
     const managerPosition = positions.find(
-      (p) => p.positionName === "Quản lý cấp trung"
+      (p) =>
+        p.positionId === 4 || // Quản Lý Cấp Trung
+        p.positionName?.toLowerCase().includes("quản lý cấp trung")
     );
-    if (!managerPosition) return [];
-    const managerBaseLevelId = managerPosition.positionId;
-    return users.filter((user) => {
-      if (
+
+    console.log("- managerPosition found:", managerPosition);
+
+    if (!managerPosition) {
+      console.log("- No manager position found, returning all active users");
+      // If no specific manager position, return all active users
+      return users.filter((user) => user.userStatus?.name === "Đang làm việc");
+    }
+
+    const managerBaseLevelId = managerPosition.positionId; // Should be 4
+    console.log("- managerBaseLevelId:", managerBaseLevelId);
+
+    const filteredManagers = users.filter((user) => {
+      const hasPosition =
         user.position &&
         typeof user.position === "object" &&
-        user.position.positionId !== null
-      ) {
-        return (
-          user.position.positionId >= managerBaseLevelId &&
-          user.userStatus?.name === "Hoạt động"
-        );
-      }
-      return false;
+        user.position.positionId !== null;
+      const isActive = user.userStatus?.name === "Đang làm việc"; // Fixed: changed from "Hoạt động" to "Đang làm việc"
+      const hasValidLevel =
+        hasPosition && user.position.positionId >= managerBaseLevelId; // >= 4 (Cấp trung trở lên)
+
+      console.log(
+        `- User ${user.fullName}: hasPosition=${hasPosition}, isActive=${isActive}, hasValidLevel=${hasValidLevel}, positionId=${user.position?.positionId}, status="${user.userStatus?.name}"`
+      );
+
+      return hasPosition && isActive && hasValidLevel;
     });
+
+    console.log(
+      "- Final managers:",
+      filteredManagers?.length || 0,
+      filteredManagers
+    );
+    return filteredManagers;
   }, [users, positions]);
 
   const validation = useMemo(
@@ -165,14 +202,6 @@ export default function DepartmentsPage() {
         userStatuses
       ),
     [departments, userStatuses]
-  );
-
-  const departmentStatuses = useMemo(
-    () =>
-      userStatuses.filter(
-        (s) => s.name === "Đang hoạt động" || s.name === "Không hoạt động"
-      ),
-    [userStatuses]
   );
 
   useEffect(() => {
@@ -530,7 +559,7 @@ export default function DepartmentsPage() {
         managers={managers}
         isLoading={createDeptMutation.isPending || updateDeptMutation.isPending}
         isLoadingManagers={isUsersLoading || isPositionsLoading}
-        userStatuses={userStatuses}
+        departmentStatuses={departmentStatuses || []}
       />
 
       <Dialog
