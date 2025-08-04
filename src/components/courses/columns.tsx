@@ -21,7 +21,7 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import type { Course } from "@/lib/types/course.types";
 import { DepartmentInfo } from "@/lib/types/department.types";
-import { Position } from "@/lib/types/user.types";
+import { EmployeeLevel } from "@/lib/types/user.types";
 import { getStatusBadgeVariant, isRegistrationOpen } from "@/lib/helpers";
 import { formatDateVN } from "@/lib/utils/date.utils";
 import {
@@ -104,7 +104,7 @@ const baseColumns = (
 
 const sharedInfoColumns = (
   departments: DepartmentInfo[],
-  EmployeeLevel: Position[]
+  EmployeeLevel: EmployeeLevel[]
 ): ColumnDef<Course>[] => [
   {
     accessorKey: "courseCode",
@@ -158,9 +158,9 @@ const sharedInfoColumns = (
 
       const levelNames = levelIds.map((id) => {
         const foundLevel = EmployeeLevel.find(
-          (p) => String(p.positionId) === String(id)
+          (p) => String(p.eLevelId) === String(id)
         );
-        return foundLevel ? foundLevel.positionName : `Level-${id}`;
+        return foundLevel ? foundLevel.eLevelName : `Level-${id}`;
       });
 
       const displayText =
@@ -425,7 +425,7 @@ export const getAdminCourseColumns = (
   setDeletingCourse: (course: Course | null) => void,
   canManageCourses: boolean,
   departments: DepartmentInfo[],
-  EmployeeLevel: Position[]
+  EmployeeLevel: EmployeeLevel[]
 ): ColumnDef<Course>[] => {
   const adminActions: AdminActions = {
     handleEdit,
@@ -447,7 +447,7 @@ export const getUserCourseColumns = (
   handleViewDetails: (courseId: string) => void,
   actions: UserActions,
   departments: DepartmentInfo[],
-  EmployeeLevel: Position[]
+  EmployeeLevel: EmployeeLevel[]
 ): ColumnDef<Course>[] => [
   ...baseColumns(handleViewDetails),
   { accessorKey: "category", header: "Danh mục" },

@@ -158,8 +158,8 @@ export function CourseForm({
 
   const levelOptions = useMemo(() => {
     return (EmployeeLevel || []).map((p) => ({
-      value: String(p.positionId),
-      label: p.positionName,
+      value: String(p.eLevelId),
+      label: p.eLevelName,
     }));
   }, [EmployeeLevel]);
 
