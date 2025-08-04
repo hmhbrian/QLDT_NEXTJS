@@ -5,15 +5,17 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useCookie } from "@/hooks/use-cookie";
+import { useState } from "react";
 
 export function AdminSettings() {
-  // Sử dụng cookies để lưu trữ cài đặt
-  const [maintenanceMode, setMaintenanceMode] = useCookie('admin_maintenance_mode', false);
-  const [siteName, setSiteName] = useCookie('admin_site_name', 'QLDT - Quản lý đào tạo');
-  const [adminEmail, setAdminEmail] = useCookie('admin_email', 'admin@example.com');
-  const [autoApprove, setAutoApprove] = useCookie('admin_auto_approve', false);
-  const [twoFactorAuth, setTwoFactorAuth] = useCookie('admin_2fa', false);
+  // Use local state, load initial value from a settings service or local storage in a real app
+  const [maintenanceMode, setMaintenanceMode] = useState(false);
+  const [siteName, setSiteName] = useState('QLDT - Quản lý đào tạo');
+  const [adminEmail, setAdminEmail] = useState('admin@example.com');
+  const [autoApprove, setAutoApprove] = useState(false);
+  const [twoFactorAuth, setTwoFactorAuth] = useState(false);
+
+  // Note: For a real app, these settings would be saved to a backend via a "Save" button.
 
   return (
     <Tabs defaultValue="general" className="space-y-4">
