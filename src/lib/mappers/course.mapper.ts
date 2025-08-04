@@ -59,7 +59,7 @@ export function mapCourseApiToUi(apiCourse: CourseApiResponse): Course {
     department: (apiCourse.departments || []).map((d) =>
       String(d.departmentId)
     ),
-    level: (apiCourse.EmployeeLevel || []).map((p) => String(p.positionId)),
+    level: (apiCourse.EmployeeLevel || []).map((p) => String(p.eLevelId)),
     userIds: (apiCourse.students || apiCourse.users || []).map((user) =>
       "id" in user ? user.id : (user as any).id
     ),
@@ -150,7 +150,7 @@ export function mapCourseUiToCreatePayload(
         return NaN;
       })
       .filter((id) => !isNaN(id)),
-    PositionIds: (course.level || [])
+    eLevelIds: (course.level || [])
       .map((id) => {
         if (typeof id === "string") return parseInt(id, 10);
         return NaN;
@@ -199,7 +199,7 @@ export function mapCourseUiToUpdatePayload(
         return NaN;
       })
       .filter((id) => !isNaN(id)),
-    PositionIds: (course.level || [])
+    eLevelIds: (course.level || [])
       .map((id) => {
         if (typeof id === "string") return parseInt(id, 10);
         return NaN;

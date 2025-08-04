@@ -4,7 +4,7 @@
  */
 
 import type { DepartmentInfo } from "./department.types";
-import type { Position, User } from "./user.types";
+import type { EmployeeLevel, User } from "./user.types";
 import type { Status } from "./status.types";
 import type { Test } from "./test.types";
 
@@ -164,7 +164,7 @@ export interface CreateCourseRequest {
   CategoryId?: number;
   LecturerId?: number;
   DepartmentIds?: number[];
-  PositionIds?: number[];
+  eLevelIds?: number[];
   UserIds?: string[];
 }
 
@@ -227,7 +227,7 @@ export interface CourseApiResponse {
   category?: CourseCategoryDto;
   lecturer?: any; // Define LecturerDto if needed
   departments?: DepartmentInfo[];
-  EmployeeLevel?: Position[];
+  EmployeeLevel?: EmployeeLevel[];
   users?: User[]; // For enrolled users (legacy)
   students?: { id: string; name: string }[]; // For enrolled students (new API format)
 }
