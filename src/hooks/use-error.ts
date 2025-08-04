@@ -1,4 +1,3 @@
-
 /**
  * Enhanced Error Hook
  * Modern error handling with better user experience
@@ -57,18 +56,14 @@ export function useError(): UseErrorReturn {
               ? "Yêu cầu của bạn đã được thực hiện thành công."
               : "Đã có lỗi xảy ra trong quá trình xử lý.");
           
-          toast({
-            title,
-            description,
-            variant,
-            duration: 5000,
-          });
+        } else {
+            // Do not show a toast if success is true and there is no message
+            return;
         }
       } else if (payload instanceof Error) {
         title = "Đã có lỗi xảy ra";
         description = extractErrorMessage(payload);
         variant = "destructive";
-        toast({ title, description, variant, duration: 5000 });
       } else if (
         typeof payload === "object" &&
         payload !== null &&
@@ -77,15 +72,20 @@ export function useError(): UseErrorReturn {
         title = "Lỗi từ máy chủ";
         description = extractErrorMessage((payload as any).response.data);
         variant = "destructive";
-        toast({ title, description, variant, duration: 5000 });
       } else if (
         typeof payload === 'object' && payload !== null && 'message' in payload && typeof (payload as any).message === 'string'
       ) {
         title = "Lỗi";
         description = (payload as any).message;
         variant = "destructive";
-        toast({ title, description, variant, duration: 5000 });
       }
+
+      toast({
+        title,
+        description,
+        variant,
+        duration: 5000,
+      });
     },
     [toast]
   );

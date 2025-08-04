@@ -27,7 +27,7 @@ export function useQuestions(testId: number | undefined) {
       const paginatedResponse = await questionsService.getQuestions(testId, {
         SortField: "position",
         SortType: "asc",
-        Limit: 200, // Fetch all questions for a test
+        Limit: 50, // Fetch all questions for a test
       });
       return (paginatedResponse.items || []).map(mapApiQuestionToUi);
     },
