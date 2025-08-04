@@ -21,7 +21,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Checkbox } from "@/components/ui/checkbox";
 import type { User } from "@/lib/types/user.types";
 import type { DepartmentInfo } from "@/lib/types/department.types";
-import type { Position } from "@/lib/types/user.types";
+import type { EmployeeLevel } from "@/lib/types/user.types";
 import { cn } from "@/lib/utils";
 import { getLevelBadgeColor, getStatusColor } from "@/lib/helpers";
 
@@ -128,32 +128,35 @@ export const getColumns = (
     },
   },
   {
-    accessorKey: "position",
+    accessorKey: "employeeLevel",
     header: "Cấp bậc",
     cell: ({ row }) => {
-      const position = row.original.position;
-      console.log("🔍 Position data:", position);
+      const employeeLevel = row.original.employeeLevel;
+      console.log("🔍 EmployeeLevel data:", employeeLevel);
 
-      if (!position) return "N/A";
+      if (!employeeLevel) return "N/A";
 
-      // Handle both object {id, name, positionName} and string
-      let positionName: string = "Không xác định";
-      if (typeof position === "string") {
-        positionName = position;
-      } else if (typeof position === "object" && position) {
+      // Handle both object {id, name, eLevelName} and string
+      let eLevelName: string = "Không xác định";
+      if (typeof employeeLevel === "string") {
+        eLevelName = employeeLevel;
+      } else if (typeof employeeLevel === "object" && employeeLevel) {
         if (
-          "positionName" in position &&
-          typeof position.positionName === "string"
+          "eLevelName" in employeeLevel &&
+          typeof employeeLevel.eLevelName === "string"
         ) {
-          positionName = position.positionName;
-        } else if ("name" in position && typeof position.name === "string") {
-          positionName = position.name;
+          eLevelName = employeeLevel.eLevelName;
+        } else if (
+          "name" in employeeLevel &&
+          typeof employeeLevel.name === "string"
+        ) {
+          eLevelName = employeeLevel.name;
         }
       }
 
       return (
-        <Badge className={cn(getLevelBadgeColor(positionName))}>
-          {positionName}
+        <Badge className={cn(getLevelBadgeColor(eLevelName))}>
+          {eLevelName}
         </Badge>
       );
     },

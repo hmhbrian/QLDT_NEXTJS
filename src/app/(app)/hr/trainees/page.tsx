@@ -75,7 +75,7 @@ const initialNewTraineeState: Partial<
   email: "",
   phoneNumber: "",
   department: undefined,
-  position: undefined,
+  employeeLevel: undefined,
   userStatus: { id: 2, name: "Đang hoạt động" },
   idCard: "",
   role: "HOCVIEN",
@@ -187,7 +187,7 @@ export default function TraineesPage() {
         Email: formData.email,
         IdCard: formData.idCard,
         NumberPhone: formData.phoneNumber,
-        PositionId: formData.position?.positionId,
+        eLevelId: formData.employeeLevel?.eLevelId,
         DepartmentId: formData.department?.departmentId
           ? parseInt(formData.department.departmentId)
           : undefined,
@@ -205,7 +205,7 @@ export default function TraineesPage() {
         ConfirmPassword: formData.confirmPassword!,
         IdCard: formData.idCard,
         NumberPhone: formData.phoneNumber,
-        PositionId: formData.position?.positionId,
+        eLevelId: formData.employeeLevel?.eLevelId,
         DepartmentId: formData.department?.departmentId
           ? parseInt(formData.department.departmentId)
           : undefined,
@@ -221,8 +221,8 @@ export default function TraineesPage() {
   };
 
   const getEmployeeLevel = (user: User): string => {
-    if (user.position && typeof user.position === "object") {
-      return user.position.positionName;
+    if (user.employeeLevel && typeof user.employeeLevel === "object") {
+      return user.employeeLevel.eLevelName;
     }
     return "Chưa có cấp bậc";
   };
@@ -388,16 +388,18 @@ export default function TraineesPage() {
               </Select>
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="position">Cấp bậc</Label>
+              <Label htmlFor="employeeLevel">Cấp bậc</Label>
               <Select
                 value={
-                  formData.position ? String(formData.position.positionId) : ""
+                  formData.employeeLevel
+                    ? String(formData.employeeLevel.eLevelId)
+                    : ""
                 }
                 onValueChange={(value) => {
                   const selectedPos = EmployeeLevel.find(
-                    (p) => String(p.positionId) === value
+                    (p) => String(p.eLevelId) === value
                   );
-                  setFormData({ ...formData, position: selectedPos });
+                  setFormData({ ...formData, employeeLevel: selectedPos });
                 }}
               >
                 <SelectTrigger>
@@ -411,10 +413,10 @@ export default function TraineesPage() {
                   ) : EmployeeLevel.length > 0 ? (
                     EmployeeLevel.map((pos) => (
                       <SelectItem
-                        key={pos.positionId}
-                        value={String(pos.positionId)}
+                        key={pos.eLevelId}
+                        value={String(pos.eLevelId)}
                       >
-                        {pos.positionName}
+                        {pos.eLevelName}
                       </SelectItem>
                     ))
                   ) : (
