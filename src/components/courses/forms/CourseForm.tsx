@@ -56,7 +56,7 @@ import {
 } from "@/hooks/use-courses";
 import { useCourseStatuses } from "@/hooks/use-statuses";
 import { useDepartments } from "@/hooks/use-departments";
-import { usePositions } from "@/hooks/use-positions";
+import { useEmployeeLevel } from "@/hooks/use-employeeLevel";
 import { useUsers } from "@/hooks/use-users";
 import { useDebounce } from "@/hooks/use-debounce";
 import { MaterialManager } from "@/components/courses/dialogs/MaterialManager";
@@ -119,7 +119,7 @@ export function CourseForm({
     useCourse(duplicateFromId || "");
   const { courseStatuses } = useCourseStatuses();
   const { departments } = useDepartments();
-  const { positions } = usePositions();
+  const { EmployeeLevel } = useEmployeeLevel();
 
   const createCourseMutation = useCreateCourse();
   const updateCourseMutation = useUpdateCourse();
@@ -157,11 +157,11 @@ export function CourseForm({
   }, [departments]);
 
   const levelOptions = useMemo(() => {
-    return (positions || []).map((p) => ({
+    return (EmployeeLevel || []).map((p) => ({
       value: String(p.positionId),
       label: p.positionName,
     }));
-  }, [positions]);
+  }, [EmployeeLevel]);
 
   // --- Effects ---
   useEffect(() => {
@@ -574,8 +574,9 @@ export function CourseForm({
                     {formData.department
                       ?.map(
                         (id) =>
-                          departmentOptions.find((opt) => String(opt.value) === String(id))
-                            ?.label
+                          departmentOptions.find(
+                            (opt) => String(opt.value) === String(id)
+                          )?.label
                       )
                       .filter(Boolean)
                       .map((label) => (
@@ -637,7 +638,9 @@ export function CourseForm({
                     {formData.level
                       ?.map(
                         (id) =>
-                          levelOptions.find((opt) => String(opt.value) === String(id))?.label
+                          levelOptions.find(
+                            (opt) => String(opt.value) === String(id)
+                          )?.label
                       )
                       .filter(Boolean)
                       .map((label) => (
