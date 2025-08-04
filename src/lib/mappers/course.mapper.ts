@@ -56,9 +56,7 @@ export function mapCourseApiToUi(apiCourse: CourseApiResponse): Course {
     endDate: apiCourse.endDate || null,
     registrationStartDate: apiCourse.registrationStartDate || null,
     registrationDeadline: apiCourse.registrationClosingDate || null,
-    department: (apiCourse.departments || []).map((d) =>
-      String(d.departmentId)
-    ),
+    department: (apiCourse.departments || []).map((d) => String(d.departmentId)),
     level: (apiCourse.positions || []).map((p) => String(p.positionId)),
     userIds: (apiCourse.students || apiCourse.users || []).map((user) =>
       "id" in user ? user.id : (user as any).id
@@ -144,19 +142,15 @@ export function mapCourseUiToCreatePayload(
       : undefined,
     Location: course.location,
     StatusId: course.statusId,
-    DepartmentIds: course.department
-      ?.map((item) => {
-        if (typeof item === "string") return parseInt(item, 10);
-        if (typeof item === "object" && item && "id" in item)
-          return parseInt(String(item.id), 10);
+    DepartmentIds: (course.department || [])
+      .map((id) => {
+        if (typeof id === "string") return parseInt(id, 10);
         return NaN;
       })
       .filter((id) => !isNaN(id)),
-    PositionIds: course.level
-      ?.map((item) => {
-        if (typeof item === "string") return parseInt(item, 10);
-        if (typeof item === "object" && item && "id" in item)
-          return parseInt(String(item.id), 10);
+    PositionIds: (course.level || [])
+      .map((id) => {
+        if (typeof id === "string") return parseInt(id, 10);
         return NaN;
       })
       .filter((id) => !isNaN(id)),
@@ -197,19 +191,15 @@ export function mapCourseUiToUpdatePayload(
       : undefined,
     Location: course.location,
     StatusId: course.statusId,
-    DepartmentIds: course.department
-      ?.map((item) => {
-        if (typeof item === "string") return parseInt(item, 10);
-        if (typeof item === "object" && item && "id" in item)
-          return parseInt(String(item.id), 10);
+    DepartmentIds: (course.department || [])
+      .map((id) => {
+        if (typeof id === "string") return parseInt(id, 10);
         return NaN;
       })
       .filter((id) => !isNaN(id)),
-    PositionIds: course.level
-      ?.map((item) => {
-        if (typeof item === "string") return parseInt(item, 10);
-        if (typeof item === "object" && item && "id" in item)
-          return parseInt(String(item.id), 10);
+    PositionIds: (course.level || [])
+      .map((id) => {
+        if (typeof id === "string") return parseInt(id, 10);
         return NaN;
       })
       .filter((id) => !isNaN(id)),

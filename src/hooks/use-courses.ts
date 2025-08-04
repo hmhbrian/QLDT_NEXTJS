@@ -19,9 +19,9 @@ import {
 } from "@/lib/mappers/course.mapper";
 import type { PaginatedResponse, QueryParams } from "@/lib/core";
 import { useAuth } from "./useAuth";
-import { API_CONFIG } from "@/lib/config";
 import { useToast } from "@/components/ui/use-toast";
 import { extractErrorMessage } from "@/lib/core";
+import { API_CONFIG } from "@/lib/config";
 
 export const COURSES_QUERY_KEY = "courses";
 export const ENROLLED_COURSES_QUERY_KEY = "enrolledCourses";
@@ -29,8 +29,7 @@ export const ENROLLED_COURSES_QUERY_KEY = "enrolledCourses";
 export function useCourses(
   params: QueryParams & { publicOnly?: boolean } = {}
 ) {
-  const { publicOnly = false, ...apiParams } = params;
-  const queryKey = [COURSES_QUERY_KEY, "list", apiParams];
+  const queryKey = [COURSES_QUERY_KEY, "list", params];
 
   const {
     data,
@@ -39,13 +38,13 @@ export function useCourses(
   } = useQuery<PaginatedResponse<Course>, Error>({
     queryKey,
     queryFn: async () => {
-      const apiResponse = await coursesService.getCourses(apiParams);
+      const apiResponse = await coursesService.getCourses(params);
       return {
         items: (apiResponse.items || []).map(mapCourseApiToUi),
         pagination: apiResponse.pagination,
       };
     },
-    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+    staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: true,
   });
 
@@ -107,10 +106,10 @@ export function useCreateCourse() {
 
   return useMutation<CourseApiResponse, Error, CreateCourseRequest>({
     mutationFn: (courseData) => coursesService.createCourse(courseData),
-    onSuccess: (data, variables) => {
+    onSuccess: (data) => {
        toast({
         title: "Thành công",
-        description: `Đã tạo khóa học "${variables.Name}" thành công.`,
+        description: `Đã tạo khóa học "${data.name}" thành công.`,
         variant: "success",
       });
     },
@@ -131,27 +130,24 @@ export function useUpdateCourse() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  return useMutation<any, Error, { courseId: string; payload: UpdateCourseRequest }, { previousCourses?: PaginatedResponse<Course> | undefined, previousCourseDetail?: Course | undefined }>({
+  return useMutation<any, Error, { courseId: string; payload: UpdateCourseRequest }, { previousCourses?: PaginatedResponse<Course>; previousCourseDetail?: Course }>({
     mutationFn: ({ courseId, payload }) => coursesService.updateCourse(courseId, payload),
-     onMutate: async ({ courseId, payload }) => {
-        const listQueryKey = [COURSES_QUERY_KEY, "list"];
-        const detailQueryKey = [COURSES_QUERY_KEY, "detail", courseId];
+    onMutate: async ({ courseId, payload }) => {
+        await queryClient.cancelQueries({ queryKey: [COURSES_QUERY_KEY, 'detail', courseId] });
+        await queryClient.cancelQueries({ queryKey: [COURSES_QUERY_KEY, 'list'] });
+        
+        const previousCourseDetail = queryClient.getQueryData<Course>([COURSES_QUERY_KEY, 'detail', courseId]);
+        const previousCourses = queryClient.getQueryData<PaginatedResponse<Course>>([COURSES_QUERY_KEY, 'list']);
 
-        await queryClient.cancelQueries({ queryKey: listQueryKey });
-        await queryClient.cancelQueries({ queryKey: detailQueryKey });
-
-        const previousCourses = queryClient.getQueryData<PaginatedResponse<Course>>(listQueryKey);
-        const previousCourseDetail = queryClient.getQueryData<Course>(detailQueryKey);
+        if (previousCourseDetail) {
+            queryClient.setQueryData<Course>([COURSES_QUERY_KEY, 'detail', courseId], (old) => old ? { ...old, title: payload.Name || old.title, ...payload } : undefined);
+        }
 
         if (previousCourses) {
-            queryClient.setQueryData<PaginatedResponse<Course>>(listQueryKey, (old) => old ? ({
+            queryClient.setQueryData<PaginatedResponse<Course>>([COURSES_QUERY_KEY, 'list'], (old) => old ? ({
               ...old,
-              items: old.items.map(course => course.id === courseId ? { ...course, ...payload, title: payload.Name || course.title } : course),
-            }) : { items: [], pagination: { totalItems: 0, itemsPerPage: 10, currentPage: 1, totalPages: 0 }});
-        }
-        
-        if (previousCourseDetail) {
-             queryClient.setQueryData<Course>(detailQueryKey, (old) => old ? { ...old, ...payload, title: payload.Name || old.title } : undefined);
+              items: old.items.map(course => course.id === courseId ? { ...course, title: payload.Name || course.title, ...payload } : course),
+            }) : old);
         }
 
         return { previousCourses, previousCourseDetail };
@@ -176,8 +172,9 @@ export function useUpdateCourse() {
         variant: "destructive",
       });
     },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: [COURSES_QUERY_KEY] });
+    onSettled: (data, error, { courseId }) => {
+      queryClient.invalidateQueries({ queryKey: [COURSES_QUERY_KEY, 'list'] });
+      queryClient.invalidateQueries({ queryKey: [COURSES_QUERY_KEY, 'detail', courseId] });
     },
   });
 }
@@ -186,19 +183,19 @@ export function useDeleteCourse() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  return useMutation<void, Error, string[], { previousCourses?: PaginatedResponse<Course> | undefined }>({
+  return useMutation<void, Error, string[], { previousCourses?: PaginatedResponse<Course> }>({
     mutationFn: (ids) => coursesService.softDeleteCourses(ids),
-     onMutate: async (idsToDelete) => {
-      const listQueryKey = [COURSES_QUERY_KEY, "list"];
-      await queryClient.cancelQueries({ queryKey: listQueryKey });
+    onMutate: async (idsToDelete) => {
+      const queryKey = [COURSES_QUERY_KEY, "list"];
+      await queryClient.cancelQueries({ queryKey });
       
-      const previousCourses = queryClient.getQueryData<PaginatedResponse<Course>>(listQueryKey);
+      const previousCourses = queryClient.getQueryData<PaginatedResponse<Course>>(queryKey);
       
       if(previousCourses) {
-        queryClient.setQueryData<PaginatedResponse<Course>>(listQueryKey, (old) => old ? ({
+        queryClient.setQueryData<PaginatedResponse<Course>>(queryKey, (old) => old ? ({
           ...old,
           items: old.items.filter(course => !idsToDelete.includes(course.id)),
-        }) : { items: [], pagination: { totalItems: 0, itemsPerPage: 10, currentPage: 1, totalPages: 0 } });
+        }) : old);
       }
       
       return { previousCourses };
@@ -221,7 +218,7 @@ export function useDeleteCourse() {
       });
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: [COURSES_QUERY_KEY, 'list'] });
+      queryClient.invalidateQueries({ queryKey: [COURSES_QUERY_KEY] });
     },
   });
 }
@@ -248,7 +245,7 @@ export function useEnrollCourse() {
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: [ENROLLED_COURSES_QUERY_KEY] });
-      queryClient.invalidateQueries({ queryKey: [COURSES_QUERY_KEY, 'list'] });
+      queryClient.invalidateQueries({ queryKey: [COURSES_QUERY_KEY] });
     }
   });
 }
