@@ -1,4 +1,3 @@
-
 "use client";
 
 import {
@@ -53,7 +52,7 @@ import { getColumns } from "./columns";
 import { useDebounce } from "@/hooks/use-debounce";
 import { LoadingButton } from "@/components/ui/loading";
 import { useDepartments } from "@/hooks/use-departments";
-import { usePositions } from "@/hooks/use-positions";
+import { useEmployeeLevel } from "@/hooks/use-employeeLevel";
 import { useUserStatuses } from "@/hooks/use-statuses";
 import { NO_DEPARTMENT_VALUE } from "@/lib/config/constants";
 import {
@@ -134,7 +133,7 @@ export default function TraineesPage() {
 
   const { departments: activeDepartments, isLoading: isDepartmentsLoading } =
     useDepartments({ status: "active" });
-  const { positions, loading: isPositionsLoading } = usePositions();
+  const { EmployeeLevel, loading: isEmployeeLevelLoading } = useEmployeeLevel();
   const { userStatuses, isLoading: isStatusesLoading } = useUserStatuses();
 
   const createTraineeMutation = useCreateUserMutation();
@@ -179,7 +178,7 @@ export default function TraineesPage() {
       });
       return;
     }
-    
+
     setIsFormOpen(false);
 
     if (editingTrainee) {
@@ -189,13 +188,15 @@ export default function TraineesPage() {
         IdCard: formData.idCard,
         NumberPhone: formData.phoneNumber,
         PositionId: formData.position?.positionId,
-        DepartmentId: formData.department?.departmentId ? parseInt(formData.department.departmentId) : undefined,
+        DepartmentId: formData.department?.departmentId
+          ? parseInt(formData.department.departmentId)
+          : undefined,
         RoleId: hocvienRole.id,
       };
       await updateTraineeMutation.mutateAsync({
-          id: editingTrainee.id,
-          payload: updatePayload,
-        });
+        id: editingTrainee.id,
+        payload: updatePayload,
+      });
     } else {
       const createPayload: CreateUserRequest = {
         FullName: formData.fullName!,
@@ -205,7 +206,9 @@ export default function TraineesPage() {
         IdCard: formData.idCard,
         NumberPhone: formData.phoneNumber,
         PositionId: formData.position?.positionId,
-        DepartmentId: formData.department?.departmentId ? parseInt(formData.department.departmentId) : undefined,
+        DepartmentId: formData.department?.departmentId
+          ? parseInt(formData.department.departmentId)
+          : undefined,
         RoleId: hocvienRole.id,
       };
       await createTraineeMutation.mutateAsync(createPayload);
@@ -217,7 +220,7 @@ export default function TraineesPage() {
     return department.name || "Không xác định";
   };
 
-  const getPositionName = (user: User): string => {
+  const getEmployeeLevel = (user: User): string => {
     if (user.position && typeof user.position === "object") {
       return user.position.positionName;
     }
@@ -391,7 +394,7 @@ export default function TraineesPage() {
                   formData.position ? String(formData.position.positionId) : ""
                 }
                 onValueChange={(value) => {
-                  const selectedPos = positions.find(
+                  const selectedPos = EmployeeLevel.find(
                     (p) => String(p.positionId) === value
                   );
                   setFormData({ ...formData, position: selectedPos });
@@ -401,12 +404,12 @@ export default function TraineesPage() {
                   <SelectValue placeholder="Chọn cấp bậc" />
                 </SelectTrigger>
                 <SelectContent>
-                  {isPositionsLoading ? (
+                  {isEmployeeLevelLoading ? (
                     <SelectItem value="loading_pos" disabled>
                       Đang tải...
                     </SelectItem>
-                  ) : positions.length > 0 ? (
-                    positions.map((pos) => (
+                  ) : EmployeeLevel.length > 0 ? (
+                    EmployeeLevel.map((pos) => (
                       <SelectItem
                         key={pos.positionId}
                         value={String(pos.positionId)}
@@ -579,7 +582,7 @@ export default function TraineesPage() {
                   <strong>Chức vụ:</strong> Chưa có
                 </p>
                 <p>
-                  <strong>Cấp bậc:</strong> {getPositionName(selectedTrainee)}
+                  <strong>Cấp bậc:</strong> {getEmployeeLevel(selectedTrainee)}
                 </p>
               </TabsContent>
               <TabsContent value="courses">
