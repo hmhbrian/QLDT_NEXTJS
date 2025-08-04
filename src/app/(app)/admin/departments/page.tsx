@@ -69,7 +69,7 @@ export default function DepartmentsPage() {
     departments,
     isLoading: isDepartmentsLoading,
     error: departmentsError,
-  } = useDepartments({ status: "active" });
+  } = useDepartments();
 
   const createDeptMutation = useCreateDepartment();
   const updateDeptMutation = useUpdateDepartment();
@@ -257,7 +257,7 @@ export default function DepartmentsPage() {
       StatusId: draggedDept.status.id,
       ParentId: newParentId ? parseInt(newParentId) : null,
     };
-
+    
     updateDeptMutation.mutate({
       id: draggedDept.departmentId,
       payload: payload,
