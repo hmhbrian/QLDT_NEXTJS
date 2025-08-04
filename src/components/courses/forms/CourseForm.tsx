@@ -140,7 +140,7 @@ export function CourseForm({
   const debouncedTraineeSearch = useDebounce(traineeSearchTerm, 500);
 
   const { users: trainees } = useUsers({
-    RoleName: "HOCVIEN",
+    // RoleName: "HOCVIEN",
     keyword: debouncedTraineeSearch,
     Limit: 50,
   });
@@ -574,7 +574,7 @@ export function CourseForm({
                     {formData.department
                       ?.map(
                         (id) =>
-                          departmentOptions.find((opt) => opt.value === id)
+                          departmentOptions.find((opt) => String(opt.value) === String(id))
                             ?.label
                       )
                       .filter(Boolean)
@@ -637,7 +637,7 @@ export function CourseForm({
                     {formData.level
                       ?.map(
                         (id) =>
-                          levelOptions.find((opt) => opt.value === id)?.label
+                          levelOptions.find((opt) => String(opt.value) === String(id))?.label
                       )
                       .filter(Boolean)
                       .map((label) => (
