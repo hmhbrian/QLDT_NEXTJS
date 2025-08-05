@@ -216,7 +216,7 @@ export default function TraineesPage() {
   };
 
   const renderDepartmentName = (department?: DepartmentInfo): string => {
-    if (!department) return "N/A";
+    if (!department) return "Không có";
     return department.name || "Không xác định";
   };
 

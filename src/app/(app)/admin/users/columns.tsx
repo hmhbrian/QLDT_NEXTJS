@@ -1,4 +1,3 @@
-
 "use client";
 
 import { ColumnDef } from "@tanstack/react-table";
@@ -99,17 +98,10 @@ export const getColumns = (
     ),
   },
   {
-    accessorKey: "department.name",
-    header: "Phòng ban",
-    cell: ({ row }) => {
-      return row.original.department?.name || "N/A";
-    },
-  },
-  {
     accessorKey: "status",
     header: "Trạng thái",
     cell: ({ row }) => {
-      const statusName = row.original.userStatus?.name || "N/A";
+      const statusName = row.original.userStatus?.name || "Không có";
       return (
         <Badge className={cn(getStatusColor(statusName))}>{statusName}</Badge>
       );

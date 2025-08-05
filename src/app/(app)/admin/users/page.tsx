@@ -40,6 +40,7 @@ import {
   ResetPasswordRequest,
   ServiceRole,
 } from "@/lib/types/user.types";
+import { UserDetailDialog } from "@/components/users";
 import { DepartmentInfo } from "@/lib/types/department.types";
 import { useToast } from "@/components/ui/use-toast";
 import { DataTable } from "@/components/ui/data-table";
@@ -64,6 +65,7 @@ import {
   Award,
   Eye,
   EyeOff,
+  Pencil,
 } from "lucide-react";
 import { NO_DEPARTMENT_VALUE } from "@/lib/config/constants";
 import type { PaginatedResponse } from "@/lib/core";
@@ -328,7 +330,7 @@ export default function UsersPage() {
   };
 
   const getEmployeeCode = (user: any): string => {
-    return user.employeeId || user.code || "N/A";
+    return user.employeeId || user.code || "Không có";
   };
 
   if (isInitialLoading) {
@@ -416,89 +418,24 @@ export default function UsersPage() {
         </CardContent>
       </Card>
 
-      <Dialog open={isViewingUser} onOpenChange={setIsViewingUser}>
-        <DialogContent className="sm:max-w-[800px]">
-          <DialogHeader>
-            <DialogTitle>Chi tiết Học viên</DialogTitle>
-          </DialogHeader>
-          {selectedUser && (
-            <Tabs defaultValue="info" className="mt-4">
-              <TabsList>
-                <TabsTrigger value="info">
-                  <UserCircle2 className="h-4 w-4 mr-2" />
-                  Thông tin cơ bản
-                </TabsTrigger>
-                <TabsTrigger value="courses">
-                  <Calendar className="h-4 w-4 mr-2" />
-                  Khóa học
-                </TabsTrigger>
-                <TabsTrigger value="certificates">
-                  <Award className="h-4 w-4 mr-2" />
-                  Chứng chỉ
-                </TabsTrigger>
-              </TabsList>
-              <TabsContent value="info" className="space-y-4 pt-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <h4 className="font-medium mb-2">Thông tin cá nhân</h4>
-                    <div className="space-y-1">
-                      <p className="text-sm">
-                        <strong>Họ và tên:</strong> {selectedUser.fullName}
-                      </p>
-                      <p className="text-sm">
-                        <strong>Mã nhân viên:</strong>{" "}
-                        {getEmployeeCode(selectedUser)}
-                      </p>
-                      <p className="text-sm">
-                        <strong>Email:</strong> {selectedUser.email}
-                      </p>
-                      <p className="text-sm">
-                        <strong>Số điện thoại:</strong>{" "}
-                        {selectedUser.phoneNumber || "N/A"}
-                      </p>
-                    </div>
-                  </div>
-                  <div>
-                    <h4 className="font-medium mb-2">Thông tin công việc</h4>
-                    <div className="space-y-1">
-                      <p className="text-sm">
-                        <strong>Phòng ban:</strong>{" "}
-                        {renderDepartment(selectedUser.department)}
-                      </p>
-                      <p className="text-sm">
-                        <strong>Chức vụ:</strong> Chưa có
-                      </p>
-                      <p className="text-sm">
-                        <strong>Cấp bậc:</strong>{" "}
-                        {getEmployeeLevel(selectedUser)}
-                      </p>
-                      <p className="text-sm">
-                        <strong>Quản lý:</strong>{" "}
-                        {selectedUser.manager || "N/A"}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </TabsContent>
-              <TabsContent value="courses">
-                <p className="text-center text-muted-foreground py-4">
-                  Chức năng đang được phát triển.
-                </p>
-              </TabsContent>
-              <TabsContent value="certificates">
-                <p className="text-center text-muted-foreground py-4">
-                  Chức năng đang được phát triển.
-                </p>
-              </TabsContent>
-            </Tabs>
-          )}
-        </DialogContent>
-      </Dialog>
+      {/* View User Detail Dialog */}
+      <UserDetailDialog
+        user={selectedUser}
+        isOpen={isViewingUser}
+        onOpenChange={setIsViewingUser}
+      />
 
       <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-        <DialogContent className="sm:max-w-[600px]">
-          <DialogHeader>
-            <DialogTitle>
+        <DialogContent className="sm:max-w-[600px] border-orange-200">
+          <DialogHeader className="border-b border-orange-100 pb-4">
+            <DialogTitle className="text-xl font-semibold text-gray-800 flex items-center gap-2">
+              <div className="p-2 bg-orange-500 rounded-lg text-white">
+                {editingUser ? (
+                  <Pencil className="h-4 w-4" />
+                ) : (
+                  <PlusCircle className="h-4 w-4" />
+                )}
+              </div>
               {editingUser ? "Chỉnh sửa Người dùng" : "Thêm người dùng mới"}
             </DialogTitle>
           </DialogHeader>

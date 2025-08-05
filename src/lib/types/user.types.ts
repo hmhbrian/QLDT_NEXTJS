@@ -1,4 +1,3 @@
-
 import type { DepartmentInfo } from "./department.types";
 import type { Status } from "./status.types";
 
@@ -112,7 +111,7 @@ export interface UserApiResponse {
   role?: string;
   createdBy?: string;
   updatedBy?: string;
-  managerBy?: string;
+  managerBy?: string | { Id: string; Name: string };
   eLevelName?: string;
   departmentName?: string; // Navigation property
   userStatus?: Status;

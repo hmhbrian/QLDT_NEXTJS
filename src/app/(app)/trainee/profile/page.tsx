@@ -209,7 +209,7 @@ export default function UserProfilePage() {
   };
 
   const renderDepartment = (department: DepartmentInfo | undefined) => {
-    if (!department) return "N/A";
+    if (!department) return "Không có";
     return department.name;
   };
 
@@ -283,10 +283,11 @@ export default function UserProfilePage() {
                     </p>
                     <p className="text-sm">
                       <strong>Số điện thoại:</strong>{" "}
-                      {profileData.phoneNumber || "N/A"}
+                      {profileData.phoneNumber || "Không có"}
                     </p>
                     <p className="text-sm">
-                      <strong>CMND/CCCD:</strong> {profileData.idCard || "N/A"}
+                      <strong>CMND/CCCD:</strong>{" "}
+                      {profileData.idCard || "Không có"}
                     </p>
                   </div>
                 </div>
@@ -298,7 +299,7 @@ export default function UserProfilePage() {
                     <div className="space-y-2">
                       <p className="text-sm">
                         <strong>Mã nhân viên:</strong>{" "}
-                        {profileData.employeeId || "N/A"}
+                        {profileData.employeeId || "Không có"}
                       </p>
                       <p className="text-sm">
                         <strong>Phòng ban:</strong>{" "}
@@ -317,11 +318,11 @@ export default function UserProfilePage() {
                           ? new Date(profileData.startWork).toLocaleDateString(
                               "vi-VN"
                             )
-                          : "N/A"}
+                          : "Không có"}
                       </p>
                       <p className="text-sm">
                         <strong>Quản lý trực tiếp:</strong>{" "}
-                        {profileData.manager || "N/A"}
+                        {profileData.manager || "Không có"}
                       </p>
                       {profileData.userStatus && (
                         <div className="text-sm">
@@ -353,7 +354,7 @@ export default function UserProfilePage() {
                           ? new Date(profileData.startWork).toLocaleDateString(
                               "vi-VN"
                             )
-                          : "N/A"}
+                          : "Không có"}
                       </p>
                       {profileData.userStatus && (
                         <div className="text-sm">

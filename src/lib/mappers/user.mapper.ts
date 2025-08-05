@@ -33,7 +33,10 @@ export function mapUserApiToUi(apiUser: UserApiResponse | null): User {
     department: apiUser.department,
     employeeLevel: apiUser.employeeLevel,
     userStatus: apiUser.userStatus,
-    manager: apiUser.managerBy,
+    manager:
+      typeof apiUser.managerBy === "object"
+        ? apiUser.managerBy?.Name || "N/A"
+        : apiUser.managerBy || "N/A",
     startWork: apiUser.startWork,
     endWork: apiUser.endWork,
     createdAt: apiUser.createdAt,

@@ -110,7 +110,7 @@ export const getColumns = (
       const department = row.original.department;
       console.log("🔍 Department data:", department);
 
-      if (!department) return "N/A";
+      if (!department) return "Không có";
 
       // Handle both object {id, name, departmentName} and string
       if (typeof department === "string") return department;
@@ -134,7 +134,7 @@ export const getColumns = (
       const employeeLevel = row.original.employeeLevel;
       console.log("🔍 EmployeeLevel data:", employeeLevel);
 
-      if (!employeeLevel) return "N/A";
+      if (!employeeLevel) return "Không có";
 
       // Handle both object {id, name, eLevelName} and string
       let eLevelName: string = "Không xác định";
@@ -165,7 +165,7 @@ export const getColumns = (
     accessorKey: "userStatus",
     header: "Trạng thái",
     cell: ({ row }) => {
-      const statusName = row.original.userStatus?.name || "N/A";
+      const statusName = row.original.userStatus?.name || "Không có";
       return (
         <Badge variant="outline" className={cn(getStatusColor(statusName))}>
           {statusName}
