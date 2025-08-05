@@ -388,7 +388,7 @@ export default function AdminDashboard() {
                     <p className="text-sm font-medium">
                       {typeof course.status === "string"
                         ? course.status
-                        : "N/A"}
+                        : "Không có"}
                     </p>
                     <p className="text-xs text-muted-foreground">
                       {(() => {

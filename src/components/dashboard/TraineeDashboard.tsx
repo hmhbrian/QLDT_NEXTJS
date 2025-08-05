@@ -158,7 +158,7 @@ export function TraineeDashboard() {
                     </Link>
                     {/* Assuming instructor is not directly on Course, or needs to be fetched/mapped differently */}
                     <p className="text-xs text-muted-foreground mt-0.5">
-                      Giảng viên: N/A
+                      Giảng viên: Không có
                     </p>
                   </div>
                   <div className="text-sm text-muted-foreground text-left sm:text-right w-full sm:w-auto">
