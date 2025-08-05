@@ -162,8 +162,11 @@ function SortableLessonItem({
 export function LessonManager({ courseId }: LessonManagerProps) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  const { lessons, isLoading: isLoadingLessons, error: lessonsError } =
-    useLessons(courseId ?? undefined);
+  const {
+    lessons,
+    isLoading: isLoadingLessons,
+    error: lessonsError,
+  } = useLessons(courseId ?? undefined);
 
   const [isLessonDialogOpen, setIsLessonDialogOpen] = useState(false);
   const [currentEditingLesson, setCurrentEditingLesson] =
@@ -175,7 +178,7 @@ export function LessonManager({ courseId }: LessonManagerProps) {
     type: "pdf_url",
     link: "",
     file: null,
-    totalDurationSeconds: 0
+    totalDurationSeconds: 0,
   });
 
   const [deletingItem, setDeletingItem] = useState<DeletingItem | null>(null);
@@ -189,12 +192,16 @@ export function LessonManager({ courseId }: LessonManagerProps) {
   const sensors = useSensors(useSensor(PointerSensor));
 
   useEffect(() => {
-    if (lessonFormData.type === 'video_url' && lessonFormData.link && ReactPlayer.canPlay(lessonFormData.link)) {
-        setIsFetchingDuration(true);
+    if (
+      lessonFormData.type === "video_url" &&
+      lessonFormData.link &&
+      ReactPlayer.canPlay(lessonFormData.link)
+    ) {
+      setIsFetchingDuration(true);
     } else {
-        setIsFetchingDuration(false);
+      setIsFetchingDuration(false);
     }
-  }, [lessonFormData.link, lessonFormData.type])
+  }, [lessonFormData.link, lessonFormData.type]);
 
   const handleOpenAddLesson = () => {
     setCurrentEditingLesson(null);
@@ -230,7 +237,11 @@ export function LessonManager({ courseId }: LessonManagerProps) {
       });
       return;
     }
-    if (lessonFormData.type === "pdf_url" && !lessonFormData.file && !currentEditingLesson) {
+    if (
+      lessonFormData.type === "pdf_url" &&
+      !lessonFormData.file &&
+      !currentEditingLesson
+    ) {
       toast({
         title: "Lỗi",
         description: "Vui lòng chọn file PDF cho bài học mới.",
@@ -250,11 +261,13 @@ export function LessonManager({ courseId }: LessonManagerProps) {
     try {
       const payload: CreateLessonPayload | UpdateLessonPayload = {
         Title: lessonFormData.title,
-        Link: lessonFormData.type !== "pdf_url" ? lessonFormData.link : undefined,
-        FilePdf: lessonFormData.type === "pdf_url" ? lessonFormData.file : undefined,
+        Link:
+          lessonFormData.type !== "pdf_url" ? lessonFormData.link : undefined,
+        FilePdf:
+          lessonFormData.type === "pdf_url" ? lessonFormData.file : undefined,
         TotalDurationSeconds: lessonFormData.totalDurationSeconds,
       };
-      
+
       if (currentEditingLesson) {
         await updateLessonMutation.mutateAsync({
           courseId: courseId,
@@ -283,11 +296,17 @@ export function LessonManager({ courseId }: LessonManagerProps) {
 
   const executeDeleteLesson = () => {
     if (!deletingItem || deletingItem.type !== "lesson" || !courseId) return;
-    deleteLessonMutation.mutate({
-      courseId: courseId,
-      lessonIds: [Number(deletingItem.id)],
-    });
-    setDeletingItem(null);
+    deleteLessonMutation.mutate(
+      {
+        courseId: courseId,
+        lessonIds: [Number(deletingItem.id)],
+      },
+      {
+        onSuccess: () => {
+          setDeletingItem(null);
+        },
+      }
+    );
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
@@ -302,8 +321,11 @@ export function LessonManager({ courseId }: LessonManagerProps) {
       const reorderedLessons = arrayMove(lessons, oldIndex, newIndex);
       const movedLesson = reorderedLessons[newIndex];
       const previousLesson = newIndex > 0 ? reorderedLessons[newIndex - 1] : null;
-      
-      queryClient.setQueryData([LESSONS_QUERY_KEY, courseId], reorderedLessons);
+
+      queryClient.setQueryData(
+        [LESSONS_QUERY_KEY, courseId],
+        reorderedLessons
+      );
 
       const payload = {
         LessonId: Number(movedLesson.id),
@@ -317,55 +339,57 @@ export function LessonManager({ courseId }: LessonManagerProps) {
   };
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <Label className="text-base font-semibold flex items-center">
-          <Library className="mr-2 h-5 w-5 text-primary" /> Bài học
-        </Label>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={handleOpenAddLesson}
-          disabled={!courseId}
-        >
-          <PlusCircle className="mr-2 h-4 w-4" /> Thêm bài học
-        </Button>
-      </div>
-
-      {isLoadingLessons ? (
-        <div className="flex justify-center items-center py-4">
-          <Loader2 className="h-6 w-6 animate-spin text-primary" />
-        </div>
-      ) : lessonsError ? (
-        <p className="text-destructive text-sm">
-          Lỗi tải bài học: {extractErrorMessage(lessonsError)}
-        </p>
-      ) : lessons.length > 0 ? (
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          onDragEnd={handleDragEnd}
-        >
-          <SortableContext
-            items={lessons.map((l) => l.id)}
-            strategy={verticalListSortingStrategy}
+    <>
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <Label className="text-base font-semibold flex items-center">
+            <Library className="mr-2 h-5 w-5 text-primary" /> Bài học
+          </Label>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={handleOpenAddLesson}
+            disabled={!courseId}
           >
-            <div className="space-y-2">
-              {lessons.map((lesson) => (
-                <SortableLessonItem
-                  key={lesson.id}
-                  lesson={lesson}
-                  onEdit={handleOpenEditLesson}
-                  onDelete={() => handleDeleteLesson(lesson)}
-                />
-              ))}
-            </div>
-          </SortableContext>
-        </DndContext>
-      ) : (
-        <p className="text-sm text-muted-foreground">Chưa có bài học.</p>
-      )}
+            <PlusCircle className="mr-2 h-4 w-4" /> Thêm bài học
+          </Button>
+        </div>
+
+        {isLoadingLessons ? (
+          <div className="flex justify-center items-center py-4">
+            <Loader2 className="h-6 w-6 animate-spin text-primary" />
+          </div>
+        ) : lessonsError ? (
+          <p className="text-destructive text-sm">
+            Lỗi tải bài học: {extractErrorMessage(lessonsError)}
+          </p>
+        ) : lessons.length > 0 ? (
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext
+              items={lessons.map((l) => l.id)}
+              strategy={verticalListSortingStrategy}
+            >
+              <div className="space-y-2">
+                {lessons.map((lesson) => (
+                  <SortableLessonItem
+                    key={lesson.id}
+                    lesson={lesson}
+                    onEdit={handleOpenEditLesson}
+                    onDelete={() => handleDeleteLesson(lesson)}
+                  />
+                ))}
+              </div>
+            </SortableContext>
+          </DndContext>
+        ) : (
+          <p className="text-sm text-muted-foreground">Chưa có bài học.</p>
+        )}
+      </div>
 
       <Dialog open={isLessonDialogOpen} onOpenChange={setIsLessonDialogOpen}>
         <DialogContent className="sm:max-w-lg">
@@ -392,7 +416,12 @@ export function LessonManager({ courseId }: LessonManagerProps) {
               <Select
                 value={lessonFormData.type}
                 onValueChange={(v: LessonContentType) =>
-                  setLessonFormData((p) => ({ ...p, type: v, link: '', file: null }))
+                  setLessonFormData((p) => ({
+                    ...p,
+                    type: v,
+                    link: "",
+                    file: null,
+                  }))
                 }
               >
                 <SelectTrigger>
@@ -400,7 +429,9 @@ export function LessonManager({ courseId }: LessonManagerProps) {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="pdf_url">Tài liệu PDF</SelectItem>
-                  <SelectItem value="video_url">Link Video/Link ngoài</SelectItem>
+                  <SelectItem value="video_url">
+                    Link Video/Link ngoài
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -446,27 +477,30 @@ export function LessonManager({ courseId }: LessonManagerProps) {
                   }
                   placeholder="https://youtube.com/... hoặc https://..."
                 />
-                 {isFetchingDuration && (
-                    <div className="text-xs text-muted-foreground flex items-center gap-1">
-                        <Loader2 className="h-3 w-3 animate-spin" />
-                        Đang lấy thời lượng video...
-                    </div>
-                 )}
+                {isFetchingDuration && (
+                  <div className="text-xs text-muted-foreground flex items-center gap-1">
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                    Đang lấy thời lượng video...
+                  </div>
+                )}
               </div>
             )}
-             {/* Hidden ReactPlayer to get duration */}
-             {lessonFormData.type === 'video_url' && lessonFormData.link && (
-                 <div className="hidden">
-                    <ReactPlayer
-                        url={lessonFormData.link}
-                        onDuration={(duration) => {
-                            setLessonFormData(p => ({...p, totalDurationSeconds: Math.round(duration)}));
-                            setIsFetchingDuration(false);
-                        }}
-                        onError={() => setIsFetchingDuration(false)}
-                    />
-                 </div>
-             )}
+            {/* Hidden ReactPlayer to get duration */}
+            {lessonFormData.type === "video_url" && lessonFormData.link && (
+              <div className="hidden">
+                <ReactPlayer
+                  url={lessonFormData.link}
+                  onDuration={(duration) => {
+                    setLessonFormData((p) => ({
+                      ...p,
+                      totalDurationSeconds: Math.round(duration),
+                    }));
+                    setIsFetchingDuration(false);
+                  }}
+                  onError={() => setIsFetchingDuration(false)}
+                />
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button
@@ -478,7 +512,9 @@ export function LessonManager({ courseId }: LessonManagerProps) {
             <LoadingButton
               onClick={handleSaveLesson}
               isLoading={
-                createLessonMutation.isPending || updateLessonMutation.isPending || isFetchingDuration
+                createLessonMutation.isPending ||
+                updateLessonMutation.isPending ||
+                isFetchingDuration
               }
             >
               Lưu Bài học
@@ -501,7 +537,11 @@ export function LessonManager({ courseId }: LessonManagerProps) {
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDeletingItem(null)}>
+            <Button
+              variant="outline"
+              onClick={() => setDeletingItem(null)}
+              disabled={deleteLessonMutation.isPending}
+            >
               Hủy
             </Button>
             <LoadingButton
@@ -514,6 +554,6 @@ export function LessonManager({ courseId }: LessonManagerProps) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </>
   );
 }

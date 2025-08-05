@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useRef } from "react";
@@ -17,6 +16,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   PlusCircle,
   X,
   Paperclip,
@@ -24,12 +31,14 @@ import {
   FileText,
   Link as LinkIcon,
   Trash2,
+  AlertTriangle,
 } from "lucide-react";
 import type {
   CourseMaterial,
   CourseMaterialType,
 } from "@/lib/types/course.types";
 import { courseAttachedFilesService } from "@/lib/services";
+import { LoadingButton } from "@/components/ui/loading";
 
 interface MaterialManagerProps {
   courseId: string | null;
@@ -52,12 +61,19 @@ type LocalMaterial = Partial<CourseMaterial> & {
   __localId: string;
 };
 
+type DeletingItem = {
+  type: "material";
+  id: number;
+  name: string;
+};
+
 export function MaterialManager({ courseId }: MaterialManagerProps) {
   const [localMaterials, setLocalMaterials] = useState<LocalMaterial[]>([]);
   const materialFileInputRef = useRef<HTMLInputElement>(null);
   const [currentUploadIndex, setCurrentUploadIndex] = useState<number | null>(
     null
   );
+  const [deletingItem, setDeletingItem] = useState<DeletingItem | null>(null);
 
   const {
     data: attachedFiles,
@@ -123,9 +139,24 @@ export function MaterialManager({ courseId }: MaterialManagerProps) {
     setLocalMaterials((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const handleDeleteExistingMaterial = (fileId: number) => {
-    if (!courseId) return;
-    deleteMutation.mutate({ courseId, fileId });
+  const handleDeleteExistingMaterial = (fileId: number, title: string) => {
+    setDeletingItem({
+      type: "material",
+      id: fileId,
+      name: title,
+    });
+  };
+
+  const executeDeleteMaterial = () => {
+    if (!deletingItem || deletingItem.type !== "material" || !courseId) return;
+    deleteMutation.mutate(
+      { courseId, fileId: deletingItem.id },
+      {
+        onSuccess: () => {
+          setDeletingItem(null);
+        },
+      }
+    );
   };
 
   const handleSaveNewMaterials = async () => {
@@ -196,7 +227,10 @@ export function MaterialManager({ courseId }: MaterialManagerProps) {
                     size="icon"
                     className="flex-shrink-0 text-destructive hover:text-destructive"
                     onClick={() =>
-                      handleDeleteExistingMaterial(material.id as number)
+                      handleDeleteExistingMaterial(
+                        material.id as number,
+                        material.title
+                      )
                     }
                     disabled={deleteMutation.isPending}
                   >
@@ -239,7 +273,11 @@ export function MaterialManager({ courseId }: MaterialManagerProps) {
                       placeholder="Tiêu đề tài liệu"
                       value={material.title || ""}
                       onChange={(e) =>
-                        handleLocalMaterialChange(index, "title", e.target.value)
+                        handleLocalMaterialChange(
+                          index,
+                          "title",
+                          e.target.value
+                        )
                       }
                     />
                     <div className="flex items-center gap-1">
@@ -247,7 +285,11 @@ export function MaterialManager({ courseId }: MaterialManagerProps) {
                         placeholder="URL hoặc tải lên"
                         value={material.link || ""}
                         onChange={(e) =>
-                          handleLocalMaterialChange(index, "link", e.target.value)
+                          handleLocalMaterialChange(
+                            index,
+                            "link",
+                            e.target.value
+                          )
                         }
                         readOnly={!!material.__file}
                       />
@@ -313,6 +355,39 @@ export function MaterialManager({ courseId }: MaterialManagerProps) {
           </Button>
         </>
       )}
+
+      {/* Delete Material Confirmation Dialog */}
+      <Dialog open={!!deletingItem} onOpenChange={() => setDeletingItem(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="text-destructive" />
+              Xác nhận xóa
+            </DialogTitle>
+            <DialogDescription className="pt-2">
+              Bạn có chắc chắn muốn xóa tài liệu{" "}
+              <strong>&quot;{deletingItem?.name}&quot;</strong>? Hành động này
+              không thể hoàn tác.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setDeletingItem(null)}
+              disabled={deleteMutation.isPending}
+            >
+              Hủy
+            </Button>
+            <LoadingButton
+              variant="destructive"
+              onClick={executeDeleteMaterial}
+              isLoading={deleteMutation.isPending}
+            >
+              Xác nhận xóa
+            </LoadingButton>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
