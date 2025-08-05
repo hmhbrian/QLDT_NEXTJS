@@ -38,6 +38,7 @@ export function useCourses(
   } = useQuery<PaginatedResponse<Course>, Error>({
     queryKey,
     queryFn: async () => {
+      console.log(`♻️ [useCourses] Refetching courses with params:`, params);
       const apiResponse = await coursesService.getCourses(params);
       return {
         items: (apiResponse.items || []).map(mapCourseApiToUi),
@@ -67,6 +68,7 @@ export function useEnrolledCourses(enabled: boolean = true) {
   } = useQuery<Course[], Error>({
     queryKey,
     queryFn: async () => {
+      console.log(`♻️ [useEnrolledCourses] Refetching enrolled courses for user: ${user?.id}`);
       const enrolledResponse = await coursesService.getEnrolledCourses();
       return (enrolledResponse.items || []).map(mapUserEnrollCourseDtoToCourse);
     },
@@ -91,7 +93,10 @@ export function useCourse(courseId: string) {
     error,
   } = useQuery<Course, Error>({
     queryKey,
-    queryFn: async () => mapCourseApiToUi(await coursesService.getCourseById(courseId)),
+    queryFn: async () => {
+      console.log(`♻️ [useCourse] Refetching course detail for ID: ${courseId}`);
+      return mapCourseApiToUi(await coursesService.getCourseById(courseId));
+    },
     enabled: !!courseId,
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: true,
@@ -105,8 +110,12 @@ export function useCreateCourse() {
   const { toast } = useToast();
 
   return useMutation<CourseApiResponse, Error, CreateCourseRequest>({
-    mutationFn: (courseData) => coursesService.createCourse(courseData),
+    mutationFn: (courseData) => {
+        console.log("▶️ [useCreateCourse] Mutation started with payload:", courseData);
+        return coursesService.createCourse(courseData);
+    },
     onSuccess: (data) => {
+       console.log("✅ [useCreateCourse] Mutation successful:", data);
        toast({
         title: "Thành công",
         description: `Đã tạo khóa học "${data.name}" thành công.`,
@@ -114,6 +123,7 @@ export function useCreateCourse() {
       });
     },
     onError: (error) => {
+      console.error("❌ [useCreateCourse] Mutation failed:", error);
       toast({
         title: "Lỗi",
         description: extractErrorMessage(error),
@@ -121,6 +131,7 @@ export function useCreateCourse() {
       });
     },
     onSettled: () => {
+      console.log(`🔄 [useCreateCourse] Invalidating queries with key:`, [COURSES_QUERY_KEY]);
       queryClient.invalidateQueries({ queryKey: [COURSES_QUERY_KEY] });
     },
   });
@@ -131,41 +142,20 @@ export function useUpdateCourse() {
   const { toast } = useToast();
 
   return useMutation<any, Error, { courseId: string; payload: UpdateCourseRequest }, { previousCourses?: PaginatedResponse<Course>; previousCourseDetail?: Course }>({
-    mutationFn: ({ courseId, payload }) => coursesService.updateCourse(courseId, payload),
-    onMutate: async ({ courseId, payload }) => {
-        await queryClient.cancelQueries({ queryKey: [COURSES_QUERY_KEY, 'detail', courseId] });
-        await queryClient.cancelQueries({ queryKey: [COURSES_QUERY_KEY, 'list'] });
-        
-        const previousCourseDetail = queryClient.getQueryData<Course>([COURSES_QUERY_KEY, 'detail', courseId]);
-        const previousCourses = queryClient.getQueryData<PaginatedResponse<Course>>([COURSES_QUERY_KEY, 'list']);
-
-        if (previousCourseDetail) {
-            queryClient.setQueryData<Course>([COURSES_QUERY_KEY, 'detail', courseId], (old) => old ? { ...old, title: payload.Name || old.title, ...payload } : undefined);
-        }
-
-        if (previousCourses) {
-            queryClient.setQueryData<PaginatedResponse<Course>>([COURSES_QUERY_KEY, 'list'], (old) => old ? ({
-              ...old,
-              items: old.items.map(course => course.id === courseId ? { ...course, title: payload.Name || course.title, ...payload } : course),
-            }) : old);
-        }
-
-        return { previousCourses, previousCourseDetail };
+    mutationFn: ({ courseId, payload }) => {
+        console.log(`▶️ [useUpdateCourse] Mutation started for course ${courseId} with payload:`, payload);
+        return coursesService.updateCourse(courseId, payload);
     },
     onSuccess: (data, variables) => {
+       console.log("✅ [useUpdateCourse] Mutation successful:", data);
        toast({
         title: "Thành công",
         description: `Đã cập nhật khóa học "${variables.payload.Name}" thành công.`,
         variant: "success",
       });
     },
-    onError: (err, { courseId }, context) => {
-       if (context?.previousCourses) {
-           queryClient.setQueryData([COURSES_QUERY_KEY, 'list'], context.previousCourses);
-       }
-       if (context?.previousCourseDetail) {
-           queryClient.setQueryData([COURSES_QUERY_KEY, 'detail', courseId], context.previousCourseDetail);
-       }
+    onError: (err, variables, context) => {
+       console.error("❌ [useUpdateCourse] Mutation failed:", err);
        toast({
         title: "Lỗi",
         description: extractErrorMessage(err),
@@ -173,6 +163,7 @@ export function useUpdateCourse() {
       });
     },
     onSettled: (data, error, { courseId }) => {
+      console.log(`🔄 [useUpdateCourse] Invalidating queries for course list and detail ${courseId}`);
       queryClient.invalidateQueries({ queryKey: [COURSES_QUERY_KEY, 'list'] });
       queryClient.invalidateQueries({ queryKey: [COURSES_QUERY_KEY, 'detail', courseId] });
     },
@@ -184,33 +175,20 @@ export function useDeleteCourse() {
   const { toast } = useToast();
 
   return useMutation<void, Error, string[], { previousCourses?: PaginatedResponse<Course> }>({
-    mutationFn: (ids) => coursesService.softDeleteCourses(ids),
-    onMutate: async (idsToDelete) => {
-      const queryKey = [COURSES_QUERY_KEY, "list"];
-      await queryClient.cancelQueries({ queryKey });
-      
-      const previousCourses = queryClient.getQueryData<PaginatedResponse<Course>>(queryKey);
-      
-      if(previousCourses) {
-        queryClient.setQueryData<PaginatedResponse<Course>>(queryKey, (old) => old ? ({
-          ...old,
-          items: old.items.filter(course => !idsToDelete.includes(course.id)),
-        }) : old);
-      }
-      
-      return { previousCourses };
+    mutationFn: (ids) => {
+        console.log("▶️ [useDeleteCourse] Mutation started for IDs:", ids);
+        return coursesService.softDeleteCourses(ids);
     },
     onSuccess: () => {
+      console.log("✅ [useDeleteCourse] Mutation successful");
       toast({
         title: "Thành công",
         description: "Đã xóa khóa học thành công.",
         variant: "success",
       });
     },
-    onError: (err, id, context) => {
-      if (context?.previousCourses) {
-        queryClient.setQueryData([COURSES_QUERY_KEY, 'list'], context.previousCourses);
-      }
+    onError: (err) => {
+      console.error("❌ [useDeleteCourse] Mutation failed:", err);
       toast({
         title: "Lỗi",
         description: extractErrorMessage(err),
@@ -218,6 +196,7 @@ export function useDeleteCourse() {
       });
     },
     onSettled: () => {
+      console.log(`🔄 [useDeleteCourse] Invalidating queries with key:`, [COURSES_QUERY_KEY]);
       queryClient.invalidateQueries({ queryKey: [COURSES_QUERY_KEY] });
     },
   });
@@ -228,8 +207,12 @@ export function useEnrollCourse() {
   const { toast } = useToast();
 
   return useMutation<any, Error, string>({
-    mutationFn: (courseId) => coursesService.enrollCourse(courseId),
+    mutationFn: (courseId) => {
+        console.log(`▶️ [useEnrollCourse] Mutation started for course ${courseId}`);
+        return coursesService.enrollCourse(courseId);
+    },
     onSuccess: () => {
+      console.log("✅ [useEnrollCourse] Mutation successful");
       toast({
         title: "Thành công",
         description: "Đăng ký khóa học thành công.",
@@ -237,6 +220,7 @@ export function useEnrollCourse() {
       });
     },
     onError: (error) => {
+      console.error("❌ [useEnrollCourse] Mutation failed:", error);
       toast({
         title: "Lỗi",
         description: extractErrorMessage(error),
@@ -244,6 +228,7 @@ export function useEnrollCourse() {
       });
     },
     onSettled: () => {
+      console.log(`🔄 [useEnrollCourse] Invalidating enrolled courses and all courses.`);
       queryClient.invalidateQueries({ queryKey: [ENROLLED_COURSES_QUERY_KEY] });
       queryClient.invalidateQueries({ queryKey: [COURSES_QUERY_KEY] });
     }
@@ -264,6 +249,7 @@ export function useUpcomingCourses() {
   return useQuery<Course[], Error>({
     queryKey: ["upcomingCourses", user?.id],
     queryFn: async () => {
+      console.log(`♻️ [useUpcomingCourses] Refetching upcoming courses.`);
       const apiResponse = await coursesService.getUpcomingCourses();
       return (apiResponse || []).map(mapCourseApiToUi);
     },
@@ -276,7 +262,10 @@ export function useUpcomingCourses() {
 export function useCourseProgressList(courseId: string, params?: QueryParams) {
   return useQuery<PaginatedResponse<UserCourseProgressDto>, Error>({
     queryKey: ["courseProgressList", courseId, params],
-    queryFn: () => coursesService.getCourseProgressList(courseId, params),
+    queryFn: () => {
+      console.log(`♻️ [useCourseProgressList] Refetching progress list for course ${courseId}.`);
+      return coursesService.getCourseProgressList(courseId, params);
+    },
     enabled: !!courseId,
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: true,
@@ -286,7 +275,10 @@ export function useCourseProgressList(courseId: string, params?: QueryParams) {
 export function useCourseProgressDetail(courseId: string, userId: string) {
   return useQuery<UserCourseProgressDetailDto, Error>({
     queryKey: ["courseProgressDetail", courseId, userId],
-    queryFn: () => coursesService.getCourseProgressDetail(courseId, userId),
+    queryFn: () => {
+      console.log(`♻️ [useCourseProgressDetail] Refetching progress detail for course ${courseId}, user ${userId}.`);
+      return coursesService.getCourseProgressDetail(courseId, userId);
+    },
     enabled: !!courseId && !!userId,
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: true,
@@ -296,7 +288,10 @@ export function useCourseProgressDetail(courseId: string, userId: string) {
 export function useCompletedLessonsCount(courseId: string) {
   return useQuery<number, Error>({
     queryKey: ["completedLessonsCount", courseId],
-    queryFn: () => coursesService.getCompletedLessonsCountByCourseId(courseId),
+    queryFn: () => {
+      console.log(`♻️ [useCompletedLessonsCount] Refetching completed lessons count for course ${courseId}.`);
+      return coursesService.getCompletedLessonsCountByCourseId(courseId);
+    },
     enabled: !!courseId,
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: true,
@@ -309,6 +304,7 @@ export function useCompletedCoursesCount() {
     return useQuery<{ count: number; courses: Course[] }, Error>({
       queryKey: ["completedCoursesCount", user?.id],
       queryFn: async () => {
+        console.log(`♻️ [useCompletedCoursesCount] Refetching completed courses count.`);
         const [coursesResponse, countResponse] = await Promise.all([
           coursesService.getCompletedCourses(),
           coursesService.getCompletedCoursesCount(),

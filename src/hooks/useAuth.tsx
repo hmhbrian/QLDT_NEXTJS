@@ -1,3 +1,4 @@
+
 "use client";
 
 import {
@@ -56,6 +57,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.removeItem(API_CONFIG.storage.token);
     localStorage.removeItem("qldt_user_info"); // Xóa user info
     cookieManager.removeSecureAuth(); // Clear secure auth cookies
+    console.log("🧹 [AuthProvider] Clearing all query cache.");
     queryClient.clear();
     navigateInstant("/login");
   }, [queryClient, navigateInstant]);
@@ -206,12 +208,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       // Set user state
       setUser(mappedUser);
-      console.log("✅ [Login] User state set successfully:", mappedUser);
-
-      console.log(
-        "✅ [AuthProvider] Login successful, user state set:",
-        mappedUser
-      );
+      
+      console.log("✅ [AuthProvider] Login successful, user state set:", mappedUser);
+      
+      // Invalidate all queries to refetch data for the new user
+      console.log("🔄 [AuthProvider] Invalidating all queries on successful login.");
+      await queryClient.invalidateQueries();
 
       toast({
         title: "Đăng nhập thành công",

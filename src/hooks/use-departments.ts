@@ -17,11 +17,10 @@ export const DEPARTMENTS_QUERY_KEY = "departments";
 export function useDepartments(params?: { status?: "active" }) {
   const queryKey = [DEPARTMENTS_QUERY_KEY, "list", params];
 
-  // Sửa lỗi logic: API trả về mảng DepartmentApiResponse[] trực tiếp, không phải PaginatedResponse
-  // Do đó, ta cần map trực tiếp mảng này.
   const { data, isLoading, error } = useQuery<DepartmentInfo[], Error>({
     queryKey,
     queryFn: async () => {
+      console.log(`♻️ [useDepartments] Refetching departments with params:`, params);
       const apiResponse = await departmentsService.getDepartments(params);
       return (apiResponse || []).map(mapDepartmentApiToUi);
     },
@@ -41,8 +40,12 @@ export function useCreateDepartment() {
   const { toast } = useToast();
 
   return useMutation<DepartmentInfo, Error, CreateDepartmentPayload>({
-    mutationFn: (payload) => departmentsService.createDepartment(payload),
+    mutationFn: (payload) => {
+        console.log("▶️ [useCreateDepartment] Mutation started with payload:", payload);
+        return departmentsService.createDepartment(payload);
+    },
     onSuccess: (newDepartment) => {
+      console.log("✅ [useCreateDepartment] Mutation successful:", newDepartment);
       toast({
         title: "Thành công",
         description: `Đã tạo phòng ban "${newDepartment.name}" thành công.`,
@@ -50,6 +53,7 @@ export function useCreateDepartment() {
       });
     },
     onError: (error) => {
+      console.error("❌ [useCreateDepartment] Mutation failed:", error);
       toast({
         title: "Lỗi",
         description: extractErrorMessage(error),
@@ -57,6 +61,7 @@ export function useCreateDepartment() {
       });
     },
     onSettled: () => {
+      console.log(`🔄 [useCreateDepartment] Invalidating queries with key:`, [DEPARTMENTS_QUERY_KEY]);
       queryClient.invalidateQueries({ queryKey: [DEPARTMENTS_QUERY_KEY] });
     },
   });
@@ -73,39 +78,11 @@ export function useUpdateDepartment() {
     { previousDepartments?: DepartmentInfo[] }
   >({
     mutationFn: ({ id, payload }) => {
+        console.log(`▶️ [useUpdateDepartment] Mutation started for department ${id} with payload:`, payload);
         return departmentsService.updateDepartment(id, payload);
     },
-    onMutate: async ({ id, payload }) => {
-      // Cancel any outgoing refetches (so they don't overwrite our optimistic update)
-      await queryClient.cancelQueries({ queryKey: [DEPARTMENTS_QUERY_KEY] });
-
-      // Snapshot the previous value
-      const previousDepartments = queryClient.getQueryData<DepartmentInfo[]>([DEPARTMENTS_QUERY_KEY, 'list', { status: undefined }]);
-
-      // Optimistically update to the new value
-      if (previousDepartments) {
-          queryClient.setQueryData<DepartmentInfo[]>([DEPARTMENTS_QUERY_KEY, 'list', { status: undefined }], old => {
-              if (!old) return [];
-              return old.map(d => 
-                  d.departmentId === id 
-                  ? { 
-                      ...d, 
-                      name: payload.DepartmentName ?? d.name,
-                      code: payload.DepartmentCode ?? d.code,
-                      description: payload.Description ?? d.description,
-                      managerId: payload.ManagerId ?? d.managerId,
-                      parentId: payload.ParentId !== undefined ? String(payload.ParentId) : d.parentId,
-                      status: { ...d.status, id: payload.StatusId ?? d.status.id },
-                    } 
-                  : d
-              );
-          });
-      }
-
-      // Return a context object with the snapshotted value
-      return { previousDepartments };
-    },
     onSuccess: (_, { payload }) => {
+      console.log("✅ [useUpdateDepartment] Mutation successful");
       toast({
         title: "Thành công",
         description: `Đã cập nhật phòng ban "${payload.DepartmentName}" thành công.`,
@@ -113,7 +90,7 @@ export function useUpdateDepartment() {
       });
     },
     onError: (err, variables, context) => {
-      // Rollback to the previous value if the mutation fails
+      console.error("❌ [useUpdateDepartment] Mutation failed:", err);
       if (context?.previousDepartments) {
         queryClient.setQueryData(
           [DEPARTMENTS_QUERY_KEY, "list", { status: undefined }],
@@ -127,7 +104,7 @@ export function useUpdateDepartment() {
       });
     },
     onSettled: () => {
-      // Always refetch after error or success to ensure data consistency
+      console.log(`🔄 [useUpdateDepartment] Invalidating queries with key:`, [DEPARTMENTS_QUERY_KEY]);
       queryClient.invalidateQueries({
         queryKey: [DEPARTMENTS_QUERY_KEY, "list"],
       });
@@ -145,37 +122,20 @@ export function useDeleteDepartment() {
     string,
     { previousDepartments?: PaginatedResponse<DepartmentInfo> }
   >({
-    mutationFn: (id) => departmentsService.deleteDepartment(id),
-    onMutate: async (idToDelete) => {
-      const queryKey = [DEPARTMENTS_QUERY_KEY, "list", { status: "active" }];
-      await queryClient.cancelQueries({ queryKey });
-
-      const previousDepartments =
-        queryClient.getQueryData<PaginatedResponse<DepartmentInfo>>(queryKey);
-
-      if (previousDepartments) {
-        queryClient.setQueryData<PaginatedResponse<DepartmentInfo>>(
-          queryKey,
-          (old) => old ? { ...old, items: old.items.filter((d) => d.departmentId !== idToDelete) } : old
-        );
-      }
-
-      return { previousDepartments };
+    mutationFn: (id) => {
+        console.log(`▶️ [useDeleteDepartment] Mutation started for ID:`, id);
+        return departmentsService.deleteDepartment(id);
     },
     onSuccess: () => {
+      console.log("✅ [useDeleteDepartment] Mutation successful");
       toast({
         title: "Thành công",
         description: "Đã xóa phòng ban thành công.",
         variant: "success",
       });
     },
-    onError: (err, id, context) => {
-      if (context?.previousDepartments) {
-        queryClient.setQueryData(
-          [DEPARTMENTS_QUERY_KEY, "list", { status: "active" }],
-          context.previousDepartments
-        );
-      }
+    onError: (err) => {
+      console.error("❌ [useDeleteDepartment] Mutation failed:", err);
       toast({
         title: "Lỗi",
         description: extractErrorMessage(err),
@@ -183,6 +143,7 @@ export function useDeleteDepartment() {
       });
     },
     onSettled: () => {
+      console.log(`🔄 [useDeleteDepartment] Invalidating queries with key:`, [DEPARTMENTS_QUERY_KEY]);
       queryClient.invalidateQueries({ queryKey: [DEPARTMENTS_QUERY_KEY] });
     },
   });
