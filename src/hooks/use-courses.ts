@@ -373,9 +373,13 @@ export function useCompletedCoursesCount() {
         endDate: null,
         registrationStartDate: null,
         registrationDeadline: null,
+        // Add required new fields
+        departments: [],
+        eLevels: [],
+        category: null,
+        // Legacy fields
         department: [],
         level: [],
-        category: "",
         materials: [],
         lessons: [],
         tests: [],

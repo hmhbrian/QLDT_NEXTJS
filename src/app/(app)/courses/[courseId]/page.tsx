@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState, useMemo, useCallback, useRef } from "react";
@@ -215,7 +214,6 @@ const TestItem = ({
                     aria-disabled={!isEnrolled}
                     tabIndex={!isEnrolled ? -1 : undefined}
                     className={!isEnrolled ? "pointer-events-none" : ""}
-                    
                   >
                     <Check className="mr-2 h-4 w-4" />
                     Làm bài kiểm tra
@@ -267,10 +265,8 @@ export default function CourseDetailPage() {
     error: courseError,
   } = useCourse(courseIdFromParams);
   const { enrolledCourses } = useEnrolledCourses(!!currentUser);
-  const {
-    feedbacks,
-    isLoading: isLoadingFeedbacks,
-  } = useFeedbacks(courseIdFromParams);
+  const { feedbacks, isLoading: isLoadingFeedbacks } =
+    useFeedbacks(courseIdFromParams);
 
   // All hooks need to be before early returns to comply with Rules of Hooks
   const isEnrolled = useMemo(() => {
@@ -466,12 +462,7 @@ export default function CourseDetailPage() {
         });
       },
     });
-  }, [
-    currentUser,
-    course,
-    evaluationFormData,
-    createFeedbackMutation,
-  ]);
+  }, [currentUser, course, evaluationFormData, createFeedbackMutation]);
 
   const handleSelectLesson = useCallback((lesson: LessonWithProgress) => {
     setSelectedLesson(lesson);
@@ -556,7 +547,7 @@ export default function CourseDetailPage() {
                 variant="secondary"
                 className="mb-2 text-sm font-medium bg-white/20 text-white backdrop-blur-sm"
               >
-                {getCategoryLabel(course.category)}
+                {getCategoryLabel(course.category?.categoryName || "Không có")}
               </Badge>
               <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold font-headline text-white leading-tight">
                 {course.title}
@@ -582,7 +573,7 @@ export default function CourseDetailPage() {
                         ? course.createdBy.name
                         : typeof course.createdBy === "string"
                         ? course.createdBy
-                        : "N/A"}
+                        : "Không có"}
                     </b>{" "}
                     vào <ClientTime date={course.createdAt} />
                   </span>
@@ -597,7 +588,7 @@ export default function CourseDetailPage() {
                         ? course.modifiedBy.name
                         : typeof course.modifiedBy === "string"
                         ? course.modifiedBy
-                        : "N/A"}
+                        : "Không có"}
                     </b>{" "}
                     vào <ClientTime date={course.modifiedAt} />
                   </span>

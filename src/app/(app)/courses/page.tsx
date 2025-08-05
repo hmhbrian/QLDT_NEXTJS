@@ -328,7 +328,7 @@ export default function CoursesPage() {
                     <CardHeader className="pt-4 pb-2">
                       <div className="flex items-center gap-2 mb-1">
                         <Badge variant="outline" className="text-xs">
-                          {course.category}
+                          {course.category?.categoryName || "Không có"}
                         </Badge>
                         <Badge
                           variant={
@@ -361,6 +361,144 @@ export default function CoursesPage() {
                         <p>
                           Thời lượng: {course.duration.sessions} buổi (
                           {course.duration.hoursPerSession}h/buổi)
+                        </p>
+                        <p className="truncate">
+                          Phòng ban:{" "}
+                          {(() => {
+                            // Handle both new format (departments array) and legacy format (department array)
+                            const departmentsData = course.departments || [];
+                            const departmentIds = course.department || [];
+
+                            let departmentNames: string[] = [];
+
+                            if (departmentsData.length > 0) {
+                              departmentNames = departmentsData.map(
+                                (dept) => dept.departmentName
+                              );
+                            } else if (departmentIds.length > 0) {
+                              departmentNames = departmentIds.map((id) => {
+                                const foundDept = departments.find(
+                                  (d) => String(d.departmentId) === String(id)
+                                );
+                                return foundDept
+                                  ? foundDept.name
+                                  : `Dept-${id}`;
+                              });
+                            }
+
+                            if (departmentNames.length === 0) {
+                              return (
+                                <span className="font-medium text-foreground">
+                                  N/A
+                                </span>
+                              );
+                            }
+
+                            const displayText =
+                              departmentNames.length > 1
+                                ? `${departmentNames[0]} +${
+                                    departmentNames.length - 1
+                                  }`
+                                : departmentNames.join(", ");
+
+                            if (departmentNames.length > 1) {
+                              return (
+                                <TooltipProvider>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <span className="font-medium text-foreground cursor-help underline decoration-dotted truncate">
+                                        {displayText}
+                                      </span>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      <div className="max-w-xs">
+                                        {departmentNames.map((name, idx) => (
+                                          <div key={idx}>• {name}</div>
+                                        ))}
+                                      </div>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
+                              );
+                            }
+
+                            return (
+                              <span className="font-medium text-foreground truncate">
+                                {displayText}
+                              </span>
+                            );
+                          })()}
+                        </p>
+                        <p className="truncate">
+                          Cấp độ:{" "}
+                          {(() => {
+                            // Handle both new format (eLevels array) and legacy format (level array)
+                            const eLevelsData = course.eLevels || [];
+                            const levelIds = course.level || [];
+
+                            let levelNames: string[] = [];
+
+                            if (eLevelsData.length > 0) {
+                              levelNames = eLevelsData.map(
+                                (level) => level.eLevelName
+                              );
+                            } else if (levelIds.length > 0) {
+                              levelNames = levelIds.map((id) => {
+                                const foundLevel = EmployeeLevel.find(
+                                  (p) => String(p.eLevelId) === String(id)
+                                );
+                                return foundLevel
+                                  ? foundLevel.eLevelName
+                                  : `Level-${id}`;
+                              });
+                            }
+
+                            if (levelNames.length === 0) {
+                              return (
+                                <span className="font-medium text-foreground">
+                                  N/A
+                                </span>
+                              );
+                            }
+
+                            const displayText =
+                              levelNames.length > 1
+                                ? `${levelNames[0]} +${levelNames.length - 1}`
+                                : levelNames.join(", ");
+
+                            if (levelNames.length > 1) {
+                              return (
+                                <TooltipProvider>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <span className="font-medium text-foreground cursor-help underline decoration-dotted truncate">
+                                        {displayText}
+                                      </span>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      <div className="max-w-xs">
+                                        {levelNames.map((name, idx) => (
+                                          <div key={idx}>• {name}</div>
+                                        ))}
+                                      </div>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
+                              );
+                            }
+
+                            return (
+                              <span className="font-medium text-foreground truncate">
+                                {displayText}
+                              </span>
+                            );
+                          })()}
+                        </p>
+                        <p>
+                          Danh mục:{" "}
+                          <span className="font-medium text-foreground">
+                            {course.category?.categoryName || "Không có"}
+                          </span>
                         </p>
                         {course.enrollmentType === "optional" &&
                           course.registrationDeadline && (

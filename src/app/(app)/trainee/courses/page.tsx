@@ -133,7 +133,7 @@ export default function StudentCourseCatalog() {
   const levelOptions = useMemo(() => {
     if (!Array.isArray(EmployeeLevel)) return [];
     return EmployeeLevel.filter(
-      (p) => p.eLevelName && p.eLevelName !== "N/A"
+      (p) => p.eLevelName && p.eLevelName !== "Không có"
     ).map((p) => ({
       value: String(p.eLevelId),
       label: p.eLevelName,
@@ -328,7 +328,7 @@ export default function StudentCourseCatalog() {
                           ? course.status.name
                           : typeof course.status === "string"
                           ? course.status
-                          : "N/A"
+                          : "Không có"
                       }
                     />
                   </div>

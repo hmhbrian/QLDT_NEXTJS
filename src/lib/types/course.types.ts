@@ -101,9 +101,13 @@ export interface Course {
   endDate: string | null;
   registrationStartDate: string | null;
   registrationDeadline: string | null;
-  department: string[]; // Changed to array of strings
-  level: string[]; // Changed to array of strings
-  category: string;
+  // Updated to match API response
+  departments: Array<{ departmentId: number; departmentName: string }>;
+  eLevels: Array<{ eLevelId: number; eLevelName: string }>;
+  category: { id: number; categoryName: string } | null;
+  // Legacy fields for backward compatibility
+  department?: string[];
+  level?: string[];
   materials: CourseMaterial[];
   lessons: Lesson[];
   tests: Test[];
@@ -226,7 +230,10 @@ export interface CourseApiResponse {
   status?: Status;
   category?: CourseCategoryDto;
   lecturer?: any; // Define LecturerDto if needed
-  departments?: DepartmentInfo[];
+  departments?: Array<{ departmentId: number; departmentName: string }>;
+  eLevels?: Array<{ eLevelId: number; eLevelName: string }>;
+  // Legacy fields for backward compatibility
+  DepartmentInfo?: DepartmentInfo[];
   EmployeeLevel?: EmployeeLevel[];
   users?: User[]; // For enrolled users (legacy)
   students?: { id: string; name: string }[]; // For enrolled students (new API format)

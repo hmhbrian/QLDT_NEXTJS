@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
@@ -132,7 +131,7 @@ function SortableLessonItem({
             className="text-xs text-muted-foreground mt-1 truncate"
             title={lesson.link || ""}
           >
-            {lesson.link || lesson.content || "N/A"}
+            {lesson.link || lesson.content || "Không có"}
           </p>
         </div>
       </div>
@@ -320,12 +319,10 @@ export function LessonManager({ courseId }: LessonManagerProps) {
 
       const reorderedLessons = arrayMove(lessons, oldIndex, newIndex);
       const movedLesson = reorderedLessons[newIndex];
-      const previousLesson = newIndex > 0 ? reorderedLessons[newIndex - 1] : null;
+      const previousLesson =
+        newIndex > 0 ? reorderedLessons[newIndex - 1] : null;
 
-      queryClient.setQueryData(
-        [LESSONS_QUERY_KEY, courseId],
-        reorderedLessons
-      );
+      queryClient.setQueryData([LESSONS_QUERY_KEY, courseId], reorderedLessons);
 
       const payload = {
         LessonId: Number(movedLesson.id),

@@ -49,6 +49,7 @@ import type { Course, EnrollmentType } from "@/lib/types/course.types";
 import type { User } from "@/lib/types/user.types";
 import { generateCourseCode } from "@/lib/utils/code-generator";
 import { categoryOptions } from "@/lib/config/constants";
+import { useCourseCategories } from "@/hooks/use-course-categories";
 import {
   useCourse,
   useCreateCourse,
@@ -73,7 +74,7 @@ const initialNewCourseState: Course = {
   courseCode: "",
   description: "",
   objectives: "",
-  category: "programming",
+  category: null,
   instructor: "",
   duration: { sessions: 1, hoursPerSession: 2 },
   learningType: "online",
@@ -82,6 +83,8 @@ const initialNewCourseState: Course = {
   location: "",
   image: "https://placehold.co/600x400.png",
   status: "Lưu nháp",
+  departments: [],
+  eLevels: [],
   department: [],
   level: [],
   materials: [],
@@ -112,6 +115,7 @@ export function CourseForm({
   const duplicateFromId = searchParams.get("duplicateFrom");
 
   // --- Data Fetching ---
+  const { categories, isLoading: isLoadingCategories } = useCourseCategories();
   const { course: courseToEdit, isLoading: isLoadingCourse } = useCourse(
     courseId || ""
   );
@@ -396,18 +400,26 @@ export function CourseForm({
                     Danh mục <span className="text-destructive">*</span>
                   </Label>
                   <Select
-                    value={formData.category}
-                    onValueChange={(v: Course["category"]) =>
-                      handleInputChange("category", v)
+                    value={
+                      formData.category?.id ? String(formData.category.id) : ""
                     }
+                    onValueChange={(value: string) => {
+                      const selectedCategory = categories.find(
+                        (c) => String(c.id) === value
+                      );
+                      handleInputChange("category", selectedCategory || null);
+                    }}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Chọn danh mục" />
                     </SelectTrigger>
                     <SelectContent>
-                      {categoryOptions.map((o) => (
-                        <SelectItem key={o.value} value={o.value}>
-                          {o.label}
+                      {categories.map((category) => (
+                        <SelectItem
+                          key={category.id}
+                          value={String(category.id)}
+                        >
+                          {category.categoryName}
                         </SelectItem>
                       ))}
                     </SelectContent>

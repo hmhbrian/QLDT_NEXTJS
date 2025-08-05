@@ -34,18 +34,18 @@ export function mapCourseApiToUi(apiCourse: CourseApiResponse): Course {
 
   return {
     id: apiCourse.id,
-    title: apiCourse.name || "N/A",
-    courseCode: apiCourse.code || "N/A",
+    title: apiCourse.name || "Không có",
+    courseCode: apiCourse.code || "Không có",
     description: apiCourse.description || "",
     objectives: apiCourse.objectives || "",
     image: imageUrl,
     location: apiCourse.location || "",
-    status: apiCourse.status?.name || "N/A",
+    status: apiCourse.status?.name || "Không có",
     statusId: apiCourse.status?.id,
     enrollmentType:
       apiCourse.optional === "Bắt buộc" ? "mandatory" : "optional",
     isPublic: apiCourse.optional !== "Bắt buộc",
-    instructor: apiCourse.lecturer?.name || "N/A",
+    instructor: apiCourse.lecturer?.name || "Không có",
     duration: {
       sessions: apiCourse.sessions || 0,
       hoursPerSession: apiCourse.hoursPerSessions || 0,
@@ -56,14 +56,33 @@ export function mapCourseApiToUi(apiCourse: CourseApiResponse): Course {
     endDate: apiCourse.endDate || null,
     registrationStartDate: apiCourse.registrationStartDate || null,
     registrationDeadline: apiCourse.registrationClosingDate || null,
-    department: (apiCourse.departments || []).map((d) =>
+    // Updated to match new Course interface
+    departments:
+      apiCourse.departments ||
+      (apiCourse.DepartmentInfo || []).map((d) => ({
+        departmentId: Number(d.departmentId),
+        departmentName: d.name,
+      })),
+    eLevels:
+      apiCourse.eLevels ||
+      (apiCourse.EmployeeLevel || []).map((e) => ({
+        eLevelId: Number(e.eLevelId),
+        eLevelName: e.eLevelName,
+      })),
+    category: apiCourse.category
+      ? {
+          id: apiCourse.category.id,
+          categoryName: apiCourse.category.name || "Không có",
+        }
+      : null,
+    // Legacy fields for backward compatibility
+    department: (apiCourse.DepartmentInfo || []).map((d) =>
       String(d.departmentId)
     ),
     level: (apiCourse.EmployeeLevel || []).map((p) => String(p.eLevelId)),
     userIds: (apiCourse.students || apiCourse.users || []).map((user) =>
       "id" in user ? user.id : (user as any).id
     ),
-    category: apiCourse.category?.name || "Chung",
     materials: [],
     lessons: [],
     tests: [],
@@ -89,7 +108,7 @@ export function mapUserEnrollCourseDtoToCourse(
     status: "Đang mở",
     enrollmentType: dto.optional === "Bắt buộc" ? "mandatory" : "optional",
     isPublic: dto.optional !== "Bắt buộc",
-    instructor: dto.instructor || "N/A",
+    instructor: dto.instructor || "Không có",
     duration: {
       sessions: dto.sessions || 0,
       hoursPerSession: dto.hoursPerSessions || 0,
@@ -100,9 +119,13 @@ export function mapUserEnrollCourseDtoToCourse(
     endDate: dto.endDate || null,
     registrationStartDate: dto.registrationStartDate || null,
     registrationDeadline: dto.registrationClosingDate || null,
+    // For UserEnrollCourseDto, provide defaults
+    departments: [],
+    eLevels: [],
+    category: null,
+    // Legacy fields for backward compatibility
     department: [],
     level: [],
-    category: dto.category || "N/A",
     materials: [],
     lessons: [],
     tests: [],
@@ -347,6 +370,18 @@ export function mapCourseUiToUpdatePayload(
   // Handle UserIds
   if (!originalCourse || isDifferent(course.userIds, originalCourse.userIds)) {
     payload.UserIds = course.userIds;
+  }
+
+  // Handle CategoryId
+  const newCategoryId = course.category?.id;
+  const oldCategoryId = originalCourse?.category?.id;
+  if (!originalCourse || isDifferent(newCategoryId, oldCategoryId)) {
+    payload.CategoryId = newCategoryId || null;
+    console.log("🏷️ [CategoryId] Change detected:", {
+      old: oldCategoryId,
+      new: newCategoryId,
+      action: newCategoryId ? "UPDATE" : "CLEAR",
+    });
   }
 
   // Always include image file if present
