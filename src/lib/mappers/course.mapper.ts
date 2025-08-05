@@ -76,16 +76,12 @@ export function mapCourseApiToUi(apiCourse: CourseApiResponse): Course {
         }
       : null,
     // Legacy fields for backward compatibility
-    department: (
-      apiCourse.departments ||
-      apiCourse.DepartmentInfo ||
-      []
-    ).map((d) => String(d.departmentId)),
-    level: (
-      apiCourse.eLevels ||
-      apiCourse.EmployeeLevel ||
-      []
-    ).map((p) => String(p.eLevelId)),
+    department: (apiCourse.departments || apiCourse.DepartmentInfo || []).map(
+      (d) => String(d.departmentId)
+    ),
+    level: (apiCourse.eLevels || apiCourse.EmployeeLevel || []).map((p) =>
+      String(p.eLevelId)
+    ),
     userIds: (apiCourse.students || apiCourse.users || []).map((user) =>
       "id" in user ? user.id : (user as any).id
     ),
