@@ -166,6 +166,10 @@ export function CourseForm({
   // --- Effects ---
   useEffect(() => {
     if (courseToEdit && courseId) {
+      console.log(
+        "🔄 [CourseForm] Updating form data with courseToEdit:",
+        courseToEdit
+      );
       setFormData(courseToEdit);
       setCourseImagePreview(courseToEdit.image);
       setTempSelectedTraineeIds(courseToEdit.userIds || []);
@@ -232,6 +236,20 @@ export function CourseForm({
     };
   }, [courseImagePreview]);
 
+  // Effect to sync form data when courseToEdit updates (e.g., after cache invalidation)
+  useEffect(() => {
+    if (
+      courseToEdit &&
+      courseId &&
+      JSON.stringify(formData) !== JSON.stringify(courseToEdit)
+    ) {
+      console.log(
+        "🔄 [CourseForm] Syncing form data with updated courseToEdit"
+      );
+      setFormData(courseToEdit);
+    }
+  }, [courseToEdit, courseId]);
+
   // --- Handlers ---
   const handleInputChange = (field: keyof typeof formData, value: unknown) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -283,22 +301,27 @@ export function CourseForm({
       imageFile: selectedImageFile || undefined,
     };
 
-    // Navigate immediately for better UX
-    onSaveSuccess?.();
-
     try {
       if (courseId) {
-        // Editing existing course
-        const payload = mapCourseUiToUpdatePayload(dataWithFile);
+        // Editing existing course - pass original course data for comparison
+        const payload = mapCourseUiToUpdatePayload(dataWithFile, courseToEdit);
         await updateCourseMutation.mutateAsync({ courseId, payload });
+
+        // Update form data with the saved data to reflect changes
+        setFormData(dataWithFile);
+
+        // Navigate after successful save
+        onSaveSuccess?.();
       } else {
         // Creating new course (could be from scratch or duplication)
         const payload = mapCourseUiToCreatePayload(dataWithFile);
         await createCourseMutation.mutateAsync(payload);
+
+        // Navigate immediately for new course
+        onSaveSuccess?.();
       }
     } catch (error) {
       // The useMutation hook will show the error toast.
-      // We don't need to re-throw, as navigation has already occurred.
       console.error("Failed to save course:", error);
     }
   };
