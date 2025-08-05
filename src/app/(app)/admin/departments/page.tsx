@@ -394,7 +394,7 @@ export default function DepartmentsPage() {
                   status?.name === "Đang hoạt động" ? "default" : "secondary"
                 }
               >
-                {status?.name || "N/A"}
+                {status?.name || "Không có"}
               </Badge>
             </div>
           </div>
