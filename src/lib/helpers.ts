@@ -1,4 +1,3 @@
-
 import type { Status } from "@/lib/types/status.types";
 
 export const COURSE_STATUSES: Status[] = [
@@ -56,10 +55,33 @@ export const isRegistrationOpen = (
   return new Date(deadline) >= new Date();
 };
 
-export const getCategoryLabel = (categoryValue: string | undefined): string => {
-  return categoryValue
-    ? categoryValue.charAt(0).toUpperCase() + categoryValue.slice(1)
-    : "Chung";
+export const getCategoryLabel = (
+  categoryValue:
+    | string
+    | { id: number; categoryName: string }
+    | null
+    | undefined
+): string => {
+  if (!categoryValue) return "Chung";
+
+  // If categoryValue is an object with categoryName property
+  if (
+    typeof categoryValue === "object" &&
+    categoryValue !== null &&
+    "categoryName" in categoryValue
+  ) {
+    const categoryName = categoryValue.categoryName;
+    return categoryName
+      ? categoryName.charAt(0).toUpperCase() + categoryName.slice(1)
+      : "Chung";
+  }
+
+  // If categoryValue is a string
+  if (typeof categoryValue === "string") {
+    return categoryValue.charAt(0).toUpperCase() + categoryValue.slice(1);
+  }
+
+  return "Chung";
 };
 
 export const getLevelBadgeColor = (

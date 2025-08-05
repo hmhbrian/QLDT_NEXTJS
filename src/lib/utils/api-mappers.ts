@@ -36,7 +36,7 @@ export function mapCourseApiToUi(course: any): Course {
     title: course.name || course.title || "",
     courseCode: course.code || course.courseCode || "",
     image: course.thumbUrl || course.image || "/placeholder-course.jpg",
-    instructor: course.lecturer?.name || course.instructor || "N/A",
+    instructor: course.lecturer?.name || course.instructor || "Không có",
     department:
       course.departments?.map((d: any) => String(d.departmentId || d.id)) ||
       course.department ||
