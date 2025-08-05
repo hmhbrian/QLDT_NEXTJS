@@ -38,6 +38,14 @@ import {
   CheckSquare,
   Check,
 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
 import { testsService } from "@/lib/services/modern/tests.service";
 import { useToast } from "@/components/ui/use-toast";
@@ -49,6 +57,8 @@ import type {
   DetailedTestResult,
   SelectedAnswer,
 } from "@/lib/types/test.types";
+import { useSubmitTest, useTestResult } from "@/hooks/use-tests";
+import { LoadingButton } from "@/components/ui/loading";
 
 const OPTION_LABELS = ["A", "B", "C", "D", "E", "F", "G", "H"];
 
@@ -57,19 +67,18 @@ export default function TestDetailPage() {
   const router = useRouter();
   const { toast } = useToast();
   const courseId = params.courseId as string;
-  const testId = params.testId as string;
+  const testId = parseInt(params.testId as string, 10);
 
   const [testData, setTestData] = useState<Test | null>(null);
-  const [result, setResult] = useState<DetailedTestResult | null>(null);
   const [answers, setAnswers] = useState<Record<string, string[]>>({});
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [isStarted, setIsStarted] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [showReview, setShowReview] = useState(false);
   const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
   const [startedAt, setStartedAt] = useState<string | null>(null);
+  const [showSubmitConfirmation, setShowSubmitConfirmation] = useState(false);
 
-  // Fetch test data
+  // --- Data Fetching Hooks ---
   const {
     data: fetchedTest,
     isLoading: isLoadingTest,
@@ -78,46 +87,42 @@ export default function TestDetailPage() {
   } = useQuery({
     queryKey: ["test", courseId, testId],
     queryFn: async () => {
-      const apiTest = await testsService.getTestById(
-        courseId,
-        parseInt(testId, 10)
-      );
+      console.log(`♻️ [TestPage] Fetching test data for test ID: ${testId}`);
+      const apiTest = await testsService.getTestById(courseId, testId);
       return mapApiTestToUiTest(apiTest);
     },
     enabled: !!courseId && !!testId,
     staleTime: Infinity,
   });
 
-  // Fetch previous result if exists
   const {
-    data: previousResult,
+    data: result,
     isLoading: isLoadingResult,
     refetch: refetchResult,
-  } = useQuery({
-    queryKey: ["testResult", courseId, testId],
-    queryFn: () => testsService.getTestResult(courseId, parseInt(testId, 10)),
-    enabled: !!courseId && !!testId && !isStarted,
-    retry: false,
-  });
+  } = useTestResult(courseId, testId, !isStarted); // Fetch result only when not taking the test
 
+  const submitTestMutation = useSubmitTest(courseId, testId);
+
+  // --- Effects ---
   useEffect(() => {
-    // Đảm bảo isDone từ backend được gán vào testData
     if (fetchedTest) {
-      setTestData((prev) => ({
-        ...fetchedTest,
-        isDone: fetchedTest.isDone,
-      }));
-    }
-  }, [fetchedTest]);
-
-  useEffect(() => {
-    if (previousResult) {
-      setResult(previousResult);
-      if (fetchedTest) {
-        setTestData((prev) => ({ ...fetchedTest, isDone: true }));
+      console.log("⚙️ [TestPage] Setting test data from fetch:", fetchedTest);
+      setTestData(fetchedTest);
+      // Check if the user has already completed this test
+      if (fetchedTest.isDone) {
+        console.log(
+          "✅ [TestPage] Test is already marked as done. Fetching results."
+        );
+        refetchResult();
       }
     }
-  }, [previousResult, fetchedTest]);
+  }, [fetchedTest, refetchResult]);
+
+  useEffect(() => {
+    if (result) {
+      console.log("⚙️ [TestPage] Setting result data:", result);
+    }
+  }, [result]);
 
   // Timer
   useEffect(() => {
@@ -140,6 +145,7 @@ export default function TestDetailPage() {
     return () => clearInterval(timer);
   }, [isStarted, result, testData, timeRemaining]);
 
+  // --- Handlers ---
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
@@ -149,7 +155,7 @@ export default function TestDetailPage() {
   };
 
   const handleStartTest = () => {
-    setResult(null);
+    console.log("▶️ [TestPage] Starting test...");
     setAnswers({});
     setCurrentQuestionIndex(0);
     setShowReview(false);
@@ -169,10 +175,8 @@ export default function TestDetailPage() {
       const questionType =
         (question.correctAnswerIndexes?.length ?? 0) > 1 ? 2 : 1;
       if (questionType === 1) {
-        // Single choice
         return { ...prev, [questionId]: [optionLetter] };
       } else {
-        // Multiple choice
         const newAnswers = currentAnswers.includes(optionLetter)
           ? currentAnswers.filter((ans) => ans !== optionLetter)
           : [...currentAnswers, optionLetter];
@@ -182,8 +186,9 @@ export default function TestDetailPage() {
   };
 
   const handleSubmit = async () => {
-    if (isSubmitting || !startedAt) return;
-    setIsSubmitting(true);
+    if (submitTestMutation.isPending || !startedAt) return;
+    setShowSubmitConfirmation(false); // Close confirmation dialog
+    console.log("📤 [TestPage] Submitting test...");
 
     const submissionAnswers: SelectedAnswer[] = Object.entries(answers).map(
       ([questionId, selectedOptions]) => ({
@@ -192,35 +197,20 @@ export default function TestDetailPage() {
       })
     );
 
-    try {
-      const response = await testsService.submitTest(
-        courseId,
-        parseInt(testId),
-        submissionAnswers,
-        startedAt
-      );
-
-      // Immediately fetch the new result
-      const detailedResult = await testsService.getTestResult(
-        courseId,
-        parseInt(testId)
-      );
-
-      setResult(detailedResult);
-      setIsStarted(false);
-      setTestData((prev) => (prev ? { ...prev, isDone: true } : prev));
-      if (typeof refetchTest === "function") {
-        refetchTest();
+    submitTestMutation.mutate(
+      { answers: submissionAnswers, startedAt },
+      {
+        onSuccess: () => {
+          console.log(
+            "✅ [TestPage] Submission successful, UI should now show results."
+          );
+          setIsStarted(false); // End the test-taking state
+        },
+        onError: (error) => {
+          console.error("❌ [TestPage] Submission failed in component:", error);
+        },
       }
-    } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Lỗi nộp bài",
-        description: "Không thể gửi kết quả. Vui lòng thử lại.",
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
+    );
   };
 
   const goToQuestion = (index: number) => {
@@ -230,6 +220,7 @@ export default function TestDetailPage() {
     }
   };
 
+  // --- Render Logic ---
   const answeredQuestionsCount = Object.keys(answers).filter(
     (qId) => answers[qId] && answers[qId].length > 0
   ).length;
@@ -264,8 +255,11 @@ export default function TestDetailPage() {
     );
   }
 
+  // --- Render States ---
   if (!isStarted) {
-    if (result || testData.isDone) {
+    // Has a result (already took the test)
+    if (result) {
+      console.log("🎨 [TestPage] Rendering result screen.");
       return (
         <div className="min-h-screen flex flex-col items-center justify-center p-4">
           <Card className="max-w-2xl w-full">
@@ -277,23 +271,21 @@ export default function TestDetailPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              {result && (
-                <div className="mt-6 border-t pt-4 text-center">
-                  <h3 className="font-semibold mb-2">Kết quả lần làm trước</h3>
-                  <p
-                    className={`text-xl font-bold ${
-                      result.isPassed ? "text-green-600" : "text-red-600"
-                    }`}
-                  >
-                    {result.score.toFixed(1)}% -{" "}
-                    {result.isPassed ? "ĐẠT" : "CHƯA ĐẠT"}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    Số câu đúng: {result.correctAnswerCount}/
-                    {testData.countQuestion}
-                  </p>
-                </div>
-              )}
+              <div className="mt-6 border-t pt-4 text-center">
+                <h3 className="font-semibold mb-2">Kết quả lần làm trước</h3>
+                <p
+                  className={`text-xl font-bold ${
+                    result.isPassed ? "text-green-600" : "text-red-600"
+                  }`}
+                >
+                  {result.score.toFixed(1)}% -{" "}
+                  {result.isPassed ? "ĐẠT" : "CHƯA ĐẠT"}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Số câu đúng: {result.correctAnswerCount}/
+                  {testData.countQuestion}
+                </p>
+              </div>
             </CardContent>
             <CardFooter className="flex flex-col sm:flex-row gap-2">
               <Button
@@ -316,13 +308,8 @@ export default function TestDetailPage() {
       );
     }
 
-    if (isSubmitting) {
-      return (
-        <div className="flex flex-col items-center justify-center min-h-screen p-4">
-          <Loader2 className="w-12 h-12 animate-spin text-primary" />
-        </div>
-      );
-    }
+    // Initial start screen
+    console.log("🎨 [TestPage] Rendering start screen.");
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-4">
         <Card className="max-w-2xl w-full">
@@ -397,6 +384,7 @@ export default function TestDetailPage() {
     );
   }
 
+  // --- Render Test Taking UI ---
   const renderHeader = () => (
     <div className="bg-background border-b shadow-sm sticky top-0 z-40">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
@@ -568,7 +556,6 @@ export default function TestDetailPage() {
         </p>
       </CardHeader>
       <CardContent className="space-y-6">
-        {/* Summary Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div className="text-center p-4 bg-primary/10 rounded-lg">
             <div className="text-2xl font-bold text-primary">
@@ -597,10 +584,7 @@ export default function TestDetailPage() {
             <div className="text-xs text-muted-foreground">Hoàn thành</div>
           </div>
         </div>
-
         <Progress value={progressPercentage} className="h-3" />
-
-        {/* Question Grid */}
         <div>
           <h4 className="font-medium mb-4">
             Danh sách câu hỏi (nhấn để chỉnh sửa)
@@ -628,8 +612,6 @@ export default function TestDetailPage() {
             })}
           </div>
         </div>
-
-        {/* Warning for unanswered questions */}
         {answeredQuestionsCount < (testData.questions?.length || 0) && (
           <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
             <div className="flex items-start space-x-3">
@@ -645,8 +627,6 @@ export default function TestDetailPage() {
             </div>
           </div>
         )}
-
-        {/* Submit Confirmation */}
         <div className="bg-muted/30 border rounded-lg p-4">
           <h4 className="font-medium mb-2">Xác nhận nộp bài</h4>
           <p className="text-sm text-muted-foreground mb-4">
@@ -663,22 +643,12 @@ export default function TestDetailPage() {
               <span>Quay lại làm bài</span>
             </Button>
             <Button
-              onClick={() => {
-                console.log("🎯 Submit button clicked!");
-                handleSubmit();
-              }}
+              onClick={() => setShowSubmitConfirmation(true)}
               className="flex items-center space-x-2 bg-green-600 hover:bg-green-700"
               size="lg"
-              disabled={isSubmitting}
             >
-              {isSubmitting ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : (
-                <Send className="h-4 w-4 mr-2" />
-              )}
-              <span>
-                {isSubmitting ? "Đang nộp bài..." : "Nộp bài kiểm tra"}
-              </span>
+              <Send className="h-4 w-4 mr-2" />
+              <span>Nộp bài kiểm tra</span>
             </Button>
           </div>
         </div>
@@ -808,24 +778,55 @@ export default function TestDetailPage() {
   };
 
   return (
-    <div className="min-h-screen bg-muted/40">
-      {!result && !testData.isDone && renderHeader()}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        {result || testData.isDone ? (
-          renderResults()
-        ) : showReview ? (
-          renderReview()
-        ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-            <div className="lg:col-span-1 order-2 lg:order-1">
-              {renderQuestionNavigation()}
+    <>
+      <div className="min-h-screen bg-muted/40">
+        {isStarted && !result && renderHeader()}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          {result ? (
+            renderResults()
+          ) : showReview ? (
+            renderReview()
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+              <div className="lg:col-span-1 order-2 lg:order-1">
+                {renderQuestionNavigation()}
+              </div>
+              <div className="lg:col-span-3 order-1 lg:order-2">
+                {renderCurrentQuestion()}
+              </div>
             </div>
-            <div className="lg:col-span-3 order-1 lg:order-2">
-              {renderCurrentQuestion()}
-            </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
-    </div>
+      <Dialog
+        open={showSubmitConfirmation}
+        onOpenChange={setShowSubmitConfirmation}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Xác nhận nộp bài</DialogTitle>
+            <DialogDescription>
+              Bạn có chắc chắn muốn nộp bài kiểm tra này không? Bạn sẽ không thể
+              thay đổi câu trả lời sau khi nộp.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowSubmitConfirmation(false)}
+              disabled={submitTestMutation.isPending}
+            >
+              Hủy
+            </Button>
+            <LoadingButton
+              onClick={handleSubmit}
+              isLoading={submitTestMutation.isPending}
+            >
+              Nộp bài
+            </LoadingButton>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
