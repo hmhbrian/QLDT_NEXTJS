@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useParams, useRouter } from "next/navigation";
@@ -50,14 +49,20 @@ import { Progress } from "@/components/ui/progress";
 import { testsService } from "@/lib/services/modern/tests.service";
 import { useToast } from "@/components/ui/use-toast";
 import { mapApiTestToUiTest } from "@/lib/mappers/test.mapper";
+import { useAuth } from "@/hooks/useAuth";
 import type {
   Test,
   Question,
   TestSubmissionResponse,
   DetailedTestResult,
   SelectedAnswer,
+  QuestionNoAnswer,
 } from "@/lib/types/test.types";
-import { useSubmitTest, useTestResult } from "@/hooks/use-tests";
+import {
+  useSubmitTest,
+  useTestResult,
+  useTestQuestionsNoAnswer,
+} from "@/hooks/use-tests";
 import { LoadingButton } from "@/components/ui/loading";
 
 const OPTION_LABELS = ["A", "B", "C", "D", "E", "F", "G", "H"];
@@ -66,10 +71,14 @@ export default function TestDetailPage() {
   const params = useParams();
   const router = useRouter();
   const { toast } = useToast();
+  const { user } = useAuth();
   const courseId = params.courseId as string;
   const testId = parseInt(params.testId as string, 10);
 
   const [testData, setTestData] = useState<Test | null>(null);
+  const [secureQuestions, setSecureQuestions] = useState<QuestionNoAnswer[]>(
+    []
+  );
   const [answers, setAnswers] = useState<Record<string, string[]>>({});
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [isStarted, setIsStarted] = useState(false);
@@ -79,21 +88,34 @@ export default function TestDetailPage() {
   const [showSubmitConfirmation, setShowSubmitConfirmation] = useState(false);
 
   // --- Data Fetching Hooks ---
+  // Fetch test basic info (without questions with answers)
   const {
     data: fetchedTest,
     isLoading: isLoadingTest,
     error: testError,
     refetch: refetchTest,
   } = useQuery({
-    queryKey: ["test", courseId, testId],
+    queryKey: ["test-info", courseId, testId],
     queryFn: async () => {
-      console.log(`♻️ [TestPage] Fetching test data for test ID: ${testId}`);
-      const apiTest = await testsService.getTestById(courseId, testId);
-      return mapApiTestToUiTest(apiTest);
+      console.log(
+        `♻️ [TestPage] Fetching test basic info for test ID: ${testId}`
+      );
+      // Only fetch basic test info from the tests list API
+      const tests = await testsService.getTests(courseId);
+      const test = tests.find((t) => t.id === testId);
+      if (!test) throw new Error("Test not found");
+      return mapApiTestToUiTest(test);
     },
     enabled: !!courseId && !!testId,
-    staleTime: Infinity,
+    staleTime: 5 * 60 * 1000,
   });
+
+  // Fetch secure questions (no answers) only when test starts
+  const {
+    data: secureQuestionsData,
+    isLoading: isLoadingQuestions,
+    error: questionsError,
+  } = useTestQuestionsNoAnswer(courseId, testId, isStarted);
 
   const {
     data: result,
@@ -106,7 +128,10 @@ export default function TestDetailPage() {
   // --- Effects ---
   useEffect(() => {
     if (fetchedTest) {
-      console.log("⚙️ [TestPage] Setting test data from fetch:", fetchedTest);
+      console.log(
+        "⚙️ [TestPage] Setting test basic info from fetch:",
+        fetchedTest
+      );
       setTestData(fetchedTest);
       // Check if the user has already completed this test
       if (fetchedTest.isDone) {
@@ -117,6 +142,16 @@ export default function TestDetailPage() {
       }
     }
   }, [fetchedTest, refetchResult]);
+
+  useEffect(() => {
+    if (secureQuestionsData && isStarted) {
+      console.log(
+        "⚙️ [TestPage] Setting secure questions data:",
+        secureQuestionsData
+      );
+      setSecureQuestions(secureQuestionsData);
+    }
+  }, [secureQuestionsData, isStarted]);
 
   useEffect(() => {
     if (result) {
@@ -145,6 +180,28 @@ export default function TestDetailPage() {
     return () => clearInterval(timer);
   }, [isStarted, result, testData, timeRemaining]);
 
+  // --- Computed Properties ---
+  // Use secure questions when taking test, otherwise use empty array
+  const currentQuestions = useMemo(() => {
+    if (isStarted && secureQuestions.length > 0) {
+      // Convert QuestionNoAnswer to Question format for rendering
+      return secureQuestions.map((q) => ({
+        id: q.id,
+        text: q.questionText,
+        options: [q.a, q.b, q.c, q.d].filter((opt) => opt && opt.trim() !== ""),
+        correctAnswerIndex: 0, // Not available in secure mode
+        correctAnswerIndexes: [], // Not available in secure mode
+        explanation: "", // Not available in secure mode
+        position: q.position,
+      }));
+    }
+    return [];
+  }, [isStarted, secureQuestions]);
+
+  const answeredQuestionsCount = Object.keys(answers).filter(
+    (qId) => answers[qId] && answers[qId].length > 0
+  ).length;
+
   // --- Handlers ---
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -155,25 +212,26 @@ export default function TestDetailPage() {
   };
 
   const handleStartTest = () => {
-    console.log("▶️ [TestPage] Starting test...");
+    console.log("▶️ [TestPage] Starting test and fetching secure questions...");
     setAnswers({});
+    setSecureQuestions([]);
     setCurrentQuestionIndex(0);
     setShowReview(false);
     setStartedAt(new Date().toISOString());
-    setIsStarted(true);
+    setIsStarted(true); // This will trigger useTestQuestionsNoAnswer
   };
 
   const handleSelect = (questionId: string, optionLetter: string) => {
     if (result) return;
-    const question = testData?.questions.find(
+    const question = secureQuestions.find(
       (q) => q.id.toString() === questionId
     );
     if (!question) return;
 
     setAnswers((prev) => {
       const currentAnswers = prev[questionId] || [];
-      const questionType =
-        (question.correctAnswerIndexes?.length ?? 0) > 1 ? 2 : 1;
+      // Determine question type: 1 = single choice, 2 = multiple choice
+      const questionType = question.questionType;
       if (questionType === 1) {
         return { ...prev, [questionId]: [optionLetter] };
       } else {
@@ -214,19 +272,15 @@ export default function TestDetailPage() {
   };
 
   const goToQuestion = (index: number) => {
-    if (index >= 0 && index < (testData?.questions.length || 0)) {
+    if (index >= 0 && index < currentQuestions.length) {
       setCurrentQuestionIndex(index);
       setShowReview(false);
     }
   };
 
   // --- Render Logic ---
-  const answeredQuestionsCount = Object.keys(answers).filter(
-    (qId) => answers[qId] && answers[qId].length > 0
-  ).length;
-
-  const progressPercentage = testData?.questions.length
-    ? (answeredQuestionsCount / testData.questions.length) * 100
+  const progressPercentage = currentQuestions.length
+    ? (answeredQuestionsCount / currentQuestions.length) * 100
     : 0;
 
   if (isLoadingTest || isLoadingResult) {
@@ -327,7 +381,7 @@ export default function TestDetailPage() {
                 <div>
                   <p className="font-medium">Số câu hỏi</p>
                   <p className="text-sm text-muted-foreground">
-                    {testData.questions.length} câu
+                    {testData.countQuestion} câu
                   </p>
                 </div>
               </div>
@@ -404,7 +458,8 @@ export default function TestDetailPage() {
           )}
           <div className="text-right">
             <p className="font-medium">
-              {answeredQuestionsCount}/{testData.questions.length}
+              {answeredQuestionsCount}/
+              {currentQuestions.length || testData?.countQuestion || 0}
             </p>
             <p className="text-xs text-muted-foreground">đã trả lời</p>
           </div>
@@ -422,7 +477,7 @@ export default function TestDetailPage() {
       <CardContent>
         <ScrollArea className="h-64">
           <div className="grid grid-cols-4 gap-2">
-            {testData.questions.map((q, idx) => {
+            {currentQuestions.map((q, idx) => {
               const isAnswered =
                 answers[q.id.toString()] && answers[q.id.toString()].length > 0;
               return (
@@ -451,10 +506,47 @@ export default function TestDetailPage() {
   );
 
   const renderCurrentQuestion = () => {
-    const q = testData.questions[currentQuestionIndex];
+    if (isLoadingQuestions) {
+      return (
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+              <p className="mt-2 text-muted-foreground">Đang tải câu hỏi...</p>
+            </div>
+          </CardContent>
+        </Card>
+      );
+    }
+
+    if (questionsError) {
+      return (
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-center py-8">
+              <AlertTriangle className="h-8 w-8 text-destructive mx-auto mb-2" />
+              <p className="text-destructive">
+                Lỗi tải câu hỏi. Vui lòng thử lại.
+              </p>
+              <Button
+                onClick={() => window.location.reload()}
+                className="mt-2"
+                variant="outline"
+              >
+                Tải lại trang
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      );
+    }
+
+    const q = currentQuestions[currentQuestionIndex];
     if (!q) return null;
     const selectedOptions = answers[q.id.toString()] || [];
-    const questionType = (q.correctAnswerIndexes?.length ?? 0) > 1 ? 2 : 1;
+    // Get questionType from secure questions data
+    const secureQ = secureQuestions.find((sq) => sq.id === q.id);
+    const questionType = secureQ?.questionType || 1;
     return (
       <Card>
         <CardHeader>
@@ -527,7 +619,7 @@ export default function TestDetailPage() {
             <ArrowLeft className="h-4 w-4 mr-2" />
             Câu trước
           </Button>
-          {currentQuestionIndex === testData.questions.length - 1 ? (
+          {currentQuestionIndex === currentQuestions.length - 1 ? (
             <Button onClick={() => setShowReview(true)}>
               <Eye className="h-4 w-4 mr-2" />
               Xem lại & Nộp bài
@@ -565,15 +657,13 @@ export default function TestDetailPage() {
           </div>
           <div className="text-center p-4 bg-muted/50 rounded-lg">
             <div className="text-2xl font-bold text-muted-foreground">
-              {testData.questions
-                ? testData.questions.length - answeredQuestionsCount
-                : 0}
+              {currentQuestions.length - answeredQuestionsCount}
             </div>
             <div className="text-xs text-muted-foreground">Chưa trả lời</div>
           </div>
           <div className="text-center p-4 bg-accent/10 rounded-lg">
             <div className="text-2xl font-bold text-accent-foreground">
-              {testData.questions ? testData.questions.length : 0}
+              {currentQuestions.length}
             </div>
             <div className="text-xs text-muted-foreground">Tổng câu hỏi</div>
           </div>
@@ -590,7 +680,7 @@ export default function TestDetailPage() {
             Danh sách câu hỏi (nhấn để chỉnh sửa)
           </h4>
           <div className="grid grid-cols-8 sm:grid-cols-10 md:grid-cols-12 gap-2">
-            {(testData.questions || []).map((q, idx) => {
+            {currentQuestions.map((q, idx) => {
               const isAnswered =
                 answers[String(q.id)] && answers[String(q.id)].length > 0;
 
@@ -612,7 +702,7 @@ export default function TestDetailPage() {
             })}
           </div>
         </div>
-        {answeredQuestionsCount < (testData.questions?.length || 0) && (
+        {answeredQuestionsCount < currentQuestions.length && (
           <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
             <div className="flex items-start space-x-3">
               <AlertTriangle className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" />
@@ -620,8 +710,8 @@ export default function TestDetailPage() {
                 <h4 className="font-medium text-amber-800">Cảnh báo</h4>
                 <p className="text-sm text-amber-700 mt-1">
                   Bạn chưa trả lời{" "}
-                  {(testData.questions?.length || 0) - answeredQuestionsCount}{" "}
-                  câu hỏi. Các câu chưa trả lời sẽ được tính là sai.
+                  {currentQuestions.length - answeredQuestionsCount} câu hỏi.
+                  Các câu chưa trả lời sẽ được tính là sai.
                 </p>
               </div>
             </div>
@@ -691,8 +781,7 @@ export default function TestDetailPage() {
             <p className="text-muted-foreground mt-1">
               Điểm của bạn:{" "}
               <span className="font-semibold">{result.score.toFixed(1)}%</span>{" "}
-              ({result.correctAnswerCount}/{testData.countQuestion} câu
-              đúng)
+              ({result.correctAnswerCount}/{testData.countQuestion} câu đúng)
             </p>
           </CardContent>
         </Card>
