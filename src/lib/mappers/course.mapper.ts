@@ -1,4 +1,3 @@
-
 import type {
   Course,
   CourseApiResponse,
@@ -239,9 +238,11 @@ export function mapCourseUiToUpdatePayload(
     payload.MaxParticipant = course.maxParticipants;
   if (isDifferent(course.statusId, originalCourse?.statusId))
     payload.StatusId = course.statusId;
-  
-  const newEnrollmentType = course.enrollmentType === "mandatory" ? "Bắt buộc" : "Tùy chọn";
-  const oldEnrollmentType = originalCourse?.enrollmentType === "mandatory" ? "Bắt buộc" : "Tùy chọn";
+
+  const newEnrollmentType =
+    course.enrollmentType === "mandatory" ? "Bắt buộc" : "Tùy chọn";
+  const oldEnrollmentType =
+    originalCourse?.enrollmentType === "mandatory" ? "Bắt buộc" : "Tùy chọn";
   if (isDifferent(newEnrollmentType, oldEnrollmentType)) {
     payload.Optional = newEnrollmentType;
   }
@@ -273,12 +274,22 @@ export function mapCourseUiToUpdatePayload(
   const newDepartmentIds = (course.department || []).map((id) =>
     parseInt(id, 10)
   );
-  if (isDifferent(newDepartmentIds, originalCourse?.department?.map(id => parseInt(id, 10)))) {
+  if (
+    isDifferent(
+      newDepartmentIds,
+      originalCourse?.department?.map((id) => parseInt(id, 10))
+    )
+  ) {
     payload.DepartmentIds = newDepartmentIds;
   }
 
   const newLevelIds = (course.level || []).map((id) => parseInt(id, 10));
-   if (isDifferent(newLevelIds, originalCourse?.level?.map(id => parseInt(id, 10)))) {
+  if (
+    isDifferent(
+      newLevelIds,
+      originalCourse?.level?.map((id) => parseInt(id, 10))
+    )
+  ) {
     payload.eLevelIds = newLevelIds;
   }
 
@@ -298,10 +309,9 @@ export function mapCourseUiToUpdatePayload(
 
   // Remove undefined fields from payload to keep it clean
   Object.keys(payload).forEach(
-    (key) =>
-      (payload as any)[key] === undefined && delete (payload as any)[key]
+    (key) => (payload as any)[key] === undefined && delete (payload as any)[key]
   );
-  
+
   console.log("🔍 [mapCourseUiToUpdatePayload] Final Payload:", payload);
   return payload;
 }

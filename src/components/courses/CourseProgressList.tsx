@@ -1,8 +1,18 @@
 import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+import { Button } from "@/components/ui/button";
 import { useCourseProgressList } from "@/hooks/use-courses";
-import { Loader2, Users, XCircle, TrendingUp, Award, Eye } from "lucide-react";
+import {
+  Loader2,
+  Users,
+  XCircle,
+  TrendingUp,
+  Award,
+  Eye,
+  RefreshCw,
+  BookOpen,
+} from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -25,11 +35,29 @@ export const CourseProgressList: React.FC<CourseProgressListProps> = ({
     data: progressData,
     isLoading,
     error,
+    refetch,
+    isFetching,
   } = useCourseProgressList(courseId);
   const [selectedUserId, setSelectedUserId] = React.useState<string | null>(
     null
   );
   const [isDetailModalOpen, setIsDetailModalOpen] = React.useState(false);
+  const [isRefreshing, setIsRefreshing] = React.useState(false);
+
+  // Auto refresh every 30 seconds
+  React.useEffect(() => {
+    const interval = setInterval(() => {
+      refetch();
+    }, 30000);
+
+    return () => clearInterval(interval);
+  }, [refetch]);
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await refetch();
+    setTimeout(() => setIsRefreshing(false), 500);
+  };
 
   const handleStudentClick = (userId: string) => {
     setSelectedUserId(userId);
@@ -43,36 +71,26 @@ export const CourseProgressList: React.FC<CourseProgressListProps> = ({
 
   if (isLoading) {
     return (
-      <Card className="shadow-xl border-0 bg-gradient-to-br from-white to-orange-50/50">
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center text-lg font-semibold">
-            <div className="p-2 bg-orange-100 rounded-lg mr-3">
-              <Users className="h-5 w-5 text-orange-600" />
+      <Card className="border-0 bg-white shadow-sm">
+        <CardHeader className="pb-4">
+          <CardTitle className="flex items-center text-xl font-semibold text-gray-900">
+            <div className="flex items-center justify-center w-10 h-10 bg-orange-100 rounded-lg mr-3">
+              <BookOpen className="h-5 w-5 text-orange-600" />
             </div>
             <div>
-              <span className="bg-gradient-to-r from-orange-600 to-amber-600 bg-clip-text text-transparent">
-                Tiến độ học viên
-              </span>
-              <p className="text-sm font-normal text-muted-foreground mt-1">
-                Theo dõi progress học tập của từng học viên
+              <span>Tiến độ học viên</span>
+              <p className="text-sm font-normal text-gray-500 mt-0.5">
+                Đang tải dữ liệu...
               </p>
             </div>
           </CardTitle>
         </CardHeader>
-        <CardContent className="flex items-center justify-center h-48">
-          <div className="flex flex-col items-center space-y-4">
+        <CardContent className="flex items-center justify-center py-16">
+          <div className="flex flex-col items-center space-y-3">
             <div className="relative">
-              <Loader2 className="h-10 w-10 animate-spin text-orange-500" />
-              <div className="absolute inset-0 h-10 w-10 rounded-full border-2 border-orange-200 opacity-25"></div>
+              <Loader2 className="h-8 w-8 animate-spin text-orange-500" />
             </div>
-            <div className="text-center">
-              <p className="text-sm font-medium text-gray-900">
-                Đang tải dữ liệu học viên
-              </p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Vui lòng chờ trong giây lát...
-              </p>
-            </div>
+            <p className="text-sm text-gray-500">Đang tải dữ liệu học viên</p>
           </div>
         </CardContent>
       </Card>
@@ -81,29 +99,37 @@ export const CourseProgressList: React.FC<CourseProgressListProps> = ({
 
   if (error) {
     return (
-      <Card className="shadow-xl border-0 bg-gradient-to-br from-white to-red-50/50">
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center text-lg font-semibold">
-            <div className="p-2 bg-red-100 rounded-lg mr-3">
-              <Users className="h-5 w-5 text-red-600" />
+      <Card className="border-0 bg-white shadow-sm">
+        <CardHeader className="pb-4">
+          <CardTitle className="flex items-center text-xl font-semibold text-gray-900">
+            <div className="flex items-center justify-center w-10 h-10 bg-orange-100 rounded-lg mr-3">
+              <BookOpen className="h-5 w-5 text-orange-600" />
             </div>
-            <span className="bg-gradient-to-r from-red-600 to-rose-600 bg-clip-text text-transparent">
-              Tiến độ học viên
-            </span>
+            Tiến độ học viên
           </CardTitle>
         </CardHeader>
-        <CardContent className="flex flex-col items-center justify-center h-48 space-y-4">
-          <div className="p-4 bg-red-100 rounded-full">
-            <XCircle className="h-8 w-8 text-red-500" />
+        <CardContent className="flex flex-col items-center justify-center py-16 space-y-4">
+          <div className="flex items-center justify-center w-12 h-12 bg-orange-100 rounded-lg">
+            <XCircle className="h-6 w-6 text-orange-600" />
           </div>
           <div className="text-center">
             <p className="font-medium text-gray-900 mb-1">
               Không thể tải dữ liệu
             </p>
-            <p className="text-sm text-muted-foreground max-w-sm">
-              {error.message}
-            </p>
+            <p className="text-sm text-gray-500 max-w-sm">{error.message}</p>
           </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            className="border-orange-200 text-orange-700 hover:bg-orange-50"
+          >
+            <RefreshCw
+              className={cn("h-4 w-4 mr-2", isRefreshing && "animate-spin")}
+            />
+            Thử lại
+          </Button>
         </CardContent>
       </Card>
     );
@@ -124,83 +150,83 @@ export const CourseProgressList: React.FC<CourseProgressListProps> = ({
       : 0;
 
   return (
-    <Card className="shadow-xl border-0 bg-gradient-to-br from-white to-blue-50/30">
+    <Card className="border-0 bg-white shadow-sm">
       <CardHeader className="pb-4">
         <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center text-lg font-semibold">
-            <div className="p-2 bg-blue-100 rounded-lg mr-3">
-              <Users className="h-5 w-5 text-blue-600" />
+          <CardTitle className="flex items-center text-xl font-semibold text-gray-900">
+            <div className="flex items-center justify-center w-10 h-10 bg-orange-100 rounded-lg mr-3">
+              <BookOpen className="h-5 w-5 text-orange-600" />
             </div>
             <div>
-              <span className="bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-                Tiến độ học viên
-              </span>
-              <p className="text-sm font-normal text-muted-foreground mt-1">
+              <span>Tiến độ học viên</span>
+              <p className="text-sm font-normal text-gray-500 mt-0.5">
                 {students.length} học viên đang tham gia
               </p>
             </div>
           </CardTitle>
 
-          {students.length > 0 && (
-            <div className="flex gap-2">
-              <Badge
-                variant="secondary"
-                className="bg-green-100 text-green-700 border-green-200"
-              >
-                <Award className="w-3 h-3 mr-1" />
-                {completedStudents} hoàn thành
-              </Badge>
-              <Badge
-                variant="secondary"
-                className="bg-blue-100 text-blue-700 border-blue-200"
-              >
-                <TrendingUp className="w-3 h-3 mr-1" />
-                {averageProgress}% TB
-              </Badge>
-            </div>
-          )}
-        </div>
+          <div className="flex items-center gap-3">
+            {students.length > 0 && (
+              <div className="flex gap-2">
+                <Badge
+                  variant="secondary"
+                  className="bg-orange-50 text-orange-700 border-orange-200 font-medium"
+                >
+                  <Award className="w-3 h-3 mr-1.5" />
+                  {completedStudents} hoàn thành
+                </Badge>
+                <Badge
+                  variant="secondary"
+                  className="bg-orange-50 text-orange-700 border-orange-200 font-medium"
+                >
+                  <TrendingUp className="w-3 h-3 mr-1.5" />
+                  {averageProgress}% TB
+                </Badge>
+              </div>
+            )}
 
-        {/* {students.length > 0 && (
-          <div className="mt-4 p-3 bg-white/60 rounded-lg border border-blue-100">
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">Tiến độ trung bình lớp</span>
-              <span className="font-semibold text-blue-600">{averageProgress}%</span>
-            </div>
-            <Progress value={averageProgress} className="h-2 mt-2" />
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleRefresh}
+              disabled={isRefreshing || isFetching}
+              className="text-orange-600 hover:text-orange-700 hover:bg-orange-50"
+            >
+              <RefreshCw
+                className={cn(
+                  "h-4 w-4",
+                  (isRefreshing || isFetching) && "animate-spin"
+                )}
+              />
+            </Button>
           </div>
-        )} */}
+        </div>
       </CardHeader>
 
       <CardContent>
         {students.length === 0 ? (
-          <div className="text-center py-12">
-            <div className="p-4 bg-gray-100 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center">
-              <Users className="h-8 w-8 text-gray-400" />
+          <div className="text-center py-16">
+            <div className="flex items-center justify-center w-16 h-16 bg-gray-50 rounded-xl mx-auto mb-4">
+              <Users className="h-8 w-8 text-orange-500" />
             </div>
             <p className="text-gray-900 font-medium mb-1">Chưa có học viên</p>
-            <p className="text-muted-foreground text-sm">
+            <p className="text-gray-500 text-sm">
               Chưa có học viên nào tham gia khóa học này.
             </p>
           </div>
         ) : (
-          <div className="space-y-3 max-h-96 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-blue-200 scrollbar-track-transparent">
+          <div className="space-y-3">
             {students.map((student, index) => (
               <div
                 key={student.userId}
                 className={cn(
-                  "group relative flex items-center gap-4 p-4 rounded-xl border transition-all duration-200 cursor-pointer",
-                  "bg-white/80 hover:bg-white hover:shadow-md hover:scale-[1.01] hover:border-blue-200",
-                  "backdrop-blur-sm"
+                  "group relative flex items-center gap-4 p-4 rounded-lg border border-gray-100 transition-all duration-200 cursor-pointer",
+                  "hover:border-orange-200 hover:shadow-sm hover:bg-orange-50/50"
                 )}
                 onClick={() => handleStudentClick(student.userId)}
-                style={{
-                  animationDelay: `${index * 50}ms`,
-                  animation: "fadeInUp 0.5s ease-out forwards",
-                }}
               >
-                <Avatar className="h-10 w-10 border-2 border-white shadow-sm">
-                  <AvatarFallback className="bg-gradient-to-br from-blue-400 to-indigo-500 text-white font-semibold">
+                <Avatar className="h-10 w-10 border border-orange-200">
+                  <AvatarFallback className="bg-orange-100 text-orange-700 font-medium text-sm">
                     {student.userName.charAt(0).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
@@ -212,48 +238,31 @@ export const CourseProgressList: React.FC<CourseProgressListProps> = ({
                     </p>
                     <div className="flex items-center gap-2">
                       {student.progressPercentage === 100 && (
-                        <Badge className="bg-green-500 hover:bg-green-500 text-white px-2 py-1 text-xs">
+                        <Badge className="bg-orange-100 hover:bg-orange-100 text-orange-700 border-orange-200 text-xs font-medium">
                           Hoàn thành
                         </Badge>
                       )}
-                      <span
-                        className={cn(
-                          "text-sm font-bold",
-                          student.progressPercentage >= 80
-                            ? "text-green-600"
-                            : student.progressPercentage >= 50
-                            ? "text-blue-600"
-                            : "text-orange-600"
-                        )}
-                      >
+                      <span className="text-sm font-semibold text-orange-900">
                         {student.progressPercentage}%
                       </span>
                     </div>
                   </div>
 
                   <div className="relative">
-                    <Progress
-                      value={student.progressPercentage}
-                      className="h-2.5 bg-gray-100"
-                    />
-                    <div
-                      className="absolute top-0 left-0 h-2.5 rounded-full transition-all duration-500 ease-out"
-                      style={{
-                        width: `${student.progressPercentage}%`,
-                        background:
-                          student.progressPercentage >= 80
-                            ? "linear-gradient(90deg, #10b981, #059669)"
-                            : student.progressPercentage >= 50
-                            ? "linear-gradient(90deg, #3b82f6, #1d4ed8)"
-                            : "linear-gradient(90deg, #f59e0b, #d97706)",
-                      }}
-                    />
+                    <div className="w-full h-2 bg-orange-100 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-gradient-to-r from-orange-600 to-orange-700 rounded-full transition-all duration-700 ease-out"
+                        style={{
+                          width: `${student.progressPercentage}%`,
+                        }}
+                      />
+                    </div>
                   </div>
                 </div>
 
                 <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                  <div className="p-2 bg-blue-50 rounded-lg">
-                    <Eye className="h-4 w-4 text-blue-600" />
+                  <div className="flex items-center justify-center w-8 h-8 bg-orange-100 rounded-lg">
+                    <Eye className="h-4 w-4 text-orange-600" />
                   </div>
                 </div>
               </div>
@@ -264,9 +273,9 @@ export const CourseProgressList: React.FC<CourseProgressListProps> = ({
 
       {selectedUserId && (
         <Dialog open={isDetailModalOpen} onOpenChange={setIsDetailModalOpen}>
-          <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-hidden">
-            <DialogHeader className="pb-4">
-              <DialogTitle className="text-xl font-semibold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+          <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-hidden border-0 shadow-xl">
+            <DialogHeader className="pb-4 border-b border-gray-100">
+              <DialogTitle className="text-xl font-semibold text-gray-900">
                 Chi tiết tiến độ học viên
               </DialogTitle>
             </DialogHeader>
