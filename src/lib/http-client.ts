@@ -118,7 +118,7 @@ class CustomHttpClient implements HttpClient {
           headers["Authorization"] = `Bearer ${token}`;
         }
       } catch (error) {
-        console.warn("Could not get token from cookie:", error);
+        // Silently handle cookie access errors
       }
     }
 
@@ -176,6 +176,25 @@ class CustomHttpClient implements HttpClient {
           headers: responseHeaders,
         };
         error.config = { method, url: finalUrl, data, headers };
+
+        // Handle authentication errors carefully
+        if (response.status === 401) {
+          this.clearAuthorizationHeader();
+          cookieManager.removeSecureAuth();
+
+          // Dispatch custom event for auth error
+          if (typeof window !== "undefined") {
+            window.dispatchEvent(
+              new CustomEvent("auth-error", {
+                detail: { status: response.status, error },
+              })
+            );
+          }
+        } else if (response.status === 403) {
+          // 403 might be permission issue, not necessarily invalid token
+          // Don't clear auth state for 403
+        }
+
         throw error;
       }
 

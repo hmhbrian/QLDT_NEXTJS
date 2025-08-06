@@ -24,9 +24,9 @@ export const API_ENDPOINTS = {
   users: {
     base: "/Users",
     create: "/Users/create",
-    me: "/Users",
     update: "/Users/update",
     search: "/Users/search",
+    byId: (userId: string) => `/Users/${userId}`,
     updateAdmin: (userId: string) => `/Users/admin/${userId}/update`,
     resetPassword: (userId: string) => `/Users/${userId}/reset-password`,
     softDelete: (userId: string) => `/Users/${userId}/soft-delete`,
