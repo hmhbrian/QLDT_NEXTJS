@@ -9,6 +9,7 @@ import {
   SelectedAnswer,
   TestSubmissionResponse,
   DetailedTestResult,
+  QuestionNoAnswer,
 } from "@/lib/types/test.types";
 import { useToast } from "@/components/ui/use-toast";
 import { extractErrorMessage } from "@/lib/core";
@@ -277,4 +278,29 @@ export function useHasSubmittedTest(courseId: string, testId: number) {
     isLoading,
     testResult,
   };
+}
+
+/**
+ * Hook để lấy câu hỏi test không có câu trả lời (bảo mật)
+ * Chỉ được gọi khi user thực sự bắt đầu làm bài
+ */
+export function useTestQuestionsNoAnswer(
+  courseId: string,
+  testId: number,
+  enabled: boolean = false
+) {
+  return useQuery<QuestionNoAnswer[], Error>({
+    queryKey: ["testQuestionsNoAnswer", courseId, testId],
+    queryFn: async () => {
+      console.log(
+        `♻️ [useTestQuestionsNoAnswer] Fetching secure questions for test: ${testId}`
+      );
+      return await testsService.getTestNoAnswer(courseId, testId);
+    },
+    enabled: !!courseId && !!testId && enabled,
+    staleTime: Infinity, // Cache cho đến hết session làm bài
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+    retry: 2,
+  });
 }
