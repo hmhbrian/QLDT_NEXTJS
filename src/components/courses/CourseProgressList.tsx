@@ -170,14 +170,14 @@ export const CourseProgressList: React.FC<CourseProgressListProps> = ({
               <div className="flex gap-2">
                 <Badge
                   variant="secondary"
-                  className="bg-orange-50 text-orange-700 border-orange-200 font-medium"
+                  className="bg-orange-100 text-orange-800 border-orange-200 font-medium hover:bg-orange-100"
                 >
                   <Award className="w-3 h-3 mr-1.5" />
                   {completedStudents} hoàn thành
                 </Badge>
                 <Badge
                   variant="secondary"
-                  className="bg-orange-50 text-orange-700 border-orange-200 font-medium"
+                  className="bg-orange-100 text-orange-800 border-orange-200 font-medium hover:bg-orange-100"
                 >
                   <TrendingUp className="w-3 h-3 mr-1.5" />
                   {averageProgress}% TB
@@ -238,20 +238,20 @@ export const CourseProgressList: React.FC<CourseProgressListProps> = ({
                     </p>
                     <div className="flex items-center gap-2">
                       {student.progressPercentage === 100 && (
-                        <Badge className="bg-orange-100 hover:bg-orange-100 text-orange-700 border-orange-200 text-xs font-medium">
+                        <Badge className="bg-gray-100 hover:bg-gray-100 text-gray-800 border-gray-200 text-xs font-medium">
                           Hoàn thành
                         </Badge>
                       )}
-                      <span className="text-sm font-semibold text-orange-900">
+                      <span className="text-sm font-semibold text-gray-900">
                         {student.progressPercentage}%
                       </span>
                     </div>
                   </div>
 
                   <div className="relative">
-                    <div className="w-full h-2 bg-orange-100 rounded-full overflow-hidden">
+                    <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
                       <div
-                        className="h-full bg-gradient-to-r from-orange-600 to-orange-700 rounded-full transition-all duration-700 ease-out"
+                        className="h-full bg-primary rounded-full transition-all duration-700 ease-out"
                         style={{
                           width: `${student.progressPercentage}%`,
                         }}
