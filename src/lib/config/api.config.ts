@@ -72,6 +72,8 @@ export const API_ENDPOINTS = {
     create: (courseId: string) => `/courses/${courseId}/tests/create`,
     getById: (courseId: string, testId: number) =>
       `/courses/${courseId}/tests/${testId}`,
+    getNoAnswer: (courseId: string, testId: number) =>
+      `/courses/${courseId}/tests/no-answer/${testId}`,
     update: (courseId: string, testId: number) =>
       `/courses/${courseId}/tests/update/${testId}`,
     delete: (courseId: string, testId: number) =>
