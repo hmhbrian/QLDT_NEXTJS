@@ -7,6 +7,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { GraduationCap, BookMarked, Percent, CalendarDays } from "lucide-react";
 import Link from "next/link";
 import { Button } from "../ui/button";
@@ -14,6 +15,7 @@ import { Progress } from "@/components/ui/progress";
 import { useMemo } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useCourses, useUpcomingCourses } from "@/hooks/use-courses";
+import { useStudentDashboard } from "@/hooks/use-student-dashboard";
 import type { Course } from "@/lib/types/course.types";
 
 export function TraineeDashboard() {
@@ -21,6 +23,11 @@ export function TraineeDashboard() {
   const { courses: allCourses } = useCourses();
   const { data: upcomingClassesData, isLoading: isLoadingUpcomingClasses } =
     useUpcomingCourses();
+  const { 
+    data: dashboardData, 
+    isLoading: isLoadingDashboard, 
+    error: dashboardError 
+  } = useStudentDashboard();
 
   const {
     enrolledCoursesCount,
@@ -28,6 +35,19 @@ export function TraineeDashboard() {
     overallProgress,
     upcomingClasses,
   } = useMemo(() => {
+    // Use API data if available, otherwise fallback to old logic
+    if (dashboardData) {
+      const upcoming = upcomingClassesData || [];
+
+      return {
+        enrolledCoursesCount: dashboardData.numberRegisteredCourse,
+        completedCoursesCount: dashboardData.numberCompletedCourse,
+        overallProgress: Math.round(dashboardData.averangeCompletedPercentage * 100),
+        upcomingClasses: upcoming,
+      };
+    }
+
+    // Fallback logic when API data is not available
     if (!currentUser || !allCourses) {
       return {
         enrolledCoursesCount: 0,
@@ -41,13 +61,10 @@ export function TraineeDashboard() {
       course.userIds?.includes(currentUser.id)
     );
 
-    // This part needs real data to be meaningful.
-    // For now, we'll keep it simple.
     const completed = 0; // Placeholder
     const progress =
       enrolled.length > 0 ? Math.round((completed / enrolled.length) * 100) : 0;
 
-    // Use data from the new hook
     const upcoming = upcomingClassesData || [];
 
     return {
@@ -56,7 +73,7 @@ export function TraineeDashboard() {
       overallProgress: progress,
       upcomingClasses: upcoming,
     };
-  }, [currentUser, allCourses, upcomingClassesData]);
+  }, [currentUser, allCourses, upcomingClassesData, dashboardData]);
 
   const stats = [
     {
@@ -88,17 +105,32 @@ export function TraineeDashboard() {
   return (
     <div className="space-y-6">
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {stats.map((stat) => (
-          <Card
-            key={stat.title}
-            className="shadow-lg hover:shadow-xl transition-shadow duration-300"
-          >
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                {stat.title}
-              </CardTitle>
-              <stat.icon className={`h-5 w-5 ${stat.color}`} />
-            </CardHeader>
+        {isLoadingDashboard ? (
+          // Show skeleton loading for dashboard cards
+          [...Array(3)].map((_, i) => (
+            <Card key={i} className="shadow-lg">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-5 w-5 rounded" />
+              </CardHeader>
+              <CardContent>
+                <Skeleton className="h-8 w-16 mb-2" />
+                <Skeleton className="h-4 w-20" />
+              </CardContent>
+            </Card>
+          ))
+        ) : (
+          stats.map((stat) => (
+            <Card
+              key={stat.title}
+              className="shadow-lg hover:shadow-xl transition-shadow duration-300"
+            >
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">
+                  {stat.title}
+                </CardTitle>
+                <stat.icon className={`h-5 w-5 ${stat.color}`} />
+              </CardHeader>
             <CardContent>
               {stat.title === "Tiến độ tổng thể" ? (
                 <>
@@ -126,8 +158,17 @@ export function TraineeDashboard() {
               </Link>
             </CardContent>
           </Card>
-        ))}
+        ))
+        )}
       </div>
+      
+      {/* Show error state for dashboard data */}
+      {dashboardError && (
+        <div className="text-center text-red-500 bg-red-50 p-4 rounded-lg">
+          Có lỗi khi tải dữ liệu dashboard: {dashboardError}
+        </div>
+      )}
+
       <Card className="shadow-lg">
         <CardHeader>
           <CardTitle className="font-headline flex items-center">
