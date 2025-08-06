@@ -23,6 +23,7 @@ export * from "./use-audit-log";
 export * from "./use-feedback";
 export * from "./use-reports";
 export * from "./use-statuses";
+export * from "./use-student-dashboard";
 
 // Utility & Common hooks
 export * from "./use-debounce";
