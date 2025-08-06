@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useRef, useMemo } from "react";
@@ -28,6 +29,7 @@ import {
   CommandItem,
   CommandList,
   CommandGroup,
+  CommandSeparator,
 } from "@/components/ui/command";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -90,7 +92,7 @@ const initialNewCourseState: Course = {
   materials: [],
   lessons: [],
   tests: [],
-  enrollmentType: "optional",
+  enrollmentType: "" as EnrollmentType,
   registrationStartDate: null,
   registrationDeadline: null,
   userIds: [],
@@ -240,20 +242,6 @@ export function CourseForm({
     };
   }, [courseImagePreview]);
 
-  // Effect to sync form data when courseToEdit updates (e.g., after cache invalidation)
-  useEffect(() => {
-    if (
-      courseToEdit &&
-      courseId &&
-      JSON.stringify(formData) !== JSON.stringify(courseToEdit)
-    ) {
-      console.log(
-        "🔄 [CourseForm] Syncing form data with updated courseToEdit"
-      );
-      setFormData(courseToEdit);
-    }
-  }, [courseToEdit, courseId]);
-
   // --- Handlers ---
   const handleInputChange = (field: keyof typeof formData, value: unknown) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -312,7 +300,8 @@ export function CourseForm({
         await updateCourseMutation.mutateAsync({ courseId, payload });
 
         // Update form data with the saved data to reflect changes
-        setFormData(dataWithFile);
+        // NO - This was causing the re-render bug. The query invalidation will handle it.
+        // setFormData(dataWithFile);
 
         // Navigate after successful save
         onSaveSuccess?.();
@@ -602,6 +591,21 @@ export function CourseForm({
                             ))}
                           </CommandGroup>
                         </CommandList>
+                        {(formData.department?.length || 0) > 0 && (
+                          <>
+                            <CommandSeparator />
+                            <CommandGroup>
+                              <CommandItem
+                                onSelect={() =>
+                                  handleInputChange("department", [])
+                                }
+                                className="text-destructive focus:bg-destructive/10 focus:text-destructive justify-center text-center cursor-pointer"
+                              >
+                                Xoá tất cả
+                              </CommandItem>
+                            </CommandGroup>
+                          </>
+                        )}
                       </Command>
                     </PopoverContent>
                   </Popover>
@@ -666,6 +670,19 @@ export function CourseForm({
                             ))}
                           </CommandGroup>
                         </CommandList>
+                        {(formData.level?.length || 0) > 0 && (
+                          <>
+                            <CommandSeparator />
+                            <CommandGroup>
+                              <CommandItem
+                                onSelect={() => handleInputChange("level", [])}
+                                className="text-destructive focus:bg-destructive/10 focus:text-destructive justify-center text-center cursor-pointer"
+                              >
+                                Xoá tất cả
+                              </CommandItem>
+                            </CommandGroup>
+                          </>
+                        )}
                       </Command>
                     </PopoverContent>
                   </Popover>
@@ -890,50 +907,70 @@ export function CourseForm({
               Chọn các học viên sẽ được chỉ định cho khóa học này.
             </DialogDescription>
           </DialogHeader>
-          <div className="relative mt-4">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Tìm theo tên hoặc email..."
-              value={traineeSearchTerm}
-              onChange={(e) => setTraineeSearchTerm(e.target.value)}
-              className="pl-9"
-            />
-          </div>
-          <div className="max-h-[50vh] overflow-y-auto py-4 space-y-2">
-            {trainees.length === 0 && !debouncedTraineeSearch ? (
-              <p className="text-sm text-center text-muted-foreground">
-                Bắt đầu tìm kiếm học viên.
-              </p>
-            ) : trainees.length === 0 && debouncedTraineeSearch ? (
-              <p className="text-sm text-center text-muted-foreground">
-                Không tìm thấy học viên.
-              </p>
-            ) : (
-              trainees.map((trainee) => (
-                <div
-                  key={trainee.id}
-                  className="flex items-center space-x-2 p-2 hover:bg-muted/50 rounded-md"
+          <div className="space-y-4">
+            <div className="relative">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Tìm theo tên hoặc email..."
+                value={traineeSearchTerm}
+                onChange={(e) => setTraineeSearchTerm(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+            
+            {(tempSelectedTraineeIds.length > 0) && (
+              <div className="flex justify-between items-center text-sm px-1">
+                <span className="text-muted-foreground">
+                  Đã chọn {tempSelectedTraineeIds.length} học viên
+                </span>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-auto p-1 text-xs text-muted-foreground hover:text-destructive"
+                  onClick={() => setTempSelectedTraineeIds([])}
                 >
-                  <Checkbox
-                    id={`trainee-select-${trainee.id}`}
-                    checked={tempSelectedTraineeIds.includes(trainee.id)}
-                    onCheckedChange={(checked) => {
-                      setTempSelectedTraineeIds((prev) =>
-                        checked
-                          ? [...prev, trainee.id]
-                          : prev.filter((id) => id !== trainee.id)
-                      );
-                    }}
-                  />
-                  <Label
-                    htmlFor={`trainee-select-${trainee.id}`}
-                    className="cursor-pointer flex-grow"
-                  >
-                    {trainee.fullName} ({trainee.email})
-                  </Label>
-                </div>
-              ))
+                  Xoá tất cả
+                </Button>
+              </div>
             )}
+            
+            <div className="max-h-[50vh] overflow-y-auto py-2 space-y-2">
+              {trainees.length === 0 && !debouncedTraineeSearch ? (
+                <p className="text-sm text-center text-muted-foreground py-4">
+                  Bắt đầu tìm kiếm học viên.
+                </p>
+              ) : trainees.length === 0 && debouncedTraineeSearch ? (
+                <p className="text-sm text-center text-muted-foreground py-4">
+                  Không tìm thấy học viên.
+                </p>
+              ) : (
+                trainees.map((trainee) => (
+                  <div
+                    key={trainee.id}
+                    className="flex items-center space-x-2 p-2 hover:bg-muted/50 rounded-md"
+                  >
+                    <Checkbox
+                      id={`trainee-select-${trainee.id}`}
+                      checked={tempSelectedTraineeIds.includes(trainee.id)}
+                      onCheckedChange={(checked) => {
+                        setTempSelectedTraineeIds((prev) =>
+                          checked
+                            ? [...prev, trainee.id]
+                            : prev.filter((id) => id !== trainee.id)
+                        );
+                      }}
+                    />
+                    <Label
+                      htmlFor={`trainee-select-${trainee.id}`}
+                      className="cursor-pointer flex-grow"
+                    >
+                      {trainee.fullName} ({trainee.email})
+                    </Label>
+                  </div>
+                ))
+              )}
+            </div>
           </div>
           <DialogFooter>
             <Button

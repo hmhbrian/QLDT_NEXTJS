@@ -474,7 +474,7 @@ export interface PublicCourse {
   duration: string; // Added
   image: string; // Added
   dataAiHint?: string;
-  enrollmentType?: "optional" | "mandatory";
+  enrollmentType?: "optional" | "mandatory" | "";
   registrationDeadline?: string | null;
   isPublic?: boolean;
   userIds?: string[];

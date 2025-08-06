@@ -1,3 +1,4 @@
+
 import type {
   Course,
   CourseApiResponse,
@@ -197,212 +198,110 @@ export function mapCourseUiToUpdatePayload(
 ): UpdateCourseRequest {
   const payload: UpdateCourseRequest = {};
 
-  // Helper function to check if values are different
   const isDifferent = (newVal: any, oldVal: any): boolean => {
+    if (newVal === undefined) return false; // Don't include if new value is not set
+    if (newVal === oldVal) return false;
+    if (newVal == null && oldVal == null) return false;
     if (Array.isArray(newVal) && Array.isArray(oldVal)) {
-      return JSON.stringify(newVal.sort()) !== JSON.stringify(oldVal.sort());
+      if (newVal.length !== oldVal.length) return true;
+      const sortedNew = [...newVal].map(String).sort();
+      const sortedOld = [...oldVal].map(String).sort();
+      return JSON.stringify(sortedNew) !== JSON.stringify(sortedOld);
     }
-    return newVal !== oldVal;
+    return true;
   };
 
-  // Helper function to format date
   const formatDate = (date: string | null): string | undefined => {
-    return date ? new Date(date).toISOString() : undefined;
+    if (!date) return undefined;
+    try {
+      const parsed = new Date(date);
+      return !isNaN(parsed.getTime()) ? parsed.toISOString() : undefined;
+    } catch {
+      return undefined;
+    }
   };
 
-  // Only include fields that have changed
-  if (
-    !originalCourse ||
-    isDifferent(course.courseCode, originalCourse.courseCode)
-  ) {
-    payload.Code = course.courseCode;
-  }
-
-  if (!originalCourse || isDifferent(course.title, originalCourse.title)) {
+  if (isDifferent(course.title, originalCourse?.title))
     payload.Name = course.title;
-  }
-
-  if (
-    !originalCourse ||
-    isDifferent(course.description, originalCourse.description)
-  ) {
+  if (isDifferent(course.courseCode, originalCourse?.courseCode))
+    payload.Code = course.courseCode;
+  if (isDifferent(course.description, originalCourse?.description))
     payload.Description = course.description;
-  }
-
-  if (
-    !originalCourse ||
-    isDifferent(course.objectives, originalCourse.objectives)
-  ) {
+  if (isDifferent(course.objectives, originalCourse?.objectives))
     payload.Objectives = course.objectives;
-  }
-
-  if (
-    !originalCourse ||
-    isDifferent(course.learningType, originalCourse.learningType)
-  ) {
+  if (isDifferent(course.learningType, originalCourse?.learningType))
     payload.Format = course.learningType;
+  if (isDifferent(course.instructor, originalCourse?.instructor))
+    payload.LecturerId = undefined; // Assuming conversion is needed
+  if (isDifferent(course.location, originalCourse?.location))
+    payload.Location = course.location;
+  if (isDifferent(course.maxParticipants, originalCourse?.maxParticipants))
+    payload.MaxParticipant = course.maxParticipants;
+  if (isDifferent(course.statusId, originalCourse?.statusId))
+    payload.StatusId = course.statusId;
+  
+  const newEnrollmentType = course.enrollmentType === "mandatory" ? "Bắt buộc" : "Tùy chọn";
+  const oldEnrollmentType = originalCourse?.enrollmentType === "mandatory" ? "Bắt buộc" : "Tùy chọn";
+  if (isDifferent(newEnrollmentType, oldEnrollmentType)) {
+    payload.Optional = newEnrollmentType;
   }
 
-  if (
-    !originalCourse ||
-    isDifferent(course.duration?.sessions, originalCourse.duration?.sessions)
-  ) {
+  if (isDifferent(course.duration, originalCourse?.duration)) {
     payload.Sessions = course.duration?.sessions;
-  }
-
-  if (
-    !originalCourse ||
-    isDifferent(
-      course.duration?.hoursPerSession,
-      originalCourse.duration?.hoursPerSession
-    )
-  ) {
     payload.HoursPerSessions = course.duration?.hoursPerSession;
   }
 
-  const newOptional =
-    course.enrollmentType === "mandatory" ? "Bắt buộc" : "Tùy chọn";
-  const oldOptional =
-    originalCourse?.enrollmentType === "mandatory" ? "Bắt buộc" : "Tùy chọn";
-  if (!originalCourse || isDifferent(newOptional, oldOptional)) {
-    payload.Optional = newOptional;
-  }
-
+  if (isDifferent(course.startDate, originalCourse?.startDate))
+    payload.StartDate = formatDate(course.startDate);
+  if (isDifferent(course.endDate, originalCourse?.endDate))
+    payload.EndDate = formatDate(course.endDate);
   if (
-    !originalCourse ||
-    isDifferent(course.maxParticipants, originalCourse.maxParticipants)
-  ) {
-    payload.MaxParticipant = course.maxParticipants;
-  }
+    isDifferent(
+      course.registrationStartDate,
+      originalCourse?.registrationStartDate
+    )
+  )
+    payload.RegistrationStartDate = formatDate(course.registrationStartDate);
+  if (
+    isDifferent(
+      course.registrationDeadline,
+      originalCourse?.registrationDeadline
+    )
+  )
+    payload.RegistrationClosingDate = formatDate(course.registrationDeadline);
 
-  const newStartDate = formatDate(course.startDate);
-  const oldStartDate = formatDate(originalCourse?.startDate || null);
-  if (!originalCourse || isDifferent(newStartDate, oldStartDate)) {
-    payload.StartDate = newStartDate;
-  }
-
-  const newEndDate = formatDate(course.endDate);
-  const oldEndDate = formatDate(originalCourse?.endDate || null);
-  if (!originalCourse || isDifferent(newEndDate, oldEndDate)) {
-    payload.EndDate = newEndDate;
-  }
-
-  const newRegStartDate = formatDate(course.registrationStartDate);
-  const oldRegStartDate = formatDate(
-    originalCourse?.registrationStartDate || null
+  const newDepartmentIds = (course.department || []).map((id) =>
+    parseInt(id, 10)
   );
-  if (!originalCourse || isDifferent(newRegStartDate, oldRegStartDate)) {
-    payload.RegistrationStartDate = newRegStartDate;
-  }
-
-  const newRegCloseDate = formatDate(course.registrationDeadline);
-  const oldRegCloseDate = formatDate(
-    originalCourse?.registrationDeadline || null
-  );
-  if (!originalCourse || isDifferent(newRegCloseDate, oldRegCloseDate)) {
-    payload.RegistrationClosingDate = newRegCloseDate;
-  }
-
-  if (
-    !originalCourse ||
-    isDifferent(course.location, originalCourse.location)
-  ) {
-    payload.Location = course.location;
-  }
-
-  if (
-    !originalCourse ||
-    isDifferent(course.statusId, originalCourse.statusId)
-  ) {
-    payload.StatusId = course.statusId;
-  }
-
-  // Handle DepartmentIds - ALWAYS include this field when changed, even if empty
-  const newDepartmentIds = (course.department || [])
-    .map((id) => {
-      if (typeof id === "string") return parseInt(id, 10);
-      return NaN;
-    })
-    .filter((id) => !isNaN(id));
-
-  const oldDepartmentIds = (originalCourse?.department || [])
-    .map((id) => {
-      if (typeof id === "string") return parseInt(id, 10);
-      return NaN;
-    })
-    .filter((id) => !isNaN(id));
-
-  const departmentIdsChanged =
-    !originalCourse || isDifferent(newDepartmentIds, oldDepartmentIds);
-  if (departmentIdsChanged) {
+  if (isDifferent(newDepartmentIds, originalCourse?.department?.map(id => parseInt(id, 10)))) {
     payload.DepartmentIds = newDepartmentIds;
-    console.log("🏢 [DepartmentIds] Change detected:", {
-      old: oldDepartmentIds,
-      new: newDepartmentIds,
-      action: newDepartmentIds.length === 0 ? "CLEAR_ALL" : "UPDATE",
-    });
   }
 
-  // Handle eLevelIds - ALWAYS include this field when changed, even if empty
-  const newLevelIds = (course.level || [])
-    .map((id) => {
-      if (typeof id === "string") return parseInt(id, 10);
-      return NaN;
-    })
-    .filter((id) => !isNaN(id));
-
-  const oldLevelIds = (originalCourse?.level || [])
-    .map((id) => {
-      if (typeof id === "string") return parseInt(id, 10);
-      return NaN;
-    })
-    .filter((id) => !isNaN(id));
-
-  const levelIdsChanged =
-    !originalCourse || isDifferent(newLevelIds, oldLevelIds);
-  if (levelIdsChanged) {
+  const newLevelIds = (course.level || []).map((id) => parseInt(id, 10));
+   if (isDifferent(newLevelIds, originalCourse?.level?.map(id => parseInt(id, 10)))) {
     payload.eLevelIds = newLevelIds;
-    console.log("📊 [eLevelIds] Change detected:", {
-      old: oldLevelIds,
-      new: newLevelIds,
-      action: newLevelIds.length === 0 ? "CLEAR_ALL" : "UPDATE",
-    });
   }
 
-  // Handle UserIds
-  if (!originalCourse || isDifferent(course.userIds, originalCourse.userIds)) {
-    payload.UserIds = course.userIds;
+  const newUserIds = course.userIds || [];
+  if (isDifferent(newUserIds, originalCourse?.userIds)) {
+    payload.UserIds = newUserIds;
   }
 
-  // Handle CategoryId
   const newCategoryId = course.category?.id;
-  const oldCategoryId = originalCourse?.category?.id;
-  if (!originalCourse || isDifferent(newCategoryId, oldCategoryId)) {
-    payload.CategoryId = newCategoryId || null;
-    console.log("🏷️ [CategoryId] Change detected:", {
-      old: oldCategoryId,
-      new: newCategoryId,
-      action: newCategoryId ? "UPDATE" : "CLEAR",
-    });
+  if (isDifferent(newCategoryId, originalCourse?.category?.id)) {
+    payload.CategoryId = newCategoryId === undefined ? null : newCategoryId;
   }
 
-  // Always include image file if present
   if (course.imageFile) {
     payload.ThumbUrl = course.imageFile;
   }
 
-  // Remove undefined values
+  // Remove undefined fields from payload to keep it clean
   Object.keys(payload).forEach(
-    (key) => (payload as any)[key] === undefined && delete (payload as any)[key]
+    (key) =>
+      (payload as any)[key] === undefined && delete (payload as any)[key]
   );
-
-  console.log("🔍 [mapCourseUiToUpdatePayload] Payload changes:", {
-    originalDepartments: oldDepartmentIds,
-    newDepartments: newDepartmentIds,
-    originalLevels: oldLevelIds,
-    newLevels: newLevelIds,
-    payload,
-  });
-
+  
+  console.log("🔍 [mapCourseUiToUpdatePayload] Final Payload:", payload);
   return payload;
 }

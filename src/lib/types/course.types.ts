@@ -10,7 +10,7 @@ import type { Test } from "./test.types";
 
 // --- Enums and Unions ---
 export type LearningFormat = "online" | "offline";
-export type EnrollmentType = "optional" | "mandatory";
+export type EnrollmentType = "optional" | "mandatory" | "";
 export type CourseMaterialType = "PDF" | "Link";
 export type LessonContentType =
   | "video_url"
