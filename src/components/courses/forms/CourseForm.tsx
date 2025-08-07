@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useRef, useMemo } from "react";
@@ -157,7 +156,7 @@ export function CourseForm({
   // --- Derived State (Options for Selects) ---
   const departmentOptions = useMemo(() => {
     return (departments || []).map((d) => ({
-      value: d.departmentId,
+      value: String(d.departmentId),
       label: d.name,
     }));
   }, [departments]);
@@ -917,8 +916,8 @@ export function CourseForm({
                 className="pl-9"
               />
             </div>
-            
-            {(tempSelectedTraineeIds.length > 0) && (
+
+            {tempSelectedTraineeIds.length > 0 && (
               <div className="flex justify-between items-center text-sm px-1">
                 <span className="text-muted-foreground">
                   Đã chọn {tempSelectedTraineeIds.length} học viên
@@ -934,7 +933,7 @@ export function CourseForm({
                 </Button>
               </div>
             )}
-            
+
             <div className="max-h-[50vh] overflow-y-auto py-2 space-y-2">
               {trainees.length === 0 && !debouncedTraineeSearch ? (
                 <p className="text-sm text-center text-muted-foreground py-4">

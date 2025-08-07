@@ -275,8 +275,8 @@ export function mapCourseUiToUpdatePayload(
     parseInt(id, 10)
   );
 
-  // Nếu loại ghi danh là "Bắt buộc" thì luôn gửi DepartmentIds
-  if (course.enrollmentType === "mandatory") {
+  // luôn gửi DepartmentIds
+  if (course.enrollmentType) {
     payload.DepartmentIds = newDepartmentIds;
   } else if (
     isDifferent(
@@ -289,8 +289,8 @@ export function mapCourseUiToUpdatePayload(
 
   const newLevelIds = (course.level || []).map((id) => parseInt(id, 10));
 
-  // Nếu loại ghi danh là "Bắt buộc" thì luôn gửi eLevelIds
-  if (course.enrollmentType === "mandatory") {
+  // luôn gửi eLevelIds
+  if (course.enrollmentType) {
     payload.eLevelIds = newLevelIds;
   } else if (
     isDifferent(

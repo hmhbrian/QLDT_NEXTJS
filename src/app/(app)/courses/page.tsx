@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useMemo, useCallback } from "react";
@@ -123,7 +122,7 @@ export default function CoursesPage() {
       // This check might need revision if `course.department` is just an array of IDs
       if (
         currentUser.department &&
-        course.department?.includes(currentUser.department.departmentId)
+        course.department?.includes(String(currentUser.department.departmentId))
       ) {
         return true;
       }
@@ -380,13 +379,13 @@ export default function CoursesPage() {
                               {!isRegistrationOpen(
                                 course.registrationDeadline
                               ) && (
-                                  <Badge
-                                    variant="destructive"
-                                    className="ml-2 text-xs"
-                                  >
-                                    Hết hạn
-                                  </Badge>
-                                )}
+                                <Badge
+                                  variant="destructive"
+                                  className="ml-2 text-xs"
+                                >
+                                  Hết hạn
+                                </Badge>
+                              )}
                             </div>
                           )}
                       </div>
@@ -406,7 +405,7 @@ export default function CoursesPage() {
                           disabled={enrollMutation.isPending}
                         >
                           {enrollMutation.isPending &&
-                            enrollMutation.variables === course.id
+                          enrollMutation.variables === course.id
                             ? "Đang đăng ký..."
                             : "Đăng ký"}
                         </LoadingButton>
@@ -473,7 +472,7 @@ export default function CoursesPage() {
                 Hiển thị{" "}
                 {Math.min(
                   pagination.pageIndex * pagination.pageSize +
-                  filteredCourses.length,
+                    filteredCourses.length,
                   paginationInfo?.totalItems ?? 0
                 )}{" "}
                 trên {paginationInfo?.totalItems ?? 0} khóa học
@@ -548,15 +547,15 @@ export default function CoursesPage() {
                 {debouncedSearchTerm
                   ? "Không tìm thấy khóa học nào"
                   : currentUser?.role === "HOCVIEN"
-                    ? "Không có khóa học mới để đăng ký"
-                    : "Chưa có khóa học công khai"}
+                  ? "Không có khóa học mới để đăng ký"
+                  : "Chưa có khóa học công khai"}
               </h3>
               <p className="mt-1 text-sm text-muted-foreground">
                 {debouncedSearchTerm
                   ? "Vui lòng thử lại với từ khóa khác."
                   : currentUser?.role === "HOCVIEN"
-                    ? "Bạn đã đăng ký tất cả khóa học có sẵn hoặc chưa có khóa học mới."
-                    : "Hiện tại chưa có khóa học công khai nào được phát hành."}
+                  ? "Bạn đã đăng ký tất cả khóa học có sẵn hoặc chưa có khóa học mới."
+                  : "Hiện tại chưa có khóa học công khai nào được phát hành."}
               </p>
             </div>
           )}
