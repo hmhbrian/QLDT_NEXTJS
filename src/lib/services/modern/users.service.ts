@@ -26,9 +26,12 @@ export class UsersService extends BaseService<
     if (params.SortField) backendParams.SortField = params.SortField;
     if (params.SortType) backendParams.SortType = params.SortType;
     if (params.keyword) backendParams.Keyword = params.keyword;
-    if (params.RoleName) backendParams.RoleName = params.RoleName;
     
-    const isSearch = !!params.keyword || !!params.RoleName;
+    // The 'RoleName' parameter is not supported by the backend search endpoint.
+    // It should be removed to prevent 403 errors for non-admin roles.
+    // Filtering by role should be done on the client-side if needed for specific components.
+    
+    const isSearch = !!params.keyword; // Search only by keyword now
     const endpoint = isSearch
       ? API_CONFIG.endpoints.users.search
       : this.endpoint;
@@ -92,3 +95,5 @@ export class UsersService extends BaseService<
 
 export const usersService = new UsersService();
 export default usersService;
+
+    
