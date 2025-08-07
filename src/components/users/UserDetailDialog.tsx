@@ -211,7 +211,8 @@ export default function UserDetailDialog({
                             Phòng ban
                           </p>
                           <p className="font-medium text-gray-900">
-                            {user.department?.name || "Chưa có phòng ban"}
+                            {user.department?.departmentName ||
+                              "Chưa có phòng ban"}
                           </p>
                         </div>
                         <div>

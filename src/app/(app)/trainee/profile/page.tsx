@@ -38,7 +38,11 @@ import {
 import { useToast } from "@/components/ui/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { useError } from "@/hooks/use-error";
-import type { User, EmployeeLevel } from "@/lib/types/user.types";
+import type {
+  User,
+  EmployeeLevel,
+  UserDepartmentInfo,
+} from "@/lib/types/user.types";
 import type { DepartmentInfo } from "@/lib/types/department.types";
 import type { Course } from "@/lib/types/course.types";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -208,9 +212,11 @@ export default function UserProfilePage() {
     }
   };
 
-  const renderDepartment = (department: DepartmentInfo | undefined) => {
-    if (!department) return "Không có";
-    return department.name;
+  const renderDepartment = (
+    department: UserDepartmentInfo | null | undefined
+  ) => {
+    if (!department) return "Chưa có phòng ban";
+    return department.departmentName;
   };
 
   return (

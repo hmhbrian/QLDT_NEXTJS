@@ -96,7 +96,7 @@ export function useUpdateUserMutation() {
       console.log("✅ [useUpdateUserMutation] Mutation successful");
       toast({
         title: "Thành công",
-        description: `Đã cập nhật người dùng "${variables.payload.FullName}" thành công.`,
+        description: `Đã cập nhật người dùng "${variables.payload.fullName}" thành công.`,
         variant: "success",
       });
     },

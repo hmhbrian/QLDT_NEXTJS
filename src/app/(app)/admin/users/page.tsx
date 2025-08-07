@@ -39,6 +39,7 @@ import {
   EmployeeLevel,
   ResetPasswordRequest,
   ServiceRole,
+  UserDepartmentInfo,
 } from "@/lib/types/user.types";
 import { UserDetailDialog } from "@/components/users";
 import { DepartmentInfo } from "@/lib/types/department.types";
@@ -186,11 +187,17 @@ export default function UsersPage() {
   };
 
   const handleOpenEditDialog = useCallback((userToEdit: User) => {
+    console.log("Editing user:", userToEdit);
+    console.log("User department:", userToEdit.department);
+    console.log("User employeeLevel:", userToEdit.employeeLevel);
+
     setEditingUser(userToEdit);
     setNewUser({
       ...userToEdit,
       role: userToEdit.role?.toUpperCase() as Role, // Ensure uppercase for consistency
-      department: userToEdit.department?.departmentId,
+      department: userToEdit.department?.departmentId
+        ? String(userToEdit.department.departmentId)
+        : "",
       employeeLevel: userToEdit.employeeLevel
         ? String(userToEdit.employeeLevel.eLevelId)
         : "",
@@ -205,24 +212,24 @@ export default function UsersPage() {
     const data = newUser;
     const newErrors: Partial<Record<keyof CreateUserRequest, string>> = {};
 
-    if (!data.fullName) newErrors.FullName = "Họ và tên là bắt buộc!";
-    if (!data.idCard) newErrors.IdCard = "CMND/CCCD là bắt buộc!";
-    if (!data.email) newErrors.Email = "Email là bắt buộc!";
+    if (!data.fullName) newErrors.fullName = "Họ và tên là bắt buộc!";
+    if (!data.idCard) newErrors.idCard = "CMND/CCCD là bắt buộc!";
+    if (!data.email) newErrors.email = "Email là bắt buộc!";
     else if (!/^[a-zA-Z0-9._%+-]+@becamex\.com$/.test(data.email)) {
-      newErrors.Email = "Email phải có domain @becamex.com.";
+      newErrors.email = "Email phải có domain @becamex.com.";
     }
 
     if (!isEdit) {
-      if (!data.password) newErrors.Password = "Mật khẩu là bắt buộc!";
+      if (!data.password) newErrors.password = "Mật khẩu là bắt buộc!";
       else if (data.password.length < 6)
-        newErrors.Password = "Mật khẩu phải có ít nhất 6 ký tự.";
+        newErrors.password = "Mật khẩu phải có ít nhất 6 ký tự.";
       if (data.confirmPassword !== data.password)
-        newErrors.ConfirmPassword = "Mật khẩu xác nhận không khớp.";
+        newErrors.confirmPassword = "Mật khẩu xác nhận không khớp.";
     } else if (data.password && data.password.trim()) {
       if (data.password.length < 6)
-        newErrors.Password = "Mật khẩu phải có ít nhất 6 ký tự.";
+        newErrors.password = "Mật khẩu phải có ít nhất 6 ký tự.";
       if (data.confirmPassword !== data.password)
-        newErrors.ConfirmPassword = "Mật khẩu xác nhận không khớp.";
+        newErrors.confirmPassword = "Mật khẩu xác nhận không khớp.";
     }
 
     setErrors(newErrors);
@@ -253,20 +260,22 @@ export default function UsersPage() {
     try {
       if (isEdit && editingUser) {
         const updatePayload: UpdateUserRequest = {
-          FullName: newUser.fullName,
-          Email: newUser.email,
-          IdCard: newUser.idCard,
-          NumberPhone: newUser.phoneNumber,
-          DepartmentId: newUser.department
+          fullName: newUser.fullName,
+          email: newUser.email,
+          idCard: newUser.idCard,
+          position: newUser.position,
+          numberPhone: newUser.phoneNumber,
+          departmentId: newUser.department
             ? parseInt(newUser.department, 10)
             : undefined,
-          RoleId: selectedRole.id,
+          roleId: selectedRole.id,
           eLevelId: newUser.employeeLevel
             ? parseInt(newUser.employeeLevel, 10)
             : undefined,
-          StatusId: newUser.userStatus?.id,
-          Code: newUser.employeeId || undefined,
+          statusId: newUser.userStatus?.id,
+          code: newUser.employeeId || undefined,
         };
+        console.log("Admin updating user with payload:", updatePayload);
 
         await updateUserMutation.mutateAsync({
           id: editingUser.id,
@@ -282,22 +291,24 @@ export default function UsersPage() {
         }
       } else {
         const createUserPayload: CreateUserRequest = {
-          FullName: newUser.fullName!,
-          Email: newUser.email!,
-          Password: newUser.password!,
-          ConfirmPassword: newUser.confirmPassword!,
-          RoleId: selectedRole.id,
-          IdCard: newUser.idCard,
-          NumberPhone: newUser.phoneNumber,
+          fullName: newUser.fullName!,
+          email: newUser.email!,
+          password: newUser.password!,
+          confirmPassword: newUser.confirmPassword!,
+          roleId: selectedRole.id,
+          idCard: newUser.idCard,
+          position: newUser.position,
+          numberPhone: newUser.phoneNumber,
           eLevelId: newUser.employeeLevel
             ? parseInt(newUser.employeeLevel, 10)
             : undefined,
-          DepartmentId: newUser.department
+          departmentId: newUser.department
             ? parseInt(newUser.department, 10)
             : undefined,
-          StatusId: newUser.userStatus?.id,
-          Code: newUser.employeeId || undefined,
+          statusId: newUser.userStatus?.id,
+          code: newUser.employeeId || undefined,
         };
+        console.log("Admin creating user with payload:", createUserPayload);
         await createUserMutation.mutateAsync(createUserPayload);
       }
     } catch (error) {
@@ -333,8 +344,8 @@ export default function UsersPage() {
     [currentUser, handleOpenEditDialog]
   );
 
-  const renderDepartment = (department?: DepartmentInfo) => {
-    return department?.name || "Chưa có phòng ban";
+  const renderDepartment = (department?: UserDepartmentInfo | null) => {
+    return department?.departmentName || "Chưa có phòng ban";
   };
 
   const getEmployeeCode = (user: any): string => {
@@ -456,10 +467,10 @@ export default function UsersPage() {
                 onChange={(e) =>
                   setNewUser({ ...newUser, fullName: e.target.value })
                 }
-                className={errors.FullName ? "border-destructive" : ""}
+                className={errors.fullName ? "border-destructive" : ""}
               />
-              {errors.FullName && (
-                <p className="text-sm text-destructive">{errors.FullName}</p>
+              {errors.fullName && (
+                <p className="text-sm text-destructive">{errors.fullName}</p>
               )}
             </div>
             <div className="grid gap-2">
@@ -470,10 +481,10 @@ export default function UsersPage() {
                 onChange={(e) =>
                   setNewUser({ ...newUser, idCard: e.target.value })
                 }
-                className={errors.IdCard ? "border-destructive" : ""}
+                className={errors.idCard ? "border-destructive" : ""}
               />
-              {errors.IdCard && (
-                <p className="text-sm text-destructive">{errors.IdCard}</p>
+              {errors.idCard && (
+                <p className="text-sm text-destructive">{errors.idCard}</p>
               )}
             </div>
             <div className="grid gap-2">
@@ -512,10 +523,10 @@ export default function UsersPage() {
                 onChange={(e) =>
                   setNewUser({ ...newUser, email: e.target.value })
                 }
-                className={errors.Email ? "border-destructive" : ""}
+                className={errors.email ? "border-destructive" : ""}
               />
-              {errors.Email && (
-                <p className="text-sm text-destructive">{errors.Email}</p>
+              {errors.email && (
+                <p className="text-sm text-destructive">{errors.email}</p>
               )}
             </div>
             <div className="grid gap-2">
@@ -525,6 +536,17 @@ export default function UsersPage() {
                 value={newUser.phoneNumber}
                 onChange={(e) =>
                   setNewUser({ ...newUser, phoneNumber: e.target.value })
+                }
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="position">Chức vụ</Label>
+              <Input
+                id="position"
+                placeholder="Nhập chức vụ"
+                value={newUser.position || ""}
+                onChange={(e) =>
+                  setNewUser({ ...newUser, position: e.target.value })
                 }
               />
             </div>
@@ -554,7 +576,7 @@ export default function UsersPage() {
                     activeDepartments.map((dept) => (
                       <SelectItem
                         key={dept.departmentId}
-                        value={dept.departmentId}
+                        value={String(dept.departmentId)}
                       >
                         {dept.name}
                       </SelectItem>
@@ -684,7 +706,7 @@ export default function UsersPage() {
                   onChange={(e) =>
                     setNewUser({ ...newUser, password: e.target.value })
                   }
-                  className={errors.Password ? "border-destructive" : ""}
+                  className={errors.password ? "border-destructive" : ""}
                 />
                 <Button
                   type="button"
@@ -700,8 +722,8 @@ export default function UsersPage() {
                   )}
                 </Button>
               </div>
-              {errors.Password && (
-                <p className="text-sm text-destructive">{errors.Password}</p>
+              {errors.password && (
+                <p className="text-sm text-destructive">{errors.password}</p>
               )}
             </div>
             <div className="grid gap-2">
@@ -716,7 +738,7 @@ export default function UsersPage() {
                   onChange={(e) =>
                     setNewUser({ ...newUser, confirmPassword: e.target.value })
                   }
-                  className={errors.ConfirmPassword ? "border-destructive" : ""}
+                  className={errors.confirmPassword ? "border-destructive" : ""}
                 />
                 <Button
                   type="button"
@@ -732,9 +754,9 @@ export default function UsersPage() {
                   )}
                 </Button>
               </div>
-              {errors.ConfirmPassword && (
+              {errors.confirmPassword && (
                 <p className="text-sm text-destructive">
-                  {errors.ConfirmPassword}
+                  {errors.confirmPassword}
                 </p>
               )}
             </div>

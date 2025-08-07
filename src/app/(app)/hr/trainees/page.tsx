@@ -43,6 +43,7 @@ import {
   CreateUserRequest,
   UpdateUserRequest,
   ServiceRole,
+  UserDepartmentInfo,
 } from "@/lib/types/user.types";
 import { DepartmentInfo } from "@/lib/types/department.types";
 import { useToast } from "@/components/ui/use-toast";
@@ -183,41 +184,43 @@ export default function TraineesPage() {
 
     if (editingTrainee) {
       const updatePayload: UpdateUserRequest = {
-        FullName: formData.fullName,
-        Email: formData.email,
-        IdCard: formData.idCard,
-        NumberPhone: formData.phoneNumber,
+        fullName: formData.fullName,
+        email: formData.email,
+        idCard: formData.idCard,
+        position: formData.position,
+        numberPhone: formData.phoneNumber,
         eLevelId: formData.employeeLevel?.eLevelId,
-        DepartmentId: formData.department?.departmentId
-          ? parseInt(formData.department.departmentId)
-          : undefined,
-        RoleId: hocvienRole.id,
+        departmentId: formData.department?.departmentId,
+        roleId: hocvienRole.id,
       };
+      console.log("Updating user with payload:", updatePayload);
       await updateTraineeMutation.mutateAsync({
         id: editingTrainee.id,
         payload: updatePayload,
       });
     } else {
       const createPayload: CreateUserRequest = {
-        FullName: formData.fullName!,
-        Email: formData.email!,
-        Password: formData.password!,
-        ConfirmPassword: formData.confirmPassword!,
-        IdCard: formData.idCard,
-        NumberPhone: formData.phoneNumber,
+        fullName: formData.fullName!,
+        email: formData.email!,
+        password: formData.password!,
+        confirmPassword: formData.confirmPassword!,
+        idCard: formData.idCard,
+        position: formData.position,
+        numberPhone: formData.phoneNumber,
         eLevelId: formData.employeeLevel?.eLevelId,
-        DepartmentId: formData.department?.departmentId
-          ? parseInt(formData.department.departmentId)
-          : undefined,
-        RoleId: hocvienRole.id,
+        departmentId: formData.department?.departmentId,
+        roleId: hocvienRole.id,
       };
+      console.log("Creating user with payload:", createPayload);
       await createTraineeMutation.mutateAsync(createPayload);
     }
   };
 
-  const renderDepartmentName = (department?: DepartmentInfo): string => {
-    if (!department) return "Không có";
-    return department.name || "Không xác định";
+  const renderDepartmentName = (
+    department?: UserDepartmentInfo | null
+  ): string => {
+    if (!department) return "Chưa có phòng ban";
+    return department.departmentName || "Không xác định";
   };
 
   const getEmployeeLevel = (user: User): string => {
@@ -347,15 +350,26 @@ export default function TraineesPage() {
             <div className="grid gap-2">
               <Label htmlFor="department">Phòng ban</Label>
               <Select
-                value={formData.department?.departmentId || NO_DEPARTMENT_VALUE}
+                value={
+                  formData.department?.departmentId
+                    ? String(formData.department.departmentId)
+                    : NO_DEPARTMENT_VALUE
+                }
                 onValueChange={(value) => {
                   const selectedDept = activeDepartments.find(
-                    (d) => d.departmentId === value
+                    (d) => String(d.departmentId) === value
                   );
                   setFormData({
                     ...formData,
                     department:
-                      value === NO_DEPARTMENT_VALUE ? undefined : selectedDept,
+                      value === NO_DEPARTMENT_VALUE
+                        ? undefined
+                        : selectedDept
+                        ? {
+                            departmentId: selectedDept.departmentId,
+                            departmentName: selectedDept.name,
+                          }
+                        : undefined,
                   });
                 }}
               >
@@ -374,7 +388,7 @@ export default function TraineesPage() {
                     activeDepartments.map((dept) => (
                       <SelectItem
                         key={dept.departmentId}
-                        value={dept.departmentId}
+                        value={String(dept.departmentId)}
                       >
                         {dept.name}
                       </SelectItem>
@@ -426,6 +440,17 @@ export default function TraineesPage() {
                   )}
                 </SelectContent>
               </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="position">Chức vụ</Label>
+              <Input
+                id="position"
+                placeholder="Nhập chức vụ"
+                value={formData.position || ""}
+                onChange={(e) =>
+                  setFormData({ ...formData, position: e.target.value })
+                }
+              />
             </div>
             {!editingTrainee && (
               <>
@@ -581,7 +606,8 @@ export default function TraineesPage() {
                   {renderDepartmentName(selectedTrainee.department)}
                 </p>
                 <p>
-                  <strong>Chức vụ:</strong> Chưa có
+                  <strong>Chức vụ:</strong>{" "}
+                  {selectedTrainee.position || "Chưa có"}
                 </p>
                 <p>
                   <strong>Cấp bậc:</strong> {getEmployeeLevel(selectedTrainee)}

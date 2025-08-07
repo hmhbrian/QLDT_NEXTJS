@@ -30,8 +30,9 @@ export function mapUserApiToUi(apiUser: UserApiResponse | null): User {
     phoneNumber: apiUser.phoneNumber || "N/A",
     role: validRoles.includes(role) ? role : "HOCVIEN",
     employeeId: apiUser.code,
-    department: apiUser.department,
-    employeeLevel: apiUser.employeeLevel,
+    department: apiUser.department || null, // Keep as is since types now match
+    employeeLevel: apiUser.eLevel, // Map eLevel field from API
+    position: apiUser.position, // Map position field
     userStatus: apiUser.userStatus,
     manager:
       typeof apiUser.managerBy === "object"
