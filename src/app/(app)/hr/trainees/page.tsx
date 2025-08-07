@@ -117,11 +117,11 @@ export default function TraineesPage() {
     [paginationInfo]
   );
 
-  // Filter out ADMIN users - HR should only see HOCVIEN
-  const filteredTrainees = useMemo(() => {
-    if (!trainees) return [];
-    return trainees.filter(user => user.role !== "ADMIN");
-  }, [trainees]);
+// Filter out ADMIN and HR users - HR chỉ xem được HOCVIEN
+const filteredTrainees = useMemo(() => {
+  if (!trainees) return [];
+  return trainees.filter(user => user.role === "HOCVIEN");
+}, [trainees]);
 
   const { data: rolesResponse } = useQuery<PaginatedResponse<ServiceRole>>({
     queryKey: ["roles"],
