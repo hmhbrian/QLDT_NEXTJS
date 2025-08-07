@@ -128,7 +128,7 @@ export const getColumns = (
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              {user.role === "HOCVIEN" && (
+              {(user.role === "HOCVIEN" || user.role === "HR") && (
                 <DropdownMenuItem onClick={() => handleViewDetails(user)}>
                   <UserCircle2 className="mr-2 h-4 w-4" />
                   Xem chi tiết
