@@ -11,11 +11,11 @@ import type { Course } from "@/lib/types/course.types";
  */
 export function mapDepartmentApiToUi(dept: any): DepartmentInfo {
   return {
-    departmentId: String(dept.departmentId),
+    departmentId: dept.departmentId,
     name: dept.departmentName || dept.name || "",
     code: dept.departmentCode || dept.code || "",
     description: dept.description || "",
-    parentId: dept.parentId ? String(dept.parentId) : null,
+    parentId: dept.parentId || null,
     parentName: dept.parentName || null,
     managerId: dept.managerId || null,
     managerName: dept.managerName || null,
