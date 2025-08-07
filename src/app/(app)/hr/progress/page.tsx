@@ -31,6 +31,7 @@ import {
   useStudentsOfCourseReport,
   useCourseAndAvgFeedbackReport,
   useAvgFeedbackReport,
+  useDataReport,
 } from "@/hooks/use-reports";
 import { extractErrorMessage } from "@/lib/core";
 
@@ -67,7 +68,20 @@ export default function ProgressPage() {
     Limit: 50,
   });
 
-  // Sử dụng API reports để lấy dữ liệu thực tế
+  // Sử dụng API data-report để lấy dữ liệu thống kê chính với filter
+  const {
+    data: dataReport,
+    isLoading: isLoadingDataReport,
+    error: dataReportError,
+  } = useDataReport({
+    month: filterType === "month" ? selectedMonth : undefined,
+    quarter: filterType === "quarter" ? selectedQuarter : undefined,
+    year:
+      filterType === "year" || filterType === "all" ? selectedYear : undefined,
+    enabled: true, // Always enabled to get data
+  });
+
+  // Sử dụng API reports để lấy dữ liệu chi tiết khác
   const {
     data: studentsData,
     isLoading: isLoadingStudents,
@@ -91,6 +105,7 @@ export default function ProgressPage() {
     const loadingState =
       isLoadingCourses ||
       isLoadingUsers ||
+      isLoadingDataReport ||
       isLoadingStudents ||
       isLoadingCourseFeedback ||
       isLoadingOverallFeedback;
@@ -103,33 +118,87 @@ export default function ProgressPage() {
         completionRate: 0,
         courseStats: [],
         overallRating: 0,
+        averageTime: 0,
+        positiveFeedback: 0,
       };
     }
 
-    // Sử dụng dữ liệu từ API reports
-    const totalCourses = courseFeedback?.length || courses.length || 10;
+    // Sử dụng dữ liệu từ API data-report trước tiên
+    if (dataReport) {
+      const totalCourses = dataReport.numberOfCourses || 0;
+      const totalTrainees = dataReport.numberOfStudents || 0;
+      const completionRate = Math.round(
+        dataReport.averangeCompletedPercentage || 0
+      );
+      const averageTime = dataReport.averangeTime || 0;
+      const positiveFeedback = Math.round(
+        dataReport.averagePositiveFeedback || 0
+      );
+
+      // Tính toán khóa học hoàn thành dựa vào tỷ lệ hoàn thành
+      const completedCourses = Math.round(
+        (totalCourses * completionRate) / 100
+      );
+
+      // Tạo courseStats từ dữ liệu API khác nếu có
+      let courseStats = [];
+      if (studentsData && studentsData.length > 0) {
+        courseStats = studentsData
+          .map((courseData) => {
+            const courseInfo =
+              courses.find((c) => c.title === courseData.courseName) || null;
+            const status = courseInfo
+              ? typeof courseInfo.status === "object" &&
+                courseInfo.status &&
+                "name" in courseInfo.status
+                ? courseInfo.status.name
+                : typeof courseInfo.status === "string"
+                ? courseInfo.status
+                : "Đang diễn ra"
+              : "Đang diễn ra";
+
+            return {
+              name: courseData.courseName,
+              trainees: courseData.totalStudent,
+              status: status,
+            };
+          })
+          .filter((course) => course.trainees > 0)
+          .sort((a, b) => b.trainees - a.trainees)
+          .slice(0, 10);
+      }
+
+      return {
+        totalCourses,
+        totalTrainees,
+        completedCourses,
+        completionRate,
+        courseStats,
+        overallRating: positiveFeedback / 20, // Convert to 5-star scale
+        averageTime,
+        positiveFeedback,
+      };
+    }
+
+    // Fallback nếu không có dữ liệu từ data-report API - chỉ dùng dữ liệu từ API khác
+    const totalCourses = courseFeedback?.length || courses.length || 0;
     const totalTrainees =
       studentsData?.reduce((sum, course) => sum + course.totalStudent, 0) ||
-      allUsers.length ||
-      244;
+      allUsers.filter((user) => user.role === "HOCVIEN").length ||
+      0;
 
-    // Tính toán khóa học hoàn thành từ dữ liệu thực
     const completedCourses =
       courses.length > 0
-        ? Math.min(
-            courses.filter((c) => c.status === "Đã kết thúc").length,
-            totalCourses
-          )
-        : Math.floor(totalCourses * 0.3); // 30% completion estimate
+        ? courses.filter((c) => c.status === "Đã kết thúc").length
+        : 0;
 
     const completionRate =
       totalCourses > 0
-        ? Math.min(Math.round((completedCourses / totalCourses) * 100), 100)
-        : 30;
+        ? Math.round((completedCourses / totalCourses) * 100)
+        : 0;
 
     // Tạo courseStats từ dữ liệu API
     let courseStats = [];
-
     if (studentsData && studentsData.length > 0) {
       courseStats = studentsData
         .map((courseData) => {
@@ -157,39 +226,7 @@ export default function ProgressPage() {
         .slice(0, 10);
     }
 
-    // Fallback to mock data if no API data
-    if (courseStats.length === 0) {
-      courseStats = [
-        {
-          name: "Khóa học Lập trình Web",
-          trainees: 45,
-          status: "Đang diễn ra",
-        },
-        { name: "Khóa học Data Science", trainees: 38, status: "Đang diễn ra" },
-        { name: "Khóa học UI/UX Design", trainees: 32, status: "Đã kết thúc" },
-        { name: "Khóa học Mobile App", trainees: 28, status: "Đang diễn ra" },
-        { name: "Khóa học DevOps", trainees: 24, status: "Sắp bắt đầu" },
-        {
-          name: "Khóa học Machine Learning",
-          trainees: 22,
-          status: "Đang diễn ra",
-        },
-        { name: "Khóa học Cybersecurity", trainees: 18, status: "Đã kết thúc" },
-        {
-          name: "Khóa học Cloud Computing",
-          trainees: 15,
-          status: "Đang diễn ra",
-        },
-        { name: "Khóa học Blockchain", trainees: 12, status: "Sắp bắt đầu" },
-        {
-          name: "Khóa học AI Fundamentals",
-          trainees: 10,
-          status: "Đang diễn ra",
-        },
-      ];
-    }
-
-    // Tính điểm đánh giá tổng thể
+    // Tính điểm đánh giá tổng thể từ API
     const overallRating = overallFeedback
       ? (overallFeedback.q1_relevanceAvg +
           overallFeedback.q2_clarityAvg +
@@ -200,6 +237,8 @@ export default function ProgressPage() {
       : 0;
 
     console.log("🔍 HR Progress Page - API Data:", {
+      filterType,
+      dataReport,
       studentsData: studentsData?.slice(0, 3),
       courseFeedback: courseFeedback?.slice(0, 3),
       overallFeedback,
@@ -216,8 +255,11 @@ export default function ProgressPage() {
       completionRate,
       courseStats,
       overallRating,
+      averageTime: 0,
+      positiveFeedback: Math.round(overallRating * 20), // Convert to percentage
     };
   }, [
+    dataReport,
     courses,
     allUsers,
     studentsData,
@@ -225,6 +267,7 @@ export default function ProgressPage() {
     overallFeedback,
     isLoadingCourses,
     isLoadingUsers,
+    isLoadingDataReport,
     isLoadingStudents,
     isLoadingCourseFeedback,
     isLoadingOverallFeedback,
@@ -234,6 +277,7 @@ export default function ProgressPage() {
   if (
     isLoadingCourses ||
     isLoadingUsers ||
+    isLoadingDataReport ||
     isLoadingStudents ||
     isLoadingCourseFeedback ||
     isLoadingOverallFeedback
@@ -258,7 +302,11 @@ export default function ProgressPage() {
   }
 
   const isLoading = false; // Already handled above
-  const anyError = studentsError || courseFeedbackError || overallFeedbackError;
+  const anyError =
+    dataReportError ||
+    studentsError ||
+    courseFeedbackError ||
+    overallFeedbackError;
 
   const statCards = [
     {
@@ -274,17 +322,31 @@ export default function ProgressPage() {
       description: "Tổng số tài khoản học viên.",
     },
     {
-      title: "Tỷ lệ Hoàn thành (Ước tính)",
+      title: "Tỷ lệ Hoàn thành",
       value: `${reportData.completionRate}%`,
       icon: Activity,
-      description: `Dựa trên ${reportData.completedCourses} khóa học "Đã kết thúc".`,
+      description: `Dựa trên ${reportData.completedCourses} khóa học hoàn thành.`,
     },
     {
-      title: "Điểm Đánh giá TB",
-      value: `${reportData.overallRating.toFixed(1)}/5`,
+      title: "Thời gian TB",
+      value: dataReport
+        ? `${dataReport.averangeTime.toFixed(1)}h`
+        : `${reportData.overallRating.toFixed(1)}/5`,
       icon: BarChart2,
-      description: "Điểm đánh giá trung bình.",
+      description: dataReport
+        ? "Thời gian học trung bình."
+        : "Điểm đánh giá trung bình.",
     },
+    ...(dataReport
+      ? [
+          {
+            title: "Đánh giá Tích cực",
+            value: `${dataReport.averagePositiveFeedback.toFixed(1)}%`,
+            icon: AlertTriangle,
+            description: "Tỷ lệ phản hồi tích cực.",
+          },
+        ]
+      : []),
   ];
 
   // Filter handlers
@@ -293,8 +355,8 @@ export default function ProgressPage() {
   };
 
   const applyFilters = () => {
-    // This would typically trigger data refetch with new filters
-    console.log("Applying filters:", {
+    // Filters are applied automatically through the useDataReport hook
+    console.log("Filters applied:", {
       filterType,
       selectedYear,
       selectedQuarter,
@@ -357,11 +419,11 @@ export default function ProgressPage() {
             Báo cáo Tiến độ Học tập
           </h1>
           <p className="text-muted-foreground mt-1">
-            Tổng quan về hoạt động đào tạo và tiến độ của học viên •{" "}
-            {getFilterDisplayLabel()}
+            Tổng quan về hoạt động đào tạo và tiến độ của học viên
+            {/* {getFilterDisplayLabel()} */}
           </p>
         </div>
-        <div className="w-full md:w-auto">
+        {/* <div className="w-full md:w-auto">
           <ReportFilter
             filterType={filterType}
             selectedYear={selectedYear}
@@ -375,7 +437,7 @@ export default function ProgressPage() {
             onResetFilters={resetFilters}
             hasActiveFilter={hasActiveFilter}
           />
-        </div>
+        </div> */}
       </div>
 
       {isLoading ? (
@@ -410,7 +472,7 @@ export default function ProgressPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <BarChart2 className="h-5 w-5" />
-                Thống kê và Biểu đồ Tiến độ
+                Biểu đồ Tiến độ
               </CardTitle>
               <CardDescription>
                 Tổng quan chi tiết về tiến độ học tập và trạng thái các khóa
@@ -428,7 +490,7 @@ export default function ProgressPage() {
                 </div>
               ) : (
                 <div>
-                  <div className="mb-6 p-4 bg-muted/30 rounded-lg border">
+                  {/* <div className="mb-6 p-4 bg-muted/30 rounded-lg border">
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
                       <div>
                         <div className="text-2xl font-bold text-green-600">
@@ -467,8 +529,10 @@ export default function ProgressPage() {
                         </div>
                       </div>
                     </div>
+                  </div> */}
+                  <div className="w-full">
+                    <ProgressCharts data={reportData.courseStats} />
                   </div>
-                  <ProgressCharts data={reportData.courseStats} />
                 </div>
               )}
             </CardContent>

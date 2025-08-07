@@ -107,8 +107,8 @@ export function ProgressCharts({ data }: ProgressChartsProps) {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="h-[400px]">
-            <ResponsiveContainer width="100%" height="100%">
+          <div className="h-[400px] min-h-[400px] w-full">
+            <ResponsiveContainer width="100%" height="100%" minHeight={400}>
               <BarChart
                 data={normalizedData}
                 layout="vertical"
@@ -147,107 +147,6 @@ export function ProgressCharts({ data }: ProgressChartsProps) {
           </div>
         </CardContent>
       </Card>
-
-      <div className="grid gap-6 md:grid-cols-2">
-        {/* Biểu đồ tròn - Trạng thái khóa học */}
-        {/* <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <PieChartIcon className="h-5 w-5" />
-              Phân bố trạng thái khóa học
-            </CardTitle>
-            <CardDescription>
-              Tỷ lệ khóa học theo trạng thái hiện tại
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="h-[300px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={statusData}
-                    cx="50%"
-                    cy="50%"
-                    outerRadius={80}
-                    fill="#8884d8"
-                    dataKey="value"
-                    label={({ name, percent }) =>
-                      `${name}: ${(percent * 100).toFixed(0)}%`
-                    }
-                  >
-                    {statusData.map((entry, index) => (
-                      <Cell
-                        key={`cell-${index}`}
-                        fill={
-                          COLORS[entry.name as keyof typeof COLORS] ||
-                          COLORS["Không xác định"]
-                        }
-                      />
-                    ))}
-                  </Pie>
-                  <Tooltip
-                    contentStyle={{
-                      background: "hsl(var(--background))",
-                      border: "1px solid hsl(var(--border))",
-                    }}
-                    formatter={(value, name) => [`${value} khóa học`, name]}
-                  />
-                  <Legend />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card> */}
-
-        {/* Biểu đồ xu hướng */}
-        {/* <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <TrendingUp className="h-5 w-5" />
-              Xu hướng hoàn thành khóa học
-            </CardTitle>
-            <CardDescription>
-              Tiến độ hoàn thành theo thời gian (6 tháng gần nhất)
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="h-[300px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={trendData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="month" />
-                  <YAxis />
-                  <Tooltip
-                    contentStyle={{
-                      background: "hsl(var(--background))",
-                      border: "1px solid hsl(var(--border))",
-                    }}
-                  />
-                  <Legend />
-                  <Area
-                    type="monotone"
-                    dataKey="completed"
-                    stackId="1"
-                    stroke="#22c55e"
-                    fill="#22c55e"
-                    fillOpacity={0.6}
-                    name="Đã hoàn thành"
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="inProgress"
-                    stackId="1"
-                    stroke="#3b82f6"
-                    fill="#3b82f6"
-                    fillOpacity={0.6}
-                    name="Đang thực hiện"
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card> */}
-      </div>
     </div>
   );
 }
