@@ -201,9 +201,9 @@ export const getColumns = (
               <DropdownMenuItem onClick={() => handleEdit(trainee)}>
                 <Pencil className="mr-2 h-4 w-4" /> Sửa Thông tin
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleManageCourses(trainee)}>
+              {/* <DropdownMenuItem onClick={() => handleManageCourses(trainee)}>
                 <BookOpen className="mr-2 h-4 w-4" /> Quản lý Khóa học
-              </DropdownMenuItem>
+              </DropdownMenuItem> */}
               <DropdownMenuItem
                 className="text-destructive focus:text-destructive"
                 onClick={() => handleDelete(trainee)}
