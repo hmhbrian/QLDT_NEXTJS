@@ -175,6 +175,19 @@ export default function UsersPage() {
     isEmployeeLevelLoading;
   const isInitialLoading = isLoading && !users?.length && !roles.length;
 
+  // Filter users based on current user role - HR cannot see ADMIN users
+  const filteredUsers = useMemo(() => {
+    if (!users) return [];
+    
+    // If current user is HR, filter out ADMIN users
+    if (currentUser?.role === "HR") {
+      return users.filter(user => user.role !== "ADMIN");
+    }
+    
+    // ADMIN can see all users
+    return users;
+  }, [users, currentUser?.role]);
+
   const getEmployeeLevel = (user: User): string => {
     return user.employeeLevel?.eLevelName || "Chưa có cấp bậc";
   };
@@ -187,9 +200,7 @@ export default function UsersPage() {
   };
 
   const handleOpenEditDialog = useCallback((userToEdit: User) => {
-    console.log("Editing user:", userToEdit);
-    console.log("User department:", userToEdit.department);
-    console.log("User employeeLevel:", userToEdit.employeeLevel);
+
 
     setEditingUser(userToEdit);
     setNewUser({
@@ -308,7 +319,6 @@ export default function UsersPage() {
           statusId: newUser.userStatus?.id,
           code: newUser.employeeId || undefined,
         };
-        console.log("Admin creating user with payload:", createUserPayload);
         await createUserMutation.mutateAsync(createUserPayload);
       }
     } catch (error) {
@@ -427,7 +437,7 @@ export default function UsersPage() {
           ) : (
             <DataTable
               columns={columns}
-              data={users}
+              data={filteredUsers}
               isLoading={isUsersLoading}
               pageCount={pageCount}
               pagination={pagination}

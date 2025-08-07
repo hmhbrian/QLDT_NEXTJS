@@ -128,23 +128,28 @@ export const getColumns = (
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              {(user.role === "HOCVIEN" || user.role === "HR") && (
+              {user.role === "HOCVIEN" && (
                 <DropdownMenuItem onClick={() => handleViewDetails(user)}>
                   <UserCircle2 className="mr-2 h-4 w-4" />
                   Xem chi tiết
                 </DropdownMenuItem>
               )}
-              <DropdownMenuItem onClick={() => handleEdit(user)}>
-                <Pencil className="mr-2 h-4 w-4" />
-                Chỉnh sửa
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => handleDelete(user)}
-                className="text-destructive focus:text-destructive"
-              >
-                <Trash2 className="mr-2 h-4 w-4" />
-                Xóa
-              </DropdownMenuItem>
+              {/* HR không thể sửa/xóa ADMIN */}
+              {!(currentUser?.role === "HR" && user.role === "ADMIN") && (
+                <>
+                  <DropdownMenuItem onClick={() => handleEdit(user)}>
+                    <Pencil className="mr-2 h-4 w-4" />
+                    Chỉnh sửa
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => handleDelete(user)}
+                    className="text-destructive focus:text-destructive"
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Xóa
+                  </DropdownMenuItem>
+                </>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
