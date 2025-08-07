@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useMemo, useCallback } from "react";
@@ -80,8 +81,13 @@ export default function CoursesPage() {
     publicOnly: true,
   });
 
-  const { departments, isLoading: isLoadingDepts } = useDepartments();
-  const { EmployeeLevel, loading: isLoadingEmployeeLevel } = useEmployeeLevel();
+  // These hooks are only needed for the admin view columns, not the user view.
+  // They were causing 403 errors for non-admin users.
+  // We will pass empty arrays to the columns and let the rendering logic handle it.
+  // const { departments, isLoading: isLoadingDepts } = useDepartments();
+  // const { EmployeeLevel, loading: isLoadingEmployeeLevel } = useEmployeeLevel();
+  const departments = [];
+  const EmployeeLevel = [];
 
   const { enrolledCourses, isLoadingEnrolled } = useEnrolledCourses(
     !!currentUser && currentUser.role === "HOCVIEN"
@@ -91,9 +97,7 @@ export default function CoursesPage() {
 
   // Compute loading states
   const isLoading = isFetchingCourses || isLoadingEnrolled;
-  const isInitialLoading =
-    (isLoading || isLoadingDepts || isLoadingEmployeeLevel) &&
-    !publicCourses.length;
+  const isInitialLoading = isLoading && !publicCourses.length;
 
   const enrollMutation = useEnrollCourse();
 
@@ -116,6 +120,7 @@ export default function CoursesPage() {
       if (course.isPublic) {
         return true;
       }
+      // This check might need revision if `course.department` is just an array of IDs
       if (
         currentUser.department &&
         course.department?.includes(currentUser.department.departmentId)
@@ -352,154 +357,16 @@ export default function CoursesPage() {
                         {course.description}
                       </p>
                       <div className="space-y-1 text-xs text-muted-foreground">
-                        <p>
+                        <div>
                           Giảng viên:{" "}
                           <span className="font-medium text-foreground">
                             {course.instructor}
                           </span>
-                        </p>
-                        <p>
+                        </div>
+                        <div>
                           Thời lượng: {course.duration.sessions} buổi (
                           {course.duration.hoursPerSession}h/buổi)
-                        </p>
-                        <p className="truncate">
-                          Phòng ban:{" "}
-                          {(() => {
-                            // Handle both new format (departments array) and legacy format (department array)
-                            const departmentsData = course.departments || [];
-                            const departmentIds = course.department || [];
-
-                            let departmentNames: string[] = [];
-
-                            if (departmentsData.length > 0) {
-                              departmentNames = departmentsData.map(
-                                (dept) => dept.departmentName
-                              );
-                            } else if (departmentIds.length > 0) {
-                              departmentNames = departmentIds.map((id) => {
-                                const foundDept = departments.find(
-                                  (d) => String(d.departmentId) === String(id)
-                                );
-                                return foundDept
-                                  ? foundDept.name
-                                  : `Dept-${id}`;
-                              });
-                            }
-
-                            if (departmentNames.length === 0) {
-                              return (
-                                <span className="font-medium text-foreground">
-                                  N/A
-                                </span>
-                              );
-                            }
-
-                            const displayText =
-                              departmentNames.length > 1
-                                ? `${departmentNames[0]} +${
-                                    departmentNames.length - 1
-                                  }`
-                                : departmentNames.join(", ");
-
-                            if (departmentNames.length > 1) {
-                              return (
-                                <TooltipProvider>
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <span className="font-medium text-foreground cursor-help underline decoration-dotted truncate">
-                                        {displayText}
-                                      </span>
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                      <div className="max-w-xs">
-                                        {departmentNames.map((name, idx) => (
-                                          <div key={idx}>• {name}</div>
-                                        ))}
-                                      </div>
-                                    </TooltipContent>
-                                  </Tooltip>
-                                </TooltipProvider>
-                              );
-                            }
-
-                            return (
-                              <span className="font-medium text-foreground truncate">
-                                {displayText}
-                              </span>
-                            );
-                          })()}
-                        </p>
-                        <p className="truncate">
-                          Cấp độ:{" "}
-                          {(() => {
-                            // Handle both new format (eLevels array) and legacy format (level array)
-                            const eLevelsData = course.eLevels || [];
-                            const levelIds = course.level || [];
-
-                            let levelNames: string[] = [];
-
-                            if (eLevelsData.length > 0) {
-                              levelNames = eLevelsData.map(
-                                (level) => level.eLevelName
-                              );
-                            } else if (levelIds.length > 0) {
-                              levelNames = levelIds.map((id) => {
-                                const foundLevel = EmployeeLevel.find(
-                                  (p) => String(p.eLevelId) === String(id)
-                                );
-                                return foundLevel
-                                  ? foundLevel.eLevelName
-                                  : `Level-${id}`;
-                              });
-                            }
-
-                            if (levelNames.length === 0) {
-                              return (
-                                <span className="font-medium text-foreground">
-                                  N/A
-                                </span>
-                              );
-                            }
-
-                            const displayText =
-                              levelNames.length > 1
-                                ? `${levelNames[0]} +${levelNames.length - 1}`
-                                : levelNames.join(", ");
-
-                            if (levelNames.length > 1) {
-                              return (
-                                <TooltipProvider>
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <span className="font-medium text-foreground cursor-help underline decoration-dotted truncate">
-                                        {displayText}
-                                      </span>
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                      <div className="max-w-xs">
-                                        {levelNames.map((name, idx) => (
-                                          <div key={idx}>• {name}</div>
-                                        ))}
-                                      </div>
-                                    </TooltipContent>
-                                  </Tooltip>
-                                </TooltipProvider>
-                              );
-                            }
-
-                            return (
-                              <span className="font-medium text-foreground truncate">
-                                {displayText}
-                              </span>
-                            );
-                          })()}
-                        </p>
-                        <p>
-                          Danh mục:{" "}
-                          <span className="font-medium text-foreground">
-                            {course.category?.categoryName || "Không có"}
-                          </span>
-                        </p>
+                        </div>
                         {course.enrollmentType === "optional" &&
                           course.registrationDeadline && (
                             <div className="flex items-center">
@@ -513,13 +380,13 @@ export default function CoursesPage() {
                               {!isRegistrationOpen(
                                 course.registrationDeadline
                               ) && (
-                                <Badge
-                                  variant="destructive"
-                                  className="ml-2 text-xs"
-                                >
-                                  Hết hạn
-                                </Badge>
-                              )}
+                                  <Badge
+                                    variant="destructive"
+                                    className="ml-2 text-xs"
+                                  >
+                                    Hết hạn
+                                  </Badge>
+                                )}
                             </div>
                           )}
                       </div>
@@ -539,7 +406,7 @@ export default function CoursesPage() {
                           disabled={enrollMutation.isPending}
                         >
                           {enrollMutation.isPending &&
-                          enrollMutation.variables === course.id
+                            enrollMutation.variables === course.id
                             ? "Đang đăng ký..."
                             : "Đăng ký"}
                         </LoadingButton>
@@ -606,7 +473,7 @@ export default function CoursesPage() {
                 Hiển thị{" "}
                 {Math.min(
                   pagination.pageIndex * pagination.pageSize +
-                    filteredCourses.length,
+                  filteredCourses.length,
                   paginationInfo?.totalItems ?? 0
                 )}{" "}
                 trên {paginationInfo?.totalItems ?? 0} khóa học
@@ -681,15 +548,15 @@ export default function CoursesPage() {
                 {debouncedSearchTerm
                   ? "Không tìm thấy khóa học nào"
                   : currentUser?.role === "HOCVIEN"
-                  ? "Không có khóa học mới để đăng ký"
-                  : "Chưa có khóa học công khai"}
+                    ? "Không có khóa học mới để đăng ký"
+                    : "Chưa có khóa học công khai"}
               </h3>
               <p className="mt-1 text-sm text-muted-foreground">
                 {debouncedSearchTerm
                   ? "Vui lòng thử lại với từ khóa khác."
                   : currentUser?.role === "HOCVIEN"
-                  ? "Bạn đã đăng ký tất cả khóa học có sẵn hoặc chưa có khóa học mới."
-                  : "Hiện tại chưa có khóa học công khai nào được phát hành."}
+                    ? "Bạn đã đăng ký tất cả khóa học có sẵn hoặc chưa có khóa học mới."
+                    : "Hiện tại chưa có khóa học công khai nào được phát hành."}
               </p>
             </div>
           )}
