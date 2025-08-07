@@ -1,12 +1,11 @@
-
+import { BaseService, PaginatedResponse, QueryParams } from "@/lib/core";
 import {
-  BaseService,
-  PaginatedResponse,
-  QueryParams,
-} from "@/lib/core";
-import { UserApiResponse, CreateUserRequest, UpdateUserRequest, ResetPasswordRequest } from "@/lib/types/user.types";
+  UserApiResponse,
+  CreateUserRequest,
+  UpdateUserRequest,
+  ResetPasswordRequest,
+} from "@/lib/types/user.types";
 import { API_CONFIG } from "@/lib/config";
-import { mapUserApiToUi } from "@/lib/mappers/user.mapper";
 
 export class UsersService extends BaseService<
   UserApiResponse,
@@ -21,25 +20,30 @@ export class UsersService extends BaseService<
     params: QueryParams = {}
   ): Promise<PaginatedResponse<UserApiResponse>> {
     const backendParams: Record<string, any> = {};
-    if (params.Page) backendParams.Page = params.Page;
-    if (params.Limit) backendParams.Limit = params.Limit;
+
+    // Map pagination parameters correctly
+    if (params.page) backendParams.Page = params.page;
+    if (params.limit) backendParams.Limit = params.limit;
     if (params.SortField) backendParams.SortField = params.SortField;
     if (params.SortType) backendParams.SortType = params.SortType;
     if (params.keyword) backendParams.Keyword = params.keyword;
-    
+
     // The 'RoleName' parameter is not supported by the backend search endpoint.
     // It should be removed to prevent 403 errors for non-admin roles.
     // Filtering by role should be done on the client-side if needed for specific components.
-    
+
     const isSearch = !!params.keyword; // Search only by keyword now
     const endpoint = isSearch
       ? API_CONFIG.endpoints.users.search
       : this.endpoint;
 
-    const response = await this.get<PaginatedResponse<UserApiResponse>>(endpoint, {
-      params: backendParams,
-    });
-    
+    const response = await this.get<PaginatedResponse<UserApiResponse>>(
+      endpoint,
+      {
+        params: backendParams,
+      }
+    );
+
     return response;
   }
 
@@ -48,7 +52,10 @@ export class UsersService extends BaseService<
   }
 
   async createUser(payload: CreateUserRequest): Promise<UserApiResponse> {
-    return this.post<UserApiResponse>(API_CONFIG.endpoints.users.create, payload);
+    return this.post<UserApiResponse>(
+      API_CONFIG.endpoints.users.create,
+      payload
+    );
   }
 
   async updateUserByAdmin(
@@ -58,21 +65,26 @@ export class UsersService extends BaseService<
     const url = API_CONFIG.endpoints.users.updateAdmin(userId);
     return this.put<UserApiResponse>(url, payload);
   }
-  
+
   async deleteUsers(userIds: string[]): Promise<any> {
     if (!userIds || userIds.length === 0) {
       return Promise.resolve({ success: true, message: "No users to delete." });
     }
-    
+
     // The backend seems to expect individual delete requests.
     // Promise.allSettled is safer than Promise.all for this use case.
-    const deletePromises = userIds.map(id => 
-        this.delete(API_CONFIG.endpoints.users.softDelete(id)).catch(e => ({ id, error: e }))
+    const deletePromises = userIds.map((id) =>
+      this.delete(API_CONFIG.endpoints.users.softDelete(id)).catch((e) => ({
+        id,
+        error: e,
+      }))
     );
-    
+
     const results = await Promise.allSettled(deletePromises);
 
-    const failedDeletes = results.filter(result => result.status === 'rejected');
+    const failedDeletes = results.filter(
+      (result) => result.status === "rejected"
+    );
 
     if (failedDeletes.length > 0) {
       // Aggregate error messages or handle partial success scenario
@@ -81,7 +93,10 @@ export class UsersService extends BaseService<
       throw new Error(errorMessage);
     }
 
-    return { success: true, message: "All selected users deleted successfully."};
+    return {
+      success: true,
+      message: "All selected users deleted successfully.",
+    };
   }
 
   async resetPassword(
@@ -95,5 +110,3 @@ export class UsersService extends BaseService<
 
 export const usersService = new UsersService();
 export default usersService;
-
-    
