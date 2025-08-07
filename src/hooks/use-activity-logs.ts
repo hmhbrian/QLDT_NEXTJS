@@ -5,7 +5,7 @@ import { ActivityLog } from "@/lib/types/course.types";
 export const ACTIVITY_LOGS_QUERY_KEY = "activity-logs";
 
 export function useActivityLogs(
-  courseId: string,
+  courseId?: string, // Make courseId optional
   params?: Omit<ActivityLogParams, 'courseId'>,
   enabled: boolean = true
 ) {
@@ -13,10 +13,10 @@ export function useActivityLogs(
     queryKey: [ACTIVITY_LOGS_QUERY_KEY, courseId, params],
     queryFn: () => {
       // Use mock data for now - replace with real API call when backend is ready
-      return activityLogService.getMockActivityLogs(courseId);
+      return activityLogService.getMockActivityLogs(courseId, params);
       // return activityLogService.getCourseActivityLogs(courseId, params);
     },
-    enabled: enabled && !!courseId,
+    enabled: enabled, // Query runs if enabled, regardless of courseId
     staleTime: 30 * 1000, // 30 seconds
     refetchInterval: 60 * 1000, // Refetch every minute for real-time updates
   });
@@ -31,3 +31,5 @@ export function useCreateActivityLog() {
     }
   };
 }
+
+    
