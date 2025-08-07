@@ -17,6 +17,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
+
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -25,17 +26,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  PlusCircle,
-  Search,
-  Building2,
-  UserCircle2,
-  Calendar,
-  Award,
-  Eye,
-  EyeOff,
-} from "lucide-react";
+
+import { PlusCircle, Search, Building2, Eye, EyeOff } from "lucide-react";
 import { useState, useMemo, useCallback } from "react";
 import {
   User,
@@ -45,6 +37,7 @@ import {
   ServiceRole,
   UserDepartmentInfo,
 } from "@/lib/types/user.types";
+import { UserDetailDialog } from "@/components/users";
 import { DepartmentInfo } from "@/lib/types/department.types";
 import { useToast } from "@/components/ui/use-toast";
 import { useError } from "@/hooks/use-error";
@@ -53,7 +46,6 @@ import { getColumns } from "./columns";
 import { useDebounce } from "@/hooks/use-debounce";
 import { LoadingButton } from "@/components/ui/loading";
 import { useDepartments } from "@/hooks/use-departments";
-import { useEmployeeLevel } from "@/hooks/use-employeeLevel";
 import { useUserStatuses } from "@/hooks/use-statuses";
 import { NO_DEPARTMENT_VALUE } from "@/lib/config/constants";
 import {
@@ -76,7 +68,6 @@ const initialNewTraineeState: Partial<
   email: "",
   phoneNumber: "",
   department: undefined,
-  employeeLevel: undefined,
   userStatus: { id: 2, name: "Đang hoạt động" },
   idCard: "",
   role: "HOCVIEN",
@@ -134,7 +125,6 @@ export default function TraineesPage() {
 
   const { departments: activeDepartments, isLoading: isDepartmentsLoading } =
     useDepartments({ status: "active" });
-  const { EmployeeLevel, loading: isEmployeeLevelLoading } = useEmployeeLevel();
   const { userStatuses, isLoading: isStatusesLoading } = useUserStatuses();
 
   const createTraineeMutation = useCreateUserMutation();
@@ -189,7 +179,6 @@ export default function TraineesPage() {
         idCard: formData.idCard,
         position: formData.position,
         numberPhone: formData.phoneNumber,
-        eLevelId: formData.employeeLevel?.eLevelId,
         departmentId: formData.department?.departmentId,
         roleId: hocvienRole.id,
       };
@@ -207,27 +196,12 @@ export default function TraineesPage() {
         idCard: formData.idCard,
         position: formData.position,
         numberPhone: formData.phoneNumber,
-        eLevelId: formData.employeeLevel?.eLevelId,
         departmentId: formData.department?.departmentId,
         roleId: hocvienRole.id,
       };
       console.log("Creating user with payload:", createPayload);
       await createTraineeMutation.mutateAsync(createPayload);
     }
-  };
-
-  const renderDepartmentName = (
-    department?: UserDepartmentInfo | null
-  ): string => {
-    if (!department) return "Chưa có phòng ban";
-    return department.departmentName || "Không xác định";
-  };
-
-  const getEmployeeLevel = (user: User): string => {
-    if (user.employeeLevel && typeof user.employeeLevel === "object") {
-      return user.employeeLevel.eLevelName;
-    }
-    return "Chưa có cấp bậc";
   };
 
   const columns = useMemo(
@@ -402,46 +376,6 @@ export default function TraineesPage() {
               </Select>
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="employeeLevel">Cấp bậc</Label>
-              <Select
-                value={
-                  formData.employeeLevel
-                    ? String(formData.employeeLevel.eLevelId)
-                    : ""
-                }
-                onValueChange={(value) => {
-                  const selectedPos = EmployeeLevel.find(
-                    (p) => String(p.eLevelId) === value
-                  );
-                  setFormData({ ...formData, employeeLevel: selectedPos });
-                }}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Chọn cấp bậc" />
-                </SelectTrigger>
-                <SelectContent>
-                  {isEmployeeLevelLoading ? (
-                    <SelectItem value="loading_pos" disabled>
-                      Đang tải...
-                    </SelectItem>
-                  ) : EmployeeLevel.length > 0 ? (
-                    EmployeeLevel.map((pos) => (
-                      <SelectItem
-                        key={pos.eLevelId}
-                        value={String(pos.eLevelId)}
-                      >
-                        {pos.eLevelName}
-                      </SelectItem>
-                    ))
-                  ) : (
-                    <SelectItem value="no_pos" disabled>
-                      Không có dữ liệu
-                    </SelectItem>
-                  )}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid gap-2">
               <Label htmlFor="position">Chức vụ</Label>
               <Input
                 id="position"
@@ -568,65 +502,12 @@ export default function TraineesPage() {
         </DialogContent>
       </Dialog>
 
-      {/* View Trainee Dialog */}
-      <Dialog open={isViewingTrainee} onOpenChange={setIsViewingTrainee}>
-        <DialogContent className="sm:max-w-[800px]">
-          <DialogHeader>
-            <DialogTitle>Chi tiết Học viên</DialogTitle>
-          </DialogHeader>
-          {selectedTrainee && (
-            <Tabs defaultValue="info" className="mt-4">
-              <TabsList>
-                <TabsTrigger value="info">
-                  <UserCircle2 className="h-4 w-4 mr-2" />
-                  Thông tin cơ bản
-                </TabsTrigger>
-                <TabsTrigger value="department">
-                  <Building2 className="h-4 w-4 mr-2" />
-                  Phòng ban
-                </TabsTrigger>
-                <TabsTrigger value="courses">
-                  <Calendar className="h-4 w-4 mr-2" />
-                  Khóa học
-                </TabsTrigger>
-                <TabsTrigger value="certificates">
-                  <Award className="h-4 w-4 mr-2" />
-                  Chứng chỉ
-                </TabsTrigger>
-              </TabsList>
-              <TabsContent value="info" className="space-y-4 pt-4">
-                <p>
-                  <strong>Họ tên:</strong> {selectedTrainee.fullName}
-                </p>
-                <p>
-                  <strong>Email:</strong> {selectedTrainee.email}
-                </p>
-                <p>
-                  <strong>Phòng ban:</strong>{" "}
-                  {renderDepartmentName(selectedTrainee.department)}
-                </p>
-                <p>
-                  <strong>Chức vụ:</strong>{" "}
-                  {selectedTrainee.position || "Chưa có"}
-                </p>
-                <p>
-                  <strong>Cấp bậc:</strong> {getEmployeeLevel(selectedTrainee)}
-                </p>
-              </TabsContent>
-              <TabsContent value="courses">
-                <p className="text-center text-muted-foreground py-4">
-                  Chức năng đang được phát triển.
-                </p>
-              </TabsContent>
-              <TabsContent value="certificates">
-                <p className="text-center text-muted-foreground py-4">
-                  Chức năng đang được phát triển.
-                </p>
-              </TabsContent>
-            </Tabs>
-          )}
-        </DialogContent>
-      </Dialog>
+      {/* View Trainee Detail Dialog */}
+      <UserDetailDialog
+        user={selectedTrainee}
+        isOpen={isViewingTrainee}
+        onOpenChange={setIsViewingTrainee}
+      />
     </div>
   );
 }
