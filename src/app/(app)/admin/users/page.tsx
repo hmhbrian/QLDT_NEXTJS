@@ -73,6 +73,13 @@ import type { PaginationState } from "@tanstack/react-table";
 import { useDepartments } from "@/hooks/use-departments";
 import { useEmployeeLevel } from "@/hooks/use-employeeLevel";
 
+// Role translations for UI display
+const roleTranslations: Record<string, string> = {
+  ADMIN: "Quản trị viên",
+  HR: "Nhân sự",
+  HOCVIEN: "Học viên",
+};
+
 type UserFormState = Partial<
   Omit<User, "department" | "employeeLevel"> & {
     password?: string;
@@ -182,6 +189,7 @@ export default function UsersPage() {
     setEditingUser(userToEdit);
     setNewUser({
       ...userToEdit,
+      role: userToEdit.role?.toUpperCase() as Role, // Ensure uppercase for consistency
       department: userToEdit.department?.departmentId,
       employeeLevel: userToEdit.employeeLevel
         ? String(userToEdit.employeeLevel.eLevelId)
@@ -595,7 +603,7 @@ export default function UsersPage() {
             <div className="grid gap-2">
               <Label htmlFor="role">Vai trò</Label>
               <Select
-                value={newUser.role}
+                value={newUser.role?.toUpperCase() || ""}
                 onValueChange={(value) =>
                   setNewUser({ ...newUser, role: value as Role })
                 }
@@ -614,7 +622,7 @@ export default function UsersPage() {
                         key={role.id}
                         value={role.name.toUpperCase() as Role}
                       >
-                        {role.name}
+                        {roleTranslations[role.name.toUpperCase()] || role.name}
                       </SelectItem>
                     ))
                   ) : (
