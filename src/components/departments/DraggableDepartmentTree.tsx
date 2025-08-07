@@ -25,7 +25,7 @@ interface DraggableDepartmentTreeProps {
   onSelectDepartment: (department: DepartmentInfo) => void;
   onUpdateDepartments: (
     draggedDept: DepartmentInfo,
-    newParentId: string | null
+    newParentId: number | null
   ) => void;
   className?: string;
 }
@@ -36,14 +36,14 @@ export function DraggableDepartmentTree({
   onUpdateDepartments,
   className,
 }: DraggableDepartmentTreeProps) {
-  const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
-  const [draggedDeptId, setDraggedDeptId] = useState<string | null>(null);
+  const [expandedNodes, setExpandedNodes] = useState<Set<number>>(new Set());
+  const [draggedDeptId, setDraggedDeptId] = useState<number | null>(null);
   const [dropTarget, setDropTarget] = useState<{
-    id: string | null;
+    id: number | null;
     isRoot: boolean;
   } | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedDeptId, setSelectedDeptId] = useState<string | null>(null);
+  const [selectedDeptId, setSelectedDeptId] = useState<number | null>(null);
 
   const departmentTree = useMemo(
     () => buildDepartmentTree(departments),
@@ -51,7 +51,7 @@ export function DraggableDepartmentTree({
   );
 
   const departmentMap = useMemo(() => {
-    const map = new Map<string, DepartmentInfo>();
+    const map = new Map<number, DepartmentInfo>();
     departments.forEach((dept) => map.set(dept.departmentId, dept));
     return map;
   }, [departments]);
@@ -90,7 +90,7 @@ export function DraggableDepartmentTree({
     }
   }, [departments]);
 
-  const toggleExpand = useCallback((id: string) => {
+  const toggleExpand = useCallback((id: number) => {
     setExpandedNodes((prev) => {
       const next = new Set(prev);
       if (next.has(id)) {
@@ -119,8 +119,8 @@ export function DraggableDepartmentTree({
     setSearchTerm("");
   }, []);
 
-  const handleDragStart = (e: React.DragEvent, id: string) => {
-    e.dataTransfer.setData("text/plain", id);
+  const handleDragStart = (e: React.DragEvent, id: number) => {
+    e.dataTransfer.setData("text/plain", String(id));
     e.dataTransfer.effectAllowed = "move";
     setDraggedDeptId(id);
   };
@@ -132,7 +132,7 @@ export function DraggableDepartmentTree({
 
   const handleDragOver = (
     e: React.DragEvent,
-    id: string | null,
+    id: number | null,
     isRoot: boolean
   ) => {
     e.preventDefault();
@@ -144,11 +144,12 @@ export function DraggableDepartmentTree({
     }
   };
 
-  const handleDrop = (e: React.DragEvent, targetId: string | null) => {
+  const handleDrop = (e: React.DragEvent, targetId: number | null) => {
     e.preventDefault();
     e.stopPropagation();
 
-    const draggedId = e.dataTransfer.getData("text/plain");
+    const draggedIdStr = e.dataTransfer.getData("text/plain");
+    const draggedId = Number(draggedIdStr);
     handleDragEnd();
 
     if (draggedId === targetId) return;
@@ -159,7 +160,7 @@ export function DraggableDepartmentTree({
     // Check if dropping on same parent
     const isDroppingOnSameParent =
       (sourceDept.parentId === null && targetId === null) ||
-      String(sourceDept.parentId) === String(targetId);
+      sourceDept.parentId === targetId;
     if (isDroppingOnSameParent) return;
 
     // Prevent circular dependency
@@ -179,7 +180,7 @@ export function DraggableDepartmentTree({
   const findDepartmentInTree = useCallback(
     (
       tree: (DepartmentInfo & { children?: DepartmentInfo[] })[],
-      targetId: string
+      targetId: number
     ): (DepartmentInfo & { children?: DepartmentInfo[] }) | null => {
       for (const node of tree) {
         if (node.departmentId === targetId) {

@@ -39,7 +39,7 @@ interface DepartmentFormDialogProps {
   onSave: (
     payload: CreateDepartmentPayload | UpdateDepartmentPayload,
     isEditing: boolean,
-    deptId?: string
+    deptId?: number
   ) => void;
   existingDepartments: DepartmentInfo[];
   managers: User[];
@@ -95,9 +95,7 @@ export default function DepartmentFormDialog({
         Description: departmentToEdit.description,
         ManagerId: departmentToEdit.managerId || "",
         StatusId: departmentToEdit.status?.id || 2,
-        ParentId: departmentToEdit.parentId
-          ? parseInt(departmentToEdit.parentId, 10)
-          : null,
+        ParentId: departmentToEdit.parentId || null,
       });
     } else {
       setFormData(initialFormData);
@@ -250,7 +248,7 @@ export default function DepartmentFormDialog({
                   .map((dept) => (
                     <SelectItem
                       key={dept.departmentId}
-                      value={dept.departmentId}
+                      value={String(dept.departmentId)}
                     >
                       {dept.name}
                     </SelectItem>

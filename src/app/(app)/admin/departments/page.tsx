@@ -143,15 +143,15 @@ export default function DepartmentsPage() {
 
     const filteredManagers = users.filter((user) => {
       const hasEmployeeLevel =
-        user.employeeLevel &&
-        typeof user.employeeLevel === "object" &&
-        user.employeeLevel.eLevelId !== null;
+        user.eLevel &&
+        typeof user.eLevel === "object" &&
+        user.eLevel.eLevelId !== null;
       const isActive = user.userStatus?.name === "Đang làm việc"; // Fixed: changed from "Hoạt động" to "Đang làm việc"
       const hasValidLevel =
-        hasEmployeeLevel && user.employeeLevel.eLevelId >= managerBaseLevelId; // >= 4 (Cấp trung trở lên)
+        hasEmployeeLevel && user.eLevel.eLevelId >= managerBaseLevelId; // >= 4 (Cấp trung trở lên)
 
       console.log(
-        `- User ${user.fullName}: hasEmployeeLevel=${hasEmployeeLevel}, isActive=${isActive}, hasValidLevel=${hasValidLevel}, eLevelId=${user.employeeLevel?.eLevelId}, status="${user.userStatus?.name}"`
+        `- User ${user.fullName}: hasEmployeeLevel=${hasEmployeeLevel}, isActive=${isActive}, hasValidLevel=${hasValidLevel}, eLevelId=${user.eLevel?.eLevelId}, status="${user.userStatus?.name}"`
       );
 
       return hasEmployeeLevel && isActive && hasValidLevel;
@@ -247,7 +247,7 @@ export default function DepartmentsPage() {
   const handleSaveDepartment = async (
     payload: CreateDepartmentPayload | UpdateDepartmentPayload,
     isEditing: boolean,
-    deptId?: string
+    deptId?: number
   ) => {
     if (isEditing && deptId) {
       updateDeptMutation.mutate({
@@ -278,7 +278,7 @@ export default function DepartmentsPage() {
 
   const handleUpdateDepartmentParent = (
     draggedDept: DepartmentInfo,
-    newParentId: string | null
+    newParentId: number | null
   ) => {
     const payload: UpdateDepartmentPayload = {
       DepartmentName: draggedDept.name,
@@ -286,7 +286,7 @@ export default function DepartmentsPage() {
       Description: draggedDept.description,
       ManagerId: draggedDept.managerId,
       StatusId: draggedDept.status.id,
-      ParentId: newParentId ? parseInt(newParentId) : null,
+      ParentId: newParentId,
     };
 
     updateDeptMutation.mutate({

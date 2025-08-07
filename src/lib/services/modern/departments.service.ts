@@ -1,4 +1,3 @@
-
 import { BaseService, QueryParams, PaginatedResponse } from "../../core";
 import { API_CONFIG } from "@/lib/config";
 import {
@@ -33,17 +32,16 @@ export class DepartmentsService extends BaseService<
     if (params.SortField) backendParams.SortField = params.SortField;
     if (params.SortType) backendParams.SortType = params.SortType;
 
-    const apiResponse = await this.get<DepartmentApiResponse[]>(
-      this.endpoint,
-      { params: backendParams }
-    );
+    const apiResponse = await this.get<DepartmentApiResponse[]>(this.endpoint, {
+      params: backendParams,
+    });
     // API trả về một mảng phẳng, không phải object có `items`
     return apiResponse;
   }
 
-  async getDepartmentById(id: string): Promise<DepartmentInfo> {
+  async getDepartmentById(id: number): Promise<DepartmentInfo> {
     const rawData = await this.get<DepartmentApiResponse>(
-      API_CONFIG.endpoints.departments.getById(id)
+      API_CONFIG.endpoints.departments.getById(String(id))
     );
     return mapDepartmentApiToUi(rawData);
   }
@@ -59,14 +57,17 @@ export class DepartmentsService extends BaseService<
   }
 
   async updateDepartment(
-    id: string,
+    id: number,
     payload: UpdateDepartmentPayload
   ): Promise<void> {
-    await this.put<void>(API_CONFIG.endpoints.departments.update(id), payload);
+    await this.put<void>(
+      API_CONFIG.endpoints.departments.update(String(id)),
+      payload
+    );
   }
 
-  async deleteDepartment(id: string): Promise<void> {
-    await this.delete(API_CONFIG.endpoints.departments.delete(id));
+  async deleteDepartment(id: number): Promise<void> {
+    await this.delete(API_CONFIG.endpoints.departments.delete(String(id)));
   }
 }
 

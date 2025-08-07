@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { departmentsService } from "@/lib/services";
 import type {
@@ -20,7 +19,10 @@ export function useDepartments(params?: { status?: "active" }) {
   const { data, isLoading, error } = useQuery<DepartmentInfo[], Error>({
     queryKey,
     queryFn: async () => {
-      console.log(`♻️ [useDepartments] Refetching departments with params:`, params);
+      console.log(
+        `♻️ [useDepartments] Refetching departments with params:`,
+        params
+      );
       const apiResponse = await departmentsService.getDepartments(params);
       return (apiResponse || []).map(mapDepartmentApiToUi);
     },
@@ -41,11 +43,17 @@ export function useCreateDepartment() {
 
   return useMutation<DepartmentInfo, Error, CreateDepartmentPayload>({
     mutationFn: (payload) => {
-        console.log("▶️ [useCreateDepartment] Mutation started with payload:", payload);
-        return departmentsService.createDepartment(payload);
+      console.log(
+        "▶️ [useCreateDepartment] Mutation started with payload:",
+        payload
+      );
+      return departmentsService.createDepartment(payload);
     },
     onSuccess: (newDepartment) => {
-      console.log("✅ [useCreateDepartment] Mutation successful:", newDepartment);
+      console.log(
+        "✅ [useCreateDepartment] Mutation successful:",
+        newDepartment
+      );
       toast({
         title: "Thành công",
         description: `Đã tạo phòng ban "${newDepartment.name}" thành công.`,
@@ -61,7 +69,9 @@ export function useCreateDepartment() {
       });
     },
     onSettled: () => {
-      console.log(`🔄 [useCreateDepartment] Invalidating queries with key:`, [DEPARTMENTS_QUERY_KEY]);
+      console.log(`🔄 [useCreateDepartment] Invalidating queries with key:`, [
+        DEPARTMENTS_QUERY_KEY,
+      ]);
       queryClient.invalidateQueries({ queryKey: [DEPARTMENTS_QUERY_KEY] });
     },
   });
@@ -74,12 +84,15 @@ export function useUpdateDepartment() {
   return useMutation<
     void,
     Error,
-    { id: string; payload: UpdateDepartmentPayload },
+    { id: number; payload: UpdateDepartmentPayload },
     { previousDepartments?: DepartmentInfo[] }
   >({
     mutationFn: ({ id, payload }) => {
-        console.log(`▶️ [useUpdateDepartment] Mutation started for department ${id} with payload:`, payload);
-        return departmentsService.updateDepartment(id, payload);
+      console.log(
+        `▶️ [useUpdateDepartment] Mutation started for department ${id} with payload:`,
+        payload
+      );
+      return departmentsService.updateDepartment(id, payload);
     },
     onSuccess: (_, { payload }) => {
       console.log("✅ [useUpdateDepartment] Mutation successful");
@@ -99,12 +112,16 @@ export function useUpdateDepartment() {
       }
       toast({
         title: "Lỗi cập nhật",
-        description: `Không thể cập nhật phòng ban: ${extractErrorMessage(err)}`,
+        description: `Không thể cập nhật phòng ban: ${extractErrorMessage(
+          err
+        )}`,
         variant: "destructive",
       });
     },
     onSettled: () => {
-      console.log(`🔄 [useUpdateDepartment] Invalidating queries with key:`, [DEPARTMENTS_QUERY_KEY]);
+      console.log(`🔄 [useUpdateDepartment] Invalidating queries with key:`, [
+        DEPARTMENTS_QUERY_KEY,
+      ]);
       queryClient.invalidateQueries({
         queryKey: [DEPARTMENTS_QUERY_KEY, "list"],
       });
@@ -119,12 +136,12 @@ export function useDeleteDepartment() {
   return useMutation<
     void,
     Error,
-    string,
+    number,
     { previousDepartments?: PaginatedResponse<DepartmentInfo> }
   >({
     mutationFn: (id) => {
-        console.log(`▶️ [useDeleteDepartment] Mutation started for ID:`, id);
-        return departmentsService.deleteDepartment(id);
+      console.log(`▶️ [useDeleteDepartment] Mutation started for ID:`, id);
+      return departmentsService.deleteDepartment(id);
     },
     onSuccess: () => {
       console.log("✅ [useDeleteDepartment] Mutation successful");
@@ -143,7 +160,9 @@ export function useDeleteDepartment() {
       });
     },
     onSettled: () => {
-      console.log(`🔄 [useDeleteDepartment] Invalidating queries with key:`, [DEPARTMENTS_QUERY_KEY]);
+      console.log(`🔄 [useDeleteDepartment] Invalidating queries with key:`, [
+        DEPARTMENTS_QUERY_KEY,
+      ]);
       queryClient.invalidateQueries({ queryKey: [DEPARTMENTS_QUERY_KEY] });
     },
   });
