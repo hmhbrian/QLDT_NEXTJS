@@ -82,6 +82,7 @@ export default function TestDetailPage() {
   const [answers, setAnswers] = useState<Record<string, string[]>>({});
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [isStarted, setIsStarted] = useState(false);
+  const [isReviewMode, setIsReviewMode] = useState(false); // Phân biệt giữa làm bài và xem lại
   const [showReview, setShowReview] = useState(false);
   const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
   const [startedAt, setStartedAt] = useState<string | null>(null);
@@ -343,7 +344,10 @@ export default function TestDetailPage() {
             </CardContent>
             <CardFooter className="flex flex-col sm:flex-row gap-2">
               <Button
-                onClick={() => setIsStarted(true)}
+                onClick={() => {
+                  setIsStarted(true);
+                  setIsReviewMode(true); // Đánh dấu là chế độ xem lại
+                }}
                 className="w-full flex-1"
                 size="lg"
               >
@@ -732,14 +736,16 @@ export default function TestDetailPage() {
               <ArrowLeft className="h-4 w-4" />
               <span>Quay lại làm bài</span>
             </Button>
-            <Button
+            <LoadingButton
               onClick={() => setShowSubmitConfirmation(true)}
               className="flex items-center space-x-2 bg-green-600 hover:bg-green-700"
               size="lg"
+              isLoading={submitTestMutation.isPending}
+              disabled={submitTestMutation.isPending}
             >
               <Send className="h-4 w-4 mr-2" />
               <span>Nộp bài kiểm tra</span>
-            </Button>
+            </LoadingButton>
           </div>
         </div>
       </CardContent>
