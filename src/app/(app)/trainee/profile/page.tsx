@@ -38,7 +38,11 @@ import {
 import { useToast } from "@/components/ui/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { useError } from "@/hooks/use-error";
-import type { User, Position } from "@/lib/types/user.types";
+import type {
+  User,
+  EmployeeLevel,
+  UserDepartmentInfo,
+} from "@/lib/types/user.types";
 import type { DepartmentInfo } from "@/lib/types/department.types";
 import type { Course } from "@/lib/types/course.types";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -110,9 +114,9 @@ export default function UserProfilePage() {
     );
   }
 
-  const getPositionName = (user: User): string => {
-    if (user.position && typeof user.position === "object") {
-      return user.position.positionName;
+  const getEmployeeLevel = (user: User): string => {
+    if (user.employeeLevel && typeof user.employeeLevel === "object") {
+      return user.employeeLevel.eLevelName;
     }
     return "Chưa có";
   };
@@ -208,9 +212,11 @@ export default function UserProfilePage() {
     }
   };
 
-  const renderDepartment = (department: DepartmentInfo | undefined) => {
-    if (!department) return "N/A";
-    return department.name;
+  const renderDepartment = (
+    department: UserDepartmentInfo | null | undefined
+  ) => {
+    if (!department) return "Chưa có phòng ban";
+    return department.departmentName;
   };
 
   return (
@@ -257,15 +263,16 @@ export default function UserProfilePage() {
               </CardTitle>
               <CardDescription className="space-x-2">
                 <span>{profileData.email}</span>
-                {profileData.role === "HOCVIEN" && profileData.position && (
-                  <Badge
-                    className={getLevelBadgeColor(
-                      (profileData.position as Position).positionName
-                    )}
-                  >
-                    {getPositionName(profileData)}
-                  </Badge>
-                )}
+                {profileData.role === "HOCVIEN" &&
+                  profileData.employeeLevel && (
+                    <Badge
+                      className={getLevelBadgeColor(
+                        (profileData.employeeLevel as EmployeeLevel).eLevelName
+                      )}
+                    >
+                      {getEmployeeLevel(profileData)}
+                    </Badge>
+                  )}
                 <Badge variant="secondary">{profileData.role}</Badge>
               </CardDescription>
             </CardHeader>
@@ -282,10 +289,11 @@ export default function UserProfilePage() {
                     </p>
                     <p className="text-sm">
                       <strong>Số điện thoại:</strong>{" "}
-                      {profileData.phoneNumber || "N/A"}
+                      {profileData.phoneNumber || "Không có"}
                     </p>
                     <p className="text-sm">
-                      <strong>CMND/CCCD:</strong> {profileData.idCard || "N/A"}
+                      <strong>CMND/CCCD:</strong>{" "}
+                      {profileData.idCard || "Không có"}
                     </p>
                   </div>
                 </div>
@@ -297,7 +305,7 @@ export default function UserProfilePage() {
                     <div className="space-y-2">
                       <p className="text-sm">
                         <strong>Mã nhân viên:</strong>{" "}
-                        {profileData.employeeId || "N/A"}
+                        {profileData.employeeId || "Không có"}
                       </p>
                       <p className="text-sm">
                         <strong>Phòng ban:</strong>{" "}
@@ -307,7 +315,8 @@ export default function UserProfilePage() {
                         <strong>Chức vụ:</strong> Chưa có
                       </p>
                       <p className="text-sm">
-                        <strong>Cấp bậc:</strong> {getPositionName(profileData)}
+                        <strong>Cấp bậc:</strong>{" "}
+                        {getEmployeeLevel(profileData)}
                       </p>
                       <p className="text-sm">
                         <strong>Ngày vào công ty:</strong>{" "}
@@ -315,11 +324,11 @@ export default function UserProfilePage() {
                           ? new Date(profileData.startWork).toLocaleDateString(
                               "vi-VN"
                             )
-                          : "N/A"}
+                          : "Không có"}
                       </p>
                       <p className="text-sm">
                         <strong>Quản lý trực tiếp:</strong>{" "}
-                        {profileData.manager || "N/A"}
+                        {profileData.manager || "Không có"}
                       </p>
                       {profileData.userStatus && (
                         <div className="text-sm">
@@ -351,7 +360,7 @@ export default function UserProfilePage() {
                           ? new Date(profileData.startWork).toLocaleDateString(
                               "vi-VN"
                             )
-                          : "N/A"}
+                          : "Không có"}
                       </p>
                       {profileData.userStatus && (
                         <div className="text-sm">
@@ -385,14 +394,17 @@ export default function UserProfilePage() {
                       Khóa học đã hoàn thành
                     </CardTitle>
                     <CardDescription className="mt-1 text-base text-muted-foreground">
-                      Danh sách các khóa học bạn đã hoàn thành cùng kết quả học tập
+                      Danh sách các khóa học bạn đã hoàn thành cùng kết quả học
+                      tập
                     </CardDescription>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-2xl font-bold text-primary">
                       {completedCoursesData?.count || 0}
                     </span>
-                    <span className="text-sm font-medium text-muted-foreground">Khóa học đã hoàn thành</span>
+                    <span className="text-sm font-medium text-muted-foreground">
+                      Khóa học đã hoàn thành
+                    </span>
                   </div>
                 </div>
               </CardHeader>
@@ -405,7 +417,9 @@ export default function UserProfilePage() {
                   <div className="flex flex-col items-center justify-center min-h-[120px] gap-2">
                     <Award className="h-10 w-10 text-muted-foreground mb-1" />
                     <p className="text-muted-foreground text-sm text-center font-normal">
-                      Bạn chưa hoàn thành khóa học nào.<br />Hãy tham gia học tập để tích lũy kiến thức!
+                      Bạn chưa hoàn thành khóa học nào.
+                      <br />
+                      Hãy tham gia học tập để tích lũy kiến thức!
                     </p>
                   </div>
                 ) : (

@@ -1,7 +1,6 @@
-
 "use client";
 
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import {
   Card,
@@ -36,6 +35,12 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
   PlusCircle,
   MoreHorizontal,
   Search,
@@ -60,8 +65,9 @@ import {
   useDeleteCourse,
 } from "@/hooks/use-courses";
 import { useDepartments } from "@/hooks/use-departments";
-import { usePositions } from "@/hooks/use-positions";
+import { useEmployeeLevel } from "@/hooks/use-employeeLevel";
 import { useCourseStatuses } from "@/hooks/use-statuses";
+import { useCourseCategories } from "@/hooks/use-course-categories";
 import { DataTable } from "@/components/ui/data-table";
 import { extractErrorMessage } from "@/lib/core";
 import { getStatusBadgeVariant } from "@/lib/helpers";
@@ -76,6 +82,7 @@ interface CourseFilters {
   statusId: string;
   departmentId: string;
   levelId: string;
+  categoryId: string;
 }
 
 export default function CoursesPage() {
@@ -89,6 +96,7 @@ export default function CoursesPage() {
     statusId: "all",
     departmentId: "all",
     levelId: "all",
+    categoryId: "all",
   });
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
@@ -112,7 +120,10 @@ export default function CoursesPage() {
       params.departmentIds = debouncedFilters.departmentId;
     }
     if (debouncedFilters.levelId !== "all") {
-      params.positionIds = debouncedFilters.levelId;
+      params.eLevelIds = debouncedFilters.levelId;
+    }
+    if (debouncedFilters.categoryId !== "all") {
+      params.categoryIds = debouncedFilters.categoryId;
     }
     return params;
   }, [debouncedFilters, pagination]);
@@ -132,7 +143,8 @@ export default function CoursesPage() {
 
   const { departments: allDepartments, isLoading: isLoadingDepts } =
     useDepartments();
-  const { positions, loading: isLoadingPositions } = usePositions();
+  const { EmployeeLevel, loading: isLoadingEmployeeLevel } = useEmployeeLevel();
+  const { categories, isLoading: isLoadingCategories } = useCourseCategories();
 
   const updateCourseMutation = useUpdateCourse();
   const deleteCourseMutation = useDeleteCourse();
@@ -143,7 +155,7 @@ export default function CoursesPage() {
   const departmentOptions = useMemo(() => {
     if (!allDepartments) return [];
     return allDepartments
-      .filter((d) => d.name && d.name !== "N/A")
+      .filter((d) => d.name && d.name !== "Không có")
       .map((d) => ({
         value: String(d.departmentId),
         label: d.name,
@@ -151,14 +163,22 @@ export default function CoursesPage() {
   }, [allDepartments]);
 
   const levelOptions = useMemo(() => {
-    if (!positions) return [];
-    return positions
-      .filter((p) => p.positionName && p.positionName !== "N/A")
-      .map((p) => ({
-        value: String(p.positionId),
-        label: p.positionName,
-      }));
-  }, [positions]);
+    if (!EmployeeLevel) return [];
+    return EmployeeLevel.filter(
+      (p) => p.eLevelName && p.eLevelName !== "Không có"
+    ).map((p) => ({
+      value: String(p.eLevelId),
+      label: p.eLevelName,
+    }));
+  }, [EmployeeLevel]);
+
+  const categoryOptions = useMemo(() => {
+    if (!categories) return [];
+    return categories.map((c) => ({
+      value: String(c.id),
+      label: c.categoryName,
+    }));
+  }, [categories]);
 
   const canManageCourses =
     currentUser?.role === "ADMIN" || currentUser?.role === "HR";
@@ -171,7 +191,8 @@ export default function CoursesPage() {
     isLoadingCourses ||
     isLoadingStatuses ||
     isLoadingDepts ||
-    isLoadingPositions;
+    isLoadingEmployeeLevel ||
+    isLoadingCategories;
 
   const handleOpenAddDialog = () => {
     router.push("/admin/courses/edit/new");
@@ -251,9 +272,9 @@ export default function CoursesPage() {
         setDeletingCourse,
         canManageCourses,
         allDepartments || [],
-        positions || []
+        EmployeeLevel || []
       ),
-    [canManageCourses, allDepartments, positions]
+    [canManageCourses, allDepartments, EmployeeLevel]
   );
 
   const pageCount = paginationInfo?.totalPages ?? 0;
@@ -279,15 +300,19 @@ export default function CoursesPage() {
 
   return (
     <>
-      <Card>
-        <CardHeader>
+      <Card className="border-0 shadow-lg bg-gradient-to-br from-white to-orange-50/30">
+        <CardHeader className="border-b p-6">
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-            <div>
-              <CardTitle className="text-2xl font-headline">
+            <div className="space-y-1">
+              <CardTitle className="text-2xl font-bold text-gray-800 flex items-center gap-3">
+                <div className="p-2 bg-orange-500 rounded-lg text-white">
+                  <LayoutGrid className="h-6 w-6" />
+                </div>
                 Quản lý Khóa học
               </CardTitle>
-              <CardDescription>
-                Tạo, chỉnh sửa và quản lý tất cả khóa học nội bộ.
+              <CardDescription className="text-gray-600 text-base">
+                Tạo, chỉnh sửa và quản lý tất cả khóa học nội bộ một cách chuyên
+                nghiệp.
               </CardDescription>
             </div>
             <div className="flex items-center gap-2">
@@ -295,6 +320,11 @@ export default function CoursesPage() {
                 variant={viewMode === "table" ? "default" : "outline"}
                 size="icon"
                 onClick={() => setViewMode("table")}
+                className={
+                  viewMode === "table"
+                    ? " hover:bg-orange-600"
+                    : "text-orange-600 hover:bg-orange-50"
+                }
               >
                 <List className="h-4 w-4" />
               </Button>
@@ -302,39 +332,48 @@ export default function CoursesPage() {
                 variant={viewMode === "card" ? "default" : "outline"}
                 size="icon"
                 onClick={() => setViewMode("card")}
+                className={
+                  viewMode === "card"
+                    ? " hover:bg-orange-600"
+                    : "text-orange-600 hover:bg-orange-50"
+                }
               >
                 <LayoutGrid className="h-4 w-4" />
               </Button>
               {canManageCourses && (
-                <Button onClick={handleOpenAddDialog} className="ml-2">
-                  <PlusCircle className="mr-2 h-4 w-4" /> Thêm khóa học
+                <Button
+                  onClick={handleOpenAddDialog}
+                  className="ml-2 hover:bg-orange-600 text-white shadow-lg px-6 py-2 h-auto"
+                >
+                  <PlusCircle className="mr-2 h-5 w-5" />
+                  Thêm khóa học
                 </Button>
               )}
             </div>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-6">
           <div className="mb-6 space-y-4">
             <div className="flex flex-col sm:flex-row gap-4">
               <div className="relative flex-grow">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10" />
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-orange-400 z-10" />
                 <Input
-                  placeholder="Tìm kiếm khóa học..."
+                  placeholder="Tìm kiếm khóa học theo tên, mã khóa học..."
                   value={filters.keyword}
                   onChange={(e) =>
                     handleFilterChange("keyword", e.target.value)
                   }
-                  className="pl-9"
+                  className="pl-12 bg-white shadow-sm text-gray-700 placeholder:text-gray-500"
                 />
               </div>
               <Select
                 value={filters.statusId}
                 onValueChange={(v) => handleFilterChange("statusId", v)}
               >
-                <SelectTrigger className="w-full sm:w-[180px]">
+                <SelectTrigger className="w-full sm:w-[180px] focus:border-orange-400 focus:ring-orange-400">
                   <SelectValue placeholder="Trạng thái" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="border-orange-100">
                   <SelectItem value="all">Tất cả trạng thái</SelectItem>
                   {courseStatuses.map((o) => (
                     <SelectItem key={o.id} value={String(o.id)}>
@@ -347,10 +386,10 @@ export default function CoursesPage() {
                 value={filters.departmentId}
                 onValueChange={(v) => handleFilterChange("departmentId", v)}
               >
-                <SelectTrigger className="w-full sm:w-[180px]">
+                <SelectTrigger className="w-full sm:w-[180px] focus:border-orange-400 focus:ring-orange-400">
                   <SelectValue placeholder="Phòng ban" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="border-orange-100">
                   <SelectItem value="all">Tất cả phòng ban</SelectItem>
                   {departmentOptions.map((o) => (
                     <SelectItem key={o.value} value={o.value}>
@@ -363,11 +402,11 @@ export default function CoursesPage() {
                 value={filters.levelId}
                 onValueChange={(v) => handleFilterChange("levelId", v)}
               >
-                <SelectTrigger className="w-full sm:w-[180px]">
+                <SelectTrigger className="w-full sm:w-[180px] focus:border-orange-400 focus:ring-orange-400">
                   <SelectValue placeholder="Cấp độ" />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Tất cả cấp độ</SelectItem>
+                <SelectContent className="border-orange-100">
+                  <SelectItem value="all">Tất cả cấp bậc</SelectItem>
                   {levelOptions.map((o) => (
                     <SelectItem key={o.value} value={o.value}>
                       {o.label}
@@ -375,6 +414,22 @@ export default function CoursesPage() {
                   ))}
                 </SelectContent>
               </Select>
+              {/* <Select
+                value={filters.categoryId}
+                onValueChange={(v) => handleFilterChange("categoryId", v)}
+              >
+                <SelectTrigger className="w-full sm:w-[180px] focus:border-orange-400 focus:ring-orange-400">
+                  <SelectValue placeholder="Danh mục" />
+                </SelectTrigger>
+                <SelectContent className="border-orange-100">
+                  <SelectItem value="all">Tất cả danh mục</SelectItem>
+                  {categoryOptions.map((o) => (
+                    <SelectItem key={o.value} value={o.value}>
+                      {o.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select> */}
             </div>
           </div>
 
@@ -491,7 +546,7 @@ export default function CoursesPage() {
                               ? course.status.name
                               : typeof course.status === "string"
                               ? course.status
-                              : "N/A"
+                              : "Không có"
                           )}
                           className="whitespace-nowrap"
                         >
@@ -501,7 +556,7 @@ export default function CoursesPage() {
                             ? course.status.name
                             : typeof course.status === "string"
                             ? course.status
-                            : "N/A"}
+                            : "Không có"}
                         </Badge>
                         <Badge
                           variant={course.isPublic ? "default" : "outline"}
@@ -522,25 +577,85 @@ export default function CoursesPage() {
                       </p>
                       <div className="truncate">
                         <span className="font-medium">Phòng ban:</span>{" "}
-                        {course.department
-                          ?.map(
-                            (id) =>
-                              departmentOptions.find(
-                                (opt) => String(opt.value) === String(id)
-                              )?.label
-                          )
-                          .join(", ") || "N/A"}
+                        {(() => {
+                          const departments = course.departments || [];
+                          if (departments.length === 0) return "Không có";
+
+                          const departmentNames = departments.map(
+                            (dept) => dept.departmentName
+                          );
+                          const displayText =
+                            departmentNames.length > 1
+                              ? `${departmentNames[0]} +${
+                                  departmentNames.length - 1
+                                }`
+                              : departmentNames.join(", ");
+
+                          if (departmentNames.length > 1) {
+                            return (
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <span className="cursor-help underline decoration-dotted">
+                                      {displayText}
+                                    </span>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <div className="max-w-xs">
+                                      {departmentNames.map((name, idx) => (
+                                        <div key={idx}>• {name}</div>
+                                      ))}
+                                    </div>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            );
+                          }
+
+                          return <span>{displayText}</span>;
+                        })()}
                       </div>
                       <div className="truncate">
                         <span className="font-medium">Cấp độ:</span>{" "}
-                        {course.level
-                          ?.map(
-                            (id) =>
-                              levelOptions.find(
-                                (opt) => String(opt.value) === String(id)
-                              )?.label
-                          )
-                          .join(", ") || "N/A"}
+                        {(() => {
+                          const levels = course.eLevels || [];
+                          if (levels.length === 0) return "Không có";
+
+                          const levelNames = levels.map(
+                            (level) => level.eLevelName
+                          );
+                          const displayText =
+                            levelNames.length > 1
+                              ? `${levelNames[0]} +${levelNames.length - 1}`
+                              : levelNames.join(", ");
+
+                          if (levelNames.length > 1) {
+                            return (
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <span className="cursor-help underline decoration-dotted">
+                                      {displayText}
+                                    </span>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <div className="max-w-xs">
+                                      {levelNames.map((name, idx) => (
+                                        <div key={idx}>• {name}</div>
+                                      ))}
+                                    </div>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            );
+                          }
+
+                          return <span>{displayText}</span>;
+                        })()}
+                      </div>
+                      <div className="truncate">
+                        <span className="font-medium">Danh mục:</span>{" "}
+                        {course.category?.categoryName || "Không có"}
                       </div>
                     </CardContent>
                     <CardFooter className="border-t pt-3">

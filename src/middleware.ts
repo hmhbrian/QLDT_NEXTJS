@@ -15,6 +15,8 @@ const PROTECTED_ROUTES = [
 const PUBLIC_ROUTES = ["/login", "/api/public", "/api/health"];
 
 function isProtectedRoute(pathname: string): boolean {
+  // The root path "/" is a special case handled separately
+  if (pathname === "/") return false;
   return PROTECTED_ROUTES.some((route) => pathname.startsWith(route));
 }
 
@@ -25,13 +27,6 @@ function isPublicRoute(pathname: string): boolean {
 function hasAuthCookie(request: NextRequest): boolean {
   // Check for the new simplified auth token name
   const authToken = request.cookies.get("qldt_auth_token");
-  console.log(`🔍 [Middleware] Checking auth cookie:`, {
-    hasToken: !!authToken?.value,
-    tokenPreview: authToken?.value
-      ? authToken.value.slice(0, 10) + "..."
-      : null,
-  });
-
   return !!authToken?.value;
 }
 
@@ -39,167 +34,42 @@ export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const hasAuth = hasAuthCookie(request);
 
-  console.log(`🔍 [Middleware] Processing request:`, {
-    pathname,
-    hasAuth,
-    isProtected: isProtectedRoute(pathname),
-    isPublic: isPublicRoute(pathname),
-  });
+  // 1. Handle the root path "/"
+  if (pathname === "/") {
+    const destination = hasAuth ? "/dashboard" : "/login";
+    return NextResponse.redirect(new URL(destination, request.url));
+  }
 
-  // Check authentication for protected routes
+  // 2. Redirect unauthenticated users from protected routes to login
   if (isProtectedRoute(pathname) && !hasAuth) {
-    console.log(
-      `🔒 [Middleware] Redirecting unauthenticated user from ${pathname} to /login`
-    );
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
-  // Redirect authenticated users away from login page
+  // 3. Redirect authenticated users away from login page
   if (pathname === "/login" && hasAuth) {
-    console.log(
-      `🔒 [Middleware] Redirecting authenticated user from /login to /dashboard`
-    );
     return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 
-  // Handle RSC requests that cause navigation delays
-  const url = request.nextUrl.clone();
-
-  // Remove problematic RSC query parameters that cause caching delays
-  if (url.searchParams.has("_rsc")) {
-    url.searchParams.delete("_rsc");
-    return NextResponse.redirect(url);
-  }
-
+  // If none of the above conditions are met, proceed with the request
   const response = NextResponse.next();
-
-  // Add headers to prevent excessive caching for page routes
-  if (
-    !request.nextUrl.pathname.startsWith("/api") &&
-    !request.nextUrl.pathname.startsWith("/_next")
-  ) {
-    // Disable aggressive caching for navigation
-    response.headers.set(
-      "Cache-Control",
-      "no-cache, no-store, must-revalidate, max-age=0"
-    );
-    response.headers.set("Pragma", "no-cache");
-    response.headers.set("Expires", "0");
-  }
-
-  // Xử lý các yêu cầu preflight CORS
-  if (request.method === "OPTIONS") {
-    const corsResponse = new NextResponse(null, { status: 200 });
-
-    corsResponse.headers.set("Access-Control-Allow-Origin", "*");
-    corsResponse.headers.set(
-      "Access-Control-Allow-Methods",
-      "GET, POST, PUT, PATCH, DELETE, OPTIONS"
-    );
-    corsResponse.headers.set(
-      "Access-Control-Allow-Headers",
-      "Content-Type, Authorization, X-Requested-With, Accept, Origin, If-None-Match, If-Modified-Since"
-    );
-    corsResponse.headers.set("Access-Control-Allow-Credentials", "true");
-    corsResponse.headers.set("Access-Control-Max-Age", "86400");
-
-    return corsResponse;
-  }
-
-  // Thêm headers CORS cho tất cả phản hồi API
-  if (request.nextUrl.pathname.startsWith("/api")) {
-    response.headers.set("Access-Control-Allow-Origin", "*");
-    response.headers.set(
-      "Access-Control-Allow-Methods",
-      "GET, POST, PUT, PATCH, DELETE, OPTIONS"
-    );
-    response.headers.set(
-      "Access-Control-Allow-Headers",
-      "Content-Type, Authorization, X-Requested-With, Accept, Origin, If-None-Match, If-Modified-Since"
-    );
-    response.headers.set("Access-Control-Allow-Credentials", "true");
-
-    // Add cache control headers
-    if (request.method === "GET") {
-      // Check if it's a data endpoint that should be cached
-      const isDataEndpoint =
-        request.nextUrl.pathname.includes("/data/") ||
-        request.nextUrl.pathname.includes("/courses") ||
-        request.nextUrl.pathname.includes("/users");
-
-      if (isDataEndpoint) {
-        // Add ETag support
-        const etag = `"${Date.now()}-${Math.random()
-          .toString(36)
-          .substr(2, 9)}"`;
-        response.headers.set("ETag", etag);
-
-        // Check if client has cached version
-        const ifNoneMatch = request.headers.get("if-none-match");
-        if (ifNoneMatch && ifNoneMatch === etag) {
-          return new NextResponse(null, { status: 304 });
-        }
-
-        // Set cache control
-        response.headers.set(
-          "Cache-Control",
-          "private, max-age=300, must-revalidate"
-        ); // 5 minutes
-        response.headers.set("Last-Modified", new Date().toUTCString());
-      } else {
-        // No cache for sensitive endpoints
-        response.headers.set(
-          "Cache-Control",
-          "no-store, no-cache, must-revalidate, proxy-revalidate"
-        );
-        response.headers.set("Pragma", "no-cache");
-        response.headers.set("Expires", "0");
-      }
-    } else {
-      // No cache for non-GET requests
-      response.headers.set(
-        "Cache-Control",
-        "no-store, no-cache, must-revalidate"
-      );
-    }
-
-    return response;
-  }
 
   // Add security headers for all responses
   response.headers.set("X-Content-Type-Options", "nosniff");
   response.headers.set("X-Frame-Options", "DENY");
   response.headers.set("X-XSS-Protection", "1; mode=block");
-  response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
-
-  // Add CSP header - allow localhost in development
-  const isDevelopment = process.env.NODE_ENV === "development";
-  const csp = [
-    "default-src 'self'",
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
-    "style-src 'self' 'unsafe-inline'",
-    "img-src 'self' data: https:",
-    "font-src 'self' data:",
-    isDevelopment
-      ? "connect-src 'self' https: wss: ws: http://localhost:* http://127.0.0.1:*"
-      : "connect-src 'self' https: wss: ws:",
-    "media-src 'self'",
-    "object-src 'none'",
-    "base-uri 'self'",
-    "form-action 'self'",
-    "frame-ancestors 'none'",
-  ].join("; ");
-
-  if (!isDevelopment) {
-    response.headers.set("Content-Security-Policy", csp);
-  }
 
   return response;
 }
 
 export const config = {
   matcher: [
-    "/api/:path*",
+    /*
+     * Match all request paths except for the ones starting with:
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     * - and files with extensions (svg, png, jpg, etc.)
+     */
     "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };

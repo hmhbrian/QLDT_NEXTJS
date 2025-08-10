@@ -1,4 +1,3 @@
-
 "use client";
 
 import {
@@ -18,6 +17,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
+
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -26,17 +26,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  PlusCircle,
-  Search,
-  Building2,
-  UserCircle2,
-  Calendar,
-  Award,
-  Eye,
-  EyeOff,
-} from "lucide-react";
+
+import { PlusCircle, Search, Building2, Eye, EyeOff } from "lucide-react";
 import { useState, useMemo, useCallback } from "react";
 import {
   User,
@@ -44,7 +35,9 @@ import {
   CreateUserRequest,
   UpdateUserRequest,
   ServiceRole,
+  UserDepartmentInfo,
 } from "@/lib/types/user.types";
+import { UserDetailDialog } from "@/components/users";
 import { DepartmentInfo } from "@/lib/types/department.types";
 import { useToast } from "@/components/ui/use-toast";
 import { useError } from "@/hooks/use-error";
@@ -53,7 +46,6 @@ import { getColumns } from "./columns";
 import { useDebounce } from "@/hooks/use-debounce";
 import { LoadingButton } from "@/components/ui/loading";
 import { useDepartments } from "@/hooks/use-departments";
-import { usePositions } from "@/hooks/use-positions";
 import { useUserStatuses } from "@/hooks/use-statuses";
 import { NO_DEPARTMENT_VALUE } from "@/lib/config/constants";
 import {
@@ -76,7 +68,6 @@ const initialNewTraineeState: Partial<
   email: "",
   phoneNumber: "",
   department: undefined,
-  position: undefined,
   userStatus: { id: 2, name: "Đang hoạt động" },
   idCard: "",
   role: "HOCVIEN",
@@ -126,6 +117,12 @@ export default function TraineesPage() {
     [paginationInfo]
   );
 
+// Filter out ADMIN and HR users - HR chỉ xem được HOCVIEN
+const filteredTrainees = useMemo(() => {
+  if (!trainees) return [];
+  return trainees.filter(user => user.role === "HOCVIEN");
+}, [trainees]);
+
   const { data: rolesResponse } = useQuery<PaginatedResponse<ServiceRole>>({
     queryKey: ["roles"],
     queryFn: () => rolesService.getRoles(),
@@ -134,7 +131,6 @@ export default function TraineesPage() {
 
   const { departments: activeDepartments, isLoading: isDepartmentsLoading } =
     useDepartments({ status: "active" });
-  const { positions, loading: isPositionsLoading } = usePositions();
   const { userStatuses, isLoading: isStatusesLoading } = useUserStatuses();
 
   const createTraineeMutation = useCreateUserMutation();
@@ -179,49 +175,39 @@ export default function TraineesPage() {
       });
       return;
     }
-    
+
     setIsFormOpen(false);
 
     if (editingTrainee) {
       const updatePayload: UpdateUserRequest = {
-        FullName: formData.fullName,
-        Email: formData.email,
-        IdCard: formData.idCard,
-        NumberPhone: formData.phoneNumber,
-        PositionId: formData.position?.positionId,
-        DepartmentId: formData.department?.departmentId ? parseInt(formData.department.departmentId) : undefined,
-        RoleId: hocvienRole.id,
+        fullName: formData.fullName,
+        email: formData.email,
+        idCard: formData.idCard,
+        position: formData.position,
+        numberPhone: formData.phoneNumber,
+        departmentId: formData.department?.departmentId,
+        roleId: hocvienRole.id,
       };
+      console.log("Updating user with payload:", updatePayload);
       await updateTraineeMutation.mutateAsync({
-          id: editingTrainee.id,
-          payload: updatePayload,
-        });
+        id: editingTrainee.id,
+        payload: updatePayload,
+      });
     } else {
       const createPayload: CreateUserRequest = {
-        FullName: formData.fullName!,
-        Email: formData.email!,
-        Password: formData.password!,
-        ConfirmPassword: formData.confirmPassword!,
-        IdCard: formData.idCard,
-        NumberPhone: formData.phoneNumber,
-        PositionId: formData.position?.positionId,
-        DepartmentId: formData.department?.departmentId ? parseInt(formData.department.departmentId) : undefined,
-        RoleId: hocvienRole.id,
+        fullName: formData.fullName!,
+        email: formData.email!,
+        password: formData.password!,
+        confirmPassword: formData.confirmPassword!,
+        idCard: formData.idCard,
+        position: formData.position,
+        numberPhone: formData.phoneNumber,
+        departmentId: formData.department?.departmentId,
+        roleId: hocvienRole.id,
       };
+      console.log("Creating user with payload:", createPayload);
       await createTraineeMutation.mutateAsync(createPayload);
     }
-  };
-
-  const renderDepartmentName = (department?: DepartmentInfo): string => {
-    if (!department) return "N/A";
-    return department.name || "Không xác định";
-  };
-
-  const getPositionName = (user: User): string => {
-    if (user.position && typeof user.position === "object") {
-      return user.position.positionName;
-    }
-    return "Chưa có cấp bậc";
   };
 
   const columns = useMemo(
@@ -281,7 +267,7 @@ export default function TraineesPage() {
           ) : (
             <DataTable
               columns={columns}
-              data={trainees}
+              data={filteredTrainees}
               isLoading={isTraineesLoading}
               pageCount={pageCount}
               pagination={pagination}
@@ -344,15 +330,26 @@ export default function TraineesPage() {
             <div className="grid gap-2">
               <Label htmlFor="department">Phòng ban</Label>
               <Select
-                value={formData.department?.departmentId || NO_DEPARTMENT_VALUE}
+                value={
+                  formData.department?.departmentId
+                    ? String(formData.department.departmentId)
+                    : NO_DEPARTMENT_VALUE
+                }
                 onValueChange={(value) => {
                   const selectedDept = activeDepartments.find(
-                    (d) => d.departmentId === value
+                    (d) => String(d.departmentId) === value
                   );
                   setFormData({
                     ...formData,
                     department:
-                      value === NO_DEPARTMENT_VALUE ? undefined : selectedDept,
+                      value === NO_DEPARTMENT_VALUE
+                        ? undefined
+                        : selectedDept
+                        ? {
+                            departmentId: selectedDept.departmentId,
+                            departmentName: selectedDept.name,
+                          }
+                        : undefined,
                   });
                 }}
               >
@@ -371,7 +368,7 @@ export default function TraineesPage() {
                     activeDepartments.map((dept) => (
                       <SelectItem
                         key={dept.departmentId}
-                        value={dept.departmentId}
+                        value={String(dept.departmentId)}
                       >
                         {dept.name}
                       </SelectItem>
@@ -385,42 +382,15 @@ export default function TraineesPage() {
               </Select>
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="position">Cấp bậc</Label>
-              <Select
-                value={
-                  formData.position ? String(formData.position.positionId) : ""
+              <Label htmlFor="position">Chức vụ</Label>
+              <Input
+                id="position"
+                placeholder="Nhập chức vụ"
+                value={formData.position || ""}
+                onChange={(e) =>
+                  setFormData({ ...formData, position: e.target.value })
                 }
-                onValueChange={(value) => {
-                  const selectedPos = positions.find(
-                    (p) => String(p.positionId) === value
-                  );
-                  setFormData({ ...formData, position: selectedPos });
-                }}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Chọn cấp bậc" />
-                </SelectTrigger>
-                <SelectContent>
-                  {isPositionsLoading ? (
-                    <SelectItem value="loading_pos" disabled>
-                      Đang tải...
-                    </SelectItem>
-                  ) : positions.length > 0 ? (
-                    positions.map((pos) => (
-                      <SelectItem
-                        key={pos.positionId}
-                        value={String(pos.positionId)}
-                      >
-                        {pos.positionName}
-                      </SelectItem>
-                    ))
-                  ) : (
-                    <SelectItem value="no_pos" disabled>
-                      Không có dữ liệu
-                    </SelectItem>
-                  )}
-                </SelectContent>
-              </Select>
+              />
             </div>
             {!editingTrainee && (
               <>
@@ -538,64 +508,12 @@ export default function TraineesPage() {
         </DialogContent>
       </Dialog>
 
-      {/* View Trainee Dialog */}
-      <Dialog open={isViewingTrainee} onOpenChange={setIsViewingTrainee}>
-        <DialogContent className="sm:max-w-[800px]">
-          <DialogHeader>
-            <DialogTitle>Chi tiết Học viên</DialogTitle>
-          </DialogHeader>
-          {selectedTrainee && (
-            <Tabs defaultValue="info" className="mt-4">
-              <TabsList>
-                <TabsTrigger value="info">
-                  <UserCircle2 className="h-4 w-4 mr-2" />
-                  Thông tin cơ bản
-                </TabsTrigger>
-                <TabsTrigger value="department">
-                  <Building2 className="h-4 w-4 mr-2" />
-                  Phòng ban
-                </TabsTrigger>
-                <TabsTrigger value="courses">
-                  <Calendar className="h-4 w-4 mr-2" />
-                  Khóa học
-                </TabsTrigger>
-                <TabsTrigger value="certificates">
-                  <Award className="h-4 w-4 mr-2" />
-                  Chứng chỉ
-                </TabsTrigger>
-              </TabsList>
-              <TabsContent value="info" className="space-y-4 pt-4">
-                <p>
-                  <strong>Họ tên:</strong> {selectedTrainee.fullName}
-                </p>
-                <p>
-                  <strong>Email:</strong> {selectedTrainee.email}
-                </p>
-                <p>
-                  <strong>Phòng ban:</strong>{" "}
-                  {renderDepartmentName(selectedTrainee.department)}
-                </p>
-                <p>
-                  <strong>Chức vụ:</strong> Chưa có
-                </p>
-                <p>
-                  <strong>Cấp bậc:</strong> {getPositionName(selectedTrainee)}
-                </p>
-              </TabsContent>
-              <TabsContent value="courses">
-                <p className="text-center text-muted-foreground py-4">
-                  Chức năng đang được phát triển.
-                </p>
-              </TabsContent>
-              <TabsContent value="certificates">
-                <p className="text-center text-muted-foreground py-4">
-                  Chức năng đang được phát triển.
-                </p>
-              </TabsContent>
-            </Tabs>
-          )}
-        </DialogContent>
-      </Dialog>
+      {/* View Trainee Detail Dialog */}
+      <UserDetailDialog
+        user={selectedTrainee}
+        isOpen={isViewingTrainee}
+        onOpenChange={setIsViewingTrainee}
+      />
     </div>
   );
 }

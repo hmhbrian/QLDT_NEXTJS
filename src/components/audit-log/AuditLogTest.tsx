@@ -82,7 +82,7 @@ export function AuditLogTest() {
         <div className="p-4 bg-blue-50 border border-blue-200 rounded-md">
           <h3 className="font-medium text-blue-800">User Info:</h3>
           <p className="text-blue-600">
-            Role: {user?.role || "N/A"} | Can View:{" "}
+            Role: {user?.role || "Không có"} | Can View:{" "}
             {user?.role === "ADMIN" || user?.role === "HR" ? "Yes" : "No"}
           </p>
         </div>

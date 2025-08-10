@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
@@ -23,7 +22,11 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/use-toast";
-import type { DepartmentInfo, CreateDepartmentPayload, UpdateDepartmentPayload } from "@/lib/types/department.types";
+import type {
+  DepartmentInfo,
+  CreateDepartmentPayload,
+  UpdateDepartmentPayload,
+} from "@/lib/types/department.types";
 import type { User } from "@/lib/types/user.types";
 import type { Status } from "@/lib/types/status.types";
 import { NO_DEPARTMENT_VALUE } from "@/lib/config/constants";
@@ -36,13 +39,13 @@ interface DepartmentFormDialogProps {
   onSave: (
     payload: CreateDepartmentPayload | UpdateDepartmentPayload,
     isEditing: boolean,
-    deptId?: string
+    deptId?: number
   ) => void;
   existingDepartments: DepartmentInfo[];
   managers: User[];
   isLoading?: boolean;
   isLoadingManagers?: boolean;
-  userStatuses: Status[];
+  departmentStatuses: Status[]; // Changed from userStatuses to departmentStatuses
 }
 
 const initialFormData: CreateDepartmentPayload = {
@@ -54,7 +57,7 @@ const initialFormData: CreateDepartmentPayload = {
   ParentId: null,
 };
 
-export function DepartmentFormDialog({
+export default function DepartmentFormDialog({
   isOpen,
   onOpenChange,
   departmentToEdit,
@@ -63,19 +66,26 @@ export function DepartmentFormDialog({
   managers,
   isLoading,
   isLoadingManagers,
-  userStatuses,
+  departmentStatuses, // Changed from userStatuses to departmentStatuses
 }: DepartmentFormDialogProps) {
   const { toast } = useToast();
-  const [formData, setFormData] =
-    useState<CreateDepartmentPayload | UpdateDepartmentPayload>(initialFormData);
+  const [formData, setFormData] = useState<
+    CreateDepartmentPayload | UpdateDepartmentPayload
+  >(initialFormData);
 
-  const departmentStatuses = useMemo(
-    () =>
-      userStatuses.filter(
-        (s) => s.name === "Đang hoạt động" || s.name === "Không hoạt động"
-      ),
-    [userStatuses]
-  );
+  useEffect(() => {
+    if (!managers || managers.length === 0) {
+      // eslint-disable-next-line no-console
+      console.warn("[DepartmentFormDialog] managers is empty", managers);
+    }
+    if (!departmentStatuses || departmentStatuses.length === 0) {
+      // eslint-disable-next-line no-console
+      console.warn(
+        "[DepartmentFormDialog] departmentStatuses is empty",
+        departmentStatuses
+      );
+    }
+  }, [managers, departmentStatuses]);
 
   useEffect(() => {
     if (isOpen && departmentToEdit) {
@@ -85,7 +95,7 @@ export function DepartmentFormDialog({
         Description: departmentToEdit.description,
         ManagerId: departmentToEdit.managerId || "",
         StatusId: departmentToEdit.status?.id || 2,
-        ParentId: departmentToEdit.parentId ? parseInt(departmentToEdit.parentId, 10) : null,
+        ParentId: departmentToEdit.parentId || null,
       });
     } else {
       setFormData(initialFormData);
@@ -150,7 +160,10 @@ export function DepartmentFormDialog({
                 variant="outline"
                 size="sm"
                 onClick={() =>
-                  setFormData({ ...formData, DepartmentCode: generateDepartmentCode() })
+                  setFormData({
+                    ...formData,
+                    DepartmentCode: generateDepartmentCode(),
+                  })
                 }
                 className="whitespace-nowrap"
               >
@@ -208,11 +221,16 @@ export function DepartmentFormDialog({
           <div className="grid gap-2">
             <Label htmlFor="parentId">Phòng ban cha</Label>
             <Select
-              value={formData.ParentId ? String(formData.ParentId) : NO_DEPARTMENT_VALUE}
+              value={
+                formData.ParentId
+                  ? String(formData.ParentId)
+                  : NO_DEPARTMENT_VALUE
+              }
               onValueChange={(value) =>
                 setFormData({
                   ...formData,
-                  ParentId: value === NO_DEPARTMENT_VALUE ? null : parseInt(value, 10),
+                  ParentId:
+                    value === NO_DEPARTMENT_VALUE ? null : parseInt(value, 10),
                 })
               }
             >
@@ -230,7 +248,7 @@ export function DepartmentFormDialog({
                   .map((dept) => (
                     <SelectItem
                       key={dept.departmentId}
-                      value={dept.departmentId}
+                      value={String(dept.departmentId)}
                     >
                       {dept.name}
                     </SelectItem>

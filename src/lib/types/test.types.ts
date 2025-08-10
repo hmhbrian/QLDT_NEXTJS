@@ -163,3 +163,15 @@ export interface QuestionResult {
   isCorrect: boolean;
   explanation?: string;
 }
+
+// --- Question without answers (for security) ---
+export interface QuestionNoAnswer {
+  id: number;
+  questionText: string;
+  questionType: number;
+  position: number;
+  a: string;
+  b: string;
+  c: string;
+  d: string;
+}

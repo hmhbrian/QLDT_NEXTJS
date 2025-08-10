@@ -59,23 +59,6 @@ export function useCreateLesson() {
   >({
     mutationFn: (variables) =>
       lessonsService.createLesson(variables.courseId, variables),
-    onMutate: async ({ courseId, Title }) => {
-      const queryKey = [LESSONS_QUERY_KEY, courseId];
-      await queryClient.cancelQueries({ queryKey });
-
-      const previousLessons = queryClient.getQueryData<Lesson[]>(queryKey) || [];
-      
-      const optimisticLesson: Lesson = {
-        id: Date.now(), // Temporary ID
-        title: Title,
-        type: "pdf_url", // Default type, will be updated on refetch
-        content: "Đang tải lên...",
-      };
-
-      queryClient.setQueryData<Lesson[]>(queryKey, (old = []) => [...old, optimisticLesson]);
-
-      return { previousLessons };
-    },
     onSuccess: (data, variables) => {
       toast({
         title: "Thành công",
@@ -115,20 +98,6 @@ export function useUpdateLesson() {
         Number(variables.lessonId),
         variables.payload
       ),
-    onMutate: async ({ courseId, lessonId, payload }) => {
-      const queryKey = [LESSONS_QUERY_KEY, courseId];
-      await queryClient.cancelQueries({ queryKey });
-
-      const previousLessons = queryClient.getQueryData<Lesson[]>(queryKey);
-
-      queryClient.setQueryData<Lesson[]>(queryKey, (old = []) =>
-        old.map(lesson => 
-          lesson.id === lessonId ? { ...lesson, title: payload.Title || lesson.title } : lesson
-        )
-      );
-      
-      return { previousLessons };
-    },
     onSuccess: (data, variables) => {
       toast({
         title: "Thành công",
@@ -159,18 +128,6 @@ export function useDeleteLesson() {
   return useMutation<void, Error, { courseId: string; lessonIds: number[] }, { previousLessons?: Lesson[] }>({
     mutationFn: (variables) =>
       lessonsService.deleteLessons(variables.courseId, variables.lessonIds),
-    onMutate: async ({ courseId, lessonIds }) => {
-      const queryKey = [LESSONS_QUERY_KEY, courseId];
-      await queryClient.cancelQueries({ queryKey });
-
-      const previousLessons = queryClient.getQueryData<Lesson[]>(queryKey);
-      
-      queryClient.setQueryData<Lesson[]>(queryKey, (old = []) =>
-        old.filter(lesson => !lessonIds.includes(Number(lesson.id)))
-      );
-      
-      return { previousLessons };
-    },
     onSuccess: (_, variables) => {
       toast({
         title: "Thành công",

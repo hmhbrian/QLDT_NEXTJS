@@ -1,4 +1,3 @@
-
 import { httpClient } from "./services/modern/auth.service";
 import type { HttpRequestConfig, HttpResponse } from "./http-client";
 
@@ -17,27 +16,31 @@ const apiClient = {
 
     let response: HttpResponse<T>;
 
-    switch (lowercasedMethod) {
-      case "get":
-        response = await httpClient.get<T>(url, restConfig);
-        break;
-      case "post":
-        response = await httpClient.post<T>(url, data, restConfig);
-        break;
-      case "put":
-        response = await httpClient.put<T>(url, data, restConfig);
-        break;
-      case "patch":
-        response = await httpClient.patch<T>(url, data, restConfig);
-        break;
-      case "delete":
-        response = await httpClient.delete<T>(url, data, restConfig);
-        break;
-      default:
-        throw new Error(`Unsupported HTTP method: ${method}`);
+    try {
+      switch (lowercasedMethod) {
+        case "get":
+          response = await httpClient.get<T>(url, restConfig);
+          break;
+        case "post":
+          response = await httpClient.post<T>(url, data, restConfig);
+          break;
+        case "put":
+          response = await httpClient.put<T>(url, data, restConfig);
+          break;
+        case "patch":
+          response = await httpClient.patch<T>(url, data, restConfig);
+          break;
+        case "delete":
+          response = await httpClient.delete<T>(url, data, restConfig);
+          break;
+        default:
+          throw new Error(`Unsupported HTTP method: ${method}`);
+      }
+
+      return response.data;
+    } catch (error) {
+      throw error;
     }
-    
-    return response.data;
   },
 };
 

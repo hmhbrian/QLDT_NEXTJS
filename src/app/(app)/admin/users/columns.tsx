@@ -1,4 +1,3 @@
-
 "use client";
 
 import { ColumnDef } from "@tanstack/react-table";
@@ -99,17 +98,10 @@ export const getColumns = (
     ),
   },
   {
-    accessorKey: "department.name",
-    header: "Phòng ban",
-    cell: ({ row }) => {
-      return row.original.department?.name || "N/A";
-    },
-  },
-  {
     accessorKey: "status",
     header: "Trạng thái",
     cell: ({ row }) => {
-      const statusName = row.original.userStatus?.name || "N/A";
+      const statusName = row.original.userStatus?.name || "Không có";
       return (
         <Badge className={cn(getStatusColor(statusName))}>{statusName}</Badge>
       );
@@ -142,17 +134,22 @@ export const getColumns = (
                   Xem chi tiết
                 </DropdownMenuItem>
               )}
-              <DropdownMenuItem onClick={() => handleEdit(user)}>
-                <Pencil className="mr-2 h-4 w-4" />
-                Chỉnh sửa
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => handleDelete(user)}
-                className="text-destructive focus:text-destructive"
-              >
-                <Trash2 className="mr-2 h-4 w-4" />
-                Xóa
-              </DropdownMenuItem>
+              {/* HR không thể sửa/xóa ADMIN */}
+              {!(currentUser?.role === "HR" && user.role === "ADMIN") && (
+                <>
+                  <DropdownMenuItem onClick={() => handleEdit(user)}>
+                    <Pencil className="mr-2 h-4 w-4" />
+                    Chỉnh sửa
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => handleDelete(user)}
+                    className="text-destructive focus:text-destructive"
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Xóa
+                  </DropdownMenuItem>
+                </>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>

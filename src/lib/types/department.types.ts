@@ -7,11 +7,11 @@ import type { Status } from "./status.types";
 
 // --- Frontend UI Model ---
 export interface DepartmentInfo {
-  departmentId: string;
+  departmentId: number;
   name: string;
   code: string;
   description?: string;
-  parentId?: string | null;
+  parentId?: number | null;
   parentName?: string | null;
   managerId?: string | null;
   managerName?: string | null;

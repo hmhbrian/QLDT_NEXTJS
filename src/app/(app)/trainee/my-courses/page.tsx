@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useMemo, useEffect } from "react";
@@ -21,7 +20,10 @@ import {
 import Image from "next/image";
 import Link from "next/link";
 import { useAuth } from "@/hooks/useAuth";
-import { useEnrolledCourses } from "@/hooks/use-courses";
+import {
+  useEnrolledCourses,
+  ENROLLED_COURSES_QUERY_KEY,
+} from "@/hooks/use-courses";
 import type { Course } from "@/lib/types/course.types";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -44,7 +46,10 @@ export default function MyCoursesPage() {
   useEffect(() => {
     const handleFocus = () => {
       if (currentUser) {
-        queryClient.invalidateQueries({ queryKey: ["enrolledCourses"] });
+        console.log("Tab focused, refetching enrolled courses...");
+        queryClient.invalidateQueries({
+          queryKey: [ENROLLED_COURSES_QUERY_KEY, currentUser.id],
+        });
       }
     };
     window.addEventListener("focus", handleFocus);
@@ -61,7 +66,7 @@ export default function MyCoursesPage() {
         description: course.description,
         progress: course.progressPercentage || 0,
         image: course.image,
-        dataAiHint: course.category,
+        dataAiHint: course.category?.categoryName || "",
       })
     );
   }, [enrolledCourses]);

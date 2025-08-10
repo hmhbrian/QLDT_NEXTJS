@@ -9,3 +9,4 @@ cd /d "e:\ThucTap\QLDT\qldt"
 
 npx tsc --noEmit --skipLibCheck --pretty
 
+npx next lint --quiet

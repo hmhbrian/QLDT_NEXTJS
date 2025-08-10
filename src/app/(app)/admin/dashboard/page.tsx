@@ -1,50 +1,39 @@
+
 "use client";
 
 import { useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
   Users,
   BookOpen,
   Building,
-  Award,
-  TrendingUp,
-  TrendingDown,
-  Activity,
-  Calendar,
-  Clock,
-  ArrowRight,
-  Plus,
   Settings,
   BarChart3,
-  PieChart,
-  Target,
   UserCheck,
-  GraduationCap,
+  CheckCircle,
+  Activity,
+  Target,
   Star,
+  GraduationCap,
+  Play,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useCourses } from "@/hooks/use-courses";
 import { useUsers } from "@/hooks/use-users";
 import { useDepartments } from "@/hooks/use-departments";
+import { useActivityLogs } from "@/hooks/use-activity-logs";
+import { useAllTimeReport, useAvgFeedbackReport } from "@/hooks/use-reports";
 
-// Optimized components
 import {
   PageHeader,
   GridLayout,
   LoadingState,
   StatsCard,
 } from "@/components/layout/optimized-layouts";
-import { OptimizedCard, ActionButtons } from "@/components/ui/optimized";
+import { OptimizedCard } from "@/components/ui/optimized";
+import { ClientTime } from "@/components/ClientTime";
 
-// Quick Actions Config
 const quickActions = [
   {
     title: "Thêm khóa học",
@@ -71,83 +60,62 @@ const quickActions = [
     title: "Báo cáo tổng quan",
     description: "Xem báo cáo hiệu suất đào tạo",
     icon: <BarChart3 className="h-5 w-5" />,
-    href: "/admin/reports",
+    href: "/admin/reports/overview",
     color: "bg-orange-500",
   },
 ];
 
-// Recent Activities Mock Data (in real app, this would come from API)
-const recentActivities = [
-  {
-    id: "1",
-    type: "course_created",
-    title: "Khóa học 'An toàn lao động' đã được tạo",
-    user: "Nguyễn Văn A",
-    time: "2 giờ trước",
-    icon: <BookOpen className="h-4 w-4" />,
-  },
-  {
-    id: "2",
-    type: "user_registered",
-    title: "5 nhân viên mới đã đăng ký khóa 'Kỹ năng giao tiếp'",
-    user: "Hệ thống",
-    time: "3 giờ trước",
-    icon: <UserCheck className="h-4 w-4" />,
-  },
-  {
-    id: "3",
-    type: "course_completed",
-    title: "Trần Thị B đã hoàn thành khóa 'Excel nâng cao'",
-    user: "Trần Thị B",
-    time: "5 giờ trước",
-    icon: <GraduationCap className="h-4 w-4" />,
-  },
-  {
-    id: "4",
-    type: "certificate_issued",
-    title: "Chứng chỉ đã được cấp cho 12 học viên",
-    user: "Hệ thống",
-    time: "1 ngày trước",
-    icon: <Award className="h-4 w-4" />,
-  },
-];
+const getActionIcon = (action: string) => {
+  switch (action) {
+    case "CREATE":
+      return <BookOpen className="h-4 w-4 text-green-500" />;
+    case "ENROLL":
+      return <UserCheck className="h-4 w-4 text-blue-500" />;
+    case "COMPLETE_LESSON":
+      return <CheckCircle className="h-4 w-4 text-teal-500" />;
+    default:
+      return <Activity className="h-4 w-4 text-gray-500" />;
+  }
+};
 
 export default function AdminDashboard() {
   const { user: currentUser } = useAuth();
   const router = useRouter();
 
-  // Fetch data with limited results for dashboard overview
-  const { courses, isLoading: isLoadingCourses } = useCourses({
-    Page: 1,
-    Limit: 5,
-  });
+  // Fetch data
+  const { courses, paginationInfo: coursePagination } = useCourses();
+  const { users, paginationInfo: usersPagination } = useUsers();
+  const { departments, isLoading: isLoadingDepts } = useDepartments();
+  const { data: allTimeReport, isLoading: isLoadingReport } =
+    useAllTimeReport(true);
+  const { data: avgFeedback, isLoading: isLoadingFeedback } =
+    useAvgFeedbackReport(true);
+  const { data: activityLogs, isLoading: isLoadingLogs } = useActivityLogs(
+    undefined,
+    { pageSize: 5 }
+  );
 
-  const {
-    users,
-    paginationInfo: usersPagination,
-    isLoading: isLoadingUsers,
-  } = useUsers({
-    Page: 1,
-    Limit: 5,
-  });
-
-  const { departments: allDepartments, isLoading: isLoadingDepts } =
-    useDepartments();
-
-  const isLoading = isLoadingCourses || isLoadingUsers || isLoadingDepts;
+  const isLoading =
+    isLoadingDepts ||
+    isLoadingReport ||
+    isLoadingFeedback ||
+    isLoadingLogs ||
+    !coursePagination ||
+    !usersPagination;
 
   // Calculate dashboard stats
   const dashboardStats = useMemo(() => {
-    const totalUsers = usersPagination?.totalItems || 0;
+    const totalUsers = allTimeReport?.numberOfStudents || 0;
     const activeUsers =
-      users?.filter((u) => u.userStatus?.name === "active" || u.role).length ||
-      0;
-    const totalCourses = courses?.length || 0;
+      users?.filter((u) => u.userStatus?.name === "Đang làm việc").length || 0;
+    const totalCourses = allTimeReport?.numberOfCourses || 0;
     const activeCourses =
-      courses?.filter((c) => c.status === "Đang mở").length || 0;
-    const totalDepartments = Array.isArray(allDepartments)
-      ? allDepartments.length
-      : 0;
+      courses?.filter((c) => {
+        const statusName =
+          typeof c.status === "object" ? c.status.name : c.status;
+        return statusName === "Đang mở";
+      }).length || 0;
+    const totalDepartments = departments.length;
 
     return {
       totalUsers,
@@ -157,10 +125,24 @@ export default function AdminDashboard() {
       totalDepartments,
       userGrowth:
         totalUsers > 0 ? Math.round((activeUsers / totalUsers) * 100) : 0,
-      courseProgress:
-        totalCourses > 0 ? Math.round((activeCourses / totalCourses) * 100) : 0,
+      completionRate: allTimeReport?.averangeCompletedPercentage || 0,
+      averageRating:
+        avgFeedback && avgFeedback.q1_relevanceAvg > 0 // Check if feedback data is meaningful
+          ? (avgFeedback.q1_relevanceAvg +
+              avgFeedback.q2_clarityAvg +
+              avgFeedback.q3_structureAvg +
+              avgFeedback.q4_durationAvg +
+              avgFeedback.q5_materialAvg) /
+            5
+          : 0,
     };
-  }, [users, courses, allDepartments, usersPagination]);
+  }, [
+    users,
+    courses,
+    departments,
+    allTimeReport,
+    avgFeedback,
+  ]);
 
   const canAccessAdmin =
     currentUser?.role === "ADMIN" || currentUser?.role === "HR";
@@ -219,7 +201,8 @@ export default function AdminDashboard() {
           value={dashboardStats.activeUsers}
           icon={<UserCheck className="h-5 w-5" />}
           trend={`${Math.round(
-            (dashboardStats.activeUsers / dashboardStats.totalUsers) * 100 || 0
+            (dashboardStats.activeUsers / (dashboardStats.totalUsers || 1)) *
+              100
           )}%`}
           trendUp={true}
         />
@@ -261,9 +244,6 @@ export default function AdminDashboard() {
                     {action.description}
                   </p>
                 </div>
-                <div className="flex justify-end">
-                  <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
-                </div>
               </div>
             </OptimizedCard>
           ))}
@@ -280,22 +260,22 @@ export default function AdminDashboard() {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => router.push("/admin/activity-logs")}
+                onClick={() => router.push("/admin/reports/overview")}
               >
                 Xem tất cả
-                <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </div>
             <div className="space-y-4">
-              {recentActivities.map((activity) => (
+              {activityLogs?.map((activity: any) => (
                 <div key={activity.id} className="flex items-start gap-3">
                   <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
-                    {activity.icon}
+                    {getActionIcon(activity.action)}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium">{activity.title}</p>
+                    <p className="text-sm font-medium">{activity.description}</p>
                     <p className="text-xs text-muted-foreground">
-                      {activity.time}
+                      <ClientTime date={activity.timestamp} /> • bởi{" "}
+                      {activity.userName}
                     </p>
                   </div>
                 </div>
@@ -312,7 +292,7 @@ export default function AdminDashboard() {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => router.push("/admin/reports")}
+                onClick={() => router.push("/admin/reports/overview")}
               >
                 Chi tiết
                 <BarChart3 className="ml-2 h-4 w-4" />
@@ -324,124 +304,39 @@ export default function AdminDashboard() {
                   <Target className="h-4 w-4 text-blue-500" />
                   <span className="text-sm">Tỷ lệ hoàn thành khóa học</span>
                 </div>
-                <span className="text-sm font-medium">85%</span>
+                <span className="text-sm font-medium">
+                  {dashboardStats.completionRate.toFixed(1)}%
+                </span>
               </div>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Star className="h-4 w-4 text-yellow-500" />
                   <span className="text-sm">Điểm đánh giá trung bình</span>
                 </div>
-                <span className="text-sm font-medium">4.3/5</span>
+                <span className="text-sm font-medium">
+                  {dashboardStats.averageRating > 0
+                    ? `${dashboardStats.averageRating.toFixed(1)}/5`
+                    : "N/A"}
+                </span>
               </div>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Clock className="h-4 w-4 text-green-500" />
-                  <span className="text-sm">Thời gian học trung bình</span>
+                  <GraduationCap className="h-4 w-4 text-green-500" />
+                  <span className="text-sm">Học viên hoạt động</span>
                 </div>
-                <span className="text-sm font-medium">12h</span>
+                <span className="text-sm font-medium">
+                  {dashboardStats.activeUsers}
+                </span>
               </div>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Award className="h-4 w-4 text-purple-500" />
-                  <span className="text-sm">Chứng chỉ đã cấp</span>
+                  <Play className="h-4 w-4 text-purple-500" />
+                  <span className="text-sm">Khóa học đang mở</span>
                 </div>
-                <span className="text-sm font-medium">147</span>
+                <span className="text-sm font-medium">
+                  {dashboardStats.activeCourses}
+                </span>
               </div>
-            </div>
-          </div>
-        </OptimizedCard>
-      </div>
-
-      {/* System Overview */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <OptimizedCard className="lg:col-span-2">
-          <div className="p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold">Khóa học gần đây</h3>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => router.push("/admin/courses")}
-              >
-                Quản lý khóa học
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-            </div>
-            <div className="space-y-3">
-              {courses?.slice(0, 5).map((course) => (
-                <div
-                  key={course.id}
-                  className="flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                      <BookOpen className="h-5 w-5 text-primary" />
-                    </div>
-                    <div>
-                      <p className="font-medium">{course.title}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {course.courseCode}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm font-medium">
-                      {typeof course.status === "string"
-                        ? course.status
-                        : "N/A"}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {(() => {
-                        if (typeof course.instructor === "string")
-                          return course.instructor;
-                        if (
-                          course.instructor &&
-                          typeof course.instructor === "object" &&
-                          "fullName" in course.instructor
-                        ) {
-                          return (course.instructor as any).fullName;
-                        }
-                        return "Chưa có thông tin";
-                      })()}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </OptimizedCard>
-
-        <OptimizedCard>
-          <div className="p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold">Người dùng mới</h3>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => router.push("/admin/users")}
-              >
-                Quản lý
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-            </div>
-            <div className="space-y-3">
-              {users?.slice(0, 4).map((user) => (
-                <div key={user.id} className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center text-primary-foreground text-xs font-medium">
-                    {user.fullName
-                      .split(" ")
-                      .map((n) => n[0])
-                      .join("")
-                      .toUpperCase()}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">
-                      {user.fullName}
-                    </p>
-                    <p className="text-xs text-muted-foreground">{user.role}</p>
-                  </div>
-                </div>
-              ))}
             </div>
           </div>
         </OptimizedCard>

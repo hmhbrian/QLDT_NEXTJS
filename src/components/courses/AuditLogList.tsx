@@ -119,7 +119,7 @@ const formatFieldName = (fieldName: string): string => {
     CreatedAt: "Thời gian tạo",
     UpdatedAt: "Thời gian cập nhật",
     Title: "Tiêu đề",
-    Position: "Vị trí",
+    EmployeeLevel: "Vị trí",
     PassThreshold: "Điểm đạt",
     TimeTest: "Thời gian làm bài",
     FileUrl: "Đường dẫn file",

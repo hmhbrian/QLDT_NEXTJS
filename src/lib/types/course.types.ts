@@ -4,13 +4,13 @@
  */
 
 import type { DepartmentInfo } from "./department.types";
-import type { Position, User } from "./user.types";
+import type { EmployeeLevel, User } from "./user.types";
 import type { Status } from "./status.types";
 import type { Test } from "./test.types";
 
 // --- Enums and Unions ---
 export type LearningFormat = "online" | "offline";
-export type EnrollmentType = "optional" | "mandatory";
+export type EnrollmentType = "optional" | "mandatory" | "";
 export type CourseMaterialType = "PDF" | "Link";
 export type LessonContentType =
   | "video_url"
@@ -101,9 +101,13 @@ export interface Course {
   endDate: string | null;
   registrationStartDate: string | null;
   registrationDeadline: string | null;
-  department: string[]; // Changed to array of strings
-  level: string[]; // Changed to array of strings
-  category: string;
+  // Updated to match API response
+  departments: Array<{ departmentId: number; departmentName: string }>;
+  eLevels: Array<{ eLevelId: number; eLevelName: string }>;
+  category: { id: number; categoryName: string } | null;
+  // Legacy fields for backward compatibility
+  department?: string[];
+  level?: string[];
   materials: CourseMaterial[];
   lessons: Lesson[];
   tests: Test[];
@@ -164,7 +168,7 @@ export interface CreateCourseRequest {
   CategoryId?: number;
   LecturerId?: number;
   DepartmentIds?: number[];
-  PositionIds?: number[];
+  eLevelIds?: number[];
   UserIds?: string[];
 }
 
@@ -226,8 +230,11 @@ export interface CourseApiResponse {
   status?: Status;
   category?: CourseCategoryDto;
   lecturer?: any; // Define LecturerDto if needed
-  departments?: DepartmentInfo[];
-  positions?: Position[];
+  departments?: Array<{ departmentId: number; departmentName: string }>;
+  eLevels?: Array<{ eLevelId: number; eLevelName: string }>;
+  // Legacy fields for backward compatibility
+  DepartmentInfo?: DepartmentInfo[];
+  EmployeeLevel?: EmployeeLevel[];
   users?: User[]; // For enrolled users (legacy)
   students?: { id: string; name: string }[]; // For enrolled students (new API format)
 }

@@ -24,9 +24,9 @@ export const API_ENDPOINTS = {
   users: {
     base: "/Users",
     create: "/Users/create",
-    me: "/Users",
     update: "/Users/update",
     search: "/Users/search",
+    byId: (userId: string) => `/Users/${userId}`,
     updateAdmin: (userId: string) => `/Users/admin/${userId}/update`,
     resetPassword: (userId: string) => `/Users/${userId}/reset-password`,
     softDelete: (userId: string) => `/Users/${userId}/soft-delete`,
@@ -42,11 +42,11 @@ export const API_ENDPOINTS = {
     update: (id: string) => `/Departments/${id}`,
     delete: (id: string) => `/Departments/${id}`,
   },
-  positions: {
-    base: "/Positions",
-    byId: (id: number) => `/Positions/${id}`,
-    update: (id: number) => `/Positions/${id}`,
-    delete: (id: number) => `/Positions/${id}`,
+  EmployeeLevel: {
+    base: "/EmployeeLevel",
+    byId: (id: number) => `/EmployeeLevel/${id}`,
+    update: (id: number) => `/EmployeeLevel/${id}`,
+    delete: (id: number) => `/EmployeeLevel/${id}`,
   },
   courses: {
     base: "/Courses",
@@ -72,6 +72,8 @@ export const API_ENDPOINTS = {
     create: (courseId: string) => `/courses/${courseId}/tests/create`,
     getById: (courseId: string, testId: number) =>
       `/courses/${courseId}/tests/${testId}`,
+    getNoAnswer: (courseId: string, testId: number) =>
+      `/courses/${courseId}/tests/no-answer/${testId}`,
     update: (courseId: string, testId: number) =>
       `/courses/${courseId}/tests/update/${testId}`,
     delete: (courseId: string, testId: number) =>

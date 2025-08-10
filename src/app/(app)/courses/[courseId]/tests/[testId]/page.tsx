@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useParams, useRouter } from "next/navigation";
@@ -38,17 +37,33 @@ import {
   CheckSquare,
   Check,
 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
 import { testsService } from "@/lib/services/modern/tests.service";
 import { useToast } from "@/components/ui/use-toast";
 import { mapApiTestToUiTest } from "@/lib/mappers/test.mapper";
+import { useAuth } from "@/hooks/useAuth";
 import type {
   Test,
   Question,
   TestSubmissionResponse,
   DetailedTestResult,
   SelectedAnswer,
+  QuestionNoAnswer,
 } from "@/lib/types/test.types";
+import {
+  useSubmitTest,
+  useTestResult,
+  useTestQuestionsNoAnswer,
+} from "@/hooks/use-tests";
+import { LoadingButton } from "@/components/ui/loading";
 
 const OPTION_LABELS = ["A", "B", "C", "D", "E", "F", "G", "H"];
 
@@ -56,68 +71,94 @@ export default function TestDetailPage() {
   const params = useParams();
   const router = useRouter();
   const { toast } = useToast();
+  const { user } = useAuth();
   const courseId = params.courseId as string;
-  const testId = params.testId as string;
+  const testId = parseInt(params.testId as string, 10);
 
   const [testData, setTestData] = useState<Test | null>(null);
-  const [result, setResult] = useState<DetailedTestResult | null>(null);
+  const [secureQuestions, setSecureQuestions] = useState<QuestionNoAnswer[]>(
+    []
+  );
   const [answers, setAnswers] = useState<Record<string, string[]>>({});
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [isStarted, setIsStarted] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isReviewMode, setIsReviewMode] = useState(false); // Phân biệt giữa làm bài và xem lại
   const [showReview, setShowReview] = useState(false);
   const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
   const [startedAt, setStartedAt] = useState<string | null>(null);
+  const [showSubmitConfirmation, setShowSubmitConfirmation] = useState(false);
 
-  // Fetch test data
+  // --- Data Fetching Hooks ---
+  // Fetch test basic info (without questions with answers)
   const {
     data: fetchedTest,
     isLoading: isLoadingTest,
     error: testError,
     refetch: refetchTest,
   } = useQuery({
-    queryKey: ["test", courseId, testId],
+    queryKey: ["test-info", courseId, testId],
     queryFn: async () => {
-      const apiTest = await testsService.getTestById(
-        courseId,
-        parseInt(testId, 10)
+      console.log(
+        `♻️ [TestPage] Fetching test basic info for test ID: ${testId}`
       );
-      return mapApiTestToUiTest(apiTest);
+      // Only fetch basic test info from the tests list API
+      const tests = await testsService.getTests(courseId);
+      const test = tests.find((t) => t.id === testId);
+      if (!test) throw new Error("Test not found");
+      return mapApiTestToUiTest(test);
     },
     enabled: !!courseId && !!testId,
-    staleTime: Infinity,
+    staleTime: 5 * 60 * 1000,
   });
 
-  // Fetch previous result if exists
+  // Fetch secure questions (no answers) only when test starts
   const {
-    data: previousResult,
+    data: secureQuestionsData,
+    isLoading: isLoadingQuestions,
+    error: questionsError,
+  } = useTestQuestionsNoAnswer(courseId, testId, isStarted);
+
+  const {
+    data: result,
     isLoading: isLoadingResult,
     refetch: refetchResult,
-  } = useQuery({
-    queryKey: ["testResult", courseId, testId],
-    queryFn: () => testsService.getTestResult(courseId, parseInt(testId, 10)),
-    enabled: !!courseId && !!testId && !isStarted,
-    retry: false,
-  });
+  } = useTestResult(courseId, testId, !isStarted); // Fetch result only when not taking the test
 
+  const submitTestMutation = useSubmitTest(courseId, testId);
+
+  // --- Effects ---
   useEffect(() => {
-    // Đảm bảo isDone từ backend được gán vào testData
     if (fetchedTest) {
-      setTestData((prev) => ({
-        ...fetchedTest,
-        isDone: fetchedTest.isDone,
-      }));
-    }
-  }, [fetchedTest]);
-
-  useEffect(() => {
-    if (previousResult) {
-      setResult(previousResult);
-      if (fetchedTest) {
-        setTestData((prev) => ({ ...fetchedTest, isDone: true }));
+      console.log(
+        "⚙️ [TestPage] Setting test basic info from fetch:",
+        fetchedTest
+      );
+      setTestData(fetchedTest);
+      // Check if the user has already completed this test
+      if (fetchedTest.isDone) {
+        console.log(
+          "✅ [TestPage] Test is already marked as done. Fetching results."
+        );
+        refetchResult();
       }
     }
-  }, [previousResult, fetchedTest]);
+  }, [fetchedTest, refetchResult]);
+
+  useEffect(() => {
+    if (secureQuestionsData && isStarted) {
+      console.log(
+        "⚙️ [TestPage] Setting secure questions data:",
+        secureQuestionsData
+      );
+      setSecureQuestions(secureQuestionsData);
+    }
+  }, [secureQuestionsData, isStarted]);
+
+  useEffect(() => {
+    if (result) {
+      console.log("⚙️ [TestPage] Setting result data:", result);
+    }
+  }, [result]);
 
   // Timer
   useEffect(() => {
@@ -140,6 +181,29 @@ export default function TestDetailPage() {
     return () => clearInterval(timer);
   }, [isStarted, result, testData, timeRemaining]);
 
+  // --- Computed Properties ---
+  // Use secure questions when taking test, otherwise use empty array
+  const currentQuestions = useMemo(() => {
+    if (isStarted && secureQuestions.length > 0) {
+      // Convert QuestionNoAnswer to Question format for rendering
+      return secureQuestions.map((q) => ({
+        id: q.id,
+        text: q.questionText,
+        options: [q.a, q.b, q.c, q.d].filter((opt) => opt && opt.trim() !== ""),
+        correctAnswerIndex: 0, // Not available in secure mode
+        correctAnswerIndexes: [], // Not available in secure mode
+        explanation: "", // Not available in secure mode
+        position: q.position,
+      }));
+    }
+    return [];
+  }, [isStarted, secureQuestions]);
+
+  const answeredQuestionsCount = Object.keys(answers).filter(
+    (qId) => answers[qId] && answers[qId].length > 0
+  ).length;
+
+  // --- Handlers ---
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
@@ -149,30 +213,29 @@ export default function TestDetailPage() {
   };
 
   const handleStartTest = () => {
-    setResult(null);
+    console.log("▶️ [TestPage] Starting test and fetching secure questions...");
     setAnswers({});
+    setSecureQuestions([]);
     setCurrentQuestionIndex(0);
     setShowReview(false);
     setStartedAt(new Date().toISOString());
-    setIsStarted(true);
+    setIsStarted(true); // This will trigger useTestQuestionsNoAnswer
   };
 
   const handleSelect = (questionId: string, optionLetter: string) => {
     if (result) return;
-    const question = testData?.questions.find(
+    const question = secureQuestions.find(
       (q) => q.id.toString() === questionId
     );
     if (!question) return;
 
     setAnswers((prev) => {
       const currentAnswers = prev[questionId] || [];
-      const questionType =
-        (question.correctAnswerIndexes?.length ?? 0) > 1 ? 2 : 1;
+      // Determine question type: 1 = single choice, 2 = multiple choice
+      const questionType = question.questionType;
       if (questionType === 1) {
-        // Single choice
         return { ...prev, [questionId]: [optionLetter] };
       } else {
-        // Multiple choice
         const newAnswers = currentAnswers.includes(optionLetter)
           ? currentAnswers.filter((ans) => ans !== optionLetter)
           : [...currentAnswers, optionLetter];
@@ -182,8 +245,9 @@ export default function TestDetailPage() {
   };
 
   const handleSubmit = async () => {
-    if (isSubmitting || !startedAt) return;
-    setIsSubmitting(true);
+    if (submitTestMutation.isPending || !startedAt) return;
+    setShowSubmitConfirmation(false); // Close confirmation dialog
+    console.log("📤 [TestPage] Submitting test...");
 
     const submissionAnswers: SelectedAnswer[] = Object.entries(answers).map(
       ([questionId, selectedOptions]) => ({
@@ -192,50 +256,32 @@ export default function TestDetailPage() {
       })
     );
 
-    try {
-      const response = await testsService.submitTest(
-        courseId,
-        parseInt(testId),
-        submissionAnswers,
-        startedAt
-      );
-
-      // Immediately fetch the new result
-      const detailedResult = await testsService.getTestResult(
-        courseId,
-        parseInt(testId)
-      );
-
-      setResult(detailedResult);
-      setIsStarted(false);
-      setTestData((prev) => (prev ? { ...prev, isDone: true } : prev));
-      if (typeof refetchTest === "function") {
-        refetchTest();
+    submitTestMutation.mutate(
+      { answers: submissionAnswers, startedAt },
+      {
+        onSuccess: () => {
+          console.log(
+            "✅ [TestPage] Submission successful, UI should now show results."
+          );
+          setIsStarted(false); // End the test-taking state
+        },
+        onError: (error) => {
+          console.error("❌ [TestPage] Submission failed in component:", error);
+        },
       }
-    } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Lỗi nộp bài",
-        description: "Không thể gửi kết quả. Vui lòng thử lại.",
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
+    );
   };
 
   const goToQuestion = (index: number) => {
-    if (index >= 0 && index < (testData?.questions.length || 0)) {
+    if (index >= 0 && index < currentQuestions.length) {
       setCurrentQuestionIndex(index);
       setShowReview(false);
     }
   };
 
-  const answeredQuestionsCount = Object.keys(answers).filter(
-    (qId) => answers[qId] && answers[qId].length > 0
-  ).length;
-
-  const progressPercentage = testData?.questions.length
-    ? (answeredQuestionsCount / testData.questions.length) * 100
+  // --- Render Logic ---
+  const progressPercentage = currentQuestions.length
+    ? (answeredQuestionsCount / currentQuestions.length) * 100
     : 0;
 
   if (isLoadingTest || isLoadingResult) {
@@ -264,8 +310,11 @@ export default function TestDetailPage() {
     );
   }
 
+  // --- Render States ---
   if (!isStarted) {
-    if (result || testData.isDone) {
+    // Has a result (already took the test)
+    if (result) {
+      console.log("🎨 [TestPage] Rendering result screen.");
       return (
         <div className="min-h-screen flex flex-col items-center justify-center p-4">
           <Card className="max-w-2xl w-full">
@@ -277,27 +326,28 @@ export default function TestDetailPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              {result && (
-                <div className="mt-6 border-t pt-4 text-center">
-                  <h3 className="font-semibold mb-2">Kết quả lần làm trước</h3>
-                  <p
-                    className={`text-xl font-bold ${
-                      result.isPassed ? "text-green-600" : "text-red-600"
-                    }`}
-                  >
-                    {result.score.toFixed(1)}% -{" "}
-                    {result.isPassed ? "ĐẠT" : "CHƯA ĐẠT"}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    Số câu đúng: {result.correctAnswerCount}/
-                    {testData.countQuestion}
-                  </p>
-                </div>
-              )}
+              <div className="mt-6 border-t pt-4 text-center">
+                <h3 className="font-semibold mb-2">Kết quả lần làm trước</h3>
+                <p
+                  className={`text-xl font-bold ${
+                    result.isPassed ? "text-green-600" : "text-red-600"
+                  }`}
+                >
+                  {result.score.toFixed(1)}% -{" "}
+                  {result.isPassed ? "ĐẠT" : "CHƯA ĐẠT"}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Số câu đúng: {result.correctAnswerCount}/
+                  {testData.countQuestion}
+                </p>
+              </div>
             </CardContent>
             <CardFooter className="flex flex-col sm:flex-row gap-2">
               <Button
-                onClick={() => setIsStarted(true)}
+                onClick={() => {
+                  setIsStarted(true);
+                  setIsReviewMode(true); // Đánh dấu là chế độ xem lại
+                }}
                 className="w-full flex-1"
                 size="lg"
               >
@@ -316,13 +366,8 @@ export default function TestDetailPage() {
       );
     }
 
-    if (isSubmitting) {
-      return (
-        <div className="flex flex-col items-center justify-center min-h-screen p-4">
-          <Loader2 className="w-12 h-12 animate-spin text-primary" />
-        </div>
-      );
-    }
+    // Initial start screen
+    console.log("🎨 [TestPage] Rendering start screen.");
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-4">
         <Card className="max-w-2xl w-full">
@@ -340,7 +385,7 @@ export default function TestDetailPage() {
                 <div>
                   <p className="font-medium">Số câu hỏi</p>
                   <p className="text-sm text-muted-foreground">
-                    {testData.questions.length} câu
+                    {testData.countQuestion} câu
                   </p>
                 </div>
               </div>
@@ -397,6 +442,7 @@ export default function TestDetailPage() {
     );
   }
 
+  // --- Render Test Taking UI ---
   const renderHeader = () => (
     <div className="bg-background border-b shadow-sm sticky top-0 z-40">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
@@ -416,7 +462,8 @@ export default function TestDetailPage() {
           )}
           <div className="text-right">
             <p className="font-medium">
-              {answeredQuestionsCount}/{testData.questions.length}
+              {answeredQuestionsCount}/
+              {currentQuestions.length || testData?.countQuestion || 0}
             </p>
             <p className="text-xs text-muted-foreground">đã trả lời</p>
           </div>
@@ -434,7 +481,7 @@ export default function TestDetailPage() {
       <CardContent>
         <ScrollArea className="h-64">
           <div className="grid grid-cols-4 gap-2">
-            {testData.questions.map((q, idx) => {
+            {currentQuestions.map((q, idx) => {
               const isAnswered =
                 answers[q.id.toString()] && answers[q.id.toString()].length > 0;
               return (
@@ -463,10 +510,47 @@ export default function TestDetailPage() {
   );
 
   const renderCurrentQuestion = () => {
-    const q = testData.questions[currentQuestionIndex];
+    if (isLoadingQuestions) {
+      return (
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+              <p className="mt-2 text-muted-foreground">Đang tải câu hỏi...</p>
+            </div>
+          </CardContent>
+        </Card>
+      );
+    }
+
+    if (questionsError) {
+      return (
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-center py-8">
+              <AlertTriangle className="h-8 w-8 text-destructive mx-auto mb-2" />
+              <p className="text-destructive">
+                Lỗi tải câu hỏi. Vui lòng thử lại.
+              </p>
+              <Button
+                onClick={() => window.location.reload()}
+                className="mt-2"
+                variant="outline"
+              >
+                Tải lại trang
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      );
+    }
+
+    const q = currentQuestions[currentQuestionIndex];
     if (!q) return null;
     const selectedOptions = answers[q.id.toString()] || [];
-    const questionType = (q.correctAnswerIndexes?.length ?? 0) > 1 ? 2 : 1;
+    // Get questionType from secure questions data
+    const secureQ = secureQuestions.find((sq) => sq.id === q.id);
+    const questionType = secureQ?.questionType || 1;
     return (
       <Card>
         <CardHeader>
@@ -539,7 +623,7 @@ export default function TestDetailPage() {
             <ArrowLeft className="h-4 w-4 mr-2" />
             Câu trước
           </Button>
-          {currentQuestionIndex === testData.questions.length - 1 ? (
+          {currentQuestionIndex === currentQuestions.length - 1 ? (
             <Button onClick={() => setShowReview(true)}>
               <Eye className="h-4 w-4 mr-2" />
               Xem lại & Nộp bài
@@ -568,7 +652,6 @@ export default function TestDetailPage() {
         </p>
       </CardHeader>
       <CardContent className="space-y-6">
-        {/* Summary Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div className="text-center p-4 bg-primary/10 rounded-lg">
             <div className="text-2xl font-bold text-primary">
@@ -578,15 +661,13 @@ export default function TestDetailPage() {
           </div>
           <div className="text-center p-4 bg-muted/50 rounded-lg">
             <div className="text-2xl font-bold text-muted-foreground">
-              {testData.questions
-                ? testData.questions.length - answeredQuestionsCount
-                : 0}
+              {currentQuestions.length - answeredQuestionsCount}
             </div>
             <div className="text-xs text-muted-foreground">Chưa trả lời</div>
           </div>
           <div className="text-center p-4 bg-accent/10 rounded-lg">
             <div className="text-2xl font-bold text-accent-foreground">
-              {testData.questions ? testData.questions.length : 0}
+              {currentQuestions.length}
             </div>
             <div className="text-xs text-muted-foreground">Tổng câu hỏi</div>
           </div>
@@ -597,16 +678,13 @@ export default function TestDetailPage() {
             <div className="text-xs text-muted-foreground">Hoàn thành</div>
           </div>
         </div>
-
         <Progress value={progressPercentage} className="h-3" />
-
-        {/* Question Grid */}
         <div>
           <h4 className="font-medium mb-4">
             Danh sách câu hỏi (nhấn để chỉnh sửa)
           </h4>
           <div className="grid grid-cols-8 sm:grid-cols-10 md:grid-cols-12 gap-2">
-            {(testData.questions || []).map((q, idx) => {
+            {currentQuestions.map((q, idx) => {
               const isAnswered =
                 answers[String(q.id)] && answers[String(q.id)].length > 0;
 
@@ -628,9 +706,7 @@ export default function TestDetailPage() {
             })}
           </div>
         </div>
-
-        {/* Warning for unanswered questions */}
-        {answeredQuestionsCount < (testData.questions?.length || 0) && (
+        {answeredQuestionsCount < currentQuestions.length && (
           <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
             <div className="flex items-start space-x-3">
               <AlertTriangle className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" />
@@ -638,15 +714,13 @@ export default function TestDetailPage() {
                 <h4 className="font-medium text-amber-800">Cảnh báo</h4>
                 <p className="text-sm text-amber-700 mt-1">
                   Bạn chưa trả lời{" "}
-                  {(testData.questions?.length || 0) - answeredQuestionsCount}{" "}
-                  câu hỏi. Các câu chưa trả lời sẽ được tính là sai.
+                  {currentQuestions.length - answeredQuestionsCount} câu hỏi.
+                  Các câu chưa trả lời sẽ được tính là sai.
                 </p>
               </div>
             </div>
           </div>
         )}
-
-        {/* Submit Confirmation */}
         <div className="bg-muted/30 border rounded-lg p-4">
           <h4 className="font-medium mb-2">Xác nhận nộp bài</h4>
           <p className="text-sm text-muted-foreground mb-4">
@@ -662,24 +736,16 @@ export default function TestDetailPage() {
               <ArrowLeft className="h-4 w-4" />
               <span>Quay lại làm bài</span>
             </Button>
-            <Button
-              onClick={() => {
-                console.log("🎯 Submit button clicked!");
-                handleSubmit();
-              }}
+            <LoadingButton
+              onClick={() => setShowSubmitConfirmation(true)}
               className="flex items-center space-x-2 bg-green-600 hover:bg-green-700"
               size="lg"
-              disabled={isSubmitting}
+              isLoading={submitTestMutation.isPending}
+              disabled={submitTestMutation.isPending}
             >
-              {isSubmitting ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : (
-                <Send className="h-4 w-4 mr-2" />
-              )}
-              <span>
-                {isSubmitting ? "Đang nộp bài..." : "Nộp bài kiểm tra"}
-              </span>
-            </Button>
+              <Send className="h-4 w-4 mr-2" />
+              <span>Nộp bài kiểm tra</span>
+            </LoadingButton>
           </div>
         </div>
       </CardContent>
@@ -721,8 +787,7 @@ export default function TestDetailPage() {
             <p className="text-muted-foreground mt-1">
               Điểm của bạn:{" "}
               <span className="font-semibold">{result.score.toFixed(1)}%</span>{" "}
-              ({result.correctAnswerCount}/{testData.countQuestion} câu
-              đúng)
+              ({result.correctAnswerCount}/{testData.countQuestion} câu đúng)
             </p>
           </CardContent>
         </Card>
@@ -808,24 +873,55 @@ export default function TestDetailPage() {
   };
 
   return (
-    <div className="min-h-screen bg-muted/40">
-      {!result && !testData.isDone && renderHeader()}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        {result || testData.isDone ? (
-          renderResults()
-        ) : showReview ? (
-          renderReview()
-        ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-            <div className="lg:col-span-1 order-2 lg:order-1">
-              {renderQuestionNavigation()}
+    <>
+      <div className="min-h-screen bg-muted/40">
+        {isStarted && !result && renderHeader()}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          {result ? (
+            renderResults()
+          ) : showReview ? (
+            renderReview()
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+              <div className="lg:col-span-1 order-2 lg:order-1">
+                {renderQuestionNavigation()}
+              </div>
+              <div className="lg:col-span-3 order-1 lg:order-2">
+                {renderCurrentQuestion()}
+              </div>
             </div>
-            <div className="lg:col-span-3 order-1 lg:order-2">
-              {renderCurrentQuestion()}
-            </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
-    </div>
+      <Dialog
+        open={showSubmitConfirmation}
+        onOpenChange={setShowSubmitConfirmation}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Xác nhận nộp bài</DialogTitle>
+            <DialogDescription>
+              Bạn có chắc chắn muốn nộp bài kiểm tra này không? Bạn sẽ không thể
+              thay đổi câu trả lời sau khi nộp.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowSubmitConfirmation(false)}
+              disabled={submitTestMutation.isPending}
+            >
+              Hủy
+            </Button>
+            <LoadingButton
+              onClick={handleSubmit}
+              isLoading={submitTestMutation.isPending}
+            >
+              Nộp bài
+            </LoadingButton>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

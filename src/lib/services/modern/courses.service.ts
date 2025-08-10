@@ -1,4 +1,3 @@
-
 "use client";
 
 import { BaseService } from "@/lib/core";
@@ -33,12 +32,16 @@ export class CoursesService extends BaseService<
     if (params.SortField) backendParams.SortField = params.SortField;
     if (params.SortType) backendParams.SortType = params.SortType;
     if (params.keyword) backendParams.keyword = params.keyword;
-    if (params.statusIds) backendParams.statusIds = params.statusIds;
-    if (params.departmentIds) backendParams.departmentIds = params.departmentIds;
-    if (params.positionIds) backendParams.positionIds = params.positionIds;
+    if (params.statusIds) backendParams.StatusIds = params.statusIds;
+    if (params.departmentIds) {
+      backendParams.DepartmentIds = params.departmentIds; // Use correct parameter name with capital D
+    }
+    if (params.eLevelIds) backendParams.ELevelIds = params.eLevelIds;
     if (params.publicOnly) backendParams.publicOnly = params.publicOnly;
-    
-    return this.get<PaginatedResponse<CourseApiResponse>>(this.endpoint, {
+
+    // Use search endpoint instead of base endpoint
+    const endpoint = API_CONFIG.endpoints.courses.search;
+    return this.get<PaginatedResponse<CourseApiResponse>>(endpoint, {
       params: backendParams,
     });
   }
@@ -125,9 +128,11 @@ export class CoursesService extends BaseService<
       API_CONFIG.endpoints.courses.progressDetail(courseId, userId)
     );
   }
-  
+
   async getCompletedCourses(): Promise<PaginatedResponse<CompletedCourseDto>> {
-    return this.get<PaginatedResponse<CompletedCourseDto>>(API_CONFIG.endpoints.courses.completedEnrollCourses);
+    return this.get<PaginatedResponse<CompletedCourseDto>>(
+      API_CONFIG.endpoints.courses.completedEnrollCourses
+    );
   }
 
   async getCompletedCoursesCount(): Promise<number> {
@@ -135,7 +140,8 @@ export class CoursesService extends BaseService<
   }
 
   async getCompletedLessonsCountByCourseId(courseId: string): Promise<number> {
-    const endpoint = API_CONFIG.endpoints.courses.countCompletedLessons(courseId);
+    const endpoint =
+      API_CONFIG.endpoints.courses.countCompletedLessons(courseId);
     return this.get<number>(endpoint);
   }
 }

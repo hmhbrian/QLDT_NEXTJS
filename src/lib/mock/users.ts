@@ -1,4 +1,3 @@
-
 import type { User } from "../types/user.types";
 
 export const mockUsers: User[] = [
@@ -16,16 +15,10 @@ export const mockUsers: User[] = [
     modifiedAt: new Date().toISOString(),
     userStatus: { id: 2, name: "Đang hoạt động" },
     department: {
-      departmentId: "d1",
-      name: "IT Administration",
-      code: "IT_ADMIN",
-      level: 1,
-      path: ["IT Administration"],
-      status: { id: 1, name: "Active" },
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+      departmentId: 1,
+      departmentName: "IT Administration",
     },
-    position: { positionId: 1, positionName: "System Administrator" },
+    employeeLevel: { eLevelId: 1, eLevelName: "System Administrator" },
   },
   {
     id: "2",
@@ -41,16 +34,10 @@ export const mockUsers: User[] = [
     modifiedAt: new Date().toISOString(),
     userStatus: { id: 2, name: "Đang hoạt động" },
     department: {
-      departmentId: "d2",
-      name: "Human Resources",
-      code: "HR",
-      level: 1,
-      path: ["Human Resources"],
-      status: { id: 1, name: "Active" },
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+      departmentId: 2,
+      departmentName: "Human Resources",
     },
-    position: { positionId: 2, positionName: "HR Manager" },
+    employeeLevel: { eLevelId: 2, eLevelName: "HR Manager" },
   },
   {
     id: "3",
@@ -66,20 +53,12 @@ export const mockUsers: User[] = [
     modifiedAt: new Date().toISOString(),
     userStatus: { id: 3, name: "Đang làm việc" },
     department: {
-      departmentId: "d1",
-      name: "IT",
-      code: "IT",
-      level: 1,
-      path: ["IT"],
-      status: { id: 1, name: "Active" },
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+      departmentId: 1,
+      departmentName: "IT Administration",
     },
-    position: { positionId: 3, positionName: "Intern" },
-    employeeId: "EMP001",
+    employeeLevel: { eLevelId: 1, eLevelName: "System Administrator" },
   },
 ];
-
 
 export const getUserByEmailAndPassword = (
   email: string,

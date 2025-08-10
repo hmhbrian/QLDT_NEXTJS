@@ -1,21 +1,32 @@
-import { useQuery } from "@tanstack/react-query";
-import { positionsService } from "@/lib/services";
-import type { Position } from "@/lib/types/user.types";
+export interface Position {
+  id: string;
+  name: string;
+}
 
-export const POSITIONS_QUERY_KEY = "positions";
+// Constants based on backend PositionNames
+export const POSITIONS: Position[] = [
+  {
+    id: "senior-manager",
+    name: "Quản lý cấp cao",
+  },
+  {
+    id: "middle-manager",
+    name: "Quản lý cấp trung",
+  },
+  {
+    id: "employee",
+    name: "Nhân viên",
+  },
+  {
+    id: "intern",
+    name: "Thực tập sinh",
+  },
+];
 
-export const usePositions = () => {
-  const { data, error, isLoading } = useQuery<Position[], Error>({
-    queryKey: [POSITIONS_QUERY_KEY],
-    queryFn: () => positionsService.getPositions(),
-    staleTime: 10 * 60 * 1000, // Cache for 10 minutes
-    refetchOnWindowFocus: false,
-    refetchOnMount: false,
-  });
-
+export function usePositions() {
   return {
-    positions: data ?? [],
-    loading: isLoading,
-    error,
+    positions: POSITIONS,
+    isLoading: false,
+    error: null,
   };
-};
+}

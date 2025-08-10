@@ -21,7 +21,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Checkbox } from "@/components/ui/checkbox";
 import type { User } from "@/lib/types/user.types";
 import type { DepartmentInfo } from "@/lib/types/department.types";
-import type { Position } from "@/lib/types/user.types";
+import type { EmployeeLevel } from "@/lib/types/user.types";
 import { cn } from "@/lib/utils";
 import { getLevelBadgeColor, getStatusColor } from "@/lib/helpers";
 
@@ -110,7 +110,7 @@ export const getColumns = (
       const department = row.original.department;
       console.log("🔍 Department data:", department);
 
-      if (!department) return "N/A";
+      if (!department) return "Không có";
 
       // Handle both object {id, name, departmentName} and string
       if (typeof department === "string") return department;
@@ -128,32 +128,35 @@ export const getColumns = (
     },
   },
   {
-    accessorKey: "position",
+    accessorKey: "employeeLevel",
     header: "Cấp bậc",
     cell: ({ row }) => {
-      const position = row.original.position;
-      console.log("🔍 Position data:", position);
+      const employeeLevel = row.original.employeeLevel;
+      console.log("🔍 EmployeeLevel data:", employeeLevel);
 
-      if (!position) return "N/A";
+      if (!employeeLevel) return "Không có";
 
-      // Handle both object {id, name, positionName} and string
-      let positionName: string = "Không xác định";
-      if (typeof position === "string") {
-        positionName = position;
-      } else if (typeof position === "object" && position) {
+      // Handle both object {id, name, eLevelName} and string
+      let eLevelName: string = "Không xác định";
+      if (typeof employeeLevel === "string") {
+        eLevelName = employeeLevel;
+      } else if (typeof employeeLevel === "object" && employeeLevel) {
         if (
-          "positionName" in position &&
-          typeof position.positionName === "string"
+          "eLevelName" in employeeLevel &&
+          typeof employeeLevel.eLevelName === "string"
         ) {
-          positionName = position.positionName;
-        } else if ("name" in position && typeof position.name === "string") {
-          positionName = position.name;
+          eLevelName = employeeLevel.eLevelName;
+        } else if (
+          "name" in employeeLevel &&
+          typeof employeeLevel.name === "string"
+        ) {
+          eLevelName = employeeLevel.name;
         }
       }
 
       return (
-        <Badge className={cn(getLevelBadgeColor(positionName))}>
-          {positionName}
+        <Badge className={cn(getLevelBadgeColor(eLevelName))}>
+          {eLevelName}
         </Badge>
       );
     },
@@ -162,7 +165,7 @@ export const getColumns = (
     accessorKey: "userStatus",
     header: "Trạng thái",
     cell: ({ row }) => {
-      const statusName = row.original.userStatus?.name || "N/A";
+      const statusName = row.original.userStatus?.name || "Không có";
       return (
         <Badge variant="outline" className={cn(getStatusColor(statusName))}>
           {statusName}
@@ -198,9 +201,9 @@ export const getColumns = (
               <DropdownMenuItem onClick={() => handleEdit(trainee)}>
                 <Pencil className="mr-2 h-4 w-4" /> Sửa Thông tin
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleManageCourses(trainee)}>
+              {/* <DropdownMenuItem onClick={() => handleManageCourses(trainee)}>
                 <BookOpen className="mr-2 h-4 w-4" /> Quản lý Khóa học
-              </DropdownMenuItem>
+              </DropdownMenuItem> */}
               <DropdownMenuItem
                 className="text-destructive focus:text-destructive"
                 onClick={() => handleDelete(trainee)}

@@ -1,4 +1,3 @@
-
 "use client";
 
 import { ColumnDef } from "@tanstack/react-table";
@@ -22,7 +21,7 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import type { Course } from "@/lib/types/course.types";
 import { DepartmentInfo } from "@/lib/types/department.types";
-import { Position } from "@/lib/types/user.types";
+import { EmployeeLevel } from "@/lib/types/user.types";
 import { getStatusBadgeVariant, isRegistrationOpen } from "@/lib/helpers";
 import { formatDateVN } from "@/lib/utils/date.utils";
 import {
@@ -105,7 +104,7 @@ const baseColumns = (
 
 const sharedInfoColumns = (
   departments: DepartmentInfo[],
-  positions: Position[]
+  EmployeeLevel: EmployeeLevel[]
 ): ColumnDef<Course>[] => [
   {
     accessorKey: "courseCode",
@@ -116,15 +115,28 @@ const sharedInfoColumns = (
     header: "Phòng ban",
     size: 160,
     cell: ({ row }) => {
-      const departmentIds = row.original.department;
-      if (!departmentIds || departmentIds.length === 0) return "N/A";
+      // Handle both new format (departments array) and legacy format (department array)
+      const departmentsData = row.original.departments || [];
+      const departmentIds = row.original.department || [];
 
-      const departmentNames = departmentIds.map((id) => {
-        const foundDept = departments.find(
-          (d) => String(d.departmentId) === String(id)
+      let departmentNames: string[] = [];
+
+      if (departmentsData.length > 0) {
+        // New format: departments is array of objects with departmentId and departmentName
+        departmentNames = departmentsData.map(
+          (dept) => dept.departmentName || `Dept-${dept.departmentId}`
         );
-        return foundDept ? foundDept.name : `Dept-${id}`;
-      });
+      } else if (departmentIds.length > 0) {
+        // Legacy format: department is array of IDs, need to lookup in departments array
+        departmentNames = departmentIds.map((id) => {
+          const foundDept = departments.find(
+            (d) => String(d.departmentId) === String(id)
+          );
+          return foundDept ? foundDept.name : `Dept-${id}`;
+        });
+      }
+
+      if (departmentNames.length === 0) return "N/A";
 
       const displayText =
         departmentNames.length > 1
@@ -154,20 +166,34 @@ const sharedInfoColumns = (
     header: "Cấp độ",
     size: 120,
     cell: ({ row }) => {
-      const levelIds = row.original.level;
-      if (!levelIds || levelIds.length === 0) return "N/A";
+      // Handle both new format (eLevels array) and legacy format (level array)
+      const eLevelsData = row.original.eLevels || [];
+      const levelIds = row.original.level || [];
 
-      const levelNames = levelIds.map((id) => {
-        const foundLevel = positions.find(
-          (p) => String(p.positionId) === String(id)
+      let levelNames: string[] = [];
+
+      if (eLevelsData.length > 0) {
+        // New format: eLevels is array of objects with eLevelId and eLevelName
+        levelNames = eLevelsData.map(
+          (level) => level.eLevelName || `Level-${level.eLevelId}`
         );
-        return foundLevel ? foundLevel.positionName : `Level-${id}`;
-      });
+      } else if (levelIds.length > 0) {
+        // Legacy format: level is array of IDs, need to lookup in EmployeeLevel array
+        levelNames = levelIds.map((id) => {
+          const foundLevel = EmployeeLevel.find(
+            (p) => String(p.eLevelId) === String(id)
+          );
+          return foundLevel ? foundLevel.eLevelName : `Level-${id}`;
+        });
+      }
+
+      if (levelNames.length === 0) return "N/A";
 
       const displayText =
         levelNames.length > 1
           ? `${levelNames[0]} +${levelNames.length - 1}`
           : levelNames.join(", ");
+
       return (
         <TooltipProvider>
           <Tooltip>
@@ -204,7 +230,10 @@ const sharedInfoColumns = (
     cell: ({ row }) => {
       const status = row.original.status;
       const statusName =
-        typeof status === "object" && status && "name" in status && typeof status.name === "string"
+        typeof status === "object" &&
+        status &&
+        "name" in status &&
+        typeof status.name === "string"
           ? status.name
           : typeof status === "string"
           ? status
@@ -274,7 +303,8 @@ const adminInfoColumns = (): ColumnDef<Course>[] => [
               </p>
               {course.modifiedAt && (
                 <p>
-                  Ngày sửa: {formatDateVN(course.modifiedAt, "dd/MM/yyyy HH:mm")}
+                  Ngày sửa:{" "}
+                  {formatDateVN(course.modifiedAt, "dd/MM/yyyy HH:mm")}
                 </p>
               )}
             </TooltipContent>
@@ -308,11 +338,15 @@ const adminActionsColumn = (actions: AdminActions): ColumnDef<Course> => ({
             <DropdownMenuItem onClick={() => actions.handleEdit(course.id)}>
               <Pencil className="mr-2 h-4 w-4" /> Chỉnh sửa
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => actions.handleDuplicateCourse(course)}>
+            <DropdownMenuItem
+              onClick={() => actions.handleDuplicateCourse(course)}
+            >
               <Copy className="mr-2 h-4 w-4" /> Nhân bản
             </DropdownMenuItem>
             {course.status !== "Hủy" && (
-              <DropdownMenuItem onClick={() => actions.setArchivingCourse(course)}>
+              <DropdownMenuItem
+                onClick={() => actions.setArchivingCourse(course)}
+              >
                 <Archive className="mr-2 h-4 w-4" /> Lưu trữ
               </DropdownMenuItem>
             )}
@@ -418,7 +452,7 @@ export const getAdminCourseColumns = (
   setDeletingCourse: (course: Course | null) => void,
   canManageCourses: boolean,
   departments: DepartmentInfo[],
-  positions: Position[]
+  EmployeeLevel: EmployeeLevel[]
 ): ColumnDef<Course>[] => {
   const adminActions: AdminActions = {
     handleEdit,
@@ -430,7 +464,7 @@ export const getAdminCourseColumns = (
 
   return [
     ...baseColumns(handleViewDetails),
-    ...sharedInfoColumns(departments, positions),
+    ...sharedInfoColumns(departments, EmployeeLevel),
     ...adminInfoColumns(),
     adminActionsColumn(adminActions),
   ];
@@ -440,10 +474,9 @@ export const getUserCourseColumns = (
   handleViewDetails: (courseId: string) => void,
   actions: UserActions,
   departments: DepartmentInfo[],
-  positions: Position[]
+  EmployeeLevel: EmployeeLevel[]
 ): ColumnDef<Course>[] => [
   ...baseColumns(handleViewDetails),
-  { accessorKey: "category", header: "Danh mục" },
   { accessorKey: "instructor", header: "Giảng viên" },
   {
     accessorKey: "duration",

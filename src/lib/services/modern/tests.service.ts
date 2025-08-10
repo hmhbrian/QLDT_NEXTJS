@@ -1,4 +1,3 @@
-
 "use client";
 
 import { BaseService } from "@/lib/core";
@@ -10,6 +9,7 @@ import type {
   SelectedAnswer,
   TestSubmissionResponse,
   DetailedTestResult,
+  QuestionNoAnswer,
 } from "@/lib/types/test.types";
 
 class TestsService extends BaseService<ApiTest, CreateTestPayload, any> {
@@ -42,6 +42,31 @@ class TestsService extends BaseService<ApiTest, CreateTestPayload, any> {
   async getTestById(courseId: string, testId: number): Promise<ApiTest> {
     const endpoint = API_CONFIG.endpoints.tests.getById(courseId, testId);
     return this.get<ApiTest>(endpoint);
+  }
+
+  /**
+   * Lấy thông tin test không có câu trả lời (bảo mật cho user)
+   * @param courseId ID của khóa học
+   * @param testId ID của test
+   * @returns Promise với danh sách câu hỏi không có câu trả lời
+   */
+  async getTestNoAnswer(
+    courseId: string,
+    testId: number
+  ): Promise<QuestionNoAnswer[]> {
+    const endpoint = API_CONFIG.endpoints.tests.getNoAnswer(courseId, testId);
+    try {
+      const response = await this.get<QuestionNoAnswer[]>(endpoint);
+      console.log(
+        "✅ Test questions (no answers) fetched successfully:",
+        response
+      );
+      return response || [];
+    } catch (error) {
+      console.error("❌ Error fetching test questions (no answers):", error);
+      this.handleError("GET", endpoint, error);
+      throw error;
+    }
   }
 
   async createTest(

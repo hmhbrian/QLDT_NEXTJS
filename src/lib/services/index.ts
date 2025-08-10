@@ -8,7 +8,7 @@ export * from "./modern/auth.service";
 export * from "./modern/courses.service";
 export * from "./modern/certificates.service";
 export * from "./modern/departments.service";
-export * from "./modern/positions.service";
+export * from "./modern/employeeLevel.service";
 export * from "./modern/roles.service";
 export * from "./modern/users.service";
 export * from "./modern/course-attached-files.service";
@@ -18,12 +18,13 @@ export * from "./modern/questions.service";
 export * from "./modern/lesson-progress.service";
 export * from "./modern/report.service";
 export * from "./modern/feedback.service";
+export * from "./modern/dashboard.service";
 
 // Import services to create a single `services` object
 import { authService } from "./modern/auth.service";
 import { coursesService } from "./modern/courses.service";
 import { departmentsService } from "./modern/departments.service";
-import { positionsService } from "./modern/positions.service";
+import { EmployeeLevelService } from "./modern/employeeLevel.service";
 import { rolesService } from "./modern/roles.service";
 import { usersService } from "./modern/users.service";
 import { courseAttachedFilesService } from "./modern/course-attached-files.service";
@@ -33,13 +34,14 @@ import { questionsService } from "./modern/questions.service";
 import { lessonProgressService } from "./modern/lesson-progress.service";
 import { reportService } from "./modern/report.service";
 import { feedbackService } from "./modern/feedback.service";
+import { dashboardService } from "./modern/dashboard.service";
 
 // Export a single object containing all services for convenience
 export const services = {
   auth: authService,
   courses: coursesService,
   departments: departmentsService,
-  positions: positionsService,
+  EmployeeLevel: EmployeeLevelService,
   roles: rolesService,
   users: usersService,
   courseAttachedFiles: courseAttachedFilesService,
@@ -49,6 +51,7 @@ export const services = {
   lessonProgress: lessonProgressService,
   report: reportService,
   feedback: feedbackService,
+  dashboard: dashboardService,
 } as const;
 
 // Default export for backward compatibility or alternative import style

@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useMemo, useCallback } from "react";
@@ -54,7 +53,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useDepartments } from "@/hooks/use-departments";
-import { usePositions } from "@/hooks/use-positions";
+import { useEmployeeLevel } from "@/hooks/use-employeeLevel";
 
 export default function CoursesPage() {
   const { user: currentUser } = useAuth();
@@ -81,8 +80,13 @@ export default function CoursesPage() {
     publicOnly: true,
   });
 
-  const { departments, isLoading: isLoadingDepts } = useDepartments();
-  const { positions, loading: isLoadingPositions } = usePositions();
+  // These hooks are only needed for the admin view columns, not the user view.
+  // They were causing 403 errors for non-admin users.
+  // We will pass empty arrays to the columns and let the rendering logic handle it.
+  // const { departments, isLoading: isLoadingDepts } = useDepartments();
+  // const { EmployeeLevel, loading: isLoadingEmployeeLevel } = useEmployeeLevel();
+  const departments = [];
+  const EmployeeLevel = [];
 
   const { enrolledCourses, isLoadingEnrolled } = useEnrolledCourses(
     !!currentUser && currentUser.role === "HOCVIEN"
@@ -92,9 +96,7 @@ export default function CoursesPage() {
 
   // Compute loading states
   const isLoading = isFetchingCourses || isLoadingEnrolled;
-  const isInitialLoading =
-    (isLoading || isLoadingDepts || isLoadingPositions) &&
-    !publicCourses.length;
+  const isInitialLoading = isLoading && !publicCourses.length;
 
   const enrollMutation = useEnrollCourse();
 
@@ -117,9 +119,10 @@ export default function CoursesPage() {
       if (course.isPublic) {
         return true;
       }
+      // This check might need revision if `course.department` is just an array of IDs
       if (
         currentUser.department &&
-        course.department?.includes(currentUser.department.departmentId)
+        course.department?.includes(String(currentUser.department.departmentId))
       ) {
         return true;
       }
@@ -154,7 +157,7 @@ export default function CoursesPage() {
           currentUserRole: currentUser?.role,
         },
         departments,
-        positions
+        EmployeeLevel
       ),
     [
       currentUser?.id,
@@ -166,7 +169,7 @@ export default function CoursesPage() {
       isCourseAccessible,
       enrolledCourses,
       departments,
-      positions,
+      EmployeeLevel,
     ]
   );
 
@@ -329,7 +332,7 @@ export default function CoursesPage() {
                     <CardHeader className="pt-4 pb-2">
                       <div className="flex items-center gap-2 mb-1">
                         <Badge variant="outline" className="text-xs">
-                          {course.category}
+                          {course.category?.categoryName || "Không có"}
                         </Badge>
                         <Badge
                           variant={
@@ -353,16 +356,16 @@ export default function CoursesPage() {
                         {course.description}
                       </p>
                       <div className="space-y-1 text-xs text-muted-foreground">
-                        <p>
+                        <div>
                           Giảng viên:{" "}
                           <span className="font-medium text-foreground">
                             {course.instructor}
                           </span>
-                        </p>
-                        <p>
+                        </div>
+                        <div>
                           Thời lượng: {course.duration.sessions} buổi (
                           {course.duration.hoursPerSession}h/buổi)
-                        </p>
+                        </div>
                         {course.enrollmentType === "optional" &&
                           course.registrationDeadline && (
                             <div className="flex items-center">

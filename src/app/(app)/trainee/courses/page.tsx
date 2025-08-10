@@ -29,7 +29,7 @@ import {
 import { useAuth } from "@/hooks/useAuth";
 import { useCourses } from "@/hooks/use-courses";
 import { useDepartments } from "@/hooks/use-departments";
-import { usePositions } from "@/hooks/use-positions";
+import { useEmployeeLevel } from "@/hooks/use-employeeLevel";
 import { useCourseStatuses } from "@/hooks/use-statuses";
 import { useDebounce } from "@/hooks/use-debounce";
 import { DataTable } from "@/components/ui/data-table";
@@ -109,7 +109,7 @@ export default function StudentCourseCatalog() {
       params.statusIds = debouncedFilters.statusId;
     }
     if (debouncedFilters.levelId !== "all") {
-      params.positionIds = debouncedFilters.levelId;
+      params.eLevelIds = debouncedFilters.levelId;
     }
     return params;
   }, [debouncedFilters, pagination]);
@@ -122,23 +122,23 @@ export default function StudentCourseCatalog() {
   const { courseStatuses, isLoading: isLoadingStatuses } = useCourseStatuses();
   const { departments: allDepartments, isLoading: isLoadingDepts } =
     useDepartments();
-  const { positions, loading: isLoadingPositions } = usePositions();
+  const { EmployeeLevel, loading: isLoadingEmployeeLevel } = useEmployeeLevel();
 
   const isLoading =
     isLoadingCourses ||
     isLoadingStatuses ||
     isLoadingDepts ||
-    isLoadingPositions;
+    isLoadingEmployeeLevel;
 
   const levelOptions = useMemo(() => {
-    if (!Array.isArray(positions)) return [];
-    return positions
-      .filter((p) => p.positionName && p.positionName !== "N/A")
-      .map((p) => ({
-        value: String(p.positionId),
-        label: p.positionName,
-      }));
-  }, [positions]);
+    if (!Array.isArray(EmployeeLevel)) return [];
+    return EmployeeLevel.filter(
+      (p) => p.eLevelName && p.eLevelName !== "Không có"
+    ).map((p) => ({
+      value: String(p.eLevelId),
+      label: p.eLevelName,
+    }));
+  }, [EmployeeLevel]);
 
   const handleFilterChange = (
     filterName: keyof CourseFilters,
@@ -328,7 +328,7 @@ export default function StudentCourseCatalog() {
                           ? course.status.name
                           : typeof course.status === "string"
                           ? course.status
-                          : "N/A"
+                          : "Không có"
                       }
                     />
                   </div>

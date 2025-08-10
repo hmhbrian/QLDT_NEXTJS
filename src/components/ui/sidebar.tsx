@@ -223,7 +223,7 @@ const Sidebar = React.forwardRef<
               : "group-data-[collapsible=icon]:w-[--sidebar-width-icon]"
           )}
         >
-          <SidebarTrigger />
+          {/* <SidebarTrigger /> */}
         </div>
         <div
           className={cn(

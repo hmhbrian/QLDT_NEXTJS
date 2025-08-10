@@ -50,110 +50,129 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
   const logout = useCallback(() => {
-    console.log("🔒 [AuthProvider] Logging out...");
-    authService.logout(); // This will also clear the auth header in httpClient
-    setUser(null);
-    localStorage.removeItem(API_CONFIG.storage.token);
-    localStorage.removeItem("qldt_user_info"); // Xóa user info
-    cookieManager.removeSecureAuth(); // Clear secure auth cookies
-    queryClient.clear();
-    navigateInstant("/login");
-  }, [queryClient, navigateInstant]);
+    // Clear auth service state
+    authService.logout();
 
-  const refreshUserData = useCallback(async () => {
+    // Clear React state
+    setUser(null);
+    // Clear all storage
+    localStorage.removeItem(API_CONFIG.storage.token);
+    localStorage.removeItem("qldt_user_info");
+
+    // Clear secure cookies
+    cookieManager.removeSecureAuth();
+
+    // Clear HTTP client authorization
+    httpClient.clearAuthorizationHeader();
+    
+    // Clear all React Query cache
+    queryClient.clear();
+    
+    navigateInstant("/login");
+  }, [queryClient, navigateInstant]);  const refreshUserData = useCallback(async () => {
     try {
-      console.log("🔄 [AuthProvider] Refreshing user data...");
+      // Ensure we have a valid token
+      const token = cookieManager.getSecureAuth();
+      if (!token) {
+        logout();
+        return;
+      }
+      
+      // Ensure httpClient has the token
+      if (!httpClient.getAuthorizationToken()) {
+        httpClient.setAuthorizationHeader(token);
+      }
+      
       const currentUserData = await authService.getCurrentUser();
       const mappedUser = mapUserApiToUi(currentUserData);
       setUser(mappedUser);
-      console.log("✅ [AuthProvider] User data refreshed:", mappedUser);
-    } catch (error) {
-      console.warn("Could not refresh user data, logging out.", error);
-      logout();
+    } catch (error: any) {
+      // If it's an auth error, logout
+      if (error.response?.status === 401 || error.response?.status === 403) {
+        logout();
+      }
     }
   }, [logout]);
 
   const initializeAuth = useCallback(async () => {
-    console.log("🔄 [AuthProvider] Initializing authentication...");
-
-    // Check for token from secure cookies first
-    const token = cookieManager.getSecureAuth();
-    console.log(
-      "🔍 [AuthProvider] Token from cookie:",
-      token ? "Found" : "Not found"
-    );
-
-    if (!token) {
-      console.log("ℹ️ [AuthProvider] No auth token found in cookies.");
-      setUser(null);
-      httpClient.clearAuthorizationHeader();
-      setLoadingAuth(false);
-      return;
-    }
-
-    // Set the authorization header with the token
-    httpClient.setAuthorizationHeader(token);
-
     try {
-      const currentUserData = await authService.getCurrentUser();
-      console.log("🔍 [AuthProvider] Raw user data from API:", currentUserData);
+      // Check for token from secure cookies first
+      const token = cookieManager.getSecureAuth();
 
+      if (!token) {
+        setUser(null);
+        httpClient.clearAuthorizationHeader();
+        localStorage.removeItem("qldt_user_info");
+        return;
+      }
+
+      // Set the authorization header with the token
+      httpClient.setAuthorizationHeader(token);
+
+      // Get user data from localStorage (no API call needed)
+      const currentUserData = await authService.getCurrentUser();
       const mappedUser = mapUserApiToUi(currentUserData);
-      console.log("🔍 [AuthProvider] Mapped user data:", mappedUser);
 
       // Validation đơn giản hơn - chỉ cần có ID
       if (!mappedUser || !mappedUser.id) {
-        console.warn(
-          "⚠️ [AuthProvider] Invalid user data received, clearing auth:",
-          mappedUser
-        );
         throw new Error("Invalid user data - missing ID");
       }
 
       setUser(mappedUser);
-      console.log(
-        "✅ [AuthProvider] User authenticated from token:",
-        mappedUser
-      );
-    } catch (error) {
-      console.log(
-        "ℹ️ [AuthProvider] Token is invalid or user data invalid, clearing auth data.",
-        error
-      );
+    } catch (error: any) {
+      // Clear all auth data
       setUser(null);
       cookieManager.removeSecureAuth();
       httpClient.clearAuthorizationHeader();
+      localStorage.removeItem("qldt_user_info");
     } finally {
-      console.log("🏁 [AuthProvider] Authentication check finished.");
+      // ALWAYS set loading to false regardless of success or failure
       setLoadingAuth(false);
     }
   }, []);
 
   useEffect(() => {
     initializeAuth();
-  }, [initializeAuth]);
+
+    // Safety net: force loading to false after 10 seconds to prevent infinite loading
+    const timeoutId = setTimeout(() => {
+      if (loadingAuth) {
+        setLoadingAuth(false);
+      }
+    }, 10000);
+
+    return () => clearTimeout(timeoutId);
+  }, [initializeAuth, loadingAuth]);
+
+  // Listen for authentication errors from httpClient
+  useEffect(() => {
+    const handleAuthError = (event: CustomEvent) => {
+      const { status } = event.detail;
+
+      // Only logout on 401 (unauthorized), not 403 (forbidden/insufficient permissions)
+      if (status === 401) {
+        logout();
+      }
+    };
+
+    if (typeof window !== "undefined") {
+      window.addEventListener("auth-error", handleAuthError as EventListener);
+      return () => {
+        window.removeEventListener(
+          "auth-error",
+          handleAuthError as EventListener
+        );
+      };
+    }
+  }, [logout]);
 
   useEffect(() => {
-    console.log(
-      `🔄 [RedirectEffect] Running... loadingAuth: ${loadingAuth}, user: ${!!user}, pathname: ${pathname}`
-    );
     if (loadingAuth) {
-      console.log("⏳ [RedirectEffect] Waiting for auth to complete...");
       return;
     }
 
     const isAuthPage = pathname === "/login";
-
-    // Đơn giản hóa: chỉ cần có user object və ID hợp lệ
     const isValidUser = user && user.id && user.id.length > 0;
-
-    console.log("🔍 [RedirectEffect] Debug info:", {
-      hasUser: !!user,
-      userId: user?.id,
-      userIdLength: user?.id?.length,
-      isValidUser,
-      userRole: user?.role,
-    });
 
     if (isValidUser) {
       if (isAuthPage) {
@@ -163,55 +182,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             : user.role === "HR"
             ? "/hr/trainees"
             : "/dashboard";
-        console.log(
-          `➡️ [RedirectEffect] User is on auth page, redirecting to ${redirectUrl}`
-        );
         navigateInstant(redirectUrl);
       }
     } else {
       if (!isAuthPage) {
-        console.log(
-          "➡️ [RedirectEffect] User not logged in, redirecting to /login"
-        );
         navigateInstant("/login");
       }
     }
   }, [user, loadingAuth, pathname, navigateInstant]);
 
   const login = async (credentials: LoginDTO, rememberMe: boolean = false) => {
-    console.log(
-      `🚀 [AuthProvider] Attempting login for ${credentials.email}...`
-    );
     setLoadingAuth(true);
+
     try {
       const loginResponse = await authService.login(credentials);
-      console.log("🔍 [Login] Login response:", loginResponse);
-
       const mappedUser = mapUserApiToUi(loginResponse);
-      console.log("🔍 [Login] Mapped user:", mappedUser);
 
       // Lưu token vào cookie và httpClient
       if (loginResponse.accessToken) {
-        // Set token vào httpClient
         httpClient.setAuthorizationHeader(loginResponse.accessToken);
-
-        // Lưu token vào cookie - persistent cho đến khi logout
         cookieManager.setSecureAuth(loginResponse.accessToken, true);
-        console.log("🔒 [Login] Set persistent secure auth cookie");
-
-        // Lưu user info vào localStorage cho đến khi logout
         localStorage.setItem("qldt_user_info", JSON.stringify(loginResponse));
-        console.log("💾 [Login] Saved user info to localStorage");
       }
 
-      // Set user state
       setUser(mappedUser);
-      console.log("✅ [Login] User state set successfully:", mappedUser);
-
-      console.log(
-        "✅ [AuthProvider] Login successful, user state set:",
-        mappedUser
-      );
+      await queryClient.invalidateQueries();
 
       toast({
         title: "Đăng nhập thành công",
@@ -220,7 +215,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
     } catch (error: any) {
       setUser(null);
-      httpClient.clearAuthorizationHeader(); // Clear header on failed login
+      httpClient.clearAuthorizationHeader();
       toast({
         title: "Đăng nhập thất bại",
         description: extractErrorMessage(error),

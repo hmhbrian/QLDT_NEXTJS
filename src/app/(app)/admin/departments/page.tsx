@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
@@ -44,8 +43,8 @@ import type {
   CreateDepartmentPayload,
   UpdateDepartmentPayload,
 } from "@/lib/types/department.types";
-import type { User, Position } from "@/lib/types/user.types";
-import { usersService, positionsService } from "@/lib/services";
+import type { User, EmployeeLevel } from "@/lib/types/user.types";
+import { usersService, EmployeeLevelService } from "@/lib/services";
 import {
   useDepartments,
   useCreateDepartment,
@@ -54,7 +53,7 @@ import {
 } from "@/hooks/use-departments";
 import { useUserStatuses } from "@/hooks/use-statuses";
 import { DraggableDepartmentTree } from "@/components/departments/DraggableDepartmentTree";
-import { DepartmentFormDialog } from "@/components/departments/DepartmentFormDialog";
+import DepartmentFormDialog from "@/components/departments/DepartmentFormDialog";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { validateDepartmentTree } from "@/lib/utils/department-tree";
 import { LoadingButton } from "@/components/ui/loading";
@@ -83,14 +82,12 @@ export default function DepartmentsPage() {
     });
   const users = usersData.items;
 
-  const { data: positions = [], isLoading: isPositionsLoading } = useQuery<
-    Position[],
-    Error
-  >({
-    queryKey: ["positions"],
-    queryFn: () => positionsService.getPositions(),
-    staleTime: 5 * 60 * 1000,
-  });
+  const { data: EmployeeLevel = [], isLoading: isEmployeeLevelLoading } =
+    useQuery<EmployeeLevel[], Error>({
+      queryKey: ["EmployeeLevel"],
+      queryFn: () => EmployeeLevelService.getEmployeeLevel(),
+      staleTime: 5 * 60 * 1000,
+    });
 
   const { userStatuses, isLoading: isStatusesLoading } = useUserStatuses();
 
@@ -105,29 +102,68 @@ export default function DepartmentsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
 
+  // Fetch department statuses from API
+  const { data: departmentStatuses } = useQuery({
+    queryKey: ["departmentStatuses"],
+    queryFn: async () => {
+      const response = await fetch(
+        "http://localhost:5228/api/status/department"
+      );
+      if (!response.ok) throw new Error("Failed to fetch department statuses");
+      const result = await response.json();
+      return result.data || [];
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+
   const managers = useMemo(() => {
-    if (!users || !positions) {
+    if (!users || !EmployeeLevel) {
       return [];
     }
-    const managerPosition = positions.find(
-      (p) => p.positionName === "Quản lý cấp trung"
+
+    // Tìm vị trí "Quản Lý Cấp Trung" (ID = 4) trở lên
+    const managerEmployeeLevel = EmployeeLevel.find(
+      (p) =>
+        p.eLevelId === 4 || // Quản Lý Cấp Trung
+        p.eLevelName?.toLowerCase().includes("quản lý cấp trung")
     );
-    if (!managerPosition) return [];
-    const managerBaseLevelId = managerPosition.positionId;
-    return users.filter((user) => {
-      if (
-        user.position &&
-        typeof user.position === "object" &&
-        user.position.positionId !== null
-      ) {
-        return (
-          user.position.positionId >= managerBaseLevelId &&
-          user.userStatus?.name === "Hoạt động"
-        );
-      }
-      return false;
+
+    console.log("- managerEmployeeLevel found:", managerEmployeeLevel);
+
+    if (!managerEmployeeLevel) {
+      console.log(
+        "- No manager employeeLevel found, returning all active users"
+      );
+      // If no specific manager employeeLevel, return all active users
+      return users.filter((user) => user.userStatus?.name === "Đang làm việc");
+    }
+
+    const managerBaseLevelId = managerEmployeeLevel.eLevelId; // Should be 4
+    console.log("- managerBaseLevelId:", managerBaseLevelId);
+
+    const filteredManagers = users.filter((user) => {
+      const hasEmployeeLevel =
+        user.eLevel &&
+        typeof user.eLevel === "object" &&
+        user.eLevel.eLevelId !== null;
+      const isActive = user.userStatus?.name === "Đang làm việc"; // Fixed: changed from "Hoạt động" to "Đang làm việc"
+      const hasValidLevel =
+        hasEmployeeLevel && user.eLevel.eLevelId >= managerBaseLevelId; // >= 4 (Cấp trung trở lên)
+
+      console.log(
+        `- User ${user.fullName}: hasEmployeeLevel=${hasEmployeeLevel}, isActive=${isActive}, hasValidLevel=${hasValidLevel}, eLevelId=${user.eLevel?.eLevelId}, status="${user.userStatus?.name}"`
+      );
+
+      return hasEmployeeLevel && isActive && hasValidLevel;
     });
-  }, [users, positions]);
+
+    console.log(
+      "- Final managers:",
+      filteredManagers?.length || 0,
+      filteredManagers
+    );
+    return filteredManagers;
+  }, [users, EmployeeLevel]);
 
   const validation = useMemo(
     () => validateDepartmentTree(departments),
@@ -168,14 +204,6 @@ export default function DepartmentsPage() {
     [departments, userStatuses]
   );
 
-  const departmentStatuses = useMemo(
-    () =>
-      userStatuses.filter(
-        (s) => s.name === "Đang hoạt động" || s.name === "Không hoạt động"
-      ),
-    [userStatuses]
-  );
-
   useEffect(() => {
     if (
       selectedDepartment &&
@@ -187,7 +215,7 @@ export default function DepartmentsPage() {
     }
   }, [departments, selectedDepartment]);
 
-  if (isDepartmentsLoading || isUsersLoading || isPositionsLoading) {
+  if (isDepartmentsLoading || isUsersLoading || isEmployeeLevelLoading) {
     return (
       <div className="space-y-6">
         <div className="flex justify-between items-center">
@@ -219,10 +247,13 @@ export default function DepartmentsPage() {
   const handleSaveDepartment = async (
     payload: CreateDepartmentPayload | UpdateDepartmentPayload,
     isEditing: boolean,
-    deptId?: string
+    deptId?: number
   ) => {
     if (isEditing && deptId) {
-      updateDeptMutation.mutate({ id: deptId, payload: payload as UpdateDepartmentPayload });
+      updateDeptMutation.mutate({
+        id: deptId,
+        payload: payload as UpdateDepartmentPayload,
+      });
     } else {
       createDeptMutation.mutate(payload as CreateDepartmentPayload);
     }
@@ -247,7 +278,7 @@ export default function DepartmentsPage() {
 
   const handleUpdateDepartmentParent = (
     draggedDept: DepartmentInfo,
-    newParentId: string | null
+    newParentId: number | null
   ) => {
     const payload: UpdateDepartmentPayload = {
       DepartmentName: draggedDept.name,
@@ -255,9 +286,9 @@ export default function DepartmentsPage() {
       Description: draggedDept.description,
       ManagerId: draggedDept.managerId,
       StatusId: draggedDept.status.id,
-      ParentId: newParentId ? parseInt(newParentId) : null,
+      ParentId: newParentId,
     };
-    
+
     updateDeptMutation.mutate({
       id: draggedDept.departmentId,
       payload: payload,
@@ -363,7 +394,7 @@ export default function DepartmentsPage() {
                   status?.name === "Đang hoạt động" ? "default" : "secondary"
                 }
               >
-                {status?.name || "N/A"}
+                {status?.name || "Không có"}
               </Badge>
             </div>
           </div>
@@ -461,15 +492,14 @@ export default function DepartmentsPage() {
         <CardContent className="pt-6">
           {activeTab === "tree" ? (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
-              <Card className="shadow-sm">
-                <CardHeader>
-                  <CardTitle>Cấu trúc</CardTitle>
-                  <CardDescription>Kéo-thả để sắp xếp.</CardDescription>
-                </CardHeader>
-                <CardContent className="min-h-[400px]">
-                  {renderLeftPanelContent()}
-                </CardContent>
-              </Card>
+              <div className="space-y-4">
+                <DraggableDepartmentTree
+                  departments={departments}
+                  onSelectDepartment={setSelectedDepartment}
+                  onUpdateDepartments={handleUpdateDepartmentParent}
+                  className="shadow-sm"
+                />
+              </div>
               <Card className="shadow-sm min-h-[580px]">
                 {renderRightPanelContent()}
               </Card>
@@ -528,8 +558,8 @@ export default function DepartmentsPage() {
         existingDepartments={departments}
         managers={managers}
         isLoading={createDeptMutation.isPending || updateDeptMutation.isPending}
-        isLoadingManagers={isUsersLoading || isPositionsLoading}
-        userStatuses={userStatuses}
+        isLoadingManagers={isUsersLoading || isEmployeeLevelLoading}
+        departmentStatuses={departmentStatuses || []}
       />
 
       <Dialog

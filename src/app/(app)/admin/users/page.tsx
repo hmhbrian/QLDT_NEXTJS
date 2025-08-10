@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useMemo, useCallback } from "react";
@@ -37,10 +36,12 @@ import {
   Role,
   CreateUserRequest,
   UpdateUserRequest,
-  Position,
+  EmployeeLevel,
   ResetPasswordRequest,
   ServiceRole,
+  UserDepartmentInfo,
 } from "@/lib/types/user.types";
+import { UserDetailDialog } from "@/components/users";
 import { DepartmentInfo } from "@/lib/types/department.types";
 import { useToast } from "@/components/ui/use-toast";
 import { DataTable } from "@/components/ui/data-table";
@@ -65,19 +66,27 @@ import {
   Award,
   Eye,
   EyeOff,
+  Pencil,
 } from "lucide-react";
 import { NO_DEPARTMENT_VALUE } from "@/lib/config/constants";
 import type { PaginatedResponse } from "@/lib/core";
 import type { PaginationState } from "@tanstack/react-table";
 import { useDepartments } from "@/hooks/use-departments";
-import { usePositions } from "@/hooks/use-positions";
+import { useEmployeeLevel } from "@/hooks/use-employeeLevel";
+
+// Role translations for UI display
+const roleTranslations: Record<string, string> = {
+  ADMIN: "Quản trị viên",
+  HR: "Nhân sự",
+  HOCVIEN: "Học viên",
+};
 
 type UserFormState = Partial<
-  Omit<User, "department" | "position"> & {
+  Omit<User, "department" | "employeeLevel"> & {
     password?: string;
     confirmPassword?: string;
     department?: string; // Storing as ID
-    position?: string; // Storing as ID
+    employeeLevel?: string; // Storing as ID
   }
 >;
 
@@ -111,7 +120,7 @@ export default function UsersPage() {
     password: "",
     confirmPassword: "",
     department: "",
-    position: "",
+    employeeLevel: "",
     userStatus: { id: 0, name: "" },
     employeeId: "",
   };
@@ -148,7 +157,7 @@ export default function UsersPage() {
   const { userStatuses, isLoading: isStatusesLoading } = useUserStatuses();
   const { departments: activeDepartments, isLoading: isDepartmentsLoading } =
     useDepartments({ status: "active" });
-  const { positions, loading: isPositionsLoading } = usePositions();
+  const { EmployeeLevel, loading: isEmployeeLevelLoading } = useEmployeeLevel();
 
   // Mutations from hooks
   const createUserMutation = useCreateUserMutation();
@@ -163,11 +172,24 @@ export default function UsersPage() {
     isRolesLoading ||
     isStatusesLoading ||
     isDepartmentsLoading ||
-    isPositionsLoading;
+    isEmployeeLevelLoading;
   const isInitialLoading = isLoading && !users?.length && !roles.length;
 
-  const getPositionName = (user: User): string => {
-    return user.position?.positionName || "Chưa có cấp bậc";
+  // Filter users based on current user role - HR cannot see ADMIN users
+  const filteredUsers = useMemo(() => {
+    if (!users) return [];
+    
+    // If current user is HR, filter out ADMIN users
+    if (currentUser?.role === "HR") {
+      return users.filter(user => user.role !== "ADMIN");
+    }
+    
+    // ADMIN can see all users
+    return users;
+  }, [users, currentUser?.role]);
+
+  const getEmployeeLevel = (user: User): string => {
+    return user.employeeLevel?.eLevelName || "Chưa có cấp bậc";
   };
 
   const handleOpenAddDialog = () => {
@@ -178,12 +200,17 @@ export default function UsersPage() {
   };
 
   const handleOpenEditDialog = useCallback((userToEdit: User) => {
+
+
     setEditingUser(userToEdit);
     setNewUser({
       ...userToEdit,
-      department: userToEdit.department?.departmentId,
-      position: userToEdit.position
-        ? String(userToEdit.position.positionId)
+      role: userToEdit.role?.toUpperCase() as Role, // Ensure uppercase for consistency
+      department: userToEdit.department?.departmentId
+        ? String(userToEdit.department.departmentId)
+        : "",
+      employeeLevel: userToEdit.employeeLevel
+        ? String(userToEdit.employeeLevel.eLevelId)
         : "",
       password: "",
       confirmPassword: "",
@@ -196,24 +223,24 @@ export default function UsersPage() {
     const data = newUser;
     const newErrors: Partial<Record<keyof CreateUserRequest, string>> = {};
 
-    if (!data.fullName) newErrors.FullName = "Họ và tên là bắt buộc!";
-    if (!data.idCard) newErrors.IdCard = "CMND/CCCD là bắt buộc!";
-    if (!data.email) newErrors.Email = "Email là bắt buộc!";
+    if (!data.fullName) newErrors.fullName = "Họ và tên là bắt buộc!";
+    if (!data.idCard) newErrors.idCard = "CMND/CCCD là bắt buộc!";
+    if (!data.email) newErrors.email = "Email là bắt buộc!";
     else if (!/^[a-zA-Z0-9._%+-]+@becamex\.com$/.test(data.email)) {
-      newErrors.Email = "Email phải có domain @becamex.com.";
+      newErrors.email = "Email phải có domain @becamex.com.";
     }
 
     if (!isEdit) {
-      if (!data.password) newErrors.Password = "Mật khẩu là bắt buộc!";
+      if (!data.password) newErrors.password = "Mật khẩu là bắt buộc!";
       else if (data.password.length < 6)
-        newErrors.Password = "Mật khẩu phải có ít nhất 6 ký tự.";
+        newErrors.password = "Mật khẩu phải có ít nhất 6 ký tự.";
       if (data.confirmPassword !== data.password)
-        newErrors.ConfirmPassword = "Mật khẩu xác nhận không khớp.";
+        newErrors.confirmPassword = "Mật khẩu xác nhận không khớp.";
     } else if (data.password && data.password.trim()) {
       if (data.password.length < 6)
-        newErrors.Password = "Mật khẩu phải có ít nhất 6 ký tự.";
+        newErrors.password = "Mật khẩu phải có ít nhất 6 ký tự.";
       if (data.confirmPassword !== data.password)
-        newErrors.ConfirmPassword = "Mật khẩu xác nhận không khớp.";
+        newErrors.confirmPassword = "Mật khẩu xác nhận không khớp.";
     }
 
     setErrors(newErrors);
@@ -244,20 +271,22 @@ export default function UsersPage() {
     try {
       if (isEdit && editingUser) {
         const updatePayload: UpdateUserRequest = {
-          FullName: newUser.fullName,
-          Email: newUser.email,
-          IdCard: newUser.idCard,
-          NumberPhone: newUser.phoneNumber,
-          DepartmentId: newUser.department
+          fullName: newUser.fullName,
+          email: newUser.email,
+          idCard: newUser.idCard,
+          position: newUser.position,
+          numberPhone: newUser.phoneNumber,
+          departmentId: newUser.department
             ? parseInt(newUser.department, 10)
             : undefined,
-          RoleId: selectedRole.id,
-          PositionId: newUser.position
-            ? parseInt(newUser.position, 10)
+          roleId: selectedRole.id,
+          eLevelId: newUser.employeeLevel
+            ? parseInt(newUser.employeeLevel, 10)
             : undefined,
-          StatusId: newUser.userStatus?.id,
-          Code: newUser.employeeId || undefined,
+          statusId: newUser.userStatus?.id,
+          code: newUser.employeeId || undefined,
         };
+        console.log("Admin updating user with payload:", updatePayload);
 
         await updateUserMutation.mutateAsync({
           id: editingUser.id,
@@ -273,21 +302,22 @@ export default function UsersPage() {
         }
       } else {
         const createUserPayload: CreateUserRequest = {
-          FullName: newUser.fullName!,
-          Email: newUser.email!,
-          Password: newUser.password!,
-          ConfirmPassword: newUser.confirmPassword!,
-          RoleId: selectedRole.id,
-          IdCard: newUser.idCard,
-          NumberPhone: newUser.phoneNumber,
-          PositionId: newUser.position
-            ? parseInt(newUser.position, 10)
+          fullName: newUser.fullName!,
+          email: newUser.email!,
+          password: newUser.password!,
+          confirmPassword: newUser.confirmPassword!,
+          roleId: selectedRole.id,
+          idCard: newUser.idCard,
+          position: newUser.position,
+          numberPhone: newUser.phoneNumber,
+          eLevelId: newUser.employeeLevel
+            ? parseInt(newUser.employeeLevel, 10)
             : undefined,
-          DepartmentId: newUser.department
+          departmentId: newUser.department
             ? parseInt(newUser.department, 10)
             : undefined,
-          StatusId: newUser.userStatus?.id,
-          Code: newUser.employeeId || undefined,
+          statusId: newUser.userStatus?.id,
+          code: newUser.employeeId || undefined,
         };
         await createUserMutation.mutateAsync(createUserPayload);
       }
@@ -324,12 +354,12 @@ export default function UsersPage() {
     [currentUser, handleOpenEditDialog]
   );
 
-  const renderDepartment = (department?: DepartmentInfo) => {
-    return department?.name || "Chưa có phòng ban";
+  const renderDepartment = (department?: UserDepartmentInfo | null) => {
+    return department?.departmentName || "Chưa có phòng ban";
   };
 
   const getEmployeeCode = (user: any): string => {
-    return user.employeeId || user.code || "N/A";
+    return user.employeeId || user.code || "Không có";
   };
 
   if (isInitialLoading) {
@@ -407,7 +437,7 @@ export default function UsersPage() {
           ) : (
             <DataTable
               columns={columns}
-              data={users}
+              data={filteredUsers}
               isLoading={isUsersLoading}
               pageCount={pageCount}
               pagination={pagination}
@@ -417,89 +447,24 @@ export default function UsersPage() {
         </CardContent>
       </Card>
 
-      <Dialog open={isViewingUser} onOpenChange={setIsViewingUser}>
-        <DialogContent className="sm:max-w-[800px]">
-          <DialogHeader>
-            <DialogTitle>Chi tiết Học viên</DialogTitle>
-          </DialogHeader>
-          {selectedUser && (
-            <Tabs defaultValue="info" className="mt-4">
-              <TabsList>
-                <TabsTrigger value="info">
-                  <UserCircle2 className="h-4 w-4 mr-2" />
-                  Thông tin cơ bản
-                </TabsTrigger>
-                <TabsTrigger value="courses">
-                  <Calendar className="h-4 w-4 mr-2" />
-                  Khóa học
-                </TabsTrigger>
-                <TabsTrigger value="certificates">
-                  <Award className="h-4 w-4 mr-2" />
-                  Chứng chỉ
-                </TabsTrigger>
-              </TabsList>
-              <TabsContent value="info" className="space-y-4 pt-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <h4 className="font-medium mb-2">Thông tin cá nhân</h4>
-                    <div className="space-y-1">
-                      <p className="text-sm">
-                        <strong>Họ và tên:</strong> {selectedUser.fullName}
-                      </p>
-                      <p className="text-sm">
-                        <strong>Mã nhân viên:</strong>{" "}
-                        {getEmployeeCode(selectedUser)}
-                      </p>
-                      <p className="text-sm">
-                        <strong>Email:</strong> {selectedUser.email}
-                      </p>
-                      <p className="text-sm">
-                        <strong>Số điện thoại:</strong>{" "}
-                        {selectedUser.phoneNumber || "N/A"}
-                      </p>
-                    </div>
-                  </div>
-                  <div>
-                    <h4 className="font-medium mb-2">Thông tin công việc</h4>
-                    <div className="space-y-1">
-                      <p className="text-sm">
-                        <strong>Phòng ban:</strong>{" "}
-                        {renderDepartment(selectedUser.department)}
-                      </p>
-                      <p className="text-sm">
-                        <strong>Chức vụ:</strong> Chưa có
-                      </p>
-                      <p className="text-sm">
-                        <strong>Cấp bậc:</strong>{" "}
-                        {getPositionName(selectedUser)}
-                      </p>
-                      <p className="text-sm">
-                        <strong>Quản lý:</strong>{" "}
-                        {selectedUser.manager || "N/A"}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </TabsContent>
-              <TabsContent value="courses">
-                <p className="text-center text-muted-foreground py-4">
-                  Chức năng đang được phát triển.
-                </p>
-              </TabsContent>
-              <TabsContent value="certificates">
-                <p className="text-center text-muted-foreground py-4">
-                  Chức năng đang được phát triển.
-                </p>
-              </TabsContent>
-            </Tabs>
-          )}
-        </DialogContent>
-      </Dialog>
+      {/* View User Detail Dialog */}
+      <UserDetailDialog
+        user={selectedUser}
+        isOpen={isViewingUser}
+        onOpenChange={setIsViewingUser}
+      />
 
       <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-        <DialogContent className="sm:max-w-[600px]">
-          <DialogHeader>
-            <DialogTitle>
+        <DialogContent className="sm:max-w-[600px] border-orange-200">
+          <DialogHeader className="border-b border-orange-100 pb-4">
+            <DialogTitle className="text-xl font-semibold text-gray-800 flex items-center gap-2">
+              <div className="p-2 bg-orange-500 rounded-lg text-white">
+                {editingUser ? (
+                  <Pencil className="h-4 w-4" />
+                ) : (
+                  <PlusCircle className="h-4 w-4" />
+                )}
+              </div>
               {editingUser ? "Chỉnh sửa Người dùng" : "Thêm người dùng mới"}
             </DialogTitle>
           </DialogHeader>
@@ -512,10 +477,10 @@ export default function UsersPage() {
                 onChange={(e) =>
                   setNewUser({ ...newUser, fullName: e.target.value })
                 }
-                className={errors.FullName ? "border-destructive" : ""}
+                className={errors.fullName ? "border-destructive" : ""}
               />
-              {errors.FullName && (
-                <p className="text-sm text-destructive">{errors.FullName}</p>
+              {errors.fullName && (
+                <p className="text-sm text-destructive">{errors.fullName}</p>
               )}
             </div>
             <div className="grid gap-2">
@@ -526,10 +491,10 @@ export default function UsersPage() {
                 onChange={(e) =>
                   setNewUser({ ...newUser, idCard: e.target.value })
                 }
-                className={errors.IdCard ? "border-destructive" : ""}
+                className={errors.idCard ? "border-destructive" : ""}
               />
-              {errors.IdCard && (
-                <p className="text-sm text-destructive">{errors.IdCard}</p>
+              {errors.idCard && (
+                <p className="text-sm text-destructive">{errors.idCard}</p>
               )}
             </div>
             <div className="grid gap-2">
@@ -568,10 +533,10 @@ export default function UsersPage() {
                 onChange={(e) =>
                   setNewUser({ ...newUser, email: e.target.value })
                 }
-                className={errors.Email ? "border-destructive" : ""}
+                className={errors.email ? "border-destructive" : ""}
               />
-              {errors.Email && (
-                <p className="text-sm text-destructive">{errors.Email}</p>
+              {errors.email && (
+                <p className="text-sm text-destructive">{errors.email}</p>
               )}
             </div>
             <div className="grid gap-2">
@@ -581,6 +546,17 @@ export default function UsersPage() {
                 value={newUser.phoneNumber}
                 onChange={(e) =>
                   setNewUser({ ...newUser, phoneNumber: e.target.value })
+                }
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="position">Chức vụ</Label>
+              <Input
+                id="position"
+                placeholder="Nhập chức vụ"
+                value={newUser.position || ""}
+                onChange={(e) =>
+                  setNewUser({ ...newUser, position: e.target.value })
                 }
               />
             </div>
@@ -610,7 +586,7 @@ export default function UsersPage() {
                     activeDepartments.map((dept) => (
                       <SelectItem
                         key={dept.departmentId}
-                        value={dept.departmentId}
+                        value={String(dept.departmentId)}
                       >
                         {dept.name}
                       </SelectItem>
@@ -624,28 +600,28 @@ export default function UsersPage() {
               </Select>
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="position">Cấp bậc</Label>
+              <Label htmlFor="employeeLevel">Cấp bậc</Label>
               <Select
-                value={newUser.position}
+                value={newUser.employeeLevel}
                 onValueChange={(value: string) =>
-                  setNewUser({ ...newUser, position: value })
+                  setNewUser({ ...newUser, employeeLevel: value })
                 }
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Chọn cấp bậc" />
                 </SelectTrigger>
                 <SelectContent>
-                  {isPositionsLoading ? (
+                  {isEmployeeLevelLoading ? (
                     <SelectItem value="loading_pos" disabled>
                       Đang tải...
                     </SelectItem>
-                  ) : positions.length > 0 ? (
-                    positions.map((pos) => (
+                  ) : EmployeeLevel.length > 0 ? (
+                    EmployeeLevel.map((pos) => (
                       <SelectItem
-                        key={pos.positionId}
-                        value={String(pos.positionId)}
+                        key={pos.eLevelId}
+                        value={String(pos.eLevelId)}
                       >
-                        {pos.positionName}
+                        {pos.eLevelName}
                       </SelectItem>
                     ))
                   ) : (
@@ -659,7 +635,7 @@ export default function UsersPage() {
             <div className="grid gap-2">
               <Label htmlFor="role">Vai trò</Label>
               <Select
-                value={newUser.role}
+                value={newUser.role?.toUpperCase() || ""}
                 onValueChange={(value) =>
                   setNewUser({ ...newUser, role: value as Role })
                 }
@@ -678,7 +654,7 @@ export default function UsersPage() {
                         key={role.id}
                         value={role.name.toUpperCase() as Role}
                       >
-                        {role.name}
+                        {roleTranslations[role.name.toUpperCase()] || role.name}
                       </SelectItem>
                     ))
                   ) : (
@@ -740,7 +716,7 @@ export default function UsersPage() {
                   onChange={(e) =>
                     setNewUser({ ...newUser, password: e.target.value })
                   }
-                  className={errors.Password ? "border-destructive" : ""}
+                  className={errors.password ? "border-destructive" : ""}
                 />
                 <Button
                   type="button"
@@ -756,8 +732,8 @@ export default function UsersPage() {
                   )}
                 </Button>
               </div>
-              {errors.Password && (
-                <p className="text-sm text-destructive">{errors.Password}</p>
+              {errors.password && (
+                <p className="text-sm text-destructive">{errors.password}</p>
               )}
             </div>
             <div className="grid gap-2">
@@ -772,7 +748,7 @@ export default function UsersPage() {
                   onChange={(e) =>
                     setNewUser({ ...newUser, confirmPassword: e.target.value })
                   }
-                  className={errors.ConfirmPassword ? "border-destructive" : ""}
+                  className={errors.confirmPassword ? "border-destructive" : ""}
                 />
                 <Button
                   type="button"
@@ -788,9 +764,9 @@ export default function UsersPage() {
                   )}
                 </Button>
               </div>
-              {errors.ConfirmPassword && (
+              {errors.confirmPassword && (
                 <p className="text-sm text-destructive">
-                  {errors.ConfirmPassword}
+                  {errors.confirmPassword}
                 </p>
               )}
             </div>

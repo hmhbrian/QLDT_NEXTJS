@@ -221,10 +221,17 @@ export function QuestionManagerDialog({
     const { id } = deletingItem;
 
     if (isEditingExistingTest && typeof id === "number" && testId) {
-      await deleteQuestionMutation.mutateAsync({
-        testId: testId,
-        questionIds: [id],
-      });
+      await deleteQuestionMutation.mutateAsync(
+        {
+          testId: testId,
+          questionIds: [id],
+        },
+        {
+          onSuccess: () => {
+            setDeletingItem(null);
+          },
+        }
+      );
     } else {
       // For new tests, just update local state
       setTestFormData((prev) => ({
@@ -238,9 +245,8 @@ export function QuestionManagerDialog({
         description: "Câu hỏi đã được xóa khỏi danh sách tạm thời.",
         variant: "success",
       });
+      setDeletingItem(null);
     }
-
-    setDeletingItem(null);
   };
 
   const handleExcelFileImport = (
@@ -765,6 +771,10 @@ export function QuestionManagerDialog({
             <Button
               variant="outline"
               onClick={() => setIsQuestionDialogOpen(false)}
+              disabled={
+                createQuestionMutation.isPending ||
+                updateQuestionMutation.isPending
+              }
             >
               Hủy
             </Button>
@@ -796,7 +806,11 @@ export function QuestionManagerDialog({
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDeletingItem(null)}>
+            <Button
+              variant="outline"
+              onClick={() => setDeletingItem(null)}
+              disabled={deleteQuestionMutation.isPending}
+            >
               Hủy
             </Button>
             <LoadingButton

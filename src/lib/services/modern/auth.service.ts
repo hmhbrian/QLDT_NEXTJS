@@ -35,7 +35,6 @@ export class AuthService extends BaseService<UserApiResponse> {
 
   async logout(): Promise<void> {
     // Chỉ logout trên frontend, không gọi backend
-    console.log("🔒 [AuthService] Performing client-side logout...");
     httpClient.clearAuthorizationHeader();
   }
 
@@ -53,34 +52,58 @@ export class AuthService extends BaseService<UserApiResponse> {
   }
 
   async getCurrentUser(): Promise<UserApiResponse> {
-    // Lấy user info từ localStorage (đã lưu khi login)
-    const storedUser = localStorage.getItem("qldt_user_info");
+    try {
+      // Lấy user info từ localStorage (đã lưu khi login)
+      const storedUser = localStorage.getItem("qldt_user_info");
 
-    if (storedUser) {
-      try {
-        const userInfo = JSON.parse(storedUser);
-        console.log(
-          "🔍 [AuthService] Retrieved user info from localStorage:",
-          userInfo
-        );
-        return userInfo;
-      } catch (error) {
-        console.error(
-          "🔍 [AuthService] Failed to parse stored user info:",
-          error
-        );
+      if (storedUser) {
+        try {
+          const userInfo = JSON.parse(storedUser);
+
+          // Đảm bảo token được set trong httpClient
+          const currentToken = httpClient.getAuthorizationToken();
+          if (!currentToken && userInfo.accessToken) {
+            httpClient.setAuthorizationHeader(userInfo.accessToken);
+          }
+
+          return userInfo;
+        } catch (error) {
+          throw new Error("Invalid stored user data");
+        }
       }
-    }
 
-    // Fallback: nếu không có trong localStorage thì throw error
-    throw new Error("No user info found");
+      // Fallback: nếu không có trong localStorage thì throw error
+      throw new Error("No user info found");
+    } catch (error: any) {
+      // Clear invalid data
+      localStorage.removeItem("qldt_user_info");
+      httpClient.clearAuthorizationHeader();
+
+      throw error;
+    }
   }
 
   async validateToken(): Promise<boolean> {
     try {
-      await this.getCurrentUser();
+      // Kiểm tra xem có user info trong localStorage không
+      const storedUser = localStorage.getItem("qldt_user_info");
+      if (!storedUser) {
+        return false;
+      }
+
+      const userInfo = JSON.parse(storedUser);
+      if (!userInfo || !userInfo.id || !userInfo.accessToken) {
+        return false;
+      }
+
+      // Ensure token is set in httpClient
+      const currentToken = httpClient.getAuthorizationToken();
+      if (!currentToken) {
+        httpClient.setAuthorizationHeader(userInfo.accessToken);
+      }
+
       return true;
-    } catch (error) {
+    } catch (error: any) {
       return false;
     }
   }

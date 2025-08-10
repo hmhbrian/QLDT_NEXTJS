@@ -1,12 +1,16 @@
-
 import type { DepartmentInfo } from "./department.types";
 import type { Status } from "./status.types";
 
 export type Role = "ADMIN" | "HR" | "HOCVIEN";
 
+export interface EmployeeLevel {
+  eLevelId: number;
+  eLevelName: string;
+}
+
 export interface Position {
-  positionId: number;
-  positionName: string;
+  id: string;
+  name: string;
 }
 
 export interface ServiceRole {
@@ -32,8 +36,9 @@ export interface User {
   phoneNumber: string;
   role: Role;
   employeeId?: string;
-  department?: DepartmentInfo;
-  position?: Position;
+  department?: UserDepartmentInfo | null;
+  employeeLevel?: EmployeeLevel;
+  position?: string;
   userStatus?: Status;
   manager?: string;
   startWork?: string;
@@ -51,35 +56,37 @@ export interface LoginDTO {
 }
 
 export interface CreateUserRequest {
-  FullName: string;
-  IdCard?: string;
-  Code?: string;
-  PositionId?: number;
-  RoleId: string;
-  ManagerUId?: string;
-  DepartmentId?: number;
-  StatusId?: number;
-  NumberPhone?: string;
-  StartWork?: string;
-  EndWork?: string;
-  Email: string;
-  Password?: string;
-  ConfirmPassword?: string;
+  fullName: string;
+  idCard?: string;
+  code?: string;
+  position?: string;
+  eLevelId?: number;
+  roleId: string;
+  managerUId?: string;
+  departmentId?: number;
+  statusId?: number;
+  numberPhone?: string;
+  startWork?: string;
+  endWork?: string;
+  email: string;
+  password?: string;
+  confirmPassword?: string;
 }
 
 export interface UpdateUserRequest {
-  FullName?: string;
-  IdCard?: string;
-  Code?: string;
-  PositionId?: number;
-  RoleId?: string;
-  ManagerUId?: string;
-  DepartmentId?: number;
-  StatusId?: number;
-  NumberPhone?: string;
-  StartWork?: string;
-  EndWork?: string;
-  Email?: string;
+  fullName?: string;
+  idCard?: string;
+  code?: string;
+  position?: string;
+  eLevelId?: number;
+  roleId?: string;
+  managerUId?: string;
+  departmentId?: number;
+  statusId?: number;
+  numberPhone?: string;
+  startWork?: string;
+  endWork?: string;
+  email?: string;
 }
 
 export interface UserProfileUpdateRequest {
@@ -100,6 +107,11 @@ export interface ResetPasswordRequest {
 }
 
 // --- API Response DTOs ---
+export interface UserDepartmentInfo {
+  departmentId: number;
+  departmentName: string;
+}
+
 export interface UserApiResponse {
   id?: string;
   fullName?: string;
@@ -110,10 +122,12 @@ export interface UserApiResponse {
   phoneNumber?: string;
   isDeleted?: boolean;
   role?: string;
+  position?: string;
   createdBy?: string;
   updatedBy?: string;
-  managerBy?: string;
-  positionName?: string;
+  managerBy?: string | { Id: string; Name: string };
+  eLevel?: EmployeeLevel; // Backend uses eLevel field
+  eLevelName?: string;
   departmentName?: string; // Navigation property
   userStatus?: Status;
   startWork?: string;
@@ -121,6 +135,5 @@ export interface UserApiResponse {
   createdAt?: string;
   modifedAt?: string; // Typo from backend DTO
   accessToken?: string;
-  position?: Position;
-  department?: DepartmentInfo;
+  department?: UserDepartmentInfo | null;
 }

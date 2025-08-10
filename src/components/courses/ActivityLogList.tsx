@@ -1,13 +1,7 @@
-
 "use client";
 
 import React from "react";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -356,7 +350,7 @@ export const ActivityLogList: React.FC<ActivityLogListProps> = ({
             </div>
           </div>
 
-          {/* Fixed Dropdown Menu - Positioned absolutely in top right */}
+          {/* Fixed Dropdown Menu - EmployeeLeveled absolutely in top right */}
           <div className="absolute top-3 right-3 z-10">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

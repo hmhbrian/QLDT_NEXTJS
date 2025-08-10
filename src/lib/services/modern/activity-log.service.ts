@@ -32,9 +32,9 @@ export class ActivityLogService extends BaseService<ActivityLog> {
   }
 
   // Mock data for development - remove when backend is ready
-  async getMockActivityLogs(courseId: string): Promise<ActivityLog[]> {
+  async getMockActivityLogs(courseId?: string, params?: Omit<ActivityLogParams, 'courseId'>): Promise<ActivityLog[]> {
     // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    await new Promise(resolve => setTimeout(resolve, 500));
     
     const mockLogs: ActivityLog[] = [
       {
@@ -42,10 +42,10 @@ export class ActivityLogService extends BaseService<ActivityLog> {
         userId: "user1",
         userName: "Nguyễn Văn A",
         userRole: "ADMIN",
-        courseId,
+        courseId: courseId || "generic-course-1",
         action: "CREATE",
         entityType: "COURSE",
-        entityId: courseId,
+        entityId: courseId || "generic-course-1",
         entityName: "Khóa học JavaScript",
         description: "Tạo mới khóa học JavaScript cơ bản",
         timestamp: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
@@ -57,10 +57,10 @@ export class ActivityLogService extends BaseService<ActivityLog> {
         userId: "user2",
         userName: "Trần Thị B",
         userRole: "HR",
-        courseId,
+        courseId: courseId || "generic-course-1",
         action: "UPDATE",
         entityType: "COURSE",
-        entityId: courseId,
+        entityId: courseId || "generic-course-1",
         entityName: "Khóa học JavaScript",
         description: "Cập nhật thông tin khóa học: thêm mô tả chi tiết",
         timestamp: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
@@ -76,7 +76,7 @@ export class ActivityLogService extends BaseService<ActivityLog> {
         userId: "user3",
         userName: "Lê Văn C",
         userRole: "HOCVIEN",
-        courseId,
+        courseId: courseId || "generic-course-1",
         action: "ENROLL",
         entityType: "USER_ENROLLMENT",
         entityId: "enrollment1",
@@ -89,7 +89,7 @@ export class ActivityLogService extends BaseService<ActivityLog> {
         userId: "user1",
         userName: "Nguyễn Văn A",
         userRole: "ADMIN",
-        courseId,
+        courseId: courseId || "generic-course-1",
         action: "CREATE",
         entityType: "LESSON",
         entityId: "lesson1",
@@ -104,7 +104,7 @@ export class ActivityLogService extends BaseService<ActivityLog> {
         userId: "user4",
         userName: "Phạm Thị D",
         userRole: "HOCVIEN",
-        courseId,
+        courseId: courseId || "generic-course-1",
         action: "START_LESSON",
         entityType: "LESSON",
         entityId: "lesson1",
@@ -118,7 +118,7 @@ export class ActivityLogService extends BaseService<ActivityLog> {
         userId: "user2",
         userName: "Trần Thị B",
         userRole: "HR",
-        courseId,
+        courseId: courseId || "generic-course-2",
         action: "CREATE",
         entityType: "TEST",
         entityId: "test1",
@@ -133,7 +133,7 @@ export class ActivityLogService extends BaseService<ActivityLog> {
         userId: "user3",
         userName: "Lê Văn C",
         userRole: "HOCVIEN",
-        courseId,
+        courseId: courseId || "generic-course-1",
         action: "COMPLETE_LESSON",
         entityType: "LESSON",
         entityId: "lesson1",
@@ -148,7 +148,7 @@ export class ActivityLogService extends BaseService<ActivityLog> {
         userId: "user5",
         userName: "Hoàng Văn E",
         userRole: "HOCVIEN",
-        courseId,
+        courseId: courseId || "generic-course-2",
         action: "SUBMIT_TEST",
         entityType: "TEST",
         entityId: "test1",
@@ -163,7 +163,7 @@ export class ActivityLogService extends BaseService<ActivityLog> {
         userId: "user1",
         userName: "Nguyễn Văn A",
         userRole: "ADMIN",
-        courseId,
+        courseId: courseId || "generic-course-1",
         action: "UPDATE",
         entityType: "LESSON",
         entityId: "lesson1",
@@ -182,18 +182,26 @@ export class ActivityLogService extends BaseService<ActivityLog> {
         userId: "user6",
         userName: "Ngô Thị F",
         userRole: "HOCVIEN",
-        courseId,
+        courseId: courseId || "generic-course-3",
         action: "VIEW_CONTENT",
         entityType: "COURSE",
-        entityId: courseId,
+        entityId: courseId || "generic-course-3",
         description: "Truy cập xem nội dung khóa học",
         timestamp: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
         ipAddress: "192.168.1.105"
       }
     ];
 
-    return mockLogs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    const sortedLogs = mockLogs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+
+    if(params?.pageSize) {
+        return sortedLogs.slice(0, params.pageSize);
+    }
+    
+    return sortedLogs;
   }
 }
 
 export const activityLogService = new ActivityLogService();
+
+    

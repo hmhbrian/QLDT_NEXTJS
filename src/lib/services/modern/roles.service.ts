@@ -23,8 +23,21 @@ export class RolesService extends BaseService<
     super(API_CONFIG.endpoints.roles.base);
   }
 
-  async getRoles(params?: RoleQueryParams): Promise<PaginatedResponse<ServiceRole>> {
-    return this.get<PaginatedResponse<ServiceRole>>(this.endpoint, { params });
+  async getRoles(
+    params?: RoleQueryParams
+  ): Promise<PaginatedResponse<ServiceRole>> {
+    const data = await this.get<ServiceRole[]>(this.endpoint, { params });
+
+    // Transform array response to PaginatedResponse format
+    return {
+      items: Array.isArray(data) ? data : [],
+      pagination: {
+        totalItems: Array.isArray(data) ? data.length : 0,
+        itemsPerPage: Array.isArray(data) ? data.length : 0,
+        currentPage: 1,
+        totalPages: 1,
+      },
+    };
   }
 
   async getRoleById(id: string): Promise<ServiceRole> {

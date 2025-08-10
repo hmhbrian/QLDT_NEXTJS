@@ -25,6 +25,7 @@ export function useUsers(params?: QueryParams) {
   } = useQuery<PaginatedResponse<User>, Error>({
     queryKey,
     queryFn: async () => {
+      console.log(`♻️ [useUsers] Refetching users with params:`, params);
       const response = await usersService.getUsersWithPagination(params);
       return {
         items: (response.items || []).map(mapUserApiToUi),
@@ -50,8 +51,12 @@ export function useCreateUserMutation() {
   const { toast } = useToast();
 
   return useMutation<UserApiResponse, Error, CreateUserRequest>({
-    mutationFn: (payload) => usersService.createUser(payload),
+    mutationFn: (payload) => {
+        console.log("▶️ [useCreateUserMutation] Mutation started with payload:", payload);
+        return usersService.createUser(payload)
+    },
     onSuccess: (data) => {
+      console.log("✅ [useCreateUserMutation] Mutation successful:", data);
       toast({
         title: "Thành công",
         description: `Đã tạo người dùng "${data.fullName}" thành công.`,
@@ -59,6 +64,7 @@ export function useCreateUserMutation() {
       });
     },
     onError: (error) => {
+      console.error("❌ [useCreateUserMutation] Mutation failed:", error);
       toast({
         title: "Lỗi",
         description: extractErrorMessage(error),
@@ -66,6 +72,7 @@ export function useCreateUserMutation() {
       });
     },
     onSettled: () => {
+      console.log(`🔄 [useCreateUserMutation] Invalidating queries with key:`, [USERS_QUERY_KEY]);
       queryClient.invalidateQueries({ queryKey: [USERS_QUERY_KEY] });
     },
   });
@@ -81,37 +88,20 @@ export function useUpdateUserMutation() {
     { id: string; payload: UpdateUserRequest },
     { previousUsers?: PaginatedResponse<User> }
   >({
-    mutationFn: ({ id, payload }) =>
-      usersService.updateUserByAdmin(id, payload),
-    onMutate: async ({ id, payload }) => {
-      const queryKey = [USERS_QUERY_KEY, "list"];
-      await queryClient.cancelQueries({ queryKey });
-
-      const previousUsers =
-        queryClient.getQueryData<PaginatedResponse<User>>(queryKey);
-
-      if (previousUsers) {
-        queryClient.setQueryData<PaginatedResponse<User>>(queryKey, (old) => {
-          if (!old) return old;
-          return {
-            ...old,
-            items: old.items.map((user) =>
-              user.id === id ? { ...user, ...payload } : user
-            ),
-          };
-        });
-      }
-
-      return { previousUsers };
+    mutationFn: ({ id, payload }) => {
+        console.log(`▶️ [useUpdateUserMutation] Mutation started for user ${id} with payload:`, payload);
+        return usersService.updateUserByAdmin(id, payload)
     },
     onSuccess: (_, variables) => {
+      console.log("✅ [useUpdateUserMutation] Mutation successful");
       toast({
         title: "Thành công",
-        description: `Đã cập nhật người dùng "${variables.payload.FullName}" thành công.`,
+        description: `Đã cập nhật người dùng "${variables.payload.fullName}" thành công.`,
         variant: "success",
       });
     },
     onError: (err, variables, context) => {
+      console.error("❌ [useUpdateUserMutation] Mutation failed:", err);
       if (context?.previousUsers) {
         queryClient.setQueryData(
           [USERS_QUERY_KEY, "list"],
@@ -125,6 +115,7 @@ export function useUpdateUserMutation() {
       });
     },
     onSettled: () => {
+      console.log(`🔄 [useUpdateUserMutation] Invalidating queries with key:`, [USERS_QUERY_KEY]);
       queryClient.invalidateQueries({ queryKey: [USERS_QUERY_KEY] });
     },
   });
@@ -140,40 +131,20 @@ export function useDeleteUserMutation() {
     string[],
     { previousUsers?: PaginatedResponse<User> }
   >({
-    mutationFn: (userIds: string[]) => usersService.deleteUsers(userIds),
-    onMutate: async (idsToDelete) => {
-      const queryKey = [USERS_QUERY_KEY, "list"];
-      await queryClient.cancelQueries({ queryKey });
-
-      const previousUsers =
-        queryClient.getQueryData<PaginatedResponse<User>>(queryKey);
-
-      if (previousUsers) {
-        queryClient.setQueryData<PaginatedResponse<User>>(queryKey, (old) => {
-          if (!old) return old;
-          return {
-            ...old,
-            items: old.items.filter((user) => !idsToDelete.includes(user.id)),
-          };
-        });
-      }
-
-      return { previousUsers };
+    mutationFn: (userIds: string[]) => {
+        console.log("▶️ [useDeleteUserMutation] Mutation started for IDs:", userIds);
+        return usersService.deleteUsers(userIds)
     },
     onSuccess: () => {
+      console.log("✅ [useDeleteUserMutation] Mutation successful");
       toast({
         title: "Thành công",
         description: "Đã xóa người dùng thành công.",
         variant: "success",
       });
     },
-    onError: (err, id, context) => {
-      if (context?.previousUsers) {
-        queryClient.setQueryData(
-          [USERS_QUERY_KEY, "list"],
-          context.previousUsers
-        );
-      }
+    onError: (err) => {
+      console.error("❌ [useDeleteUserMutation] Mutation failed:", err);
       toast({
         title: "Lỗi",
         description: extractErrorMessage(err),
@@ -181,6 +152,7 @@ export function useDeleteUserMutation() {
       });
     },
     onSettled: () => {
+      console.log(`🔄 [useDeleteUserMutation] Invalidating queries with key:`, [USERS_QUERY_KEY]);
       queryClient.invalidateQueries({ queryKey: [USERS_QUERY_KEY] });
     },
   });

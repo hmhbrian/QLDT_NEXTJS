@@ -92,7 +92,7 @@ export const mockCourses: Course[] = [
       "Tìm hiểu sâu về các tính năng JavaScript hiện đại và các phương pháp hay nhất.",
     objectives:
       "Nắm vững ES6+, async/await, và các pattern hiện đại. Xây dựng ứng dụng thực tế với kiến thức đã học. Hiểu rõ về tối ưu hóa hiệu suất trong JavaScript.",
-    category: "programming",
+    category: { id: 1, categoryName: "Lập trình" }, // Fixed type
     instructor: "TS. Code",
     duration: {
       sessions: 12,
@@ -103,6 +103,11 @@ export const mockCourses: Course[] = [
     status: "Lưu nháp",
     department: ["it"],
     level: ["intern", "probation"],
+    departments: [{ departmentId: 1, departmentName: "IT" }], // Added
+    eLevels: [
+      { eLevelId: 1, eLevelName: "Thực tập" },
+      { eLevelId: 2, eLevelName: "Thử việc" },
+    ], // Added
     startDate: "2024-08-01",
     endDate: "2024-09-15",
     location: "https://meet.google.com/abc-xyz",
@@ -146,7 +151,7 @@ export const mockCourses: Course[] = [
     description: "Học các yếu tố cần thiết để quản lý dự án hiệu quả.",
     objectives:
       "Nắm vững các nguyên tắc quản lý dự án và áp dụng vào thực tế. Lập kế hoạch, theo dõi và báo cáo tiến độ dự án. Quản lý rủi ro và các bên liên quan.",
-    category: "business",
+    category: { id: 2, categoryName: "Kinh doanh" }, // Fixed type
     instructor: "CN. Planner",
     duration: {
       sessions: 8,
@@ -157,6 +162,11 @@ export const mockCourses: Course[] = [
     status: "Đang mở",
     department: ["hr"],
     level: ["employee", "middle_manager"],
+    departments: [{ departmentId: 2, departmentName: "HR" }], // Added
+    eLevels: [
+      { eLevelId: 3, eLevelName: "Nhân viên" },
+      { eLevelId: 4, eLevelName: "Quản lý cấp trung" },
+    ], // Added
     startDate: "2024-09-01",
     endDate: "2024-09-30",
     location: "https://meet.google.com/def-ghi",
@@ -192,7 +202,7 @@ export const mockCourses: Course[] = [
       "Nắm vững các nguyên tắc cốt lõi của thiết kế giao diện và trải nghiệm người dùng.",
     objectives:
       "Hiểu và áp dụng các nguyên tắc thiết kế UI/UX vào thực tế. Tạo wireframes, prototypes và user flows. Thực hiện user testing và cải thiện thiết kế.",
-    category: "design",
+    category: { id: 3, categoryName: "Thiết kế" }, // Fixed type
     instructor: "KS. Pixel",
     duration: {
       sessions: 16,
@@ -203,6 +213,11 @@ export const mockCourses: Course[] = [
     status: "Lưu nháp",
     department: ["it"],
     level: ["intern", "probation"],
+    departments: [{ departmentId: 1, departmentName: "IT" }], // Added
+    eLevels: [
+      { eLevelId: 1, eLevelName: "Thực tập" },
+      { eLevelId: 2, eLevelName: "Thử việc" },
+    ], // Added
     startDate: "2024-10-01",
     endDate: "2024-11-30",
     location: "https://meet.google.com/jkl-mno",
@@ -228,7 +243,7 @@ export const mockCourses: Course[] = [
       "Phát triển và triển khai các chiến lược tiếp thị kỹ thuật số hiệu quả.",
     objectives:
       "Xây dựng và triển khai chiến lược marketing số hiệu quả. Phân tích đối thủ và thị trường. Đo lường và tối ưu hóa chiến dịch.",
-    category: "marketing",
+    category: { id: 4, categoryName: "Tiếp thị" }, // Fixed type
     instructor: "CN. Click",
     duration: { sessions: 10, hoursPerSession: 2 },
     learningType: "online",
@@ -236,6 +251,11 @@ export const mockCourses: Course[] = [
     status: "Hủy",
     department: ["marketing"],
     level: ["employee", "middle_manager"],
+    departments: [{ departmentId: 5, departmentName: "Marketing" }], // Added
+    eLevels: [
+      { eLevelId: 3, eLevelName: "Nhân viên" },
+      { eLevelId: 4, eLevelName: "Quản lý cấp trung" },
+    ], // Added
     startDate: "2024-07-01",
     endDate: "2024-08-10",
     location: "https://meet.google.com/pqr-stu",
@@ -261,7 +281,7 @@ export const mockCourses: Course[] = [
       "Khám phá Python cho phân tích dữ liệu, học máy và trực quan hóa.",
     objectives:
       "Sử dụng Pandas, NumPy, Matplotlib. Xây dựng mô hình học máy cơ bản. Trực quan hóa dữ liệu hiệu quả.",
-    category: "programming",
+    category: { id: 1, categoryName: "Lập trình" }, // Fixed type
     instructor: "Dr. Data",
     duration: { sessions: 15, hoursPerSession: 3 },
     learningType: "online",
@@ -269,6 +289,14 @@ export const mockCourses: Course[] = [
     status: "Đang mở",
     department: ["it", "operations"],
     level: ["employee", "middle_manager"],
+    departments: [
+      { departmentId: 1, departmentName: "IT" },
+      { departmentId: 6, departmentName: "Vận hành" },
+    ], // Added
+    eLevels: [
+      { eLevelId: 3, eLevelName: "Nhân viên" },
+      { eLevelId: 4, eLevelName: "Quản lý cấp trung" },
+    ], // Added
     startDate: "2024-09-05",
     endDate: "2024-11-20",
     location: "https://zoom.us/j/python-ds",
@@ -293,7 +321,7 @@ export const mockCourses: Course[] = [
     description: "Nâng cao kỹ năng giao tiếp trong công việc và cuộc sống.",
     objectives:
       "Lắng nghe chủ động. Trình bày ý tưởng rõ ràng. Giải quyết xung đột hiệu quả.",
-    category: "soft_skills",
+    category: { id: 5, categoryName: "Kỹ năng mềm" }, // Fixed type
     instructor: "Chuyên gia Tâm lý",
     duration: { sessions: 6, hoursPerSession: 1.5 },
     learningType: "online",
@@ -307,6 +335,18 @@ export const mockCourses: Course[] = [
       "middle_manager",
       "senior_manager",
     ],
+    departments: [
+      { departmentId: 2, departmentName: "HR" },
+      { departmentId: 4, departmentName: "Kinh doanh" },
+      { departmentId: 5, departmentName: "Marketing" },
+    ], // Added
+    eLevels: [
+      { eLevelId: 1, eLevelName: "Thực tập" },
+      { eLevelId: 2, eLevelName: "Thử việc" },
+      { eLevelId: 3, eLevelName: "Nhân viên" },
+      { eLevelId: 4, eLevelName: "Quản lý cấp trung" },
+      { eLevelId: 5, eLevelName: "Quản lý cấp cao" },
+    ], // Added
     startDate: "2024-08-15",
     endDate: "2024-09-20",
     location: "https://teams.microsoft.com/comms-skills",
@@ -340,7 +380,7 @@ export const mockCourseDetail: Course = {
 - Kỹ thuật tối ưu hóa hiệu năng và gỡ lỗi (debugging) hiệu quả.
 - Xây dựng một dự án nhỏ hoàn chỉnh để áp dụng kiến thức đã học.
 - Tự tin làm việc với các framework JavaScript hiện đại như React, Angular, hoặc Vue.js.`,
-  category: "programming",
+  category: { id: 1, categoryName: "Lập trình" }, // Fixed type
   instructor: "TS. Code Master",
   duration: { sessions: 20, hoursPerSession: 2.5 },
   learningType: "online",
@@ -348,6 +388,14 @@ export const mockCourseDetail: Course = {
   status: "Đang mở",
   department: ["it", "operations"],
   level: ["employee", "middle_manager"],
+  departments: [
+    { departmentId: 1, departmentName: "IT" },
+    { departmentId: 6, departmentName: "Vận hành" },
+  ], // Added
+  eLevels: [
+    { eLevelId: 3, eLevelName: "Nhân viên" },
+    { eLevelId: 4, eLevelName: "Quản lý cấp trung" },
+  ], // Added
   startDate: "2024-08-01",
   endDate: "2024-10-15",
   location: "https://meet.google.com/js-advanced-class",
@@ -421,17 +469,12 @@ export interface PublicCourse {
   id: string;
   title: string;
   description: string;
-  category:
-    | "Lập trình"
-    | "Kinh doanh"
-    | "Thiết kế"
-    | "Tiếp thị"
-    | "Kỹ năng mềm";
+  category: { id: number; categoryName: string }; // Changed to object type
   instructor: string;
-  duration: string;
-  image: string;
+  duration: string; // Added
+  image: string; // Added
   dataAiHint?: string;
-  enrollmentType?: "optional" | "mandatory";
+  enrollmentType?: "optional" | "mandatory" | "";
   registrationDeadline?: string | null;
   isPublic?: boolean;
   userIds?: string[];
@@ -443,13 +486,11 @@ export const mockPublicCourses: PublicCourse[] = mockCourses
     id: course.id,
     title: course.title,
     description: course.description,
-    category:
-      (categoryOptions.find((c) => c.value === course.category)
-        ?.label as PublicCourse["category"]) || "Lập trình",
+    category: course.category as { id: number; categoryName: string }, // Cast to the correct type
     instructor: course.instructor,
     duration: `${course.duration.sessions} buổi (${course.duration.hoursPerSession}h/buổi)`,
     image: course.image,
-    dataAiHint: course.category,
+    dataAiHint: course.category?.categoryName || "Lập trình", // Ensure dataAiHint is a string
     enrollmentType: course.enrollmentType,
     registrationDeadline: course.registrationDeadline,
     isPublic: course.isPublic,

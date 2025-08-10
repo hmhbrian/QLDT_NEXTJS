@@ -6,8 +6,8 @@ import type { DepartmentInfo } from "@/lib/types/department.types";
  */
 function createDepartmentMap(
   departments: DepartmentInfo[]
-): Map<string, DepartmentInfo> {
-  const map = new Map<string, DepartmentInfo>();
+): Map<number, DepartmentInfo> {
+  const map = new Map<number, DepartmentInfo>();
   departments.forEach((dept) => map.set(dept.departmentId, dept));
   return map;
 }
@@ -17,10 +17,10 @@ function createDepartmentMap(
  */
 export function buildDepartmentTree(
   departments: DepartmentInfo[],
-  parentId: string | null = null,
+  parentId: number | null = null,
   maxDepth: number = -1, // -1 nghĩa là không giới hạn
   currentDepth: number = 0,
-  visitedIds: Set<string> = new Set()
+  visitedIds: Set<number> = new Set()
 ): (DepartmentInfo & { children?: DepartmentInfo[] })[] {
   // Nếu đã đạt đến độ sâu tối đa và không phải không giới hạn, trả về mảng rỗng
   if (maxDepth !== -1 && currentDepth >= maxDepth) {
@@ -73,7 +73,7 @@ export function buildDepartmentTree(
  * Kiểm tra xem một phòng ban có phòng ban con nào không
  */
 export function hasDepartmentChildren(
-  departmentId: string,
+  departmentId: number,
   departments: DepartmentInfo[]
 ): boolean {
   return departments.some((dept) => dept.parentId === departmentId);
@@ -84,10 +84,10 @@ export function hasDepartmentChildren(
  * Phiên bản tối ưu hóa với memoization để tránh tính toán lặp lại
  */
 export function getAllChildDepartments(
-  departmentId: string,
+  departmentId: number,
   departments: DepartmentInfo[],
-  memo: Map<string, DepartmentInfo[]> = new Map(),
-  visitedIds: Set<string> = new Set()
+  memo: Map<number, DepartmentInfo[]> = new Map(),
+  visitedIds: Set<number> = new Set()
 ): DepartmentInfo[] {
   // Kiểm tra xem đã tính toán trước đó chưa
   if (memo.has(departmentId)) {
@@ -156,14 +156,14 @@ export function lazyLoadDepartmentTree(
 ): {
   tree: (DepartmentInfo & { children?: DepartmentInfo[] })[];
   loadMoreChildren: (
-    departmentId: string
+    departmentId: number
   ) => (DepartmentInfo & { children?: DepartmentInfo[] })[];
 } {
   // Ban đầu tải cây đến độ sâu cụ thể
   const initialTree = buildDepartmentTree(departments, null, initialDepth);
 
   // Hàm để tải thêm các phòng ban con cho một phòng ban cụ thể
-  const loadMoreChildren = (departmentId: string) => {
+  const loadMoreChildren = (departmentId: number) => {
     const department = findDepartmentInTree(initialTree, departmentId);
     if (!department) return [];
 
@@ -196,7 +196,7 @@ export function lazyLoadDepartmentTree(
  */
 function findDepartmentInTree(
   tree: (DepartmentInfo & { children?: DepartmentInfo[] })[],
-  departmentId: string
+  departmentId: number
 ): (DepartmentInfo & { children?: DepartmentInfo[] }) | null {
   for (const node of tree) {
     if (node.departmentId === departmentId) {
@@ -224,7 +224,7 @@ export function validateDepartmentTree(departments: DepartmentInfo[]): {
       | "missing_parent"
       | "invalid_level"
       | "invalid_path";
-    departmentId: string;
+    departmentId: number;
     details: string;
   }[];
 } {
@@ -234,7 +234,7 @@ export function validateDepartmentTree(departments: DepartmentInfo[]): {
       | "missing_parent"
       | "invalid_level"
       | "invalid_path";
-    departmentId: string;
+    departmentId: number;
     details: string;
   }[] = [];
 
@@ -257,7 +257,7 @@ export function validateDepartmentTree(departments: DepartmentInfo[]): {
 
       // Kiểm tra tham chiếu vòng tròn
       let currentParentId = dept.parentId;
-      const visitedIds = new Set<string>([dept.departmentId]);
+      const visitedIds = new Set<number>([dept.departmentId]);
 
       while (currentParentId) {
         if (visitedIds.has(currentParentId)) {

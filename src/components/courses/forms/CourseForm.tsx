@@ -28,6 +28,7 @@ import {
   CommandItem,
   CommandList,
   CommandGroup,
+  CommandSeparator,
 } from "@/components/ui/command";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -49,6 +50,7 @@ import type { Course, EnrollmentType } from "@/lib/types/course.types";
 import type { User } from "@/lib/types/user.types";
 import { generateCourseCode } from "@/lib/utils/code-generator";
 import { categoryOptions } from "@/lib/config/constants";
+import { useCourseCategories } from "@/hooks/use-course-categories";
 import {
   useCourse,
   useCreateCourse,
@@ -56,7 +58,7 @@ import {
 } from "@/hooks/use-courses";
 import { useCourseStatuses } from "@/hooks/use-statuses";
 import { useDepartments } from "@/hooks/use-departments";
-import { usePositions } from "@/hooks/use-positions";
+import { useEmployeeLevel } from "@/hooks/use-employeeLevel";
 import { useUsers } from "@/hooks/use-users";
 import { useDebounce } from "@/hooks/use-debounce";
 import { MaterialManager } from "@/components/courses/dialogs/MaterialManager";
@@ -73,7 +75,7 @@ const initialNewCourseState: Course = {
   courseCode: "",
   description: "",
   objectives: "",
-  category: "programming",
+  category: null,
   instructor: "",
   duration: { sessions: 1, hoursPerSession: 2 },
   learningType: "online",
@@ -82,12 +84,14 @@ const initialNewCourseState: Course = {
   location: "",
   image: "https://placehold.co/600x400.png",
   status: "Lưu nháp",
+  departments: [],
+  eLevels: [],
   department: [],
   level: [],
   materials: [],
   lessons: [],
   tests: [],
-  enrollmentType: "optional",
+  enrollmentType: "" as EnrollmentType,
   registrationStartDate: null,
   registrationDeadline: null,
   userIds: [],
@@ -112,6 +116,7 @@ export function CourseForm({
   const duplicateFromId = searchParams.get("duplicateFrom");
 
   // --- Data Fetching ---
+  const { categories, isLoading: isLoadingCategories } = useCourseCategories();
   const { course: courseToEdit, isLoading: isLoadingCourse } = useCourse(
     courseId || ""
   );
@@ -119,7 +124,7 @@ export function CourseForm({
     useCourse(duplicateFromId || "");
   const { courseStatuses } = useCourseStatuses();
   const { departments } = useDepartments();
-  const { positions } = usePositions();
+  const { EmployeeLevel } = useEmployeeLevel();
 
   const createCourseMutation = useCreateCourse();
   const updateCourseMutation = useUpdateCourse();
@@ -151,21 +156,25 @@ export function CourseForm({
   // --- Derived State (Options for Selects) ---
   const departmentOptions = useMemo(() => {
     return (departments || []).map((d) => ({
-      value: d.departmentId,
+      value: String(d.departmentId),
       label: d.name,
     }));
   }, [departments]);
 
   const levelOptions = useMemo(() => {
-    return (positions || []).map((p) => ({
-      value: String(p.positionId),
-      label: p.positionName,
+    return (EmployeeLevel || []).map((p) => ({
+      value: String(p.eLevelId),
+      label: p.eLevelName,
     }));
-  }, [positions]);
+  }, [EmployeeLevel]);
 
   // --- Effects ---
   useEffect(() => {
     if (courseToEdit && courseId) {
+      console.log(
+        "🔄 [CourseForm] Updating form data with courseToEdit:",
+        courseToEdit
+      );
       setFormData(courseToEdit);
       setCourseImagePreview(courseToEdit.image);
       setTempSelectedTraineeIds(courseToEdit.userIds || []);
@@ -283,22 +292,28 @@ export function CourseForm({
       imageFile: selectedImageFile || undefined,
     };
 
-    // Navigate immediately for better UX
-    onSaveSuccess?.();
-
     try {
       if (courseId) {
-        // Editing existing course
-        const payload = mapCourseUiToUpdatePayload(dataWithFile);
+        // Editing existing course - pass original course data for comparison
+        const payload = mapCourseUiToUpdatePayload(dataWithFile, courseToEdit);
         await updateCourseMutation.mutateAsync({ courseId, payload });
+
+        // Update form data with the saved data to reflect changes
+        // NO - This was causing the re-render bug. The query invalidation will handle it.
+        // setFormData(dataWithFile);
+
+        // Navigate after successful save
+        onSaveSuccess?.();
       } else {
         // Creating new course (could be from scratch or duplication)
         const payload = mapCourseUiToCreatePayload(dataWithFile);
         await createCourseMutation.mutateAsync(payload);
+
+        // Navigate immediately for new course
+        onSaveSuccess?.();
       }
     } catch (error) {
       // The useMutation hook will show the error toast.
-      // We don't need to re-throw, as navigation has already occurred.
       console.error("Failed to save course:", error);
     }
   };
@@ -373,18 +388,26 @@ export function CourseForm({
                     Danh mục <span className="text-destructive">*</span>
                   </Label>
                   <Select
-                    value={formData.category}
-                    onValueChange={(v: Course["category"]) =>
-                      handleInputChange("category", v)
+                    value={
+                      formData.category?.id ? String(formData.category.id) : ""
                     }
+                    onValueChange={(value: string) => {
+                      const selectedCategory = categories.find(
+                        (c) => String(c.id) === value
+                      );
+                      handleInputChange("category", selectedCategory || null);
+                    }}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Chọn danh mục" />
                     </SelectTrigger>
                     <SelectContent>
-                      {categoryOptions.map((o) => (
-                        <SelectItem key={o.value} value={o.value}>
-                          {o.label}
+                      {categories.map((category) => (
+                        <SelectItem
+                          key={category.id}
+                          value={String(category.id)}
+                        >
+                          {category.categoryName}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -567,6 +590,21 @@ export function CourseForm({
                             ))}
                           </CommandGroup>
                         </CommandList>
+                        {(formData.department?.length || 0) > 0 && (
+                          <>
+                            <CommandSeparator />
+                            <CommandGroup>
+                              <CommandItem
+                                onSelect={() =>
+                                  handleInputChange("department", [])
+                                }
+                                className="text-destructive focus:bg-destructive/10 focus:text-destructive justify-center text-center cursor-pointer"
+                              >
+                                Xoá tất cả
+                              </CommandItem>
+                            </CommandGroup>
+                          </>
+                        )}
                       </Command>
                     </PopoverContent>
                   </Popover>
@@ -574,8 +612,9 @@ export function CourseForm({
                     {formData.department
                       ?.map(
                         (id) =>
-                          departmentOptions.find((opt) => String(opt.value) === String(id))
-                            ?.label
+                          departmentOptions.find(
+                            (opt) => String(opt.value) === String(id)
+                          )?.label
                       )
                       .filter(Boolean)
                       .map((label) => (
@@ -630,6 +669,19 @@ export function CourseForm({
                             ))}
                           </CommandGroup>
                         </CommandList>
+                        {(formData.level?.length || 0) > 0 && (
+                          <>
+                            <CommandSeparator />
+                            <CommandGroup>
+                              <CommandItem
+                                onSelect={() => handleInputChange("level", [])}
+                                className="text-destructive focus:bg-destructive/10 focus:text-destructive justify-center text-center cursor-pointer"
+                              >
+                                Xoá tất cả
+                              </CommandItem>
+                            </CommandGroup>
+                          </>
+                        )}
                       </Command>
                     </PopoverContent>
                   </Popover>
@@ -637,7 +689,9 @@ export function CourseForm({
                     {formData.level
                       ?.map(
                         (id) =>
-                          levelOptions.find((opt) => String(opt.value) === String(id))?.label
+                          levelOptions.find(
+                            (opt) => String(opt.value) === String(id)
+                          )?.label
                       )
                       .filter(Boolean)
                       .map((label) => (
@@ -852,50 +906,70 @@ export function CourseForm({
               Chọn các học viên sẽ được chỉ định cho khóa học này.
             </DialogDescription>
           </DialogHeader>
-          <div className="relative mt-4">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Tìm theo tên hoặc email..."
-              value={traineeSearchTerm}
-              onChange={(e) => setTraineeSearchTerm(e.target.value)}
-              className="pl-9"
-            />
-          </div>
-          <div className="max-h-[50vh] overflow-y-auto py-4 space-y-2">
-            {trainees.length === 0 && !debouncedTraineeSearch ? (
-              <p className="text-sm text-center text-muted-foreground">
-                Bắt đầu tìm kiếm học viên.
-              </p>
-            ) : trainees.length === 0 && debouncedTraineeSearch ? (
-              <p className="text-sm text-center text-muted-foreground">
-                Không tìm thấy học viên.
-              </p>
-            ) : (
-              trainees.map((trainee) => (
-                <div
-                  key={trainee.id}
-                  className="flex items-center space-x-2 p-2 hover:bg-muted/50 rounded-md"
+          <div className="space-y-4">
+            <div className="relative">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Tìm theo tên hoặc email..."
+                value={traineeSearchTerm}
+                onChange={(e) => setTraineeSearchTerm(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+
+            {tempSelectedTraineeIds.length > 0 && (
+              <div className="flex justify-between items-center text-sm px-1">
+                <span className="text-muted-foreground">
+                  Đã chọn {tempSelectedTraineeIds.length} học viên
+                </span>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-auto p-1 text-xs text-muted-foreground hover:text-destructive"
+                  onClick={() => setTempSelectedTraineeIds([])}
                 >
-                  <Checkbox
-                    id={`trainee-select-${trainee.id}`}
-                    checked={tempSelectedTraineeIds.includes(trainee.id)}
-                    onCheckedChange={(checked) => {
-                      setTempSelectedTraineeIds((prev) =>
-                        checked
-                          ? [...prev, trainee.id]
-                          : prev.filter((id) => id !== trainee.id)
-                      );
-                    }}
-                  />
-                  <Label
-                    htmlFor={`trainee-select-${trainee.id}`}
-                    className="cursor-pointer flex-grow"
-                  >
-                    {trainee.fullName} ({trainee.email})
-                  </Label>
-                </div>
-              ))
+                  Xoá tất cả
+                </Button>
+              </div>
             )}
+
+            <div className="max-h-[50vh] overflow-y-auto py-2 space-y-2">
+              {trainees.length === 0 && !debouncedTraineeSearch ? (
+                <p className="text-sm text-center text-muted-foreground py-4">
+                  Bắt đầu tìm kiếm học viên.
+                </p>
+              ) : trainees.length === 0 && debouncedTraineeSearch ? (
+                <p className="text-sm text-center text-muted-foreground py-4">
+                  Không tìm thấy học viên.
+                </p>
+              ) : (
+                trainees.map((trainee) => (
+                  <div
+                    key={trainee.id}
+                    className="flex items-center space-x-2 p-2 hover:bg-muted/50 rounded-md"
+                  >
+                    <Checkbox
+                      id={`trainee-select-${trainee.id}`}
+                      checked={tempSelectedTraineeIds.includes(trainee.id)}
+                      onCheckedChange={(checked) => {
+                        setTempSelectedTraineeIds((prev) =>
+                          checked
+                            ? [...prev, trainee.id]
+                            : prev.filter((id) => id !== trainee.id)
+                        );
+                      }}
+                    />
+                    <Label
+                      htmlFor={`trainee-select-${trainee.id}`}
+                      className="cursor-pointer flex-grow"
+                    >
+                      {trainee.fullName} ({trainee.email})
+                    </Label>
+                  </div>
+                ))
+              )}
+            </div>
           </div>
           <DialogFooter>
             <Button
