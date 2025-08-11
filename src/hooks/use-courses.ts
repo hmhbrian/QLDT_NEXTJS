@@ -343,14 +343,19 @@ export function useCompletedLessonsCount(courseId: string) {
     },
     enabled: !!courseId,
     staleTime: 5 * 60 * 1000,
-    refetchOnWindowFocus: true,
+    refetchOnWindowFocus: false,
   });
+}
+
+export interface CompletedCourse extends Course {
+  completedAt?: string;
+  score?: number;
 }
 
 export function useCompletedCoursesCount(page: number = 1, limit: number = 10) {
   const { user } = useAuth();
 
-  return useQuery<{ count: number; courses: Course[]; pagination: { totalItems: number; itemsPerPage: number; currentPage: number; totalPages: number } }, Error>({
+  return useQuery<{ count: number; courses: CompletedCourse[]; pagination: { totalItems: number; itemsPerPage: number; currentPage: number; totalPages: number } }, Error>({
     queryKey: ["completedCoursesCount", user?.id, page, limit],
     queryFn: async () => {
       console.log(
@@ -398,6 +403,9 @@ export function useCompletedCoursesCount(page: number = 1, limit: number = 10) {
         modifiedAt: "",
         createdBy: "",
         modifiedBy: null,
+        // Extended fields for completed courses - remove fake data
+        completedAt: undefined,
+        score: undefined,
       }));
 
       const finalCount = countResponse ?? coursesResponse.pagination?.totalItems ?? 0;
@@ -413,6 +421,6 @@ export function useCompletedCoursesCount(page: number = 1, limit: number = 10) {
     },
     enabled: !!user && user.role === "HOCVIEN",
     staleTime: 5 * 60 * 1000,
-    refetchOnWindowFocus: true,
+    refetchOnWindowFocus: false,
   });
 }
