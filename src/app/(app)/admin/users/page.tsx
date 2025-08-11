@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useRef } from "react";
 import {
   Card,
   CardContent,
@@ -129,6 +129,13 @@ export default function UsersPage() {
     Partial<Record<keyof CreateUserRequest, string>>
   >({});
 
+  // Refs for focusing fields on validation error
+  const fullNameRef = useRef<HTMLInputElement>(null);
+  const idCardRef = useRef<HTMLInputElement>(null);
+  const emailRef = useRef<HTMLInputElement>(null);
+  const passwordRef = useRef<HTMLInputElement>(null);
+  const confirmPasswordRef = useRef<HTMLInputElement>(null);
+
   // Data Fetching with TanStack Query - optimize for instant navigation
   const {
     users,
@@ -219,31 +226,83 @@ export default function UsersPage() {
     setIsFormOpen(true);
   }, []);
 
+  const validateField = (
+    field: keyof CreateUserRequest | "confirmPassword",
+    value: any,
+    context: { isEdit: boolean; password?: string }
+  ): string | undefined => {
+    switch (field) {
+      case "fullName":
+        if (!value) return "Họ và tên là bắt buộc!";
+        break;
+      case "idCard":
+        if (!value) return "CMND/CCCD là bắt buộc!";
+        break;
+      case "email":
+        if (!value) return "Email là bắt buộc!";
+        if (!/^[a-zA-Z0-9._%+-]+@becamex\.com$/.test(String(value)))
+          return "Email phải có domain @becamex.com.";
+        break;
+      case "password":
+        if (!context.isEdit && !value) return "Mật khẩu là bắt buộc!";
+        if (value && String(value).length < 6)
+          return "Mật khẩu phải có ít nhất 6 ký tự.";
+        break;
+      case "confirmPassword":
+        if (!context.isEdit && value == null) return "Xác nhận mật khẩu là bắt buộc!";
+        if (value !== context.password)
+          return "Mật khẩu xác nhận không khớp.";
+        break;
+      default:
+        break;
+    }
+    return undefined;
+  };
+
   const validateForm = (isEdit: boolean) => {
     const data = newUser;
     const newErrors: Partial<Record<keyof CreateUserRequest, string>> = {};
 
-    if (!data.fullName) newErrors.fullName = "Họ và tên là bắt buộc!";
-    if (!data.idCard) newErrors.idCard = "CMND/CCCD là bắt buộc!";
-    if (!data.email) newErrors.email = "Email là bắt buộc!";
-    else if (!/^[a-zA-Z0-9._%+-]+@becamex\.com$/.test(data.email)) {
-      newErrors.email = "Email phải có domain @becamex.com.";
-    }
+    newErrors.fullName = validateField("fullName", data.fullName, { isEdit });
+    newErrors.idCard = validateField("idCard", data.idCard, { isEdit });
+    newErrors.email = validateField("email", data.email, { isEdit });
+    newErrors.password = validateField("password", data.password, { isEdit });
+    const confirmErr = validateField(
+      "confirmPassword",
+      data.confirmPassword,
+      { isEdit, password: data.password }
+    );
+    if (confirmErr) newErrors.confirmPassword = confirmErr;
 
-    if (!isEdit) {
-      if (!data.password) newErrors.password = "Mật khẩu là bắt buộc!";
-      else if (data.password.length < 6)
-        newErrors.password = "Mật khẩu phải có ít nhất 6 ký tự.";
-      if (data.confirmPassword !== data.password)
-        newErrors.confirmPassword = "Mật khẩu xác nhận không khớp.";
-    } else if (data.password && data.password.trim()) {
-      if (data.password.length < 6)
-        newErrors.password = "Mật khẩu phải có ít nhất 6 ký tự.";
-      if (data.confirmPassword !== data.password)
-        newErrors.confirmPassword = "Mật khẩu xác nhận không khớp.";
-    }
+    // Remove undefined entries
+    (Object.keys(newErrors) as Array<keyof CreateUserRequest>).forEach((k) =>
+      newErrors[k] === undefined ? delete newErrors[k] : undefined
+    );
 
     setErrors(newErrors);
+
+    // Focus first error field
+    const errorOrder: Array<keyof CreateUserRequest | "confirmPassword"> = [
+      "fullName",
+      "idCard",
+      "email",
+      "password",
+      "confirmPassword",
+    ];
+    const firstError = errorOrder.find((k) =>
+      k === "confirmPassword"
+        ? !!newErrors.confirmPassword
+        : !!newErrors[k as keyof CreateUserRequest]
+    );
+    if (firstError) {
+      if (firstError === "fullName") fullNameRef.current?.focus();
+      else if (firstError === "idCard") idCardRef.current?.focus();
+      else if (firstError === "email") emailRef.current?.focus();
+      else if (firstError === "password") passwordRef.current?.focus();
+      else if (firstError === "confirmPassword")
+        confirmPasswordRef.current?.focus();
+    }
+
     return Object.keys(newErrors).length === 0;
   };
 
@@ -265,8 +324,6 @@ export default function UsersPage() {
       });
       return;
     }
-
-    setIsFormOpen(false);
 
     try {
       if (isEdit && editingUser) {
@@ -321,8 +378,11 @@ export default function UsersPage() {
         };
         await createUserMutation.mutateAsync(createUserPayload);
       }
+      // Close only on success
+      setIsFormOpen(false);
     } catch (error) {
       console.error("Failed to save user:", error);
+      // Keep form open on error
     }
   };
 
@@ -473,9 +533,18 @@ export default function UsersPage() {
               <Label htmlFor="fullName">Họ và tên *</Label>
               <Input
                 id="fullName"
+                ref={fullNameRef}
                 value={newUser.fullName}
                 onChange={(e) =>
                   setNewUser({ ...newUser, fullName: e.target.value })
+                }
+                onBlur={(e) =>
+                  setErrors((prev) => ({
+                    ...prev,
+                    fullName: validateField("fullName", e.target.value, {
+                      isEdit: !!editingUser,
+                    }),
+                  }))
                 }
                 className={errors.fullName ? "border-destructive" : ""}
               />
@@ -487,9 +556,18 @@ export default function UsersPage() {
               <Label htmlFor="idCard">CMND/CCCD *</Label>
               <Input
                 id="idCard"
+                ref={idCardRef}
                 value={newUser.idCard}
                 onChange={(e) =>
                   setNewUser({ ...newUser, idCard: e.target.value })
+                }
+                onBlur={(e) =>
+                  setErrors((prev) => ({
+                    ...prev,
+                    idCard: validateField("idCard", e.target.value, {
+                      isEdit: !!editingUser,
+                    }),
+                  }))
                 }
                 className={errors.idCard ? "border-destructive" : ""}
               />
@@ -529,9 +607,18 @@ export default function UsersPage() {
               <Input
                 id="email"
                 type="email"
+                ref={emailRef}
                 value={newUser.email}
                 onChange={(e) =>
                   setNewUser({ ...newUser, email: e.target.value })
+                }
+                onBlur={(e) =>
+                  setErrors((prev) => ({
+                    ...prev,
+                    email: validateField("email", e.target.value, {
+                      isEdit: !!editingUser,
+                    }),
+                  }))
                 }
                 className={errors.email ? "border-destructive" : ""}
               />
@@ -712,9 +799,18 @@ export default function UsersPage() {
                 <Input
                   id="password"
                   type={showPassword ? "text" : "password"}
+                  ref={passwordRef}
                   value={newUser.password}
                   onChange={(e) =>
                     setNewUser({ ...newUser, password: e.target.value })
+                  }
+                  onBlur={(e) =>
+                    setErrors((prev) => ({
+                      ...prev,
+                      password: validateField("password", e.target.value, {
+                        isEdit: !!editingUser,
+                      }),
+                    }))
                   }
                   className={errors.password ? "border-destructive" : ""}
                 />
@@ -744,9 +840,20 @@ export default function UsersPage() {
                 <Input
                   id="confirmPassword"
                   type={showPassword ? "text" : "password"}
+                  ref={confirmPasswordRef}
                   value={newUser.confirmPassword}
                   onChange={(e) =>
                     setNewUser({ ...newUser, confirmPassword: e.target.value })
+                  }
+                  onBlur={(e) =>
+                    setErrors((prev) => ({
+                      ...prev,
+                      confirmPassword: validateField(
+                        "confirmPassword",
+                        e.target.value,
+                        { isEdit: !!editingUser, password: newUser.password }
+                      ) as string,
+                    }))
                   }
                   className={errors.confirmPassword ? "border-destructive" : ""}
                 />
