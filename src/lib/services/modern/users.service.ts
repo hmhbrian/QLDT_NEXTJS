@@ -24,10 +24,10 @@ export class UsersService extends BaseService<
     const isSearch = !!params.keyword; // Search only by keyword now
 
     // Map pagination only for base endpoint; omit for /Users/search to avoid empty pages
-    if (!isSearch) {
-      if (params.page) backendParams.Page = params.page;
-      if (params.limit) backendParams.Limit = params.limit;
-    }
+    // if (!isSearch) {
+    if (params.page) backendParams.Page = params.page;
+    if (params.limit) backendParams.Limit = params.limit;
+    // }
     if (params.SortField) backendParams.SortField = params.SortField;
     if (params.SortType) backendParams.SortType = params.SortType;
     if (params.keyword) backendParams.Keyword = params.keyword;
