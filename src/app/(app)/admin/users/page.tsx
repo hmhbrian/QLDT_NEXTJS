@@ -28,6 +28,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { DatePicker } from "@/components/ui/datepicker";
 import { useAuth } from "@/hooks/useAuth";
 import { useError } from "@/hooks/use-error";
 import { useDebounce } from "@/hooks/use-debounce";
@@ -123,6 +124,8 @@ export default function UsersPage() {
     employeeLevel: "",
     userStatus: { id: 0, name: "" },
     employeeId: "",
+    startWork: "",
+    endWork: "",
   };
   const [newUser, setNewUser] = useState<UserFormState>(initialNewUserState);
   const [errors, setErrors] = useState<
@@ -182,6 +185,21 @@ export default function UsersPage() {
     isEmployeeLevelLoading;
   const isInitialLoading = isLoading && !users?.length && !roles.length;
 
+  // Date helpers to avoid timezone shifts (store/display as local YYYY-MM-DD)
+  const formatLocalYMD = (date: Date): string => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+
+  const parseYMDToLocalDate = (ymd?: string): Date | undefined => {
+    if (!ymd) return undefined;
+    const [y, m, d] = ymd.split("-").map((v) => parseInt(v, 10));
+    if (!y || !m || !d) return undefined;
+    return new Date(y, m - 1, d);
+  };
+
   // Filter users based on current user role - HR cannot see ADMIN users
   const filteredUsers = useMemo(() => {
     if (!users) return [];
@@ -212,7 +230,7 @@ export default function UsersPage() {
     setEditingUser(userToEdit);
     setNewUser({
       ...userToEdit,
-      role: userToEdit.role?.toUpperCase() as Role, // Ensure uppercase for consistency
+      role: userToEdit.role?.toUpperCase() as Role,
       department: userToEdit.department?.departmentId
         ? String(userToEdit.department.departmentId)
         : "",
@@ -221,6 +239,8 @@ export default function UsersPage() {
         : "",
       password: "",
       confirmPassword: "",
+      startWork: userToEdit.startWork ? userToEdit.startWork.slice(0, 10) : "",
+      endWork: userToEdit.endWork ? userToEdit.endWork.slice(0, 10) : "",
     });
     setErrors({});
     setIsFormOpen(true);
@@ -342,6 +362,8 @@ export default function UsersPage() {
             : undefined,
           statusId: newUser.userStatus?.id,
           code: newUser.employeeId || undefined,
+          startWork: newUser.startWork ? `${newUser.startWork}T00:00:00` : undefined,
+          endWork: newUser.endWork ? `${newUser.endWork}T00:00:00` : undefined,
         };
         console.log("Admin updating user with payload:", updatePayload);
 
@@ -375,6 +397,8 @@ export default function UsersPage() {
             : undefined,
           statusId: newUser.userStatus?.id,
           code: newUser.employeeId || undefined,
+          startWork: newUser.startWork ? `${newUser.startWork}T00:00:00` : undefined,
+          endWork: newUser.endWork ? `${newUser.endWork}T00:00:00` : undefined,
         };
         await createUserMutation.mutateAsync(createUserPayload);
       }
@@ -625,6 +649,32 @@ export default function UsersPage() {
               {errors.email && (
                 <p className="text-sm text-destructive">{errors.email}</p>
               )}
+            </div>
+            <div className="grid gap-2">
+              <Label>Ngày bắt đầu làm việc</Label>
+              <DatePicker
+                date={parseYMDToLocalDate(newUser.startWork as string)}
+                setDate={(d) =>
+                  setNewUser({
+                    ...newUser,
+                    startWork: d ? formatLocalYMD(d) : "",
+                  })
+                }
+                placeholder="Chọn ngày bắt đầu"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label>Ngày kết thúc làm việc (nếu có)</Label>
+              <DatePicker
+                date={parseYMDToLocalDate(newUser.endWork as string)}
+                setDate={(d) =>
+                  setNewUser({
+                    ...newUser,
+                    endWork: d ? formatLocalYMD(d) : "",
+                  })
+                }
+                placeholder="Chọn ngày kết thúc"
+              />
             </div>
             <div className="grid gap-2">
               <Label htmlFor="numberPhone">Số điện thoại</Label>
