@@ -33,7 +33,7 @@ export function extractErrorMessage(error: unknown): string {
 
         // Check for direct API response structure
         if ('success' in apiError && 'message' in apiError) {
-             return extractApiError(apiError);
+            return extractApiError(apiError);
         }
     }
 
@@ -77,7 +77,7 @@ function extractApiError(responseData: any): string {
 
     // Use title or message as fallback
     if (responseData.title && typeof responseData.title === 'string') {
-         return responseData.title;
+        return responseData.title;
     }
     if (responseData.message && typeof responseData.message === 'string') {
         return responseData.message;
