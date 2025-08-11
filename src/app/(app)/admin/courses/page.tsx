@@ -105,6 +105,11 @@ export default function CoursesPage() {
 
   const debouncedFilters = useDebounce(filters, 500);
 
+  // Reset pagination to page 1 when any filter changes
+  useEffect(() => {
+    setPagination(prev => ({ ...prev, pageIndex: 0 }));
+  }, [debouncedFilters]);
+
   const apiParams: QueryParams = useMemo(() => {
     const params: QueryParams = {
       Page: pagination.pageIndex + 1,
