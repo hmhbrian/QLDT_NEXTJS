@@ -4,11 +4,10 @@ import React from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { ActualSidebar } from "@/components/layout/ActualSidebar";
 import { Header } from "@/components/layout/Header";
-import { ClientTime } from "@/components/ClientTime";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { Loader2 } from "lucide-react";
 
-export function CurrentTime() {
+function CurrentTime() {
   const [mounted, setMounted] = React.useState(false);
   const [time, setTime] = React.useState("");
 

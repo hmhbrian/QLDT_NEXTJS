@@ -1,5 +1,6 @@
 import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { PaginationControls } from "@/components/ui/PaginationControls";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -22,6 +23,14 @@ export function CertificatesList({
   certificates,
   isLoading,
 }: CertificatesListProps) {
+  const [pageIndex, setPageIndex] = React.useState(0);
+  const [pageSize, setPageSize] = React.useState(10);
+
+  const totalItems = certificates.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+  const start = pageIndex * pageSize;
+  const end = Math.min(start + pageSize, totalItems);
+  const currentPageItems = certificates.slice(start, end);
   if (isLoading) {
     return (
       <div className="space-y-6">
@@ -94,15 +103,28 @@ export function CertificatesList({
           <Separator className="flex-1" />
         </div>
         <div className="grid gap-4">
-          {certificates.map((certificate, index) => (
+          {currentPageItems.map((certificate, index) => (
             <CertificateCard
-              key={certificate.id || index}
+              key={certificate.id ?? `${pageIndex}-${index}`}
               certificate={certificate}
-              courseName={`Chứng chỉ hoàn thành khóa học #${index + 1}`}
+              courseName={certificate.course?.name || `Khóa học #${start + index + 1}`}
             />
           ))}
         </div>
       </div>
+
+      {/* Pagination Controls (match DataTable style) */}
+      <PaginationControls
+        page={pageIndex + 1}
+        pageSize={pageSize}
+        totalPages={totalPages}
+        totalItems={totalItems}
+        onPageChange={(p) => setPageIndex(p - 1)}
+        onPageSizeChange={(s) => {
+          setPageSize(s);
+          setPageIndex(0);
+        }}
+      />
 
       {/* Summary Stats */}
       {/* <Card>

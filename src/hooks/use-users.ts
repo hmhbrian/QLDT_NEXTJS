@@ -52,14 +52,15 @@ export function useCreateUserMutation() {
 
   return useMutation<UserApiResponse, Error, CreateUserRequest>({
     mutationFn: (payload) => {
-        console.log("▶️ [useCreateUserMutation] Mutation started with payload:", payload);
-        return usersService.createUser(payload)
+      console.log("▶️ [useCreateUserMutation] Mutation started with payload:", payload);
+      return usersService.createUser(payload)
     },
-    onSuccess: (data) => {
+    onSuccess: (data, variables) => {
       console.log("✅ [useCreateUserMutation] Mutation successful:", data);
+      const displayName = variables.fullName || data.fullName || "người dùng";
       toast({
         title: "Thành công",
-        description: `Đã tạo người dùng "${data.fullName}" thành công.`,
+        description: `Đã tạo người dùng "${displayName}" thành công.`,
         variant: "success",
       });
     },
@@ -89,14 +90,15 @@ export function useUpdateUserMutation() {
     { previousUsers?: PaginatedResponse<User> }
   >({
     mutationFn: ({ id, payload }) => {
-        console.log(`▶️ [useUpdateUserMutation] Mutation started for user ${id} with payload:`, payload);
-        return usersService.updateUserByAdmin(id, payload)
+      console.log(`▶️ [useUpdateUserMutation] Mutation started for user ${id} with payload:`, payload);
+      return usersService.updateUserByAdmin(id, payload)
     },
-    onSuccess: (_, variables) => {
+    onSuccess: (data, variables) => {
       console.log("✅ [useUpdateUserMutation] Mutation successful");
+      const displayName = variables.payload.fullName || data?.fullName || "người dùng";
       toast({
         title: "Thành công",
-        description: `Đã cập nhật người dùng "${variables.payload.fullName}" thành công.`,
+        description: `Đã cập nhật người dùng "${displayName}" thành công.`,
         variant: "success",
       });
     },
@@ -132,8 +134,8 @@ export function useDeleteUserMutation() {
     { previousUsers?: PaginatedResponse<User> }
   >({
     mutationFn: (userIds: string[]) => {
-        console.log("▶️ [useDeleteUserMutation] Mutation started for IDs:", userIds);
-        return usersService.deleteUsers(userIds)
+      console.log("▶️ [useDeleteUserMutation] Mutation started for IDs:", userIds);
+      return usersService.deleteUsers(userIds)
     },
     onSuccess: () => {
       console.log("✅ [useDeleteUserMutation] Mutation successful");

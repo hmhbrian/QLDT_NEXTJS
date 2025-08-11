@@ -69,6 +69,7 @@ export interface RequestConfig {
   timeout?: number;
   params?: Record<string, any>;
   withCredentials?: boolean;
+  signal?: AbortSignal;
 }
 
 // Generic CRUD Payload Types

@@ -47,7 +47,6 @@ import {
   Pencil,
   Trash2,
   Copy,
-  Archive,
   AlertCircle,
   LayoutGrid,
   List,
@@ -76,6 +75,7 @@ import { useDebounce } from "@/hooks/use-debounce";
 import { useError } from "@/hooks/use-error";
 import type { PaginationState } from "@tanstack/react-table";
 import { PageLoader } from "@/components/common/PageLoader";
+import { PaginationControls } from "@/components/ui/PaginationControls";
 
 interface CourseFilters {
   keyword: string;
@@ -150,7 +150,6 @@ export default function CoursesPage() {
   const deleteCourseMutation = useDeleteCourse();
 
   const [deletingCourse, setDeletingCourse] = useState<Course | null>(null);
-  const [archivingCourse, setArchivingCourse] = useState<Course | null>(null);
 
   const departmentOptions = useMemo(() => {
     if (!allDepartments) return [];
@@ -214,31 +213,6 @@ export default function CoursesPage() {
     router.push(`/admin/courses/edit/new?duplicateFrom=${course.id}`);
   };
 
-  const handleArchiveCourse = async () => {
-    if (!canManageCourses || !currentUser || !archivingCourse) return;
-
-    const cancelledStatus = courseStatuses.find((s) => s.name === "Hủy");
-    if (!cancelledStatus) {
-      showError({
-        success: false,
-        message:
-          "Không tìm thấy trạng thái 'Hủy'. Vui lòng kiểm tra lại hệ thống.",
-      });
-      return;
-    }
-
-    updateCourseMutation.mutate(
-      {
-        courseId: archivingCourse.id,
-        payload: {
-          StatusId: cancelledStatus.id,
-        },
-      },
-      {
-        onSuccess: () => setArchivingCourse(null),
-      }
-    );
-  };
 
   const handleDeleteCourse = async () => {
     if (!canManageCourses || !deletingCourse) return;
@@ -268,7 +242,7 @@ export default function CoursesPage() {
         handleViewDetails,
         handleEditCourse,
         handleDuplicateCourse,
-        setArchivingCourse,
+        () => {},
         setDeletingCourse,
         canManageCourses,
         allDepartments || [],
@@ -499,16 +473,6 @@ export default function CoursesPage() {
                               >
                                 <Copy className="mr-2 h-4 w-4" /> Nhân bản
                               </DropdownMenuItem>
-                              {course.status !== "Hủy" && (
-                                <DropdownMenuItem
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setArchivingCourse(course);
-                                  }}
-                                >
-                                  <Archive className="mr-2 h-4 w-4" /> Lưu trữ
-                                </DropdownMenuItem>
-                              )}
                               <DropdownMenuItem
                                 onClick={(e) => {
                                   e.stopPropagation();
@@ -676,72 +640,19 @@ export default function CoursesPage() {
                   Không tìm thấy khóa học nào.
                 </div>
               ) : (
-                pageCount > 1 && (
-                  <div className="flex items-center justify-between pt-6">
-                    <div className="flex-1 text-sm text-muted-foreground">
-                      Hiển thị {courses.length} trên{" "}
-                      {paginationInfo?.totalItems ?? 0} khóa học.
-                    </div>
-                    <div className="flex items-center space-x-6 lg:space-x-8">
-                      <div className="flex items-center space-x-2">
-                        <p className="text-sm font-medium">Số mục mỗi trang</p>
-                        <Select
-                          value={`${pagination.pageSize}`}
-                          onValueChange={(value) => {
-                            setPagination((p) => ({
-                              ...p,
-                              pageSize: Number(value),
-                              pageIndex: 0,
-                            }));
-                          }}
-                        >
-                          <SelectTrigger className="h-8 w-[70px]">
-                            <SelectValue placeholder={pagination.pageSize} />
-                          </SelectTrigger>
-                          <SelectContent side="top">
-                            {[10, 20, 30, 40, 50].map((pageSize) => (
-                              <SelectItem key={pageSize} value={`${pageSize}`}>
-                                {pageSize}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="flex w-[100px] items-center justify-center text-sm font-medium">
-                        Trang {pagination.pageIndex + 1} của {pageCount}
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Button
-                          variant="outline"
-                          className="h-8 w-8 p-0"
-                          onClick={() =>
-                            setPagination((p) => ({
-                              ...p,
-                              pageIndex: p.pageIndex - 1,
-                            }))
-                          }
-                          disabled={pagination.pageIndex === 0}
-                        >
-                          <span className="sr-only">Go to previous page</span>
-                          <ChevronLeft className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="outline"
-                          className="h-8 w-8 p-0"
-                          onClick={() =>
-                            setPagination((p) => ({
-                              ...p,
-                              pageIndex: p.pageIndex + 1,
-                            }))
-                          }
-                          disabled={pagination.pageIndex + 1 >= pageCount}
-                        >
-                          <span className="sr-only">Go to next page</span>
-                          <ChevronRight className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
+                pageCount > 0 && (
+                  <PaginationControls
+                    page={pagination.pageIndex + 1}
+                    pageSize={pagination.pageSize}
+                    totalPages={pageCount}
+                    totalItems={paginationInfo?.totalItems ?? courses.length}
+                    onPageChange={(p) =>
+                      setPagination((prev) => ({ ...prev, pageIndex: p - 1 }))
+                    }
+                    onPageSizeChange={(s) =>
+                      setPagination((prev) => ({ ...prev, pageSize: s, pageIndex: 0 }))
+                    }
+                  />
                 )
               )}
             </>
@@ -749,39 +660,7 @@ export default function CoursesPage() {
         </CardContent>
       </Card>
 
-      <Dialog
-        open={!!archivingCourse}
-        onOpenChange={() => setArchivingCourse(null)}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Xác nhận lưu trữ</DialogTitle>
-            <DialogDescription>
-              Bạn có chắc chắn muốn lưu trữ khóa học &quot;
-              {archivingCourse?.title}&quot;? Hành động này sẽ chuyển trạng thái
-              khóa học thành 'Hủy'.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="mt-4">
-            <Button
-              variant="outline"
-              onClick={() => setArchivingCourse(null)}
-              disabled={updateCourseMutation.isPending}
-            >
-              Hủy bỏ
-            </Button>
-            <Button
-              onClick={handleArchiveCourse}
-              disabled={updateCourseMutation.isPending}
-            >
-              {updateCourseMutation.isPending && (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              )}
-              Xác nhận
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+    
 
       <Dialog
         open={!!deletingCourse}

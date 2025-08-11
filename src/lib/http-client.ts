@@ -17,6 +17,7 @@ export interface HttpRequestConfig {
   timeout?: number;
   params?: Record<string, any>;
   withCredentials?: boolean;
+  signal?: AbortSignal;
 }
 
 export interface HttpClient {
@@ -137,6 +138,11 @@ class CustomHttpClient implements HttpClient {
       () => controller.abort(),
       config?.timeout || this.timeout
     );
+    const externalSignal = config?.signal;
+    if (externalSignal) {
+      if (externalSignal.aborted) controller.abort();
+      else externalSignal.addEventListener("abort", () => controller.abort());
+    }
 
     try {
       const response = await fetch(finalUrl, {

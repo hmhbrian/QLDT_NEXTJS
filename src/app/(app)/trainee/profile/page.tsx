@@ -51,13 +51,16 @@ import { useCompletedCoursesCount } from "@/hooks/use-courses";
 import { CourseCard } from "@/components/courses/CourseCard";
 import { useCertificates } from "@/hooks/use-certificates";
 import { CertificatesList } from "@/components/certificates";
+import { PaginationControls } from "@/components/ui/PaginationControls";
 
 export default function UserProfilePage() {
   const { user, updateAvatar, changePassword } = useAuth();
   const { toast } = useToast();
   const { showError } = useError();
+  const [completedPageIndex, setCompletedPageIndex] = useState(0);
+  const [completedPageSize, setCompletedPageSize] = useState(10);
   const { data: completedCoursesData, isLoading: isLoadingCompletedCourses } =
-    useCompletedCoursesCount();
+    useCompletedCoursesCount(completedPageIndex + 1, completedPageSize);
   const { data: certificates, isLoading: isLoadingCertificates } =
     useCertificates();
 
@@ -430,11 +433,40 @@ export default function UserProfilePage() {
                       </p>
                     </div> */}
                     <div className="w-full overflow-x-auto pb-2">
-                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-1 gap-1 min-w-[320px]">
-                        {completedCoursesData?.courses?.map((course, idx) => (
-                          <CourseCard key={course.id || idx} course={course} />
-                        ))}
-                      </div>
+                      {(() => {
+                        const allCourses = completedCoursesData?.courses || [];
+                        const totalItems = completedCoursesData?.pagination?.totalItems || allCourses.length;
+                        const totalPages = completedCoursesData?.pagination?.totalPages || Math.max(1, Math.ceil(totalItems / completedPageSize));
+                        const start = (completedCoursesData?.pagination?.currentPage ? (completedCoursesData.pagination.currentPage - 1) : completedPageIndex) * completedPageSize;
+                        const end = Math.min(start + completedPageSize, totalItems);
+                        const currentItems = allCourses;
+
+                        return (
+                          <>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-1 gap-1 min-w-[320px]">
+                              {currentItems.map((course, idx) => (
+                                <CourseCard
+                                  key={course.id || `${completedPageIndex}-${idx}`}
+                                  course={course}
+                                />
+                              ))}
+                            </div>
+
+                            {/* Pagination controls - match DataTable style */}
+                            <PaginationControls
+                              page={completedPageIndex + 1}
+                              pageSize={completedPageSize}
+                              totalPages={totalPages}
+                              totalItems={totalItems}
+                              onPageChange={(p) => setCompletedPageIndex(p - 1)}
+                              onPageSizeChange={(s) => {
+                                setCompletedPageSize(s);
+                                setCompletedPageIndex(0);
+                              }}
+                            />
+                          </>
+                        );
+                      })()}
                     </div>
                   </>
                 )}

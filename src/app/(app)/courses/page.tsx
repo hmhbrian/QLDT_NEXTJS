@@ -54,6 +54,8 @@ import {
 } from "@/components/ui/tooltip";
 import { useDepartments } from "@/hooks/use-departments";
 import { useEmployeeLevel } from "@/hooks/use-employeeLevel";
+import { Switch } from "@/components/ui/switch";
+import { PaginationControls } from "@/components/ui/PaginationControls";
 
 export default function CoursesPage() {
   const { user: currentUser } = useAuth();
@@ -67,6 +69,7 @@ export default function CoursesPage() {
     pageIndex: 0,
     pageSize: 10,
   });
+  const [showExpired, setShowExpired] = useState(true);
 
   const {
     courses: publicCourses,
@@ -101,14 +104,23 @@ export default function CoursesPage() {
   const enrollMutation = useEnrollCourse();
 
   const filteredCourses = useMemo(() => {
+    // Admin/HR hoặc chưa đăng nhập: giữ nguyên danh sách công khai
     if (!currentUser || currentUser.role !== "HOCVIEN") {
       return publicCourses;
     }
-    const enrolledCourseIds = new Set(
-      enrolledCourses.map((course) => course.id)
-    );
-    return publicCourses.filter((course) => !enrolledCourseIds.has(course.id));
-  }, [publicCourses, currentUser, enrolledCourses]);
+    // Học viên: chỉ hiển thị các khóa có thể đăng ký
+    const enrolledCourseIds = new Set(enrolledCourses.map((c) => c.id));
+    return publicCourses.filter((course) => {
+      const notEnrolled = !enrolledCourseIds.has(course.id);
+      const isOptional = course.enrollmentType === "optional";
+      const registrationOpen = isRegistrationOpen(course.registrationDeadline);
+      if (showExpired) {
+        // Hiển thị cả hết hạn để người dùng biết đã bỏ lỡ
+        return notEnrolled && isOptional;
+      }
+      return notEnrolled && isOptional && registrationOpen;
+    });
+  }, [publicCourses, currentUser, enrolledCourses, showExpired]);
 
   const isCourseAccessible = useCallback(
     (course: Course): boolean => {
@@ -232,7 +244,7 @@ export default function CoursesPage() {
             ? "Khóa học có thể đăng ký"
             : "Khóa học Công khai"}
         </h1>
-        <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
+        <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto items-center">
           <div className="relative flex-grow md:flex-grow-0">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground z-10" />
             <Input
@@ -242,6 +254,14 @@ export default function CoursesPage() {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
+          {currentUser?.role === "HOCVIEN" && (
+            <div className="flex items-center gap-2 px-2">
+              <Switch id="toggle-expired" checked={showExpired} onCheckedChange={setShowExpired} />
+              <label htmlFor="toggle-expired" className="text-sm text-muted-foreground select-none">
+                Hiển thị khóa hết hạn
+              </label>
+            </div>
+          )}
           <Button
             variant={viewMode === "table" ? "default" : "outline"}
             size="icon"
@@ -466,80 +486,6 @@ export default function CoursesPage() {
               })}
             </div>
           )}
-          {pageCount > 1 && (
-            <div className="flex items-center justify-between pt-6">
-              <div className="flex-1 text-sm text-muted-foreground">
-                Hiển thị{" "}
-                {Math.min(
-                  pagination.pageIndex * pagination.pageSize +
-                    filteredCourses.length,
-                  paginationInfo?.totalItems ?? 0
-                )}{" "}
-                trên {paginationInfo?.totalItems ?? 0} khóa học
-              </div>
-              <div className="flex items-center space-x-6 lg:space-x-8">
-                <div className="flex items-center space-x-2">
-                  <p className="text-sm font-medium">Số mục mỗi trang</p>
-                  <Select
-                    value={`${pagination.pageSize}`}
-                    onValueChange={(value) => {
-                      setPagination((p) => ({
-                        ...p,
-                        pageSize: Number(value),
-                        pageIndex: 0,
-                      }));
-                    }}
-                  >
-                    <SelectTrigger className="h-8 w-[70px]">
-                      <SelectValue placeholder={pagination.pageSize} />
-                    </SelectTrigger>
-                    <SelectContent side="top">
-                      {[10, 20, 30, 40, 50].map((pageSize) => (
-                        <SelectItem key={pageSize} value={`${pageSize}`}>
-                          {pageSize}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="flex w-[100px] items-center justify-center text-sm font-medium">
-                  Trang {pagination.pageIndex + 1} của {pageCount}
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Button
-                    variant="outline"
-                    className="h-8 w-8 p-0"
-                    onClick={() =>
-                      setPagination((p) => ({
-                        ...p,
-                        pageIndex: p.pageIndex - 1,
-                      }))
-                    }
-                    disabled={pagination.pageIndex === 0 || isFetchingCourses}
-                  >
-                    <span className="sr-only">Trang trước</span>
-                    <ChevronLeft className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="h-8 w-8 p-0"
-                    onClick={() =>
-                      setPagination((p) => ({
-                        ...p,
-                        pageIndex: p.pageIndex + 1,
-                      }))
-                    }
-                    disabled={
-                      pagination.pageIndex + 1 >= pageCount || isFetchingCourses
-                    }
-                  >
-                    <span className="sr-only">Trang sau</span>
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            </div>
-          )}
           {filteredCourses.length === 0 && !isFetchingCourses && (
             <div className="text-center py-12">
               <BookOpen className="mx-auto h-12 w-12 text-muted-foreground" />
@@ -559,6 +505,18 @@ export default function CoursesPage() {
               </p>
             </div>
           )}
+          <PaginationControls
+            page={pagination.pageIndex + 1}
+            pageSize={pagination.pageSize}
+            totalPages={pageCount || 1}
+            totalItems={paginationInfo?.totalItems ?? filteredCourses.length}
+            onPageChange={(p) =>
+              setPagination((prev) => ({ ...prev, pageIndex: p - 1 }))
+            }
+            onPageSizeChange={(s) =>
+              setPagination((prev) => ({ ...prev, pageSize: s, pageIndex: 0 }))
+            }
+          />
         </>
       ) : (
         <DataTable

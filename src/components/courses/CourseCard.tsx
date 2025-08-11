@@ -15,8 +15,8 @@ interface CourseCardProps {
 
 export const CourseCard: React.FC<CourseCardProps> = ({ course }) => {
   return (
-    <Card className="flex items-center gap-3 p-3 bg-muted/50 rounded-md border shadow-sm">
-      <div className="w-16 h-16 bg-primary/10 rounded-md flex items-center justify-center flex-shrink-0 overflow-hidden">
+    <Card className="flex items-center gap-3 p-3 bg-background rounded-md border shadow-sm">
+      <div className="w-16 h-16 bg-muted rounded-md flex items-center justify-center flex-shrink-0 overflow-hidden">
         {course.image ? (
           <img
             src={course.image}
@@ -29,9 +29,7 @@ export const CourseCard: React.FC<CourseCardProps> = ({ course }) => {
             }}
           />
         ) : null}
-        <Award
-          className={`h-8 w-8 text-primary ${course.image ? "hidden" : ""}`}
-        />
+        <Award className={`h-8 w-8 text-muted-foreground ${course.image ? "hidden" : ""}`} />
       </div>
       <div className="flex-1 min-w-0">
         <CardTitle

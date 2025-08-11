@@ -21,6 +21,7 @@ import { useAuth } from "./useAuth";
 import { useToast } from "@/components/ui/use-toast";
 import { extractErrorMessage } from "@/lib/core";
 import { API_CONFIG } from "@/lib/config";
+import { buildPaginationParams, normalizePaginationMeta } from "@/lib/utils/pagination";
 
 export const COURSES_QUERY_KEY = "courses";
 export const ENROLLED_COURSES_QUERY_KEY = "enrolledCourses";
@@ -33,7 +34,7 @@ export function useCourses(
   const { data, isLoading, error } = useQuery<PaginatedResponse<Course>, Error>(
     {
       queryKey,
-      queryFn: async () => {
+      queryFn: async ({ signal }) => {
         console.log(`♻️ [useCourses] Refetching courses with params:`, params);
         const apiResponse = await coursesService.getCourses(params);
         return {
@@ -41,8 +42,9 @@ export function useCourses(
           pagination: apiResponse.pagination,
         };
       },
-      staleTime: 5 * 60 * 1000,
-      refetchOnWindowFocus: true,
+      staleTime: 60 * 1000,
+      refetchOnWindowFocus: false,
+      retry: 1,
     }
   );
 
@@ -54,18 +56,23 @@ export function useCourses(
   };
 }
 
-export function useEnrolledCourses(enabled: boolean = true) {
+export function useEnrolledCourses(enabled: boolean = true, page: number = 1, limit: number = 9) {
   const { user } = useAuth();
-  const queryKey = [ENROLLED_COURSES_QUERY_KEY, user?.id];
+  const queryKey = [ENROLLED_COURSES_QUERY_KEY, user?.id, page, limit];
 
-  const { data, isLoading, error } = useQuery<Course[], Error>({
+  const { data, isLoading, error } = useQuery<{ courses: Course[]; pagination: { totalItems: number; itemsPerPage: number; currentPage: number; totalPages: number } }, Error>({
     queryKey,
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
       console.log(
         `♻️ [useEnrolledCourses] Refetching enrolled courses for user: ${user?.id}`
       );
-      const enrolledResponse = await coursesService.getEnrolledCourses();
-      return (enrolledResponse.items || []).map(mapUserEnrollCourseDtoToCourse);
+      const enrolledResponse = await coursesService.getEnrolledCourses(
+        buildPaginationParams({ page, pageSize: limit }, { pageKey: "Page", sizeKey: "Limit" })
+      );
+      return {
+        courses: (enrolledResponse.items || []).map(mapUserEnrollCourseDtoToCourse),
+        pagination: normalizePaginationMeta(enrolledResponse.pagination, {}),
+      };
     },
     enabled: enabled && !!user,
     staleTime: 5 * 60 * 1000,
@@ -73,7 +80,8 @@ export function useEnrolledCourses(enabled: boolean = true) {
   });
 
   return {
-    enrolledCourses: data ?? [],
+    enrolledCourses: data?.courses ?? [],
+    enrolledPagination: data?.pagination,
     isLoadingEnrolled: isLoading,
     errorEnrolled: error,
   };
@@ -110,11 +118,12 @@ export function useCreateCourse() {
       );
       return coursesService.createCourse(courseData);
     },
-    onSuccess: (data) => {
+    onSuccess: (data, variables) => {
       console.log("✅ [useCreateCourse] Mutation successful:", data);
+      const displayName = data?.name || variables?.Name || "khóa học";
       toast({
         title: "Thành công",
-        description: `Đã tạo khóa học "${data.name}" thành công.`,
+        description: `Đã tạo khóa học "${displayName}" thành công.`,
         variant: "success",
       });
     },
@@ -159,9 +168,8 @@ export function useUpdateCourse() {
       console.log("✅ [useUpdateCourse] Mutation successful:", data);
       toast({
         title: "Thành công",
-        description: `Đã cập nhật khóa học "${
-          variables.payload.Name || "khóa học"
-        }" thành công.`,
+        description: `Đã cập nhật khóa học "${variables.payload.Name || "khóa học"
+          }" thành công.`,
         variant: "success",
       });
     },
@@ -267,9 +275,9 @@ function getAbsoluteImageUrl(
   thumbUrl: string | null | undefined,
   name?: string
 ): string {
-  const defaultImageUrl = `https://placehold.co/600x400/f97316/white?text=${encodeURIComponent(
-    name || "Course"
-  )}`;
+  // Provide plain text; Next/Image will encode when proxying to /_next/image
+  const defaultImageUrl = `https://placehold.co/600x400/f97316/white?text=${name || "Course"
+    }`;
   if (!thumbUrl || thumbUrl.toLowerCase().includes("formfile"))
     return defaultImageUrl;
   if (thumbUrl.startsWith("http") || thumbUrl.startsWith("data:"))
@@ -339,17 +347,19 @@ export function useCompletedLessonsCount(courseId: string) {
   });
 }
 
-export function useCompletedCoursesCount() {
+export function useCompletedCoursesCount(page: number = 1, limit: number = 10) {
   const { user } = useAuth();
 
-  return useQuery<{ count: number; courses: Course[] }, Error>({
-    queryKey: ["completedCoursesCount", user?.id],
+  return useQuery<{ count: number; courses: Course[]; pagination: { totalItems: number; itemsPerPage: number; currentPage: number; totalPages: number } }, Error>({
+    queryKey: ["completedCoursesCount", user?.id, page, limit],
     queryFn: async () => {
       console.log(
         `♻️ [useCompletedCoursesCount] Refetching completed courses count.`
       );
       const [coursesResponse, countResponse] = await Promise.all([
-        coursesService.getCompletedCourses(),
+        coursesService.getCompletedCourses(
+          buildPaginationParams({ page, pageSize: limit }, { pageKey: "Page", sizeKey: "Limit" })
+        ),
         coursesService.getCompletedCoursesCount(),
       ]);
 
@@ -390,13 +400,16 @@ export function useCompletedCoursesCount() {
         modifiedBy: null,
       }));
 
-      const finalCount =
-        countResponse ?? coursesResponse.pagination?.totalItems ?? 0;
+      const finalCount = countResponse ?? coursesResponse.pagination?.totalItems ?? 0;
 
-      return {
-        count: finalCount,
-        courses,
-      };
+      const meta = normalizePaginationMeta(coursesResponse.pagination, {
+        totalItemsKey: "totalItems",
+        itemsPerPageKey: "itemsPerPage",
+        currentPageKey: "currentPage",
+        totalPagesKey: "totalPages",
+      });
+
+      return { count: finalCount, courses, pagination: meta };
     },
     enabled: !!user && user.role === "HOCVIEN",
     staleTime: 5 * 60 * 1000,

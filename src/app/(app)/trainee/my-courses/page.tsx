@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useEffect } from "react";
+import { useMemo, useEffect, useState } from "react";
 import {
   Card,
   CardContent,
@@ -20,10 +20,8 @@ import {
 import Image from "next/image";
 import Link from "next/link";
 import { useAuth } from "@/hooks/useAuth";
-import {
-  useEnrolledCourses,
-  ENROLLED_COURSES_QUERY_KEY,
-} from "@/hooks/use-courses";
+import { useEnrolledCourses, ENROLLED_COURSES_QUERY_KEY } from "@/hooks/use-courses";
+import { PaginationControls } from "@/components/ui/PaginationControls";
 import type { Course } from "@/lib/types/course.types";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -39,8 +37,12 @@ interface DisplayCourse {
 export default function MyCoursesPage() {
   const { user: currentUser, loadingAuth } = useAuth();
   const queryClient = useQueryClient();
-  const { enrolledCourses, isLoadingEnrolled } = useEnrolledCourses(
-    !!currentUser
+  const [pageIndex, setPageIndex] = useState(0);
+  const [pageSize, setPageSize] = useState(10);
+  const { enrolledCourses, enrolledPagination, isLoadingEnrolled } = useEnrolledCourses(
+    !!currentUser,
+    pageIndex + 1,
+    pageSize
   );
 
   useEffect(() => {
@@ -70,6 +72,12 @@ export default function MyCoursesPage() {
       })
     );
   }, [enrolledCourses]);
+
+  const totalItems = enrolledPagination?.totalItems ?? myDisplayCourses.length;
+  const totalPages = enrolledPagination?.totalPages ?? Math.max(1, Math.ceil(totalItems / pageSize));
+  const start = totalItems === 0 ? 0 : pageIndex * pageSize + 1;
+  const end = Math.min((pageIndex + 1) * pageSize, totalItems);
+  const pageItems = myDisplayCourses; // server-side đã phân trang
 
   if (loadingAuth) {
     return (
@@ -131,9 +139,10 @@ export default function MyCoursesPage() {
         </h1>
       </div>
 
-      {myDisplayCourses.length > 0 ? (
+      {totalItems > 0 ? (
+        <>
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {myDisplayCourses.map((course, index) => (
+          {pageItems.map((course, index) => (
             <Card
               key={course.id}
               className="flex flex-col overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 group"
@@ -193,6 +202,18 @@ export default function MyCoursesPage() {
             </Card>
           ))}
         </div>
+        <PaginationControls
+          page={pageIndex + 1}
+          pageSize={pageSize}
+          totalPages={totalPages}
+          totalItems={totalItems}
+          onPageChange={(p) => setPageIndex(p - 1)}
+          onPageSizeChange={(s) => {
+            setPageSize(s);
+            setPageIndex(0);
+          }}
+        />
+        </>
       ) : (
         <div className="flex flex-col items-center justify-center rounded-md border-2 border-dashed border-muted-foreground/30 bg-muted/20 py-16 text-center">
           <GraduationCap className="mx-auto h-16 w-16 text-muted-foreground/70 mb-4" />

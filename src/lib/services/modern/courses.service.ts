@@ -94,9 +94,15 @@ export class CoursesService extends BaseService<
     await this.delete<void>(API_CONFIG.endpoints.courses.softDelete, ids);
   }
 
-  async getEnrolledCourses(): Promise<PaginatedResponse<UserEnrollCourseDto>> {
+  async getEnrolledCourses(
+    params: QueryParams = {}
+  ): Promise<PaginatedResponse<UserEnrollCourseDto>> {
+    const backendParams: Record<string, any> = {};
+    if (params.Page) backendParams.Page = params.Page;
+    if (params.Limit) backendParams.Limit = params.Limit;
     return this.get<PaginatedResponse<UserEnrollCourseDto>>(
-      API_CONFIG.endpoints.courses.getEnrolled
+      API_CONFIG.endpoints.courses.getEnrolled,
+      { params: backendParams }
     );
   }
 
@@ -129,9 +135,15 @@ export class CoursesService extends BaseService<
     );
   }
 
-  async getCompletedCourses(): Promise<PaginatedResponse<CompletedCourseDto>> {
+  async getCompletedCourses(
+    params: QueryParams = {}
+  ): Promise<PaginatedResponse<CompletedCourseDto>> {
+    const backendParams: Record<string, any> = {};
+    if (params.Page) backendParams.Page = params.Page;
+    if (params.Limit) backendParams.Limit = params.Limit;
     return this.get<PaginatedResponse<CompletedCourseDto>>(
-      API_CONFIG.endpoints.courses.completedEnrollCourses
+      API_CONFIG.endpoints.courses.completedEnrollCourses,
+      { params: backendParams }
     );
   }
 
