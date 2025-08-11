@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -96,6 +96,11 @@ export default function StudentCourseCatalog() {
   });
 
   const debouncedFilters = useDebounce(filters, 300);
+
+  // Reset pagination to page 1 when any filter changes
+  useEffect(() => {
+    setPagination(prev => ({ ...prev, pageIndex: 0 }));
+  }, [debouncedFilters]);
 
   const apiParams: QueryParams = useMemo(() => {
     const params: QueryParams = {
@@ -367,23 +372,7 @@ export default function StudentCourseCatalog() {
                   </p>
 
                   <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                    <div className="flex items-center gap-1">
-                      <User className="h-4 w-4" />
-                      <span>
-                        {(() => {
-                          if (typeof course.instructor === "string")
-                            return course.instructor;
-                          if (
-                            course.instructor &&
-                            typeof course.instructor === "object" &&
-                            "fullName" in course.instructor
-                          ) {
-                            return (course.instructor as any).fullName;
-                          }
-                          return "Chưa có thông tin";
-                        })()}
-                      </span>
-                    </div>
+                    {/* Instructor removed */}
                     <div className="flex items-center gap-1">
                       <Star className="h-4 w-4 text-yellow-500" />
                       <span>{rating}</span>

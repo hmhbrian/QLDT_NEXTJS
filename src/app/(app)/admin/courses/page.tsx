@@ -105,10 +105,17 @@ export default function CoursesPage() {
 
   const debouncedFilters = useDebounce(filters, 500);
 
+  // Reset pagination to page 1 when any filter changes
+  useEffect(() => {
+    setPagination(prev => ({ ...prev, pageIndex: 0 }));
+  }, [debouncedFilters]);
+
   const apiParams: QueryParams = useMemo(() => {
     const params: QueryParams = {
       Page: pagination.pageIndex + 1,
       Limit: pagination.pageSize,
+      // Admin should see all courses, not just public ones
+      publicOnly: false,
     };
     if (debouncedFilters.keyword) {
       params.keyword = debouncedFilters.keyword;
@@ -536,8 +543,7 @@ export default function CoursesPage() {
                         {course.description}
                       </p>
                       <p className="whitespace-nowrap">
-                        <span className="font-medium">Giảng viên:</span>{" "}
-                        {course.instructor}
+                        {/* Giảng viên: bỏ hiển thị */}
                       </p>
                       <div className="truncate">
                         <span className="font-medium">Phòng ban:</span>{" "}

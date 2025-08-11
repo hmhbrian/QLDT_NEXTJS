@@ -463,7 +463,7 @@ export const getUserCourseColumns = (
   EmployeeLevel: EmployeeLevel[]
 ): ColumnDef<Course>[] => [
   ...baseColumns(handleViewDetails),
-  { accessorKey: "instructor", header: "Giảng viên" },
+  // { accessorKey: "instructor", header: "Giảng viên" }, // removed per request
   {
     accessorKey: "duration",
     header: "Thời lượng",

@@ -21,9 +21,13 @@ export class UsersService extends BaseService<
   ): Promise<PaginatedResponse<UserApiResponse>> {
     const backendParams: Record<string, any> = {};
 
-    // Map pagination parameters correctly
+    const isSearch = !!params.keyword; // Search only by keyword now
+
+    // Map pagination only for base endpoint; omit for /Users/search to avoid empty pages
+    // if (!isSearch) {
     if (params.page) backendParams.Page = params.page;
     if (params.limit) backendParams.Limit = params.limit;
+    // }
     if (params.SortField) backendParams.SortField = params.SortField;
     if (params.SortType) backendParams.SortType = params.SortType;
     if (params.keyword) backendParams.Keyword = params.keyword;
@@ -32,7 +36,6 @@ export class UsersService extends BaseService<
     // It should be removed to prevent 403 errors for non-admin roles.
     // Filtering by role should be done on the client-side if needed for specific components.
 
-    const isSearch = !!params.keyword; // Search only by keyword now
     const endpoint = isSearch
       ? API_CONFIG.endpoints.users.search
       : this.endpoint;

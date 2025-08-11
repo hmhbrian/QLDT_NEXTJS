@@ -65,3 +65,47 @@ export const isPastDate = (date: string | Date) => {
     return false;
   }
 };
+
+// --- Local date helpers for date-only fields (avoid timezone shifts) ---
+
+// Format a Date to local YYYY-MM-DD (no timezone conversion)
+export const formatLocalYMD = (date: Date): string => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
+// Extract YYYY-MM-DD from a string (supports ISO or YMD). Returns undefined if invalid
+export const extractYMD = (dateString?: string | null): string | undefined => {
+  if (!dateString) return undefined;
+  try {
+    const trimmed = String(dateString).trim();
+    if (trimmed.length >= 10 && /\d{4}-\d{2}-\d{2}/.test(trimmed)) {
+      return trimmed.slice(0, 10);
+    }
+    return undefined;
+  } catch {
+    return undefined;
+  }
+};
+
+// Parse YYYY-MM-DD to a Date constructed in local time
+export const parseYMDToLocalDate = (
+  ymd?: string | null
+): Date | undefined => {
+  const part = extractYMD(ymd);
+  if (!part) return undefined;
+  const [y, m, d] = part.split("-").map((v) => parseInt(v, 10));
+  if (!y || !m || !d) return undefined;
+  return new Date(y, m - 1, d);
+};
+
+// Build API datetime string at start of day in local terms (no Z)
+export const toApiDateStartOfDay = (
+  ymd?: string | null
+): string | undefined => {
+  const part = extractYMD(ymd);
+  if (!part) return undefined;
+  return `${part}T00:00:00`;
+};

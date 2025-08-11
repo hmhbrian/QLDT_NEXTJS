@@ -215,6 +215,17 @@ export default function DepartmentsPage() {
     }
   }, [departments, selectedDepartment]);
 
+  // Keep the selected department in sync with the latest data after updates
+  useEffect(() => {
+    if (!selectedDepartment) return;
+    const fresh = departments.find(
+      (d) => d.departmentId === selectedDepartment.departmentId
+    );
+    if (fresh && fresh !== selectedDepartment) {
+      setSelectedDepartment(fresh);
+    }
+  }, [departments, selectedDepartment?.departmentId]);
+
   if (isDepartmentsLoading || isUsersLoading || isEmployeeLevelLoading) {
     return (
       <div className="space-y-6">
@@ -249,15 +260,22 @@ export default function DepartmentsPage() {
     isEditing: boolean,
     deptId?: number
   ) => {
-    if (isEditing && deptId) {
-      updateDeptMutation.mutate({
-        id: deptId,
-        payload: payload as UpdateDepartmentPayload,
-      });
-    } else {
-      createDeptMutation.mutate(payload as CreateDepartmentPayload);
+    try {
+      if (isEditing && deptId) {
+        await updateDeptMutation.mutateAsync({
+          id: deptId,
+          payload: payload as UpdateDepartmentPayload,
+        });
+      } else {
+        await createDeptMutation.mutateAsync(payload as CreateDepartmentPayload);
+      }
+      // Only close form on success
+      setIsFormOpen(false);
+      setEditingDepartment(null);
+    } catch (error) {
+      // Form stays open on error, let DepartmentFormDialog handle the error display
+      console.error('Failed to save department:', error);
     }
-    setIsFormOpen(false);
   };
 
   const handleDeleteDepartmentSubmit = () => {

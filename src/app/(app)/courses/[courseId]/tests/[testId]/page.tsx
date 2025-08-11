@@ -316,52 +316,90 @@ export default function TestDetailPage() {
     if (result) {
       console.log("🎨 [TestPage] Rendering result screen.");
       return (
-        <div className="min-h-screen flex flex-col items-center justify-center p-4">
-          <Card className="max-w-2xl w-full">
-            <CardHeader className="text-center">
-              <Award className="h-12 w-12 mx-auto text-primary" />
-              <CardTitle className="text-2xl mt-4">{testData.title}</CardTitle>
-              <CardDescription>
-                Bạn đã hoàn thành bài kiểm tra này.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="mt-6 border-t pt-4 text-center">
-                <h3 className="font-semibold mb-2">Kết quả lần làm trước</h3>
-                <p
-                  className={`text-xl font-bold ${
-                    result.isPassed ? "text-green-600" : "text-red-600"
-                  }`}
-                >
-                  {result.score.toFixed(1)}% -{" "}
-                  {result.isPassed ? "ĐẠT" : "CHƯA ĐẠT"}
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  Số câu đúng: {result.correctAnswerCount}/
-                  {testData.countQuestion}
-                </p>
+        <div className="min-h-screen bg-gray-50">
+          {/* Success Banner */}
+          <div>
+            <div className="max-w-4xl mx-auto px-4 py-8">
+              <div className="bg-white rounded-lg border shadow-sm">
+                <div className="p-6 pt-6 text-center">
+                  <div className="mx-auto w-16 h-16 rounded-full flex items-center justify-center bg-green-100 mb-4">
+                    <CheckCircle className="h-8 w-8 text-green-600" />
+                  </div>
+                  <h2 className="text-2xl font-bold mt-4 text-green-700 mb-2">
+                    {result.isPassed ? "Chúc mừng! Bạn đã đạt" : "Bạn chưa đạt yêu cầu"}
+                  </h2>
+                  <p className="text-muted-foreground mt-1">
+                    Điểm của bạn: <span className="font-semibold">{result.score.toFixed(1)}%</span>
+                  </p>
+                </div>
               </div>
-            </CardContent>
-            <CardFooter className="flex flex-col sm:flex-row gap-2">
-              <Button
-                onClick={() => {
-                  setIsStarted(true);
-                  setIsReviewMode(true); // Đánh dấu là chế độ xem lại
-                }}
-                className="w-full flex-1"
-                size="lg"
-              >
-                <Eye className="mr-2 h-4 w-4" /> Xem lại chi tiết
-              </Button>
-              <Button
-                onClick={() => router.back()}
-                variant="secondary"
-                className="w-full sm:w-auto"
-              >
-                Quay lại khóa học
-              </Button>
-            </CardFooter>
-          </Card>
+            </div>
+          </div>
+
+          {/* Content */}
+          <div className="max-w-4xl mx-auto px-4 pb-8">
+            <div className="grid gap-6">
+              {/* Stats Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="bg-white rounded-lg p-6 border shadow-sm text-center">
+                  <div className="flex items-center justify-center w-12 h-12 bg-blue-50 rounded-full mx-auto mb-3">
+                    <Target className="h-6 w-6 text-blue-600" />
+                  </div>
+                  <div className="text-2xl font-bold text-gray-900 mb-1">{result.correctAnswerCount}</div>
+                  <div className="text-sm text-muted-foreground">Câu đúng</div>
+                </div>
+                
+                <div className="bg-white rounded-lg p-6 border shadow-sm text-center">
+                  <div className="flex items-center justify-center w-12 h-12 bg-orange-50 rounded-full mx-auto mb-3">
+                    <FileText className="h-6 w-6 text-orange-600" />
+                  </div>
+                  <div className="text-2xl font-bold text-gray-900 mb-1">{testData.countQuestion}</div>
+                  <div className="text-sm text-muted-foreground">Tổng câu hỏi</div>
+                </div>
+                
+                <div className="bg-white rounded-lg p-6 border shadow-sm text-center">
+                  <div className="flex items-center justify-center w-12 h-12 bg-purple-50 rounded-full mx-auto mb-3">
+                    <Award className="h-6 w-6 text-purple-600" />
+                  </div>
+                  <div className="text-2xl font-bold text-gray-900 mb-1">{testData.passingScorePercentage}%</div>
+                  <div className="text-sm text-muted-foreground">Điểm cần đạt</div>
+                </div>
+              </div>
+
+
+              {/* Action Buttons */}
+              <div className="flex flex-col sm:flex-row gap-3">
+                <Button
+                  onClick={() => {
+                    setIsStarted(true);
+                    setIsReviewMode(true);
+                  }}
+                  className="flex-1 h-11 bg-primary hover:bg-primary/90 text-white"
+                  size="lg"
+                >
+                  <Eye className="mr-2 h-4 w-4" />
+                  Xem lại chi tiết
+                </Button>
+                <Button
+                  onClick={() => router.back()}
+                  variant="outline"
+                  className="sm:w-auto h-11"
+                  size="lg"
+                >
+                  <ArrowLeft className="mr-2 h-4 w-4" />
+                  Quay lại khóa học
+                </Button>
+              </div>
+
+              {/* Additional Info */}
+              <div className="text-center pt-4">
+                <div className="inline-flex items-center text-sm text-muted-foreground">
+                  <Clock className="h-4 w-4 mr-2" />
+                  Hoàn thành lúc: {new Date().toLocaleString('vi-VN')}
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       );
     }

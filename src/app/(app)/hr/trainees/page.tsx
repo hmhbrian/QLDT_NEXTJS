@@ -28,7 +28,7 @@ import {
 } from "@/components/ui/select";
 
 import { PlusCircle, Search, Building2, Eye, EyeOff } from "lucide-react";
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import {
   User,
   Role,
@@ -87,6 +87,11 @@ export default function TraineesPage() {
     pageIndex: 0,
     pageSize: 10,
   });
+
+  // Reset pagination to page 1 when search term changes
+  useEffect(() => {
+    setPagination(prev => ({ ...prev, pageIndex: 0 }));
+  }, [debouncedSearchTerm]);
 
   const [selectedTrainee, setSelectedTrainee] = useState<User | null>(null);
   const [editingTrainee, setEditingTrainee] = useState<User | null>(null);

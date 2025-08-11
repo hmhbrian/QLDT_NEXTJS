@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import {
   Dialog,
   DialogContent,
@@ -40,7 +40,7 @@ interface DepartmentFormDialogProps {
     payload: CreateDepartmentPayload | UpdateDepartmentPayload,
     isEditing: boolean,
     deptId?: number
-  ) => void;
+  ) => Promise<void>;
   existingDepartments: DepartmentInfo[];
   managers: User[];
   isLoading?: boolean;
@@ -72,6 +72,8 @@ export default function DepartmentFormDialog({
   const [formData, setFormData] = useState<
     CreateDepartmentPayload | UpdateDepartmentPayload
   >(initialFormData);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [submitted, setSubmitted] = useState<boolean>(false);
 
   useEffect(() => {
     if (!managers || managers.length === 0) {
@@ -100,13 +102,80 @@ export default function DepartmentFormDialog({
     } else {
       setFormData(initialFormData);
     }
+    // Clear errors when dialog opens/closes or switches between add/edit
+    setErrors({});
+    setSubmitted(false);
   }, [departmentToEdit, isOpen]);
 
-  const handleSubmit = () => {
-    if (!formData.DepartmentName) {
+  const validateForm = useCallback(() => {
+    const newErrors: Record<string, string> = {};
+
+    const nameMsg = validateField("DepartmentName", formData.DepartmentName);
+    if (nameMsg) newErrors.DepartmentName = nameMsg;
+
+    const codeMsg = validateField("DepartmentCode", formData.DepartmentCode);
+    if (codeMsg) newErrors.DepartmentCode = codeMsg;
+
+    setErrors(newErrors);
+    const isValid = Object.keys(newErrors).length === 0;
+    return { isValid, newErrors };
+  }, [formData.DepartmentName, formData.DepartmentCode, existingDepartments, departmentToEdit?.departmentId]);
+
+  const clearFieldError = (fieldName: string) => {
+    if (errors[fieldName]) {
+      setErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[fieldName];
+        return newErrors;
+      });
+    }
+  };
+
+  const validateField = (
+    field: "DepartmentName" | "DepartmentCode",
+    value: string
+  ): string | undefined => {
+    switch (field) {
+      case "DepartmentName": {
+        if (!value?.trim()) return "Tên phòng ban không được để trống";
+        const duplicate = existingDepartments.find(
+          (d) =>
+            d.name.toLowerCase() === value.trim().toLowerCase() &&
+            d.departmentId !== departmentToEdit?.departmentId
+        );
+        if (duplicate) return "Tên phòng ban đã tồn tại";
+        break;
+      }
+      case "DepartmentCode": {
+        if (!value?.trim()) return "Mã phòng ban không được để trống";
+        const duplicate = existingDepartments.find(
+          (d) =>
+            d.code.toLowerCase() === value.trim().toLowerCase() &&
+            d.departmentId !== departmentToEdit?.departmentId
+        );
+        if (duplicate) return "Mã phòng ban đã tồn tại";
+        break;
+      }
+      default:
+        break;
+    }
+    return undefined;
+  };
+
+  const handleSubmit = async () => {
+    setSubmitted(true);
+    const { isValid, newErrors } = validateForm();
+    if (!isValid) {
+      // Focus on first error field
+      const firstErrorField = Object.keys(newErrors)[0];
+      if (firstErrorField) {
+        const element = document.querySelector(`[name="${firstErrorField}"]`) as HTMLElement;
+        element?.focus();
+      }
+      // Show generic error message only on submit
       toast({
-        title: "Lỗi",
-        description: "Vui lòng điền đầy đủ Tên phòng ban.",
+        title: "Thiếu thông tin",
+        description: "Vui lòng kiểm tra lại các trường bắt buộc.",
         variant: "destructive",
       });
       return;
@@ -117,7 +186,22 @@ export default function DepartmentFormDialog({
       DepartmentCode: formData.DepartmentCode || generateDepartmentCode(),
     };
 
-    onSave(finalFormData, !!departmentToEdit, departmentToEdit?.departmentId);
+    try {
+      await onSave(finalFormData, !!departmentToEdit, departmentToEdit?.departmentId);
+      // Form will be closed by parent component on success
+    } catch (error: any) {
+      // Handle server-side errors
+      const errorMessage = error?.response?.data?.detail || 
+                          error?.response?.data?.message || 
+                          error?.message || 
+                          'Có lỗi xảy ra khi lưu phòng ban';
+      
+      toast({
+        title: "Lỗi",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    }
   };
 
   return (
@@ -138,38 +222,67 @@ export default function DepartmentFormDialog({
             <Label htmlFor="name">Tên phòng ban *</Label>
             <Input
               id="name"
+              name="DepartmentName"
               value={formData.DepartmentName}
-              onChange={(e) =>
-                setFormData({ ...formData, DepartmentName: e.target.value })
-              }
+              onChange={(e) => {
+                setFormData({ ...formData, DepartmentName: e.target.value });
+                clearFieldError('DepartmentName');
+              }}
+              onBlur={(e) => {
+                const msg = validateField('DepartmentName', e.target.value);
+                if (msg) {
+                  setErrors((prev) => ({ ...prev, DepartmentName: msg }));
+                } else {
+                  clearFieldError('DepartmentName');
+                }
+              }}
+              className={errors.DepartmentName ? 'border-red-500' : ''}
             />
+            {errors.DepartmentName && (
+              <p className="text-sm text-red-500">{errors.DepartmentName}</p>
+            )}
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="code">Mã phòng ban</Label>
+            <Label htmlFor="code">Mã phòng ban *</Label>
             <div className="flex gap-2">
               <Input
                 id="code"
+                name="DepartmentCode"
                 value={formData.DepartmentCode}
-                onChange={(e) =>
-                  setFormData({ ...formData, DepartmentCode: e.target.value })
-                }
+                onChange={(e) => {
+                  setFormData({ ...formData, DepartmentCode: e.target.value });
+                  clearFieldError('DepartmentCode');
+                }}
+                onBlur={(e) => {
+                  const msg = validateField('DepartmentCode', e.target.value);
+                  if (msg) {
+                    setErrors((prev) => ({ ...prev, DepartmentCode: msg }));
+                  } else {
+                    clearFieldError('DepartmentCode');
+                  }
+                }}
                 placeholder="VD: DEPT001"
+                className={errors.DepartmentCode ? 'border-red-500' : ''}
               />
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
-                onClick={() =>
+                onClick={() => {
                   setFormData({
                     ...formData,
                     DepartmentCode: generateDepartmentCode(),
-                  })
-                }
+                  });
+                  clearFieldError('DepartmentCode');
+                }}
                 className="whitespace-nowrap"
               >
                 Tạo tự động
               </Button>
             </div>
+            {errors.DepartmentCode && (
+              <p className="text-sm text-red-500">{errors.DepartmentCode}</p>
+            )}
             <p className="text-xs text-muted-foreground">
               Nếu để trống, hệ thống sẽ tự động tạo mã phòng ban
             </p>
@@ -182,6 +295,7 @@ export default function DepartmentFormDialog({
               onChange={(e) =>
                 setFormData({ ...formData, Description: e.target.value })
               }
+              placeholder="Mô tả ngắn gọn chức năng, nhiệm vụ của phòng ban"
             />
           </div>
           <div className="grid gap-2">
