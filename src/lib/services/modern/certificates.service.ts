@@ -6,6 +6,10 @@ import { API_CONFIG } from "@/lib/config";
 export interface Certificate {
   id: number;
   user: any;
+  course: {
+    id: string;
+    name: string;
+  };
   certificateUrl: string;
   createdAt: string;
 }
