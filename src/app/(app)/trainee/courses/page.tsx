@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -96,6 +96,11 @@ export default function StudentCourseCatalog() {
   });
 
   const debouncedFilters = useDebounce(filters, 300);
+
+  // Reset pagination to page 1 when any filter changes
+  useEffect(() => {
+    setPagination(prev => ({ ...prev, pageIndex: 0 }));
+  }, [debouncedFilters]);
 
   const apiParams: QueryParams = useMemo(() => {
     const params: QueryParams = {
