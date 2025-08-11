@@ -19,6 +19,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { useToast } from "@/components/ui/use-toast";
 
 interface DraggableDepartmentTreeProps {
   departments: DepartmentInfo[];
@@ -36,6 +37,7 @@ export function DraggableDepartmentTree({
   onUpdateDepartments,
   className,
 }: DraggableDepartmentTreeProps) {
+  const { toast } = useToast();
   const [expandedNodes, setExpandedNodes] = useState<Set<number>>(new Set());
   const [draggedDeptId, setDraggedDeptId] = useState<number | null>(null);
   const [dropTarget, setDropTarget] = useState<{
@@ -152,7 +154,17 @@ export function DraggableDepartmentTree({
     const draggedId = Number(draggedIdStr);
     handleDragEnd();
 
-    if (draggedId === targetId) return;
+    if (draggedId === targetId) {
+      const sourceDept = departmentMap.get(draggedId);
+      if (sourceDept) {
+        toast({
+          title: "Không hợp lệ",
+          description: `Không thể thả phòng ban "${sourceDept.name}" vào chính nó.`,
+          variant: "warning",
+        });
+      }
+      return;
+    }
 
     const sourceDept = departmentMap.get(draggedId);
     if (!sourceDept) return;
@@ -161,7 +173,14 @@ export function DraggableDepartmentTree({
     const isDroppingOnSameParent =
       (sourceDept.parentId === null && targetId === null) ||
       sourceDept.parentId === targetId;
-    if (isDroppingOnSameParent) return;
+    if (isDroppingOnSameParent) {
+      toast({
+        title: "Không có thay đổi",
+        description: `Phòng ban "${sourceDept.name}" đã thuộc phòng ban này.`,
+        variant: "warning",
+      });
+      return;
+    }
 
     // Prevent circular dependency
     if (targetId !== null) {
@@ -169,7 +188,12 @@ export function DraggableDepartmentTree({
         (d) => d.departmentId
       );
       if (childIds.includes(targetId)) {
-        console.error("Cannot drop on child department");
+        toast({
+          title: "Không hợp lệ",
+          description:
+            "Không thể di chuyển phòng ban vào một phòng ban con của chính nó.",
+          variant: "destructive",
+        });
         return;
       }
     }
