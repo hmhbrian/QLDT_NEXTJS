@@ -327,7 +327,7 @@ export default function TestDetailPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="mt-6 border-t pt-4 text-center">
-                <h3 className="font-semibold mb-2">Kết quả lần làm trước</h3>
+                <h3 className="font-semibold mb-2">Kết quả</h3>
                 <p
                   className={`text-xl font-bold ${
                     result.isPassed ? "text-green-600" : "text-red-600"

@@ -109,6 +109,8 @@ export default function CoursesPage() {
     const params: QueryParams = {
       Page: pagination.pageIndex + 1,
       Limit: pagination.pageSize,
+      // Admin should see all courses, not just public ones
+      publicOnly: false,
     };
     if (debouncedFilters.keyword) {
       params.keyword = debouncedFilters.keyword;
@@ -536,8 +538,7 @@ export default function CoursesPage() {
                         {course.description}
                       </p>
                       <p className="whitespace-nowrap">
-                        <span className="font-medium">Giảng viên:</span>{" "}
-                        {course.instructor}
+                        {/* Giảng viên: bỏ hiển thị */}
                       </p>
                       <div className="truncate">
                         <span className="font-medium">Phòng ban:</span>{" "}

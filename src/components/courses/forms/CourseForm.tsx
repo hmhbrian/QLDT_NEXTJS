@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { format, parseISO } from "date-fns";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
@@ -45,6 +45,7 @@ import NextImage from "next/image";
 import { DatePicker } from "@/components/ui/datepicker";
 import { LoadingButton } from "@/components/ui/loading";
 import { Loading } from "@/components/ui/loading";
+import { useToast } from "@/components/ui/use-toast";
 
 import type { Course, EnrollmentType } from "@/lib/types/course.types";
 import type { User } from "@/lib/types/user.types";
@@ -152,6 +153,56 @@ export function CourseForm({
 
   const isSubmitting =
     createCourseMutation.isPending || updateCourseMutation.isPending;
+
+  // --- Validation State ---
+  const { toast } = useToast();
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const clearError = (field: string) => {
+    setErrors((prev) => {
+      if (!prev[field]) return prev;
+      const next = { ...prev };
+      delete next[field];
+      return next;
+    });
+  };
+
+  const validateField = useCallback(
+    (field: string, value: unknown): string | undefined => {
+      switch (field) {
+        case "title":
+          if (!String(value || "").trim()) return "Tên khóa học là bắt buộc";
+          break;
+        case "category":
+          if (!value || !(value as any)?.id) return "Danh mục là bắt buộc";
+          break;
+        case "description":
+          if (!String(value || "").trim()) return "Mô tả là bắt buộc";
+          break;
+        case "objectives":
+          if (!String(value || "").trim()) return "Mục tiêu đào tạo là bắt buộc";
+          break;
+        default:
+          break;
+      }
+      return undefined;
+    },
+    []
+  );
+
+  const validateForm = useCallback(() => {
+    const newErrors: Record<string, string> = {};
+    const titleMsg = validateField("title", formData.title);
+    if (titleMsg) newErrors.title = titleMsg;
+    const categoryMsg = validateField("category", formData.category);
+    if (categoryMsg) newErrors.category = categoryMsg;
+    const descMsg = validateField("description", formData.description);
+    if (descMsg) newErrors.description = descMsg;
+    const objMsg = validateField("objectives", formData.objectives);
+    if (objMsg) newErrors.objectives = objMsg;
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  }, [formData, validateField]);
 
   // --- Derived State (Options for Selects) ---
   const departmentOptions = useMemo(() => {
@@ -287,6 +338,20 @@ export function CourseForm({
     trainees.find((t) => t.id === id)?.fullName || "Không rõ học viên";
 
   const handleSubmit = async () => {
+    if (!validateForm()) {
+      const order = ["title", "category", "description", "objectives"];
+      const first = order.find((k) => !!errors[k]) || Object.keys(errors)[0];
+      if (first) {
+        const el = document.querySelector(`[name="${first}"]`) as HTMLElement | null;
+        el?.focus();
+      }
+      toast({
+        title: "Thiếu thông tin",
+        description: "Vui lòng kiểm tra các trường bắt buộc.",
+        variant: "destructive",
+      });
+      return;
+    }
     const dataWithFile = {
       ...formData,
       imageFile: selectedImageFile || undefined,
@@ -355,9 +420,21 @@ export function CourseForm({
                   </Label>
                   <Input
                     id="title"
+                    name="title"
                     value={formData.title}
-                    onChange={(e) => handleInputChange("title", e.target.value)}
+                    onChange={(e) => {
+                      handleInputChange("title", e.target.value);
+                      clearError("title");
+                    }}
+                    onBlur={(e) => {
+                      const msg = validateField("title", e.target.value);
+                      if (msg) setErrors((p) => ({ ...p, title: msg }));
+                    }}
+                    className={errors.title ? "border-red-500" : ""}
                   />
+                  {errors.title && (
+                    <p className="text-sm text-red-500 mt-1">{errors.title}</p>
+                  )}
                 </div>
                 <div>
                   <Label htmlFor="courseCode">Mã khóa học</Label>
@@ -396,9 +473,12 @@ export function CourseForm({
                         (c) => String(c.id) === value
                       );
                       handleInputChange("category", selectedCategory || null);
+                      const msg = validateField("category", selectedCategory || null);
+                      if (msg) setErrors((p) => ({ ...p, category: msg }));
+                      else clearError("category");
                     }}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className={errors.category ? "border-red-500" : ""}>
                       <SelectValue placeholder="Chọn danh mục" />
                     </SelectTrigger>
                     <SelectContent>
@@ -419,11 +499,21 @@ export function CourseForm({
                   </Label>
                   <Textarea
                     id="description"
+                    name="description"
                     value={formData.description}
-                    onChange={(e) =>
-                      handleInputChange("description", e.target.value)
-                    }
+                    onChange={(e) => {
+                      handleInputChange("description", e.target.value);
+                      clearError("description");
+                    }}
+                    onBlur={(e) => {
+                      const msg = validateField("description", e.target.value);
+                      if (msg) setErrors((p) => ({ ...p, description: msg }));
+                    }}
+                    className={errors.description ? "border-red-500" : ""}
                   />
+                  {errors.description && (
+                    <p className="text-sm text-red-500 mt-1">{errors.description}</p>
+                  )}
                 </div>
                 <div className="md:col-span-2">
                   <Label htmlFor="objectives">
@@ -431,24 +521,23 @@ export function CourseForm({
                   </Label>
                   <Textarea
                     id="objectives"
+                    name="objectives"
                     value={formData.objectives}
-                    onChange={(e) =>
-                      handleInputChange("objectives", e.target.value)
-                    }
+                    onChange={(e) => {
+                      handleInputChange("objectives", e.target.value);
+                      clearError("objectives");
+                    }}
+                    onBlur={(e) => {
+                      const msg = validateField("objectives", e.target.value);
+                      if (msg) setErrors((p) => ({ ...p, objectives: msg }));
+                    }}
+                    className={errors.objectives ? "border-red-500" : ""}
                   />
+                  {errors.objectives && (
+                    <p className="text-sm text-red-500 mt-1">{errors.objectives}</p>
+                  )}
                 </div>
-                <div>
-                  <Label htmlFor="instructor">
-                    Giảng viên <span className="text-destructive">*</span>
-                  </Label>
-                  <Input
-                    id="instructor"
-                    value={formData.instructor}
-                    onChange={(e) =>
-                      handleInputChange("instructor", e.target.value)
-                    }
-                  />
-                </div>
+                {/* Trường giảng viên đã bỏ */}
                 <div>
                   <Label htmlFor="learningType">Hình thức học</Label>
                   <Select

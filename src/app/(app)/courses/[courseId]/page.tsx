@@ -659,17 +659,7 @@ export default function CourseDetailPage() {
         </div>
 
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {course.instructor && course.instructor !== "Không có" && (
-            <Card className="shadow-md hover:shadow-lg transition-shadow">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Giảng viên</CardTitle>
-                <GraduationCap className="h-5 w-5 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-xl font-bold">{course.instructor}</div>
-              </CardContent>
-            </Card>
-          )}
+          {/* Khối giảng viên đã bỏ */}
           <Card className="shadow-md hover:shadow-lg transition-shadow">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Thời lượng</CardTitle>
@@ -1073,7 +1063,7 @@ export default function CourseDetailPage() {
                     </h3>
                     <p className="text-muted-foreground max-w-md">
                       Khóa học này chưa có bài học nào được thêm. Vui lòng quay
-                      lại sau hoặc liên hệ với giảng viên để biết thêm thông
+                  lại sau hoặc liên hệ hỗ trợ để biết thêm thông
                       tin.
                     </p>
                   </div>

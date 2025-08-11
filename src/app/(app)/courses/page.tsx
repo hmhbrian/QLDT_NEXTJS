@@ -112,7 +112,7 @@ export default function CoursesPage() {
     const enrolledCourseIds = new Set(enrolledCourses.map((c) => c.id));
     return publicCourses.filter((course) => {
       const notEnrolled = !enrolledCourseIds.has(course.id);
-      const isOptional = course.enrollmentType === "optional";
+      const isOptional = course.enrollmentType === "optional" || course.enrollmentType === "mandatory";
       const registrationOpen = isRegistrationOpen(course.registrationDeadline);
       if (showExpired) {
         // Hiển thị cả hết hạn để người dùng biết đã bỏ lỡ
@@ -254,14 +254,14 @@ export default function CoursesPage() {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          {currentUser?.role === "HOCVIEN" && (
+          {/* {currentUser?.role === "HOCVIEN" && (
             <div className="flex items-center gap-2 px-2">
               <Switch id="toggle-expired" checked={showExpired} onCheckedChange={setShowExpired} />
               <label htmlFor="toggle-expired" className="text-sm text-muted-foreground select-none">
                 Hiển thị khóa hết hạn
               </label>
             </div>
-          )}
+          )} */}
           <Button
             variant={viewMode === "table" ? "default" : "outline"}
             size="icon"
@@ -376,12 +376,6 @@ export default function CoursesPage() {
                         {course.description}
                       </p>
                       <div className="space-y-1 text-xs text-muted-foreground">
-                        <div>
-                          Giảng viên:{" "}
-                          <span className="font-medium text-foreground">
-                            {course.instructor}
-                          </span>
-                        </div>
                         <div>
                           Thời lượng: {course.duration.sessions} buổi (
                           {course.duration.hoursPerSession}h/buổi)
