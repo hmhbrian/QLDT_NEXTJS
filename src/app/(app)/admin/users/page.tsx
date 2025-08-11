@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useCallback, useRef } from "react";
+import { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import {
   Card,
   CardContent,
@@ -110,6 +110,11 @@ export default function UsersPage() {
     pageIndex: 0,
     pageSize: 10,
   });
+
+  // Reset pagination to page 1 when search term changes
+  useEffect(() => {
+    setPagination(prev => ({ ...prev, pageIndex: 0 }));
+  }, [debouncedSearchTerm]);
 
   // Form State
   const initialNewUserState: UserFormState = {
