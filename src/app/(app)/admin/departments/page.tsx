@@ -261,12 +261,12 @@ export default function DepartmentsPage() {
     deptId?: number
   ) => {
     try {
-      if (isEditing && deptId) {
+    if (isEditing && deptId) {
         await updateDeptMutation.mutateAsync({
-          id: deptId,
-          payload: payload as UpdateDepartmentPayload,
-        });
-      } else {
+        id: deptId,
+        payload: payload as UpdateDepartmentPayload,
+      });
+    } else {
         await createDeptMutation.mutateAsync(payload as CreateDepartmentPayload);
       }
       // Only close form on success
