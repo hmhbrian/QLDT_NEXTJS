@@ -1,15 +1,7 @@
 "use client";
 
 import { ColumnDef } from "@tanstack/react-table";
-import {
-  ArrowUpDown,
-  MoreHorizontal,
-  Pencil,
-  Copy,
-  Archive,
-  Trash2,
-  Eye,
-} from "lucide-react";
+import { ArrowUpDown, MoreHorizontal, Pencil, Copy, Trash2, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -343,13 +335,7 @@ const adminActionsColumn = (actions: AdminActions): ColumnDef<Course> => ({
             >
               <Copy className="mr-2 h-4 w-4" /> Nhân bản
             </DropdownMenuItem>
-            {course.status !== "Hủy" && (
-              <DropdownMenuItem
-                onClick={() => actions.setArchivingCourse(course)}
-              >
-                <Archive className="mr-2 h-4 w-4" /> Lưu trữ
-              </DropdownMenuItem>
-            )}
+            {/* Removed "Lưu trữ" action per requirement */}
             <DropdownMenuItem
               onClick={() => actions.setDeletingCourse(course)}
               className="text-destructive focus:text-destructive"

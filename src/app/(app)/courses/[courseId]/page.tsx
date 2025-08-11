@@ -659,15 +659,17 @@ export default function CourseDetailPage() {
         </div>
 
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          <Card className="shadow-md hover:shadow-lg transition-shadow">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Giảng viên</CardTitle>
-              <GraduationCap className="h-5 w-5 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-xl font-bold">{course.instructor}</div>
-            </CardContent>
-          </Card>
+          {course.instructor && course.instructor !== "Không có" && (
+            <Card className="shadow-md hover:shadow-lg transition-shadow">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Giảng viên</CardTitle>
+                <GraduationCap className="h-5 w-5 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-xl font-bold">{course.instructor}</div>
+              </CardContent>
+            </Card>
+          )}
           <Card className="shadow-md hover:shadow-lg transition-shadow">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Thời lượng</CardTitle>
@@ -680,8 +682,8 @@ export default function CourseDetailPage() {
               </div>
               {course.startDate && course.endDate && (
                 <p className="text-xs text-muted-foreground">
-                  {new Date(course.startDate).toLocaleDateString("vi-VN")} -{" "}
-                  {new Date(course.endDate).toLocaleDateString("vi-VN")}
+                  Bắt đầu: {new Date(course.startDate).toLocaleDateString("vi-VN")} 
+                  – Kết thúc: {new Date(course.endDate).toLocaleDateString("vi-VN")}
                 </p>
               )}
             </CardContent>
@@ -731,7 +733,7 @@ export default function CourseDetailPage() {
               <CardTitle className="text-sm font-medium">
                 Bài học đã hoàn thành
               </CardTitle>
-              <CheckCircle className="h-5 w-5 text-primary" />
+              <CheckCircle className="h-5 w-5 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               {isLoadingCompletedLessons ? (
@@ -760,7 +762,9 @@ export default function CourseDetailPage() {
             <TabsTrigger value="tests" disabled={!canViewContent}>
               Bài kiểm tra
             </TabsTrigger>
-            <TabsTrigger value="requirements">Yêu cầu</TabsTrigger>
+            {((course as any).requirements && String((course as any).requirements).trim().length > 0) && (
+              <TabsTrigger value="requirements">Yêu cầu</TabsTrigger>
+            )}
             <TabsTrigger value="materials">Tài liệu</TabsTrigger>
             {(currentUser?.role === "ADMIN" || currentUser?.role === "HR") && (
               <TabsTrigger value="activity-logs">Nhật ký hoạt động</TabsTrigger>
@@ -1121,24 +1125,26 @@ export default function CourseDetailPage() {
             </Card>
           </TabsContent>
 
-          <TabsContent value="requirements">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <ListChecks className="mr-2 h-5 w-5" />
-                  Yêu cầu tiên quyết
-                </CardTitle>
-                <CardDescription>
-                  Những kiến thức và kỹ năng cần có trước khi tham gia khóa học.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground">
-                  Không có yêu cầu tiên quyết cụ thể cho khóa học này.
-                </p>
-              </CardContent>
-            </Card>
-          </TabsContent>
+          {((course as any).requirements && String((course as any).requirements).trim().length > 0) && (
+            <TabsContent value="requirements">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center">
+                    <ListChecks className="mr-2 h-5 w-5" />
+                    Yêu cầu tiên quyết
+                  </CardTitle>
+                  <CardDescription>
+                    Những kiến thức và kỹ năng cần có trước khi tham gia khóa học.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-muted-foreground">
+                    {String((course as any).requirements)}
+                  </p>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          )}
 
           <TabsContent value="materials">
             <Card>

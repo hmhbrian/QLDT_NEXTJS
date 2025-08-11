@@ -33,10 +33,12 @@ import { useEmployeeLevel } from "@/hooks/use-employeeLevel";
 import { useCourseStatuses } from "@/hooks/use-statuses";
 import { useDebounce } from "@/hooks/use-debounce";
 import { DataTable } from "@/components/ui/data-table";
+import { PaginationControls } from "@/components/ui/PaginationControls";
 import NextImage from "next/image";
 import type { Course } from "@/lib/types/course.types";
 import type { QueryParams } from "@/lib/core/types";
 import type { PaginationState } from "@tanstack/react-table";
+import type { ColumnDef } from "@tanstack/react-table";
 
 // Optimized components
 import {
@@ -303,7 +305,7 @@ export default function StudentCourseCatalog() {
           description="Thử thay đổi bộ lọc để tìm thấy khóa học phù hợp"
           icon={<BookOpen className="h-12 w-12 text-muted-foreground" />}
         />
-      ) : (
+      ) : viewMode === "grid" ? (
         <GridLayout>
           {courses.map((course) => {
             const enrollmentStatus = getEnrollmentStatus(course.id);
@@ -460,15 +462,77 @@ export default function StudentCourseCatalog() {
             );
           })}
         </GridLayout>
+      ) : (
+        // Table (list) view
+        <DataTable
+          columns={useMemo<ColumnDef<Course>[]>(
+            () => [
+              {
+                accessorKey: "title",
+                header: "Tên khóa học",
+                cell: ({ row }) => (
+                  <div
+                    className="font-medium cursor-pointer hover:underline"
+                    onClick={() => handleViewCourse(row.original.id)}
+                  >
+                    {row.original.title}
+                  </div>
+                ),
+              },
+              { accessorKey: "courseCode", header: "Mã" },
+              {
+                accessorKey: "status",
+                header: "Trạng thái",
+                cell: ({ row }) => {
+                  const s = row.original.status;
+                  const name =
+                    typeof s === "object" && s && "name" in s
+                      ? (s as any).name
+                      : typeof s === "string"
+                      ? s
+                      : "Không có";
+                  return <Badge>{name}</Badge>;
+                },
+              },
+              {
+                accessorKey: "isPublic",
+                header: "Loại",
+                cell: ({ row }) => (
+                  <Badge variant={row.original.isPublic ? "default" : "outline"}>
+                    {row.original.isPublic ? "Công khai" : "Nội bộ"}
+                  </Badge>
+                ),
+              },
+              {
+                id: "actions",
+                header: "Hành động",
+                cell: ({ row }) => (
+                  <Button size="sm" onClick={() => handleViewCourse(row.original.id)}>
+                    Xem chi tiết
+                  </Button>
+                ),
+              },
+            ],
+            []
+          )}
+          data={courses}
+          isLoading={isLoading}
+          pageCount={paginationInfo?.totalPages ?? 0}
+          pagination={pagination}
+          onPaginationChange={setPagination}
+        />
       )}
 
-      {/* Pagination would be handled by the DataTable component when in table view */}
-      {viewMode === "table" && (
-        <div className="mt-6">
-          <p className="text-sm text-muted-foreground text-center">
-            Chế độ bảng sẽ được triển khai với DataTable component
-          </p>
-        </div>
+      {/* Pagination for grid mode */}
+      {viewMode === "grid" && (
+        <PaginationControls
+          page={pagination.pageIndex + 1}
+          pageSize={pagination.pageSize}
+          totalPages={paginationInfo?.totalPages ?? 1}
+          totalItems={paginationInfo?.totalItems ?? courses.length}
+          onPageChange={(p) => setPagination((prev) => ({ ...prev, pageIndex: p - 1 }))}
+          onPageSizeChange={(s) => setPagination((prev) => ({ ...prev, pageSize: s, pageIndex: 0 }))}
+        />
       )}
     </div>
   );
