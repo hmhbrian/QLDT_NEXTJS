@@ -26,9 +26,6 @@ export class CoursesService extends BaseService<
     params: QueryParams = {}
   ): Promise<PaginatedResponse<CourseApiResponse>> {
     const backendParams: Record<string, any> = {};
-
-    if (params.Page) backendParams.Page = params.Page;
-    if (params.Limit) backendParams.Limit = params.Limit;
     if (params.SortField) backendParams.SortField = params.SortField;
     if (params.SortType) backendParams.SortType = params.SortType;
     if (params.keyword) backendParams.Keyword = params.keyword;
@@ -66,6 +63,13 @@ export class CoursesService extends BaseService<
     const endpoint = hasFilters
       ? API_CONFIG.endpoints.courses.search
       : API_CONFIG.endpoints.courses.base;
+
+    // Only pass Page/Limit to base endpoint. For /search, backend paginates internally and
+    // passing Page/Limit can cause empty pages when client navigates.
+    if (!hasFilters) {
+      if (params.Page) backendParams.Page = params.Page;
+      if (params.Limit) backendParams.Limit = params.Limit;
+    }
 
     return this.get<PaginatedResponse<CourseApiResponse>>(endpoint, {
       params: backendParams,

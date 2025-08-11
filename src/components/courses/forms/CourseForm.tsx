@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { format, parseISO } from "date-fns";
+import { format } from "date-fns";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -65,10 +65,8 @@ import { useDebounce } from "@/hooks/use-debounce";
 import { MaterialManager } from "@/components/courses/dialogs/MaterialManager";
 import { LessonManager } from "@/components/courses/dialogs/LessonManager";
 import { TestManager } from "@/components/courses/dialogs/TestManager";
-import {
-  mapCourseUiToCreatePayload,
-  mapCourseUiToUpdatePayload,
-} from "@/lib/mappers/course.mapper";
+import { mapCourseUiToCreatePayload, mapCourseUiToUpdatePayload } from "@/lib/mappers/course.mapper";
+import { parseYMDToLocalDate } from "@/lib/utils/date.utils";
 
 const initialNewCourseState: Course = {
   id: "",
@@ -386,15 +384,7 @@ export function CourseForm({
   // --- Render Helpers ---
   const parseDateStringForPicker = (
     dateString: string | null | undefined
-  ): Date | undefined => {
-    if (!dateString) return undefined;
-    try {
-      const parsedDate = parseISO(dateString);
-      return isNaN(parsedDate.getTime()) ? undefined : parsedDate;
-    } catch (e) {
-      return undefined;
-    }
-  };
+  ): Date | undefined => parseYMDToLocalDate(dateString || undefined);
 
   if (isLoadingCourse || (duplicateFromId && isLoadingSource)) {
     return <Loading text="Đang tải..." />;

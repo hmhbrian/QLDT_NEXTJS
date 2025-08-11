@@ -6,6 +6,7 @@ import type {
   UserEnrollCourseDto,
 } from "@/lib/types/course.types";
 import { API_CONFIG } from "../config";
+import { toApiDateStartOfDay } from "@/lib/utils/date.utils";
 
 function getAbsoluteImageUrl(
   thumbUrl: string | undefined | null,
@@ -155,18 +156,14 @@ export function mapCourseUiToCreatePayload(
     HoursPerSessions: course.duration?.hoursPerSession,
     Optional: course.enrollmentType === "mandatory" ? "Bắt buộc" : "Tùy chọn",
     MaxParticipant: course.maxParticipants,
-    StartDate: course.startDate
-      ? new Date(course.startDate).toISOString()
-      : undefined,
-    EndDate: course.endDate
-      ? new Date(course.endDate).toISOString()
-      : undefined,
-    RegistrationStartDate: course.registrationStartDate
-      ? new Date(course.registrationStartDate).toISOString()
-      : undefined,
-    RegistrationClosingDate: course.registrationDeadline
-      ? new Date(course.registrationDeadline).toISOString()
-      : undefined,
+    StartDate: toApiDateStartOfDay(course.startDate || undefined),
+    EndDate: toApiDateStartOfDay(course.endDate || undefined),
+    RegistrationStartDate: toApiDateStartOfDay(
+      course.registrationStartDate || undefined
+    ),
+    RegistrationClosingDate: toApiDateStartOfDay(
+      course.registrationDeadline || undefined
+    ),
     Location: course.location,
     StatusId: course.statusId,
     DepartmentIds: (course.department || [])
@@ -210,15 +207,8 @@ export function mapCourseUiToUpdatePayload(
     return true;
   };
 
-  const formatDate = (date: string | null): string | undefined => {
-    if (!date) return undefined;
-    try {
-      const parsed = new Date(date);
-      return !isNaN(parsed.getTime()) ? parsed.toISOString() : undefined;
-    } catch {
-      return undefined;
-    }
-  };
+  const formatDate = (date: string | null): string | undefined =>
+    toApiDateStartOfDay(date || undefined);
 
   if (isDifferent(course.title, originalCourse?.title))
     payload.Name = course.title;
