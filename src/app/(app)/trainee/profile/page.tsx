@@ -443,7 +443,7 @@ export default function UserProfilePage() {
 
                         return (
                           <>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-1 gap-1 min-w-[320px]">
+                            <div className="grid grid-cols-1 lg:grid-cols-1 gap-1 min-w-[320px]">
                               {currentItems.map((course, idx) => (
                                 <CourseCard
                                   key={course.id || `${completedPageIndex}-${idx}`}
