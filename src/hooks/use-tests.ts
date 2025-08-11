@@ -203,9 +203,8 @@ export function useSubmitTest(courseId: string, testId: number) {
 
       toast({
         title: "Nộp bài thành công!",
-        description: `Điểm: ${scorePercent}% (${correctCount}/${totalQuestions}) - ${
-          data.isPassed ? "ĐẠT" : "KHÔNG ĐẠT"
-        }`,
+        description: `Điểm: ${scorePercent}% (${correctCount}/${totalQuestions}) - ${data.isPassed ? "ĐẠT" : "KHÔNG ĐẠT"
+          }`,
         variant: "success",
       });
     },
