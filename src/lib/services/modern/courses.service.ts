@@ -31,16 +31,42 @@ export class CoursesService extends BaseService<
     if (params.Limit) backendParams.Limit = params.Limit;
     if (params.SortField) backendParams.SortField = params.SortField;
     if (params.SortType) backendParams.SortType = params.SortType;
-    if (params.keyword) backendParams.keyword = params.keyword;
+    if (params.keyword) backendParams.Keyword = params.keyword;
     if (params.statusIds) backendParams.StatusIds = params.statusIds;
     if (params.departmentIds) {
       backendParams.DepartmentIds = params.departmentIds; // Use correct parameter name with capital D
     }
     if (params.eLevelIds) backendParams.ELevelIds = params.eLevelIds;
+    if (params.categoryIds) backendParams.CategoryIds = params.categoryIds;
     if (params.publicOnly) backendParams.publicOnly = params.publicOnly;
 
-    // Use search endpoint instead of base endpoint
-    const endpoint = API_CONFIG.endpoints.courses.search;
+    // Add enrollment type filter mapping
+    if (params.enrollmentType === "optional") {
+      backendParams.Optional = "Tùy chọn";
+    } else if (params.enrollmentType === "mandatory") {
+      backendParams.Optional = "Bắt buộc";
+    }
+
+    // Add expired/open course filters
+    if (params.onlyOpen) backendParams.onlyOpen = params.onlyOpen;
+    if (params.onlyExpired) backendParams.onlyExpired = params.onlyExpired;
+
+    // Use search endpoint when there's any filtering or keyword, otherwise use base endpoint
+    const hasFilters = !!(
+      params.keyword ||
+      params.statusIds ||
+      params.departmentIds ||
+      params.eLevelIds ||
+      params.categoryIds ||
+      params.enrollmentType ||
+      params.onlyOpen ||
+      params.onlyExpired
+    );
+
+    const endpoint = hasFilters
+      ? API_CONFIG.endpoints.courses.search
+      : API_CONFIG.endpoints.courses.base;
+
     return this.get<PaginatedResponse<CourseApiResponse>>(endpoint, {
       params: backendParams,
     });

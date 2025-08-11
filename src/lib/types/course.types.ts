@@ -90,7 +90,7 @@ export interface Course {
   statusId?: number;
   enrollmentType: EnrollmentType;
   isPublic: boolean;
-  instructor: string;
+  instructor: string; // kept for compatibility but no longer used in UI
   duration: {
     sessions: number;
     hoursPerSession: number;
@@ -166,13 +166,13 @@ export interface CreateCourseRequest {
   Location?: string;
   StatusId?: number;
   CategoryId?: number;
-  LecturerId?: number;
+  // LecturerId removed from payloads
   DepartmentIds?: number[];
   eLevelIds?: number[];
   UserIds?: string[];
 }
 
-export interface UpdateCourseRequest extends Partial<CreateCourseRequest> {}
+export interface UpdateCourseRequest extends Partial<CreateCourseRequest> { }
 
 export interface CreateLessonPayload {
   Title: string;
@@ -181,7 +181,7 @@ export interface CreateLessonPayload {
   TotalDurationSeconds?: number;
 }
 
-export interface UpdateLessonPayload extends Partial<CreateLessonPayload> {}
+export interface UpdateLessonPayload extends Partial<CreateLessonPayload> { }
 
 export interface UpsertLessonProgressPayload {
   lessonId: number;
@@ -229,7 +229,7 @@ export interface CourseApiResponse {
   modifiedAt?: string;
   status?: Status;
   category?: CourseCategoryDto;
-  lecturer?: any; // Define LecturerDto if needed
+  // lecturer removed from mapping
   departments?: Array<{ departmentId: number; departmentName: string }>;
   eLevels?: Array<{ eLevelId: number; eLevelName: string }>;
   // Legacy fields for backward compatibility

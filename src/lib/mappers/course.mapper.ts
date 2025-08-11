@@ -45,7 +45,7 @@ export function mapCourseApiToUi(apiCourse: CourseApiResponse): Course {
     enrollmentType:
       apiCourse.optional === "Bắt buộc" ? "mandatory" : "optional",
     isPublic: apiCourse.optional !== "Bắt buộc",
-    instructor: apiCourse.lecturer?.name || "Không có",
+    instructor: "Không có",
     duration: {
       sessions: apiCourse.sessions || 0,
       hoursPerSession: apiCourse.hoursPerSessions || 0,
@@ -71,9 +71,9 @@ export function mapCourseApiToUi(apiCourse: CourseApiResponse): Course {
       })),
     category: apiCourse.category
       ? {
-          id: apiCourse.category.id,
-          categoryName: apiCourse.category.name || "Không có",
-        }
+        id: apiCourse.category.id,
+        categoryName: apiCourse.category.name || "Không có",
+      }
       : null,
     // Legacy fields for backward compatibility
     department: (apiCourse.departments || apiCourse.DepartmentInfo || []).map(
@@ -110,7 +110,7 @@ export function mapUserEnrollCourseDtoToCourse(
     status: "Đang mở",
     enrollmentType: dto.optional === "Bắt buộc" ? "mandatory" : "optional",
     isPublic: dto.optional !== "Bắt buộc",
-    instructor: dto.instructor || "Không có",
+    instructor: "Không có",
     duration: {
       sessions: dto.sessions || 0,
       hoursPerSession: dto.hoursPerSessions || 0,
@@ -230,8 +230,7 @@ export function mapCourseUiToUpdatePayload(
     payload.Objectives = course.objectives;
   if (isDifferent(course.learningType, originalCourse?.learningType))
     payload.Format = course.learningType;
-  if (isDifferent(course.instructor, originalCourse?.instructor))
-    payload.LecturerId = undefined; // Assuming conversion is needed
+  // Instructor removed
   if (isDifferent(course.location, originalCourse?.location))
     payload.Location = course.location;
   if (isDifferent(course.maxParticipants, originalCourse?.maxParticipants))
