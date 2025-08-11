@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import NextImage from "next/image";
 import {
@@ -70,6 +70,11 @@ export default function CoursesPage() {
     pageSize: 10,
   });
   const [showExpired, setShowExpired] = useState(true);
+
+  // Reset pagination to page 1 when search term changes
+  useEffect(() => {
+    setPagination(prev => ({ ...prev, pageIndex: 0 }));
+  }, [debouncedSearchTerm]);
 
   const {
     courses: publicCourses,
