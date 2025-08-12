@@ -133,7 +133,7 @@ export interface Feedback {
   q5_material: number;
   comment: string;
   createdAt?: string;
-  averageRating: number;
+  averageScore?: number; // Add this field for backend compatibility
 }
 
 export interface ApiLessonProgress {
