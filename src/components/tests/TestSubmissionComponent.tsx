@@ -107,14 +107,6 @@ export function TestSubmissionComponent({
       })
     );
 
-    console.log("🎯 Submitting test with data:", {
-      courseId,
-      testId,
-      answers,
-      startedAt: testStartTime,
-      selectedAnswers,
-    });
-
     try {
       const result = await submitTestMutation.mutateAsync({
         answers,
