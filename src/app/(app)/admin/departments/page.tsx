@@ -43,8 +43,6 @@ import type {
   CreateDepartmentPayload,
   UpdateDepartmentPayload,
 } from "@/lib/types/department.types";
-import type { User, EmployeeLevel } from "@/lib/types/user.types";
-import { usersService, EmployeeLevelService } from "@/lib/services";
 import { useManagersForDepartments } from "@/hooks/use-users";
 import {
   useDepartments,
@@ -76,7 +74,8 @@ export default function DepartmentsPage() {
   const deleteDeptMutation = useDeleteDepartment();
 
   // Use new hook for managers suitable for departments
-  const { managers, isLoading: isLoadingManagers } = useManagersForDepartments();
+  const { managers, isLoading: isLoadingManagers } =
+    useManagersForDepartments();
 
   const { userStatuses, isLoading: isStatusesLoading } = useUserStatuses();
 
@@ -201,20 +200,22 @@ export default function DepartmentsPage() {
     deptId?: number
   ) => {
     try {
-    if (isEditing && deptId) {
+      if (isEditing && deptId) {
         await updateDeptMutation.mutateAsync({
-        id: deptId,
-        payload: payload as UpdateDepartmentPayload,
-      });
-    } else {
-        await createDeptMutation.mutateAsync(payload as CreateDepartmentPayload);
+          id: deptId,
+          payload: payload as UpdateDepartmentPayload,
+        });
+      } else {
+        await createDeptMutation.mutateAsync(
+          payload as CreateDepartmentPayload
+        );
       }
       // Only close form on success
       setIsFormOpen(false);
       setEditingDepartment(null);
     } catch (error) {
       // Form stays open on error, let DepartmentFormDialog handle the error display
-      console.error('Failed to save department:', error);
+      console.error("Failed to save department:", error);
     }
   };
 
