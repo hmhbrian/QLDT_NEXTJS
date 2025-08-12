@@ -48,21 +48,40 @@ export class CoursesService extends BaseService<
     if (params.onlyOpen) backendParams.onlyOpen = params.onlyOpen;
     if (params.onlyExpired) backendParams.onlyExpired = params.onlyExpired;
 
-    // Use search endpoint when there's any filtering or keyword, otherwise use base endpoint
-    const hasFilters = !!(
-      params.keyword ||
-      params.statusIds ||
-      params.departmentIds ||
-      params.eLevelIds ||
-      params.categoryIds ||
-      params.enrollmentType ||
-      params.onlyOpen ||
-      params.onlyExpired
-    );
+    // Determine which endpoint to use based on publicOnly flag and filters
+    let endpoint;
+    if (params.publicOnly) {
+      // For public users (students), always use public search endpoint
+      endpoint = API_CONFIG.endpoints.courses.searchPublic;
+      console.log(
+        "🚀 [CoursesService] Using public search endpoint:",
+        endpoint
+      );
+    } else {
+      // For admin/HR users, use search endpoint if there are filters, otherwise base endpoint
+      const hasFilters = !!(
+        params.keyword ||
+        params.statusIds ||
+        params.departmentIds ||
+        params.eLevelIds ||
+        params.categoryIds ||
+        params.enrollmentType ||
+        params.onlyOpen ||
+        params.onlyExpired
+      );
 
-    const endpoint = hasFilters
-      ? API_CONFIG.endpoints.courses.search
-      : API_CONFIG.endpoints.courses.base;
+      endpoint = hasFilters
+        ? API_CONFIG.endpoints.courses.search
+        : API_CONFIG.endpoints.courses.base;
+      console.log(
+        "🚀 [CoursesService] Using admin endpoint:",
+        endpoint,
+        "hasFilters:",
+        hasFilters
+      );
+    }
+
+    console.log("📊 [CoursesService] Request params:", backendParams);
 
     // Only pass Page/Limit to base endpoint. For /search, backend paginates internally and
     // passing Page/Limit can cause empty pages when client navigates.
@@ -122,7 +141,9 @@ export class CoursesService extends BaseService<
 
   async softDeleteCourse(id: string): Promise<void> {
     // Backend expects DELETE /Courses/soft-delete?id={id}
-    await this.delete<void>(`${API_CONFIG.endpoints.courses.softDelete}?id=${encodeURIComponent(id)}`);
+    await this.delete<void>(
+      `${API_CONFIG.endpoints.courses.softDelete}?id=${encodeURIComponent(id)}`
+    );
   }
 
   async getEnrolledCourses(

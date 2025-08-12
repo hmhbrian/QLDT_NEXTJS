@@ -48,7 +48,6 @@ export default function MyCoursesPage() {
   useEffect(() => {
     const handleFocus = () => {
       if (currentUser) {
-        console.log("Tab focused, refetching enrolled courses...");
         queryClient.invalidateQueries({
           queryKey: [ENROLLED_COURSES_QUERY_KEY, currentUser.id],
         });

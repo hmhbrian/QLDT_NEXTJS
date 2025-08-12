@@ -35,7 +35,6 @@ export function useCourses(
     {
       queryKey,
       queryFn: async ({ signal }) => {
-        console.log(`♻️ [useCourses] Refetching courses with params:`, params);
         const apiResponse = await coursesService.getCourses(params);
         return {
           items: (apiResponse.items || []).map(mapCourseApiToUi),
@@ -63,9 +62,7 @@ export function useEnrolledCourses(enabled: boolean = true, page: number = 1, li
   const { data, isLoading, error } = useQuery<{ courses: Course[]; pagination: { totalItems: number; itemsPerPage: number; currentPage: number; totalPages: number } }, Error>({
     queryKey,
     queryFn: async ({ signal }) => {
-      console.log(
-        `♻️ [useEnrolledCourses] Refetching enrolled courses for user: ${user?.id}`
-      );
+
       const enrolledResponse = await coursesService.getEnrolledCourses(
         buildPaginationParams({ page, pageSize: limit }, { pageKey: "Page", sizeKey: "Limit" })
       );
@@ -112,14 +109,10 @@ export function useCreateCourse() {
 
   return useMutation<CourseApiResponse, Error, CreateCourseRequest>({
     mutationFn: (courseData) => {
-      console.log(
-        "▶️ [useCreateCourse] Mutation started with payload:",
-        courseData
-      );
+
       return coursesService.createCourse(courseData);
     },
     onSuccess: (data, variables) => {
-      console.log("✅ [useCreateCourse] Mutation successful:", data);
       const displayName = data?.name || variables?.Name || "khóa học";
       toast({
         title: "Thành công",
@@ -136,9 +129,6 @@ export function useCreateCourse() {
       });
     },
     onSettled: () => {
-      console.log(`🔄 [useCreateCourse] Invalidating queries with key:`, [
-        COURSES_QUERY_KEY,
-      ]);
       queryClient.invalidateQueries({ queryKey: [COURSES_QUERY_KEY] });
     },
   });
@@ -158,14 +148,10 @@ export function useUpdateCourse() {
     }
   >({
     mutationFn: ({ courseId, payload }) => {
-      console.log(
-        `▶️ [useUpdateCourse] Mutation started for course ${courseId} with payload:`,
-        payload
-      );
+
       return coursesService.updateCourse(courseId, payload);
     },
     onSuccess: (data, variables) => {
-      console.log("✅ [useUpdateCourse] Mutation successful:", data);
       toast({
         title: "Thành công",
         description: `Đã cập nhật khóa học "${variables.payload.Name || "khóa học"

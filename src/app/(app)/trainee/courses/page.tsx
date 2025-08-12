@@ -157,7 +157,6 @@ export default function StudentCourseCatalog() {
 
   const handleEnrollCourse = (courseId: string) => {
     // In real app, this would make an API call to enroll
-    console.log("Enrolling in course:", courseId);
     router.push(`/courses/${courseId}`);
   };
 

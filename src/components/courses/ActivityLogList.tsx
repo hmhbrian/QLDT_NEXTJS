@@ -184,20 +184,6 @@ export const ActivityLogList: React.FC<ActivityLogListProps> = ({
   const handleViewDetails = (log: ActivityLog) => {
     // Open a detailed view or console log for now
     console.group(`📋 Chi tiết hoạt động: ${log.description}`);
-    console.log("🆔 ID:", log.id);
-    console.log(
-      "👤 Người dùng:",
-      `${log.userName} (${getRoleName(log.userRole)})`
-    );
-    console.log("⚡ Hành động:", log.action);
-    console.log("📦 Loại đối tượng:", getEntityTypeName(log.entityType));
-    console.log("📝 Mô tả:", log.description);
-    console.log(
-      "⏰ Thời gian:",
-      new Date(log.timestamp).toLocaleString("vi-VN")
-    );
-    console.log("🌐 IP Address:", log.ipAddress);
-    console.log("📊 Metadata:", log.metadata);
     console.groupEnd();
 
     toast({
