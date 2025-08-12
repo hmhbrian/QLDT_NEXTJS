@@ -21,7 +21,10 @@ import { useAuth } from "./useAuth";
 import { useToast } from "@/components/ui/use-toast";
 import { extractErrorMessage } from "@/lib/core";
 import { API_CONFIG } from "@/lib/config";
-import { buildPaginationParams, normalizePaginationMeta } from "@/lib/utils/pagination";
+import {
+  buildPaginationParams,
+  normalizePaginationMeta,
+} from "@/lib/utils/pagination";
 
 export const COURSES_QUERY_KEY = "courses";
 export const ENROLLED_COURSES_QUERY_KEY = "enrolledCourses";
@@ -55,19 +58,38 @@ export function useCourses(
   };
 }
 
-export function useEnrolledCourses(enabled: boolean = true, page: number = 1, limit: number = 9) {
+export function useEnrolledCourses(
+  enabled: boolean = true,
+  page: number = 1,
+  limit: number = 9
+) {
   const { user } = useAuth();
   const queryKey = [ENROLLED_COURSES_QUERY_KEY, user?.id, page, limit];
 
-  const { data, isLoading, error } = useQuery<{ courses: Course[]; pagination: { totalItems: number; itemsPerPage: number; currentPage: number; totalPages: number } }, Error>({
+  const { data, isLoading, error } = useQuery<
+    {
+      courses: Course[];
+      pagination: {
+        totalItems: number;
+        itemsPerPage: number;
+        currentPage: number;
+        totalPages: number;
+      };
+    },
+    Error
+  >({
     queryKey,
     queryFn: async ({ signal }) => {
-
       const enrolledResponse = await coursesService.getEnrolledCourses(
-        buildPaginationParams({ page, pageSize: limit }, { pageKey: "Page", sizeKey: "Limit" })
+        buildPaginationParams(
+          { page, pageSize: limit },
+          { pageKey: "Page", sizeKey: "Limit" }
+        )
       );
       return {
-        courses: (enrolledResponse.items || []).map(mapUserEnrollCourseDtoToCourse),
+        courses: (enrolledResponse.items || []).map(
+          mapUserEnrollCourseDtoToCourse
+        ),
         pagination: normalizePaginationMeta(enrolledResponse.pagination, {}),
       };
     },
@@ -109,7 +131,6 @@ export function useCreateCourse() {
 
   return useMutation<CourseApiResponse, Error, CreateCourseRequest>({
     mutationFn: (courseData) => {
-
       return coursesService.createCourse(courseData);
     },
     onSuccess: (data, variables) => {
@@ -148,14 +169,14 @@ export function useUpdateCourse() {
     }
   >({
     mutationFn: ({ courseId, payload }) => {
-
       return coursesService.updateCourse(courseId, payload);
     },
     onSuccess: (data, variables) => {
       toast({
         title: "Thành công",
-        description: `Đã cập nhật khóa học "${variables.payload.Name || "khóa học"
-          }" thành công.`,
+        description: `Đã cập nhật khóa học "${
+          variables.payload.Name || "khóa học"
+        }" thành công.`,
         variant: "success",
       });
     },
@@ -185,7 +206,12 @@ export function useDeleteCourse() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  return useMutation<void, Error, string, { previousCourses?: PaginatedResponse<Course> }>({
+  return useMutation<
+    void,
+    Error,
+    string,
+    { previousCourses?: PaginatedResponse<Course> }
+  >({
     mutationFn: (courseId) => {
       console.log("▶️ [useDeleteCourse] Mutation started for ID:", courseId);
       return coursesService.softDeleteCourse(courseId);
@@ -252,13 +278,51 @@ export function useEnrollCourse() {
   });
 }
 
+export function useCancelEnrollCourse() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation<any, Error, string>({
+    mutationFn: (courseId) => {
+      console.log(
+        `▶️ [useCancelEnrollCourse] Mutation started for course ${courseId}`
+      );
+      return coursesService.cancelEnrollCourse(courseId);
+    },
+    onSuccess: () => {
+      console.log("✅ [useCancelEnrollCourse] Mutation successful");
+      toast({
+        title: "Thành công",
+        description: "Đã hủy đăng ký khóa học thành công.",
+        variant: "success",
+      });
+    },
+    onError: (error) => {
+      console.error("❌ [useCancelEnrollCourse] Mutation failed:", error);
+      toast({
+        title: "Lỗi",
+        description: extractErrorMessage(error),
+        variant: "destructive",
+      });
+    },
+    onSettled: () => {
+      console.log(
+        `🔄 [useCancelEnrollCourse] Invalidating enrolled courses and all courses.`
+      );
+      queryClient.invalidateQueries({ queryKey: [ENROLLED_COURSES_QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: [COURSES_QUERY_KEY] });
+    },
+  });
+}
+
 function getAbsoluteImageUrl(
   thumbUrl: string | null | undefined,
   name?: string
 ): string {
   // Provide plain text; Next/Image will encode when proxying to /_next/image
-  const defaultImageUrl = `https://placehold.co/600x400/f97316/white?text=${name || "Course"
-    }`;
+  const defaultImageUrl = `https://placehold.co/600x400/f97316/white?text=${
+    name || "Course"
+  }`;
   if (!thumbUrl || thumbUrl.toLowerCase().includes("formfile"))
     return defaultImageUrl;
   if (thumbUrl.startsWith("http") || thumbUrl.startsWith("data:"))
@@ -336,7 +400,19 @@ export interface CompletedCourse extends Course {
 export function useCompletedCoursesCount(page: number = 1, limit: number = 10) {
   const { user } = useAuth();
 
-  return useQuery<{ count: number; courses: CompletedCourse[]; pagination: { totalItems: number; itemsPerPage: number; currentPage: number; totalPages: number } }, Error>({
+  return useQuery<
+    {
+      count: number;
+      courses: CompletedCourse[];
+      pagination: {
+        totalItems: number;
+        itemsPerPage: number;
+        currentPage: number;
+        totalPages: number;
+      };
+    },
+    Error
+  >({
     queryKey: ["completedCoursesCount", user?.id, page, limit],
     queryFn: async () => {
       console.log(
@@ -344,7 +420,10 @@ export function useCompletedCoursesCount(page: number = 1, limit: number = 10) {
       );
       const [coursesResponse, countResponse] = await Promise.all([
         coursesService.getCompletedCourses(
-          buildPaginationParams({ page, pageSize: limit }, { pageKey: "Page", sizeKey: "Limit" })
+          buildPaginationParams(
+            { page, pageSize: limit },
+            { pageKey: "Page", sizeKey: "Limit" }
+          )
         ),
         coursesService.getCompletedCoursesCount(),
       ]);
@@ -389,7 +468,8 @@ export function useCompletedCoursesCount(page: number = 1, limit: number = 10) {
         score: undefined,
       }));
 
-      const finalCount = countResponse ?? coursesResponse.pagination?.totalItems ?? 0;
+      const finalCount =
+        countResponse ?? coursesResponse.pagination?.totalItems ?? 0;
 
       const meta = normalizePaginationMeta(coursesResponse.pagination, {
         totalItemsKey: "totalItems",

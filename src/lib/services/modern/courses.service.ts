@@ -162,6 +162,10 @@ export class CoursesService extends BaseService<
     return this.post<any>(API_CONFIG.endpoints.courses.enroll(courseId));
   }
 
+  async cancelEnrollCourse(courseId: string): Promise<any> {
+    return this.post<any>(API_CONFIG.endpoints.courses.cancelEnroll(courseId));
+  }
+
   async getUpcomingCourses(): Promise<CourseApiResponse[]> {
     return this.get<CourseApiResponse[]>(
       API_CONFIG.endpoints.courses.upcomingCourses
