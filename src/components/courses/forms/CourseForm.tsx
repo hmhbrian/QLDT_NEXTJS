@@ -94,7 +94,7 @@ const initialNewCourseState: Course = {
   registrationStartDate: null,
   registrationDeadline: null,
   userIds: [],
-  isPublic: false,
+  isPrivate: false,
   maxParticipants: 200,
   createdAt: new Date().toISOString(),
   modifiedAt: new Date().toISOString(),
@@ -240,7 +240,7 @@ export function CourseForm({
           .slice(-4)}`,
         status: "Lưu nháp",
         statusId: draftStatus?.id,
-        isPublic: false,
+        isPrivate: false,
         userIds: [],
       };
       setFormData(duplicatedCourse);
@@ -783,13 +783,15 @@ export function CourseForm({
                 <div className="md:col-span-2">
                   <div className="flex items-center space-x-2">
                     <Checkbox
-                      id="isPublic"
-                      checked={formData.isPublic}
+                      id="isPrivate"
+                      checked={formData.isPrivate}
                       onCheckedChange={(c) =>
-                        handleInputChange("isPublic", c === true)
+                        handleInputChange("isPrivate", c === true)
                       }
                     />
-                    <Label htmlFor="isPublic">Công khai khóa học này?</Label>
+                    <div>
+                      <Label htmlFor="isPrivate">Chỉ hiển thị nội bộ </Label>
+                    </div>
                   </div>
                 </div>
                 <div className="md:col-span-2">

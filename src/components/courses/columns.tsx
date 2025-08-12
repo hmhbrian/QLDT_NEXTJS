@@ -236,13 +236,13 @@ const sharedInfoColumns = (
     },
   },
   {
-    accessorKey: "isPublic",
+    accessorKey: "isPrivate",
     header: "Công khai",
     cell: ({ row }) => {
-      const isPublic = row.original.isPublic;
+      const isPrivate = row.original.isPrivate;
       return (
-        <Badge variant={isPublic ? "default" : "outline"}>
-          {isPublic ? "Công khai" : "Nội bộ"}
+        <Badge variant={isPrivate ? "outline" : "default"}>
+          {isPrivate ? "Nội bộ" : "Công khai"}
         </Badge>
       );
     },

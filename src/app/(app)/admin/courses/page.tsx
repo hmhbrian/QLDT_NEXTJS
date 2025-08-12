@@ -223,7 +223,7 @@ export default function CoursesPage() {
 
   const handleDeleteCourse = async () => {
     if (!canManageCourses || !deletingCourse) return;
-    deleteCourseMutation.mutate([deletingCourse.id], {
+    deleteCourseMutation.mutate(deletingCourse.id, {
       onSuccess: () => setDeletingCourse(null),
     });
   };
@@ -286,7 +286,7 @@ export default function CoursesPage() {
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
             <div className="space-y-1">
               <CardTitle className="text-2xl font-bold text-foreground flex items-center gap-3">
-                <div className="p-2 bg-orange-500 rounded-lg text-white">
+                <div className="p-2 bg-primary rounded-lg text-white">
                   <LayoutGrid className="h-6 w-6" />
                 </div>
                 Quản lý Khóa học
@@ -530,10 +530,10 @@ export default function CoursesPage() {
                             : "Không có"}
                         </Badge>
                         <Badge
-                          variant={course.isPublic ? "default" : "outline"}
+                          variant={course.isPrivate ? "outline" : "default"}
                           className="whitespace-nowrap"
                         >
-                          {course.isPublic ? "Công khai" : "Nội bộ"}
+                          {course.isPrivate ? "Nội bộ" : "Công khai" }
                         </Badge>
                       </div>
                       <p

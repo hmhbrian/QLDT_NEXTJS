@@ -133,7 +133,7 @@ export default function CoursesPage() {
       if (currentUser.role === "ADMIN" || currentUser.role === "HR") {
         return true;
       }
-      if (course.isPublic) {
+      if (course.isPrivate) {
         return true;
       }
       // This check might need revision if `course.department` is just an array of IDs
