@@ -89,7 +89,7 @@ export interface Course {
   status: string | { id: number; name: string }; // Handle both string and object
   statusId?: number;
   enrollmentType: EnrollmentType;
-  isPublic: boolean;
+  isPrivate: boolean;
   instructor: string; // kept for compatibility but no longer used in UI
   duration: {
     sessions: number;
@@ -166,7 +166,7 @@ export interface CreateCourseRequest {
   Location?: string;
   StatusId?: number;
   CategoryId?: number;
-  // LecturerId removed from payloads
+  IsPrivate?: boolean;
   DepartmentIds?: number[];
   eLevelIds?: number[];
   UserIds?: string[];
@@ -218,6 +218,7 @@ export interface CourseApiResponse {
   hoursPerSessions?: number;
   optional?: string;
   maxParticipant?: number;
+  isPrivate?: boolean;
   createdBy?: string;
   updatedBy?: string;
   startDate?: string;

@@ -67,8 +67,8 @@ export class CoursesService extends BaseService<
     // Only pass Page/Limit to base endpoint. For /search, backend paginates internally and
     // passing Page/Limit can cause empty pages when client navigates.
     // if (!hasFilters) {
-      if (params.Page) backendParams.Page = params.Page;
-      if (params.Limit) backendParams.Limit = params.Limit;
+    if (params.Page) backendParams.Page = params.Page;
+    if (params.Limit) backendParams.Limit = params.Limit;
     // }
 
     return this.get<PaginatedResponse<CourseApiResponse>>(endpoint, {
@@ -120,8 +120,9 @@ export class CoursesService extends BaseService<
     );
   }
 
-  async softDeleteCourses(ids: string[]): Promise<void> {
-    await this.delete<void>(API_CONFIG.endpoints.courses.softDelete, ids);
+  async softDeleteCourse(id: string): Promise<void> {
+    // Backend expects DELETE /Courses/soft-delete?id={id}
+    await this.delete<void>(`${API_CONFIG.endpoints.courses.softDelete}?id=${encodeURIComponent(id)}`);
   }
 
   async getEnrolledCourses(

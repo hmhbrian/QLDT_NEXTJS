@@ -199,15 +199,10 @@ export function useDeleteCourse() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  return useMutation<
-    void,
-    Error,
-    string[],
-    { previousCourses?: PaginatedResponse<Course> }
-  >({
-    mutationFn: (ids) => {
-      console.log("▶️ [useDeleteCourse] Mutation started for IDs:", ids);
-      return coursesService.softDeleteCourses(ids);
+  return useMutation<void, Error, string, { previousCourses?: PaginatedResponse<Course> }>({
+    mutationFn: (courseId) => {
+      console.log("▶️ [useDeleteCourse] Mutation started for ID:", courseId);
+      return coursesService.softDeleteCourse(courseId);
     },
     onSuccess: () => {
       console.log("✅ [useDeleteCourse] Mutation successful");
@@ -379,7 +374,7 @@ export function useCompletedCoursesCount(page: number = 1, limit: number = 10) {
         status: "completed",
         statusId: 4,
         enrollmentType: "optional" as const,
-        isPublic: true,
+        isPrivate: true,
         instructor: "",
         duration: { sessions: 0, hoursPerSession: 0 },
         learningType: "online" as const,
