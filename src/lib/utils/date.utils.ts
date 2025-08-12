@@ -101,11 +101,16 @@ export const parseYMDToLocalDate = (
   return new Date(y, m - 1, d);
 };
 
-// Build API datetime string at start of day in local terms (no Z)
+// Build API datetime string at start of day with UTC designator (Z)
+// Input expected as YYYY-MM-DD; output example: 2025-08-12T00:00:00.000Z
 export const toApiDateStartOfDay = (
   ymd?: string | null
 ): string | undefined => {
   const part = extractYMD(ymd);
   if (!part) return undefined;
-  return `${part}T00:00:00`;
+  const [y, m, d] = part.split("-").map((v) => parseInt(v, 10));
+  if (!y || !m || !d) return undefined;
+  // Construct date at UTC start-of-day to avoid timezone shifts
+  const utcStart = new Date(Date.UTC(y, m - 1, d, 0, 0, 0, 0));
+  return utcStart.toISOString();
 };
