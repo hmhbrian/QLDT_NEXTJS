@@ -28,12 +28,8 @@ export function AuditLogTest() {
     setResult(null);
 
     try {
-      console.log("🧪 Testing Audit Log API...");
-      console.log("User:", user);
-      console.log("Course ID:", courseId);
 
       const data = await auditLogService.getCourseAuditLog(courseId);
-      console.log("✅ API Success:", data);
       setResult(data);
     } catch (err: any) {
       console.error("❌ API Error:", err);
