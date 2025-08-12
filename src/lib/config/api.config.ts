@@ -56,6 +56,7 @@ export const API_ENDPOINTS = {
     getById: (id: string) => `/Courses/${id}`,
     update: (id: string) => `/Courses/${id}`,
     enroll: (courseId: string) => `/Courses/${courseId}/enroll`,
+    cancelEnroll: (courseId: string) => `/Courses/${courseId}/cancel-enroll`,
     getEnrolled: "/Courses/enroll-courses",
     completedCount: "/Courses/completed-count",
     completedEnrollCourses: "/Courses/completed-enroll-courses",
