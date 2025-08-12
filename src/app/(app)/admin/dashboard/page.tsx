@@ -190,7 +190,7 @@ export default function AdminDashboard() {
       {/* Key Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatsCard
-          title="Tổng số người dùng"
+          title="Tổng số học viên"
           value={dashboardStats.totalUsers}
           icon={<Users className="h-5 w-5" />}
           trend={`+${dashboardStats.userGrowth}%`}

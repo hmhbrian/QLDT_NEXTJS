@@ -42,7 +42,7 @@ export function AdminDashboard() {
 
   const stats = [
     {
-      title: "Tổng số người dùng",
+      title: "Tổng số học viên",
       value: totalUsers.toString(),
       icon: Users,
       color: "text-blue-500",
