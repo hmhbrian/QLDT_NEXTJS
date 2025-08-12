@@ -146,6 +146,11 @@ export function mapUserEnrollCourseDtoToCourse(
 export function mapCourseUiToCreatePayload(
   course: Partial<Course>
 ): CreateCourseRequest {
+  const formatDateForCreate = (date: string | null | undefined): string | undefined => {
+    if (date == null) return ""; // send empty value when not provided
+    return toApiDateStartOfDay(date || undefined);
+  };
+
   const payload: CreateCourseRequest = {
     Code: course.courseCode || "",
     Name: course.title || "",
@@ -156,14 +161,10 @@ export function mapCourseUiToCreatePayload(
     HoursPerSessions: course.duration?.hoursPerSession,
     Optional: course.enrollmentType === "mandatory" ? "Bắt buộc" : "Tùy chọn",
     MaxParticipant: course.maxParticipants,
-    StartDate: toApiDateStartOfDay(course.startDate || undefined),
-    EndDate: toApiDateStartOfDay(course.endDate || undefined),
-    RegistrationStartDate: toApiDateStartOfDay(
-      course.registrationStartDate || undefined
-    ),
-    RegistrationClosingDate: toApiDateStartOfDay(
-      course.registrationDeadline || undefined
-    ),
+    StartDate: formatDateForCreate(course.startDate),
+    EndDate: formatDateForCreate(course.endDate),
+    RegistrationStartDate: formatDateForCreate(course.registrationStartDate),
+    RegistrationClosingDate: formatDateForCreate(course.registrationDeadline),
     Location: course.location,
     StatusId: course.statusId,
     DepartmentIds: (course.department || [])
@@ -207,8 +208,12 @@ export function mapCourseUiToUpdatePayload(
     return true;
   };
 
-  const formatDate = (date: string | null): string | undefined =>
-    toApiDateStartOfDay(date || undefined);
+  // For update payload: when user clears a date, backend expects an empty value ("")
+  // Otherwise, send ISO string at start of day with Z
+  const formatDateForUpdate = (date: string | null | undefined): string | undefined => {
+    if (date === null) return "";
+    return toApiDateStartOfDay(date || undefined);
+  };
 
   if (isDifferent(course.title, originalCourse?.title))
     payload.Name = course.title;
@@ -242,23 +247,23 @@ export function mapCourseUiToUpdatePayload(
   }
 
   if (isDifferent(course.startDate, originalCourse?.startDate))
-    payload.StartDate = formatDate(course.startDate);
+    payload.StartDate = formatDateForUpdate(course.startDate);
   if (isDifferent(course.endDate, originalCourse?.endDate))
-    payload.EndDate = formatDate(course.endDate);
+    payload.EndDate = formatDateForUpdate(course.endDate);
   if (
     isDifferent(
       course.registrationStartDate,
       originalCourse?.registrationStartDate
     )
   )
-    payload.RegistrationStartDate = formatDate(course.registrationStartDate);
+    payload.RegistrationStartDate = formatDateForUpdate(course.registrationStartDate);
   if (
     isDifferent(
       course.registrationDeadline,
       originalCourse?.registrationDeadline
     )
   )
-    payload.RegistrationClosingDate = formatDate(course.registrationDeadline);
+    payload.RegistrationClosingDate = formatDateForUpdate(course.registrationDeadline);
 
   const newDepartmentIds = (course.department || []).map((id) =>
     parseInt(id, 10)
