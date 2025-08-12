@@ -41,6 +41,6 @@ export function mapUserApiToUi(apiUser: UserApiResponse | null): User {
     startWork: apiUser.startWork,
     endWork: apiUser.endWork,
     createdAt: apiUser.createdAt,
-    modifiedAt: apiUser.modifedAt, // Corrected from backend typo
+    modifiedAt: apiUser.modifiedAt, // Corrected from backend typo
   };
 }
