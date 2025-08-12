@@ -61,7 +61,7 @@ export function useCourses(
 export function useEnrolledCourses(
   enabled: boolean = true,
   page: number = 1,
-  limit: number = 9
+  limit: number = 10
 ) {
   const { user } = useAuth();
   const queryKey = [ENROLLED_COURSES_QUERY_KEY, user?.id, page, limit];
@@ -375,6 +375,24 @@ export function useCourseProgressDetail(courseId: string, userId: string) {
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: true,
   });
+}
+
+// Hook to check if current user has completed the course
+export function useIsCourseCompleted(courseId: string) {
+  const { user } = useAuth();
+  const { enrolledCourses, isLoadingEnrolled } = useEnrolledCourses(
+    !!user && user.role === "HOCVIEN"
+  );
+
+  const courseProgress = enrolledCourses.find(
+    (course) => course.id === courseId
+  );
+
+  return {
+    isCompleted: courseProgress?.progressPercentage >= 100,
+    progressPercentage: courseProgress?.progressPercentage || 0,
+    isLoading: isLoadingEnrolled,
+  };
 }
 
 export function useCompletedLessonsCount(courseId: string) {
