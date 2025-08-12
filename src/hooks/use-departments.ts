@@ -88,14 +88,9 @@ export function useUpdateDepartment() {
     { previousDepartments?: DepartmentInfo[] }
   >({
     mutationFn: ({ id, payload }) => {
-      console.log(
-        `▶️ [useUpdateDepartment] Mutation started for department ${id} with payload:`,
-        payload
-      );
       return departmentsService.updateDepartment(id, payload);
     },
     onSuccess: (_, { payload }) => {
-      console.log("✅ [useUpdateDepartment] Mutation successful");
       toast({
         title: "Thành công",
         description: `Đã cập nhật phòng ban "${payload.DepartmentName}" thành công.`,

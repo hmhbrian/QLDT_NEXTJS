@@ -32,6 +32,13 @@ import type { Status } from "@/lib/types/status.types";
 import { NO_DEPARTMENT_VALUE } from "@/lib/config/constants";
 import { generateDepartmentCode } from "@/lib/utils/code-generator";
 
+// Type for manager from new API
+interface Manager {
+  id: string;
+  name: string;
+  email: string;
+}
+
 interface DepartmentFormDialogProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
@@ -42,7 +49,7 @@ interface DepartmentFormDialogProps {
     deptId?: number
   ) => Promise<void>;
   existingDepartments: DepartmentInfo[];
-  managers: User[];
+  managers: Manager[];
   isLoading?: boolean;
   isLoadingManagers?: boolean;
   departmentStatuses: Status[]; // Changed from userStatuses to departmentStatuses
@@ -75,9 +82,9 @@ export default function DepartmentFormDialog({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitted, setSubmitted] = useState<boolean>(false);
 
-  // Eligible managers: middle and senior levels only, and not already assigned as manager
+  // Eligible managers: API already filters managers suitable for departments
   const eligibleManagers = useMemo(() => {
-    if (!managers) return [] as User[];
+    if (!managers) return [] as Manager[];
     const usedManagerIds = new Set(
       (existingDepartments || [])
         .map((d) => d.managerId)
@@ -89,22 +96,8 @@ export default function DepartmentFormDialog({
       usedManagerIds.delete(departmentToEdit.managerId);
     }
 
-    const getELevelId = (u: User): number => {
-      // Support both shapes: user.eLevel and user.employeeLevel
-      const anyU = u as any;
-      return (
-        anyU?.eLevel?.eLevelId ??
-        u.employeeLevel?.eLevelId ??
-        -Infinity
-      );
-    };
-
-    // Middle manager threshold assumed >= 4
-    const MIDDLE_LEVEL_ID = 4;
-
-    return managers
-      .filter((u) => getELevelId(u) >= MIDDLE_LEVEL_ID)
-      .filter((u) => !usedManagerIds.has(u.id));
+    // API already provides filtered list of eligible managers
+    return managers.filter((u) => !usedManagerIds.has(u.id));
   }, [managers, existingDepartments, departmentToEdit?.managerId]);
 
   useEffect(() => {
@@ -151,11 +144,16 @@ export default function DepartmentFormDialog({
     setErrors(newErrors);
     const isValid = Object.keys(newErrors).length === 0;
     return { isValid, newErrors };
-  }, [formData.DepartmentName, formData.DepartmentCode, existingDepartments, departmentToEdit?.departmentId]);
+  }, [
+    formData.DepartmentName,
+    formData.DepartmentCode,
+    existingDepartments,
+    departmentToEdit?.departmentId,
+  ]);
 
   const clearFieldError = (fieldName: string) => {
     if (errors[fieldName]) {
-      setErrors(prev => {
+      setErrors((prev) => {
         const newErrors = { ...prev };
         delete newErrors[fieldName];
         return newErrors;
@@ -201,7 +199,9 @@ export default function DepartmentFormDialog({
       // Focus on first error field
       const firstErrorField = Object.keys(newErrors)[0];
       if (firstErrorField) {
-        const element = document.querySelector(`[name="${firstErrorField}"]`) as HTMLElement;
+        const element = document.querySelector(
+          `[name="${firstErrorField}"]`
+        ) as HTMLElement;
         element?.focus();
       }
       // Show generic error message only on submit
@@ -219,15 +219,20 @@ export default function DepartmentFormDialog({
     };
 
     try {
-      await onSave(finalFormData, !!departmentToEdit, departmentToEdit?.departmentId);
+      await onSave(
+        finalFormData,
+        !!departmentToEdit,
+        departmentToEdit?.departmentId
+      );
       // Form will be closed by parent component on success
     } catch (error: any) {
       // Handle server-side errors
-      const errorMessage = error?.response?.data?.detail || 
-                          error?.response?.data?.message || 
-                          error?.message || 
-                          'Có lỗi xảy ra khi lưu phòng ban';
-      
+      const errorMessage =
+        error?.response?.data?.detail ||
+        error?.response?.data?.message ||
+        error?.message ||
+        "Có lỗi xảy ra khi lưu phòng ban";
+
       toast({
         title: "Lỗi",
         description: errorMessage,
@@ -258,17 +263,17 @@ export default function DepartmentFormDialog({
               value={formData.DepartmentName}
               onChange={(e) => {
                 setFormData({ ...formData, DepartmentName: e.target.value });
-                clearFieldError('DepartmentName');
+                clearFieldError("DepartmentName");
               }}
               onBlur={(e) => {
-                const msg = validateField('DepartmentName', e.target.value);
+                const msg = validateField("DepartmentName", e.target.value);
                 if (msg) {
                   setErrors((prev) => ({ ...prev, DepartmentName: msg }));
                 } else {
-                  clearFieldError('DepartmentName');
+                  clearFieldError("DepartmentName");
                 }
               }}
-              className={errors.DepartmentName ? 'border-red-500' : ''}
+              className={errors.DepartmentName ? "border-red-500" : ""}
             />
             {errors.DepartmentName && (
               <p className="text-sm text-red-500">{errors.DepartmentName}</p>
@@ -283,18 +288,18 @@ export default function DepartmentFormDialog({
                 value={formData.DepartmentCode}
                 onChange={(e) => {
                   setFormData({ ...formData, DepartmentCode: e.target.value });
-                  clearFieldError('DepartmentCode');
+                  clearFieldError("DepartmentCode");
                 }}
                 onBlur={(e) => {
-                  const msg = validateField('DepartmentCode', e.target.value);
+                  const msg = validateField("DepartmentCode", e.target.value);
                   if (msg) {
                     setErrors((prev) => ({ ...prev, DepartmentCode: msg }));
                   } else {
-                    clearFieldError('DepartmentCode');
+                    clearFieldError("DepartmentCode");
                   }
                 }}
                 placeholder="VD: DEPT001"
-                className={errors.DepartmentCode ? 'border-red-500' : ''}
+                className={errors.DepartmentCode ? "border-red-500" : ""}
               />
               <Button
                 type="button"
@@ -305,7 +310,7 @@ export default function DepartmentFormDialog({
                     ...formData,
                     DepartmentCode: generateDepartmentCode(),
                   });
-                  clearFieldError('DepartmentCode');
+                  clearFieldError("DepartmentCode");
                 }}
                 className="whitespace-nowrap"
               >
@@ -353,7 +358,7 @@ export default function DepartmentFormDialog({
                 ) : eligibleManagers.length > 0 ? (
                   eligibleManagers.map((manager) => (
                     <SelectItem key={manager.id} value={manager.id}>
-                      {manager.fullName} ({manager.email})
+                      {manager.name} ({manager.email})
                     </SelectItem>
                   ))
                 ) : (
