@@ -237,10 +237,10 @@ export function DraggableDepartmentTree({
           <div
             className={cn(
               "flex items-center py-2 px-3 rounded cursor-pointer",
-              "hover:bg-gray-50",
-              isSelected && "bg-orange-50 border-l-4 border-orange-500",
+              "hover:bg-muted/50",
+              isSelected && "bg-primary/10 border-l-4 border-primary",
               isDropTarget &&
-                "bg-orange-100 border-2 border-orange-300 border-dashed",
+                "bg-primary/10 border-2 border-primary/40 border-dashed",
               isDragged && "opacity-50"
             )}
             style={{ paddingLeft: `${level * 20 + 12}px` }}
@@ -257,7 +257,7 @@ export function DraggableDepartmentTree({
             {/* Expand/Collapse Button */}
             {hasChildren ? (
               <button
-                className="w-4 h-4 mr-2 flex items-center justify-center hover:bg-gray-200 rounded"
+                className="w-4 h-4 mr-2 flex items-center justify-center hover:bg-muted rounded"
                 onClick={(e) => {
                   e.stopPropagation();
                   toggleExpand(dept.departmentId);
@@ -274,7 +274,7 @@ export function DraggableDepartmentTree({
             )}
 
             {/* Department Icon */}
-            <Building2 className="h-4 w-4 mr-2 text-gray-600" />
+            <Building2 className="h-4 w-4 mr-2 text-muted-foreground" />
 
             {/* Department Name */}
             <span className="flex-1 text-sm truncate">{currentDept.name}</span>
@@ -322,11 +322,11 @@ export function DraggableDepartmentTree({
   return (
     <div className={cn("space-y-3", className)}>
       {/* Search and Controls */}
-      <div className="p-3 border rounded bg-gray-50">
+      <div className="p-3 border rounded bg-muted/40">
         <div className="flex items-center gap-2 w-full">
           <div className="relative flex-1">
             {/* Search Bar */}
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Tìm kiếm phòng ban..."
               value={searchTerm}
@@ -363,15 +363,15 @@ export function DraggableDepartmentTree({
       {/* Tree Container */}
       <div
         className={cn(
-          "border rounded bg-white p-3 min-h-[400px]",
-          dropTarget?.isRoot && "bg-orange-50 border-orange-300 border-dashed"
+          "border rounded bg-card p-3 min-h-[400px]",
+          dropTarget?.isRoot && "bg-primary/10 border-primary/40 border-dashed"
         )}
         onDragOver={(e) => handleDragOver(e, null, true)}
         onDrop={(e) => handleDrop(e, null)}
       >
         <div className="space-y-1">
           {(searchTerm.trim() ? filteredTree : departmentTree).length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
+            <div className="text-center py-8 text-muted-foreground">
               <Building2 className="h-8 w-8 mx-auto mb-2 opacity-50" />
               <p>
                 {searchTerm.trim()

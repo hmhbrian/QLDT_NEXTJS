@@ -472,13 +472,13 @@ export default function DepartmentsPage() {
         </Alert>
       )}
 
-      <Card className="shadow-md border bg-white">
-        <CardHeader className="pb-4 border-b bg-white rounded-t-md">
+      <Card className="shadow-md border bg-card">
+        <CardHeader className="pb-4 border-b bg-card rounded-t-md">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div className="flex items-center gap-3 mb-2 md:mb-0">
               <Building2 className="h-8 w-8 text-primary" />
               <div>
-                <CardTitle className="text-2xl font-bold text-primary">
+                <CardTitle className="text-2xl font-bold text-foreground">
                   Quản lý Phòng ban
                 </CardTitle>
                 <CardDescription className="text-base text-muted-foreground mt-1">

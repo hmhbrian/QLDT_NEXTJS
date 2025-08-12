@@ -75,6 +75,38 @@ export default function DepartmentFormDialog({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitted, setSubmitted] = useState<boolean>(false);
 
+  // Eligible managers: middle and senior levels only, and not already assigned as manager
+  const eligibleManagers = useMemo(() => {
+    if (!managers) return [] as User[];
+    const usedManagerIds = new Set(
+      (existingDepartments || [])
+        .map((d) => d.managerId)
+        .filter((id): id is string => !!id)
+    );
+
+    // If editing, allow keeping current manager in options
+    if (departmentToEdit?.managerId) {
+      usedManagerIds.delete(departmentToEdit.managerId);
+    }
+
+    const getELevelId = (u: User): number => {
+      // Support both shapes: user.eLevel and user.employeeLevel
+      const anyU = u as any;
+      return (
+        anyU?.eLevel?.eLevelId ??
+        u.employeeLevel?.eLevelId ??
+        -Infinity
+      );
+    };
+
+    // Middle manager threshold assumed >= 4
+    const MIDDLE_LEVEL_ID = 4;
+
+    return managers
+      .filter((u) => getELevelId(u) >= MIDDLE_LEVEL_ID)
+      .filter((u) => !usedManagerIds.has(u.id));
+  }, [managers, existingDepartments, departmentToEdit?.managerId]);
+
   useEffect(() => {
     if (!managers || managers.length === 0) {
       // eslint-disable-next-line no-console
@@ -318,8 +350,8 @@ export default function DepartmentFormDialog({
                   <SelectItem value="loading" disabled>
                     Đang tải...
                   </SelectItem>
-                ) : managers.length > 0 ? (
-                  managers.map((manager) => (
+                ) : eligibleManagers.length > 0 ? (
+                  eligibleManagers.map((manager) => (
                     <SelectItem key={manager.id} value={manager.id}>
                       {manager.fullName} ({manager.email})
                     </SelectItem>
