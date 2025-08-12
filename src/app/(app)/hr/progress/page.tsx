@@ -236,18 +236,6 @@ export default function ProgressPage() {
         5
       : 0;
 
-    console.log("🔍 HR Progress Page - API Data:", {
-      filterType,
-      dataReport,
-      studentsData: studentsData?.slice(0, 3),
-      courseFeedback: courseFeedback?.slice(0, 3),
-      overallFeedback,
-      courseStats: courseStats.slice(0, 5),
-      totalCourses,
-      totalTrainees,
-      overallRating,
-    });
-
     return {
       totalCourses,
       totalTrainees,
