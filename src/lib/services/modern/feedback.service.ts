@@ -12,8 +12,15 @@ class FeedbackService extends BaseService {
     const endpoint = API_CONFIG.endpoints.feedback.base(courseId);
     try {
       // The actual data is in the 'data' property of the response
-      const response = await this.get<Feedback[]>(endpoint);
-      return Array.isArray(response) ? response : [];
+      const response = await this.get<any[]>(endpoint);
+      if (Array.isArray(response)) {
+        // Map averageScore to averageRating for UI compatibility
+        return response.map(feedback => ({
+          ...feedback,
+          averageRating: feedback.averageScore || feedback.averageRating || 0
+        }));
+      }
+      return [];
     } catch (error) {
       console.error(`Failed to fetch feedbacks for course ${courseId}:`, error);
       return []; // Return empty array on error
