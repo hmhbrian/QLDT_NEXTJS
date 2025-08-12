@@ -34,26 +34,31 @@ export function useCourses(
 ) {
   const queryKey = [COURSES_QUERY_KEY, "list", params];
 
-  const { data, isLoading, error } = useQuery<PaginatedResponse<Course>, Error>(
-    {
-      queryKey,
-      queryFn: async ({ signal }) => {
-        const apiResponse = await coursesService.getCourses(params);
-        return {
-          items: (apiResponse.items || []).map(mapCourseApiToUi),
-          pagination: apiResponse.pagination,
-        };
-      },
-      staleTime: 60 * 1000,
-      refetchOnWindowFocus: false,
-      retry: 1,
-    }
-  );
+  const { data, isLoading, error, isFetching, isRefetching } = useQuery<
+    PaginatedResponse<Course>,
+    Error
+  >({
+    queryKey,
+    queryFn: async ({ signal }) => {
+      const apiResponse = await coursesService.getCourses(params);
+      return {
+        items: (apiResponse.items || []).map(mapCourseApiToUi),
+        pagination: apiResponse.pagination,
+      };
+    },
+    staleTime: 10 * 1000, // Very short stale time for real-time feel
+    refetchOnWindowFocus: true, // Enable refetch on window focus
+    refetchInterval: 15 * 1000, // Auto-refresh every 15 seconds for real-time updates
+    refetchIntervalInBackground: false, // Don't refresh when tab is not active
+    retry: 1,
+  });
 
   return {
     courses: data?.items ?? [],
     paginationInfo: data?.pagination,
     isLoading,
+    isFetching,
+    isRefetching,
     error,
   };
 }
@@ -94,8 +99,10 @@ export function useEnrolledCourses(
       };
     },
     enabled: enabled && !!user,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 10 * 1000, // Very short stale time for real-time feel
     refetchOnWindowFocus: true,
+    refetchInterval: 15 * 1000, // Auto-refresh every 15 seconds for real-time updates
+    refetchIntervalInBackground: false, // Don't refresh when tab is not active
   });
 
   return {
@@ -109,7 +116,10 @@ export function useEnrolledCourses(
 export function useCourse(courseId: string) {
   const queryKey = [COURSES_QUERY_KEY, "detail", courseId];
 
-  const { data, isLoading, error } = useQuery<Course, Error>({
+  const { data, isLoading, isFetching, isRefetching, error } = useQuery<
+    Course,
+    Error
+  >({
     queryKey,
     queryFn: async () => {
       console.log(
@@ -118,11 +128,12 @@ export function useCourse(courseId: string) {
       return mapCourseApiToUi(await coursesService.getCourseById(courseId));
     },
     enabled: !!courseId,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 10 * 1000, // 10 seconds
+    refetchInterval: 15 * 1000, // Poll every 15 seconds
     refetchOnWindowFocus: true,
   });
 
-  return { course: data, isLoading, error };
+  return { course: data, isLoading, isFetching, isRefetching, error };
 }
 
 export function useCreateCourse() {
@@ -241,16 +252,66 @@ export function useDeleteCourse() {
   });
 }
 
+interface OptimisticContext {
+  previousEnrolledCourses: unknown;
+  previousCourses: unknown;
+}
+
 export function useEnrollCourse() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  return useMutation<any, Error, string>({
+  return useMutation<any, Error, string, OptimisticContext>({
     mutationFn: (courseId) => {
       console.log(
         `▶️ [useEnrollCourse] Mutation started for course ${courseId}`
       );
       return coursesService.enrollCourse(courseId);
+    },
+    // Optimistic update - update UI immediately
+    onMutate: async (courseId) => {
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({
+        queryKey: [ENROLLED_COURSES_QUERY_KEY],
+      });
+      await queryClient.cancelQueries({ queryKey: [COURSES_QUERY_KEY] });
+
+      // Snapshot the previous values
+      const previousEnrolledCourses = queryClient.getQueryData([
+        ENROLLED_COURSES_QUERY_KEY,
+      ]);
+      const previousCourses = queryClient.getQueryData([COURSES_QUERY_KEY]);
+
+      // Optimistically update enrolled courses
+      queryClient.setQueryData([ENROLLED_COURSES_QUERY_KEY], (old: any) => {
+        if (!old) return old;
+        // Find the course and add it to enrolled list
+        const coursesData = queryClient.getQueryData([
+          COURSES_QUERY_KEY,
+          "list",
+        ]);
+        if (
+          coursesData &&
+          typeof coursesData === "object" &&
+          "items" in coursesData
+        ) {
+          const course = (coursesData as any).items.find(
+            (c: any) => c.id === courseId
+          );
+          if (course) {
+            return {
+              ...old,
+              courses: [
+                ...(old.courses || []),
+                { ...course, progressPercentage: 0 },
+              ],
+            };
+          }
+        }
+        return old;
+      });
+
+      return { previousEnrolledCourses, previousCourses };
     },
     onSuccess: () => {
       console.log("✅ [useEnrollCourse] Mutation successful");
@@ -260,8 +321,20 @@ export function useEnrollCourse() {
         variant: "success",
       });
     },
-    onError: (error) => {
+    onError: (error, courseId, context) => {
       console.error("❌ [useEnrollCourse] Mutation failed:", error);
+
+      // Rollback optimistic updates
+      if (context?.previousEnrolledCourses) {
+        queryClient.setQueryData(
+          [ENROLLED_COURSES_QUERY_KEY],
+          context.previousEnrolledCourses
+        );
+      }
+      if (context?.previousCourses) {
+        queryClient.setQueryData([COURSES_QUERY_KEY], context.previousCourses);
+      }
+
       toast({
         title: "Lỗi",
         description: extractErrorMessage(error),
@@ -272,6 +345,7 @@ export function useEnrollCourse() {
       console.log(
         `🔄 [useEnrollCourse] Invalidating enrolled courses and all courses.`
       );
+      // Always refetch to ensure we have latest data
       queryClient.invalidateQueries({ queryKey: [ENROLLED_COURSES_QUERY_KEY] });
       queryClient.invalidateQueries({ queryKey: [COURSES_QUERY_KEY] });
     },
@@ -282,12 +356,37 @@ export function useCancelEnrollCourse() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  return useMutation<any, Error, string>({
+  return useMutation<any, Error, string, OptimisticContext>({
     mutationFn: (courseId) => {
       console.log(
         `▶️ [useCancelEnrollCourse] Mutation started for course ${courseId}`
       );
       return coursesService.cancelEnrollCourse(courseId);
+    },
+    // Optimistic update - remove from enrolled courses immediately
+    onMutate: async (courseId) => {
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({
+        queryKey: [ENROLLED_COURSES_QUERY_KEY],
+      });
+      await queryClient.cancelQueries({ queryKey: [COURSES_QUERY_KEY] });
+
+      // Snapshot the previous values
+      const previousEnrolledCourses = queryClient.getQueryData([
+        ENROLLED_COURSES_QUERY_KEY,
+      ]);
+      const previousCourses = queryClient.getQueryData([COURSES_QUERY_KEY]);
+
+      // Optimistically remove from enrolled courses
+      queryClient.setQueryData([ENROLLED_COURSES_QUERY_KEY], (old: any) => {
+        if (!old || !old.courses) return old;
+        return {
+          ...old,
+          courses: old.courses.filter((course: any) => course.id !== courseId),
+        };
+      });
+
+      return { previousEnrolledCourses, previousCourses };
     },
     onSuccess: () => {
       console.log("✅ [useCancelEnrollCourse] Mutation successful");
@@ -297,8 +396,20 @@ export function useCancelEnrollCourse() {
         variant: "success",
       });
     },
-    onError: (error) => {
+    onError: (error, courseId, context) => {
       console.error("❌ [useCancelEnrollCourse] Mutation failed:", error);
+
+      // Rollback optimistic updates
+      if (context?.previousEnrolledCourses) {
+        queryClient.setQueryData(
+          [ENROLLED_COURSES_QUERY_KEY],
+          context.previousEnrolledCourses
+        );
+      }
+      if (context?.previousCourses) {
+        queryClient.setQueryData([COURSES_QUERY_KEY], context.previousCourses);
+      }
+
       toast({
         title: "Lỗi",
         description: extractErrorMessage(error),
@@ -309,6 +420,7 @@ export function useCancelEnrollCourse() {
       console.log(
         `🔄 [useCancelEnrollCourse] Invalidating enrolled courses and all courses.`
       );
+      // Always refetch to ensure we have latest data
       queryClient.invalidateQueries({ queryKey: [ENROLLED_COURSES_QUERY_KEY] });
       queryClient.invalidateQueries({ queryKey: [COURSES_QUERY_KEY] });
     },
