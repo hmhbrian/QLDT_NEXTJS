@@ -83,6 +83,7 @@ import {
   useCancelEnrollCourse,
   useEnrolledCourses,
   useCompletedLessonsCount, // Import the new hook
+  useIsCourseCompleted,
 } from "@/hooks/use-courses";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useTests, useHasSubmittedTest } from "@/hooks/use-tests";
@@ -253,6 +254,11 @@ export default function CourseDetailPage() {
 
   const { data: completedLessonsCount, isLoading: isLoadingCompletedLessons } =
     useCompletedLessonsCount(courseIdFromParams);
+
+  const {
+    isCompleted: isCourseCompleted,
+    progressPercentage: courseProgressPercentage,
+  } = useIsCourseCompleted(courseIdFromParams);
 
   const {
     debouncedUpsert,
@@ -665,7 +671,7 @@ export default function CourseDetailPage() {
                   )}
                 </div>
               )}
-            {currentUser?.role === "HOCVIEN" && (
+            {currentUser?.role === "HOCVIEN" && isCourseCompleted && (
               <Button
                 onClick={() => setIsEvaluationDialogOpen(true)}
                 disabled={hasSubmittedEvaluation}
@@ -689,6 +695,32 @@ export default function CourseDetailPage() {
                 {hasSubmittedEvaluation ? "Đã đánh giá" : "Đánh giá khóa học"}
               </Button>
             )}
+            {currentUser?.role === "HOCVIEN" &&
+              isEnrolled &&
+              !isCourseCompleted && (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="lg"
+                        className="w-full sm:w-auto opacity-50 cursor-not-allowed"
+                        disabled
+                      >
+                        <Star className="mr-2 h-5 w-5 text-gray-400" />
+                        Đánh giá khóa học
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Bạn cần hoàn thành khóa học để đánh giá</p>
+                      <p className="text-xs">
+                        Tiến độ hiện tại: {Math.round(courseProgressPercentage)}
+                        %
+                      </p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
           </div>
         </div>
 
@@ -1285,7 +1317,7 @@ export default function CourseDetailPage() {
                             )}
                           </div>
                           <StarRatingDisplay
-                            rating={fb.averageRating}
+                            rating={fb.averageScore}
                             size={4}
                             className="my-2"
                           />
