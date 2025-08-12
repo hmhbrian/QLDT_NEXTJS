@@ -374,13 +374,10 @@ export default function CourseDetailPage() {
 
   const hasSubmittedEvaluation = useMemo(() => {
     if (!currentUser) return false;
-    return (
-      feedbacks?.some(
-        (fb) =>
-          fb.userId === currentUser.id && fb.courseId === courseIdFromParams
-      ) ?? false
-    );
-  }, [feedbacks, currentUser, courseIdFromParams]);
+    // Since backend doesn't return userId/courseId, we check if any feedback exists
+    // for this course (assuming the endpoint only returns current user's feedback)
+    return Boolean(feedbacks && feedbacks.length > 0);
+  }, [feedbacks, currentUser]);
 
   const showRegisterGate = useMemo(
     () =>
@@ -469,6 +466,7 @@ export default function CourseDetailPage() {
     if (!currentUser || !course) return;
     createFeedbackMutation.mutate(evaluationFormData, {
       onSuccess: () => {
+        // Close dialog and reset form
         setIsEvaluationDialogOpen(false);
         setEvaluationFormData({
           q1_relevance: 0,
@@ -478,6 +476,26 @@ export default function CourseDetailPage() {
           q5_material: 0,
           comment: "",
         });
+        // Data refresh is automatically handled by useCreateFeedback hook
+      },
+      onError: (error) => {
+        const errorMessage = extractErrorMessage(error);
+        // Close dialog if user has already submitted evaluation
+        if (
+          errorMessage.includes("đã đánh giá") ||
+          errorMessage.includes("already")
+        ) {
+          setIsEvaluationDialogOpen(false);
+          setEvaluationFormData({
+            q1_relevance: 0,
+            q2_clarity: 0,
+            q3_structure: 0,
+            q4_duration: 0,
+            q5_material: 0,
+            comment: "",
+          });
+        }
+        // Other errors keep dialog open so user can see and try again
       },
     });
   }, [currentUser, course, evaluationFormData, createFeedbackMutation]);
