@@ -55,6 +55,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     // Clear React state
     setUser(null);
+    setLoadingAuth(false); // Ensure we're not stuck in loading state
+
     // Clear all storage
     localStorage.removeItem(API_CONFIG.storage.token);
     localStorage.removeItem("qldt_user_info");
@@ -64,12 +66,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     // Clear HTTP client authorization
     httpClient.clearAuthorizationHeader();
-    
+
     // Clear all React Query cache
     queryClient.clear();
-    
+
     navigateInstant("/login");
-  }, [queryClient, navigateInstant]);  const refreshUserData = useCallback(async () => {
+  }, [queryClient, navigateInstant]);
+  const refreshUserData = useCallback(async () => {
     try {
       // Ensure we have a valid token
       const token = cookieManager.getSecureAuth();
@@ -77,12 +80,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         logout();
         return;
       }
-      
+
       // Ensure httpClient has the token
       if (!httpClient.getAuthorizationToken()) {
         httpClient.setAuthorizationHeader(token);
       }
-      
+
       const currentUserData = await authService.getCurrentUser();
       const mappedUser = mapUserApiToUi(currentUserData);
       setUser(mappedUser);
@@ -103,13 +106,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(null);
         httpClient.clearAuthorizationHeader();
         localStorage.removeItem("qldt_user_info");
+        setLoadingAuth(false);
         return;
       }
 
       // Set the authorization header with the token
       httpClient.setAuthorizationHeader(token);
 
-      // Get user data from localStorage (no API call needed)
+      // Get user data from API
       const currentUserData = await authService.getCurrentUser();
       const mappedUser = mapUserApiToUi(currentUserData);
 
@@ -134,15 +138,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     initializeAuth();
 
-    // Safety net: force loading to false after 10 seconds to prevent infinite loading
+    // Safety net: force loading to false after 5 seconds to prevent infinite loading
     const timeoutId = setTimeout(() => {
       if (loadingAuth) {
         setLoadingAuth(false);
       }
-    }, 10000);
+    }, 5000); // Reduced from 10 to 5 seconds
 
-    return () => clearTimeout(timeoutId);
-  }, [initializeAuth, loadingAuth]);
+    return () => {
+      clearTimeout(timeoutId);
+    };
+  }, [initializeAuth]);
 
   // Listen for authentication errors from httpClient
   useEffect(() => {
