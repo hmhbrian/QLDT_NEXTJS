@@ -6,6 +6,7 @@ import { Inter } from "next/font/google";
 import { ToastProvider } from "@/providers/toast-provider";
 import { CustomThemeProvider } from "@/providers/theme-provider";
 import { QueryProvider } from "@/providers/query-provider";
+import { AuthWrapper } from "@/components/auth/AuthWrapper";
 
 // Import cookie security monitor (chỉ chạy trong development)
 if (typeof window !== "undefined" && process.env.NODE_ENV === "development") {
@@ -47,7 +48,9 @@ export default function RootLayout({
         >
           <QueryProvider>
             <AuthProvider>
-              <ToastProvider>{children}</ToastProvider>
+              <AuthWrapper>
+                <ToastProvider>{children}</ToastProvider>
+              </AuthWrapper>
             </AuthProvider>
           </QueryProvider>
         </CustomThemeProvider>
