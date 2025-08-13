@@ -315,9 +315,12 @@ export default function CourseDetailPage() {
   const lastReportedPageRef = useRef(0);
   const [videoProgress, setVideoProgress] = useState({ playedSeconds: 0 });
   const lastReportedTimeRef = useRef(0);
+  const hasReportedCompletionRef = useRef<Set<number>>(new Set()); // Track completed lessons
+  const [videoDuration, setVideoDuration] = useState<number | null>(null); // Track video duration
 
   const lessonsWithProgress: LessonWithProgress[] = useMemo(() => {
     if (!lessonProgresses || !Array.isArray(lessonProgresses)) return [];
+
     return lessonProgresses.map((progress) => {
       let contentType: LessonContentType = "text";
       let fileUrl: string | null = null;
@@ -337,18 +340,24 @@ export default function CourseDetailPage() {
         }
         link = progress.urlPdf;
       }
-      return {
+
+      const result = {
         id: progress.id,
         title: progress.title,
         type: contentType,
         fileUrl: fileUrl,
         link: link,
-        progressPercentage: progress.progressPercentage
-          ? Math.round(progress.progressPercentage * 100)
-          : 0,
+        progressPercentage:
+          progress.progressPercentage !== undefined
+            ? progress.progressPercentage > 1
+              ? Math.round(progress.progressPercentage) // Already in percentage format (0-100)
+              : Math.round(progress.progressPercentage * 100) // Convert from decimal (0-1) to percentage
+            : 0,
         currentPage: progress.currentPage,
         currentTimeSecond: progress.currentTimeSecond,
       };
+
+      return result;
     });
   }, [lessonProgresses]);
 
@@ -405,14 +414,22 @@ export default function CourseDetailPage() {
   useEffect(() => {
     if (
       selectedLesson?.type === "video_url" &&
-      videoProgress.playedSeconds > 0
+      videoProgress.playedSeconds > 0 &&
+      videoDuration // Only update if we know the video duration
     ) {
       // Use higher precision and only round for comparison
       // Keep one decimal place for better accuracy
       const currentTime = Math.round(videoProgress.playedSeconds * 10) / 10;
       const currentTimeInt = Math.floor(currentTime);
 
-      if (Math.abs(currentTimeInt - lastReportedTimeRef.current) > 2) {
+      // Only update if significant time difference (more than 5 seconds) for regular updates
+      // This reduces spam while still tracking progress
+      // Also avoid reporting if we're near completion (handled by onProgress callback)
+      const timeToEnd = videoDuration - videoProgress.playedSeconds;
+      if (
+        Math.abs(currentTimeInt - lastReportedTimeRef.current) >= 5 &&
+        timeToEnd > 15 // Don't spam updates near the end
+      ) {
         lastReportedTimeRef.current = currentTimeInt;
         debouncedUpsert({
           lessonId: selectedLesson.id,
@@ -420,9 +437,12 @@ export default function CourseDetailPage() {
         });
       }
     }
-  }, [videoProgress.playedSeconds, selectedLesson, debouncedUpsert]);
-
-  // Cleanup progress on unmount
+  }, [
+    videoProgress.playedSeconds,
+    selectedLesson,
+    debouncedUpsert,
+    videoDuration,
+  ]); // Cleanup progress on unmount
   useEffect(() => {
     return () => {
       cleanupProgress();
@@ -433,10 +453,14 @@ export default function CourseDetailPage() {
     if (hasPendingProgress()) {
       if (
         selectedLesson?.type === "video_url" &&
-        videoProgress.playedSeconds > 0
+        videoProgress.playedSeconds > 0 &&
+        videoDuration
       ) {
         // Use floor for final save to ensure we don't exceed actual video duration
-        const finalTime = Math.floor(videoProgress.playedSeconds);
+        const finalTime = Math.min(
+          Math.floor(videoProgress.playedSeconds),
+          Math.floor(videoDuration)
+        );
         saveImmediately({
           lessonId: selectedLesson.id,
           currentTimeSecond: finalTime,
@@ -448,7 +472,7 @@ export default function CourseDetailPage() {
         });
       }
     }
-  }, [selectedLesson?.id]);
+  }, [selectedLesson?.id, videoDuration]);
 
   const handleEnroll = useCallback(() => {
     if (!course || !currentUser) {
@@ -510,6 +534,13 @@ export default function CourseDetailPage() {
     setSelectedLesson(lesson);
     lastReportedTimeRef.current = lesson.currentTimeSecond || 0;
     setActiveTab("content");
+
+    // Reset video state for new lesson
+    setVideoProgress({ playedSeconds: 0 });
+    setVideoDuration(null);
+
+    // Don't clear completion tracking - let it accumulate across session
+    // hasReportedCompletionRef.current.clear(); // Removed this line
   }, []);
 
   const handleTabChange = (value: string) => {
@@ -525,7 +556,16 @@ export default function CourseDetailPage() {
 
   const handlePlayerReady = useCallback(() => {
     if (playerRef.current && selectedLesson?.currentTimeSecond) {
+      // Get and store video duration
+      const duration = playerRef.current.getDuration();
+      setVideoDuration(duration);
+
+      // Seek to last watched position
       playerRef.current.seekTo(selectedLesson.currentTimeSecond, "seconds");
+    } else if (playerRef.current) {
+      // Just get duration for new videos
+      const duration = playerRef.current.getDuration();
+      setVideoDuration(duration);
     }
   }, [selectedLesson]);
 
@@ -572,929 +612,967 @@ export default function CourseDetailPage() {
 
   return (
     <>
-      <div className="space-y-8 p-4 md:p-6 lg:p-8">
-        {course.image && (
-          <div className="relative h-48 md:h-60 lg:h-80 w-full overflow-hidden rounded-lg shadow-lg">
-            <Image
-              src={course.image}
-              alt={`Ảnh bìa khóa học ${course.title}`}
-              fill
-              className="object-cover"
-              priority
-              data-ai-hint="course banner"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent"></div>
-            <div className="absolute bottom-0 left-0 p-4 md:p-6">
-              <Badge
-                variant="secondary"
-                className="mb-2 text-sm font-medium bg-white/20 text-white backdrop-blur-sm"
-              >
-                {getCategoryLabel(course.category?.categoryName || "Không có")}
-              </Badge>
-              <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold font-headline text-white leading-tight">
-                {course.title}
-              </h1>
-            </div>
-          </div>
-        )}
-
-        <div className="flex flex-col md:flex-row justify-between items-start gap-4">
-          <div className="flex-1">
-            <p className="mt-1 text-base md:text-lg text-muted-foreground">
-              {course.description}
-            </p>
-            {(currentUser?.role === "ADMIN" || currentUser?.role === "HR") && (
-              <div className="text-xs text-muted-foreground mt-2 space-x-4">
-                {course.createdBy && (
-                  <span>
-                    Tạo bởi{" "}
-                    <b>
-                      {typeof course.createdBy === "object" &&
-                      course.createdBy &&
-                      "name" in course.createdBy
-                        ? course.createdBy.name
-                        : typeof course.createdBy === "string"
-                        ? course.createdBy
-                        : "Không có"}
-                    </b>{" "}
-                    vào <ClientTime date={course.createdAt} />
-                  </span>
-                )}
-                {course.modifiedBy && (
-                  <span>
-                    Cập nhật bởi{" "}
-                    <b>
-                      {typeof course.modifiedBy === "object" &&
-                      course.modifiedBy &&
-                      "name" in course.modifiedBy
-                        ? course.modifiedBy.name
-                        : typeof course.modifiedBy === "string"
-                        ? course.modifiedBy
-                        : "Không có"}
-                    </b>{" "}
-                    vào <ClientTime date={course.modifiedAt} />
-                  </span>
-                )}
-              </div>
-            )}
-          </div>
-          <div className="flex flex-col sm:flex-row gap-2 mt-4 md:mt-0 w-full md:w-auto">
-            {currentUser?.role === "HOCVIEN" &&
-              course.enrollmentType === "optional" &&
-              !isEnrolled &&
-              isRegistrationOpen(course.registrationDeadline) && (
-                <Button
-                  onClick={handleEnroll}
-                  disabled={enrollCourseMutation.isPending}
-                  size="lg"
-                  className="w-full sm:w-auto"
+      <div className="min-h-screen bg-gradient-to-br from-background to-muted/20">
+        <div className="container mx-auto px-2 sm:px-4 md:px-6 lg:px-8 py-4 md:py-6 lg:py-8 space-y-6 md:space-y-8">
+          {course.image && (
+            <div className="relative h-32 sm:h-48 md:h-60 lg:h-80 w-full overflow-hidden rounded-lg shadow-lg">
+              <Image
+                src={course.image}
+                alt={`Ảnh bìa khóa học ${course.title}`}
+                fill
+                className="object-cover"
+                priority
+                data-ai-hint="course banner"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent"></div>
+              <div className="absolute bottom-0 left-0 p-4 md:p-6">
+                <Badge
+                  variant="secondary"
+                  className="mb-2 text-sm font-medium bg-white/20 text-white backdrop-blur-sm"
                 >
-                  {enrollCourseMutation.isPending ? (
-                    <>
-                      <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Đang
-                      đăng ký...
-                    </>
-                  ) : (
-                    <>
-                      <UserPlus className="mr-2 h-5 w-5" /> Đăng ký ngay
-                    </>
+                  {getCategoryLabel(
+                    course.category?.categoryName || "Không có"
                   )}
-                </Button>
+                </Badge>
+                <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold font-headline text-white leading-tight">
+                  {course.title}
+                </h1>
+              </div>
+            </div>
+          )}
+
+          <div className="flex flex-col md:flex-row justify-between items-start gap-4">
+            <div className="flex-1">
+              <p className="mt-1 text-base md:text-lg text-muted-foreground">
+                {course.description}
+              </p>
+              {(currentUser?.role === "ADMIN" ||
+                currentUser?.role === "HR") && (
+                <div className="text-xs text-muted-foreground mt-2 space-x-4">
+                  {course.createdBy && (
+                    <span>
+                      Tạo bởi{" "}
+                      <b>
+                        {typeof course.createdBy === "object" &&
+                        course.createdBy !== null &&
+                        "name" in course.createdBy
+                          ? (course.createdBy as { name: string }).name
+                          : typeof course.createdBy === "string"
+                          ? course.createdBy
+                          : "Không có"}
+                      </b>{" "}
+                      vào <ClientTime date={course.createdAt} />
+                    </span>
+                  )}
+                  {course.modifiedBy && (
+                    <span>
+                      Cập nhật bởi{" "}
+                      <b>
+                        {typeof course.modifiedBy === "object" &&
+                        course.modifiedBy !== null &&
+                        "name" in course.modifiedBy
+                          ? (course.modifiedBy as { name: string }).name
+                          : typeof course.modifiedBy === "string"
+                          ? course.modifiedBy
+                          : "Không có"}
+                      </b>{" "}
+                      vào <ClientTime date={course.modifiedAt} />
+                    </span>
+                  )}
+                </div>
               )}
-            {currentUser?.role === "HOCVIEN" &&
-              course.enrollmentType === "optional" &&
-              isEnrolled && (
-                <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+            </div>
+            <div className="flex flex-col sm:flex-row gap-2 mt-4 md:mt-0 w-full md:w-auto">
+              {currentUser?.role === "HOCVIEN" &&
+                course.enrollmentType === "optional" &&
+                !isEnrolled &&
+                isRegistrationOpen(course.registrationDeadline) && (
                   <Button
-                    variant="secondary"
+                    onClick={handleEnroll}
+                    disabled={enrollCourseMutation.isPending}
                     size="lg"
                     className="w-full sm:w-auto"
-                    disabled
                   >
-                    <CheckCircle className="mr-2 h-5 w-5" /> Đã đăng ký
+                    {enrollCourseMutation.isPending ? (
+                      <>
+                        <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Đang
+                        đăng ký...
+                      </>
+                    ) : (
+                      <>
+                        <UserPlus className="mr-2 h-5 w-5" /> Đăng ký ngay
+                      </>
+                    )}
                   </Button>
-                  {isRegistrationOpen(course.registrationDeadline) && (
+                )}
+              {currentUser?.role === "HOCVIEN" &&
+                course.enrollmentType === "optional" &&
+                isEnrolled && (
+                  <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
                     <Button
-                      onClick={handleCancelEnroll}
-                      disabled={cancelEnrollMutation.isPending}
-                      variant="outline"
+                      variant="secondary"
                       size="lg"
                       className="w-full sm:w-auto"
+                      disabled
                     >
-                      {cancelEnrollMutation.isPending ? (
-                        <>
-                          <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Đang
-                          hủy...
-                        </>
-                      ) : (
-                        <>
-                          <XCircle className="mr-2 h-5 w-5" /> Hủy đăng ký
-                        </>
-                      )}
+                      <CheckCircle className="mr-2 h-5 w-5" /> Đã đăng ký
                     </Button>
-                  )}
-                </div>
-              )}
-            {currentUser?.role === "HOCVIEN" && isCourseCompleted && (
-              <Button
-                onClick={() => setIsEvaluationDialogOpen(true)}
-                disabled={hasSubmittedEvaluation}
-                variant="outline"
-                size="lg"
-                className={cn(
-                  "w-full sm:w-auto transition-all duration-300",
-                  hasSubmittedEvaluation
-                    ? "bg-gray-50/80 dark:bg-gray-950/20 text-gray-600 dark:text-gray-400 border-gray-200/50 dark:border-gray-800/30 opacity-60 cursor-not-allowed"
-                    : "bg-gray-50/80 dark:bg-gray-900/50 text-gray-700 dark:text-gray-200 border-gray-200/50 dark:border-gray-700/50 hover:bg-gray-100 dark:hover:bg-gray-800/70 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-md hover:scale-[1.02] active:scale-[0.98]"
-                )}
-              >
-                <Star
-                  className={cn(
-                    "mr-2 h-5 w-5",
-                    hasSubmittedEvaluation
-                      ? "text-gray-500"
-                      : "text-gray-500 dark:text-gray-400"
-                  )}
-                />
-                {hasSubmittedEvaluation ? "Đã đánh giá" : "Đánh giá khóa học"}
-              </Button>
-            )}
-            {currentUser?.role === "HOCVIEN" &&
-              isEnrolled &&
-              !isCourseCompleted && (
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
+                    {isRegistrationOpen(course.registrationDeadline) && (
                       <Button
+                        onClick={handleCancelEnroll}
+                        disabled={cancelEnrollMutation.isPending}
                         variant="outline"
                         size="lg"
-                        className="w-full sm:w-auto opacity-50 cursor-not-allowed"
-                        disabled
+                        className="w-full sm:w-auto"
                       >
-                        <Star className="mr-2 h-5 w-5 text-gray-400" />
-                        Đánh giá khóa học
+                        {cancelEnrollMutation.isPending ? (
+                          <>
+                            <Loader2 className="mr-2 h-5 w-5 animate-spin" />{" "}
+                            Đang hủy...
+                          </>
+                        ) : (
+                          <>
+                            <XCircle className="mr-2 h-5 w-5" /> Hủy đăng ký
+                          </>
+                        )}
                       </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Bạn cần hoàn thành khóa học để đánh giá</p>
-                      <p className="text-xs">
-                        Tiến độ hiện tại: {Math.round(courseProgressPercentage)}
-                        %
-                      </p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              )}
-          </div>
-        </div>
-
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {/* Khối giảng viên đã bỏ */}
-          <Card className="shadow-md hover:shadow-lg transition-shadow">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Thời lượng</CardTitle>
-              <Clock className="h-5 w-5 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-xl font-bold">
-                {course.duration.sessions} buổi (
-                {course.duration.hoursPerSession}h/buổi)
-              </div>
-              {course.startDate && course.endDate && (
-                <p className="text-xs text-muted-foreground">
-                  Bắt đầu:{" "}
-                  {new Date(course.startDate).toLocaleDateString("vi-VN")}– Kết
-                  thúc: {new Date(course.endDate).toLocaleDateString("vi-VN")}
-                </p>
-              )}
-            </CardContent>
-          </Card>
-          <Card className="shadow-md hover:shadow-lg transition-shadow">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Loại ghi danh
-              </CardTitle>
-              <Info className="h-5 w-5 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <Badge
-                variant={
-                  course.enrollmentType === "mandatory"
-                    ? "default"
-                    : "secondary"
-                }
-              >
-                {course.enrollmentType === "mandatory"
-                  ? "Bắt buộc"
-                  : "Tùy chọn"}
-              </Badge>
-              {course.enrollmentType === "optional" &&
-                course.registrationDeadline && (
-                  <div className="text-xs text-muted-foreground mt-1">
-                    Hạn ĐK:{" "}
-                    {new Date(course.registrationDeadline).toLocaleDateString(
-                      "vi-VN"
-                    )}
-                    {!isRegistrationOpen(course.registrationDeadline) && (
-                      <Badge
-                        variant="destructive"
-                        className="ml-1 text-xs px-1 py-0"
-                      >
-                        Hết hạn
-                      </Badge>
                     )}
                   </div>
                 )}
-            </CardContent>
-          </Card>
-
-          {/* New Card for Completed Lessons */}
-          <Card className="shadow-md hover:shadow-lg transition-shadow">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Bài học đã hoàn thành
-              </CardTitle>
-              <CheckCircle className="h-5 w-5 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              {isLoadingCompletedLessons ? (
-                <Loader2 className="h-4 w-4 animate-spin text-primary" />
-              ) : (
-                <div className="text-xl font-bold">
-                  {completedLessonsCount}
-                  <span className="text-sm text-muted-foreground ml-1">
-                    bài
-                  </span>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-
-        <Tabs
-          value={activeTab}
-          onValueChange={handleTabChange}
-          className="space-y-6"
-        >
-          <TabsList className="flex w-full overflow-x-auto h-auto items-center rounded-md bg-muted p-1 text-muted-foreground justify-start">
-            <TabsTrigger value="content">Nội dung chính</TabsTrigger>
-            <TabsTrigger value="objectives">Mục tiêu</TabsTrigger>
-            <TabsTrigger value="lessons">Bài học</TabsTrigger>
-            <TabsTrigger value="tests" disabled={!canViewContent}>
-              Bài kiểm tra
-            </TabsTrigger>
-            {(course as any).requirements &&
-              String((course as any).requirements).trim().length > 0 && (
-                <TabsTrigger value="requirements">Yêu cầu</TabsTrigger>
-              )}
-            <TabsTrigger value="materials">Tài liệu</TabsTrigger>
-            {(currentUser?.role === "ADMIN" || currentUser?.role === "HR") && (
-              <TabsTrigger value="activity-logs">Nhật ký hoạt động</TabsTrigger>
-            )}
-            <TabsTrigger value="evaluations">Phản hồi học viên</TabsTrigger>
-            {currentUser?.role === "ADMIN" && (
-              <TabsTrigger value="students">Học viên & Tiến độ</TabsTrigger>
-            )}
-          </TabsList>
-
-          <TabsContent value="content">
-            <Card>
-              <CardHeader>
-                <div className="flex justify-between items-start">
-                  <div>
-                    {selectedLesson && (
-                      <CardTitle className="flex items-center gap-3">
-                        {renderLessonIcon(selectedLesson.type)}
-                        {selectedLesson.title}
-                        {isSavingProgress && (
-                          <div className="flex items-center gap-1 ml-auto">
-                            <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
-                            <span className="text-xs text-blue-500">
-                              Đang lưu...
-                            </span>
-                          </div>
-                        )}
-                      </CardTitle>
+              {currentUser?.role === "HOCVIEN" && isCourseCompleted && (
+                <Button
+                  onClick={() => setIsEvaluationDialogOpen(true)}
+                  disabled={hasSubmittedEvaluation}
+                  variant="outline"
+                  size="lg"
+                  className={cn(
+                    "w-full sm:w-auto transition-all duration-300",
+                    hasSubmittedEvaluation
+                      ? "bg-gray-50/80 dark:bg-gray-950/20 text-gray-600 dark:text-gray-400 border-gray-200/50 dark:border-gray-800/30 opacity-60 cursor-not-allowed"
+                      : "bg-gray-50/80 dark:bg-gray-900/50 text-gray-700 dark:text-gray-200 border-gray-200/50 dark:border-gray-700/50 hover:bg-gray-100 dark:hover:bg-gray-800/70 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-md hover:scale-[1.02] active:scale-[0.98]"
+                  )}
+                >
+                  <Star
+                    className={cn(
+                      "mr-2 h-5 w-5",
+                      hasSubmittedEvaluation
+                        ? "text-gray-500"
+                        : "text-gray-500 dark:text-gray-400"
                     )}
-                  </div>
-                </div>
+                  />
+                  {hasSubmittedEvaluation ? "Đã đánh giá" : "Đánh giá khóa học"}
+                </Button>
+              )}
+              {currentUser?.role === "HOCVIEN" &&
+                isEnrolled &&
+                !isCourseCompleted && (
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="lg"
+                          className="w-full sm:w-auto opacity-50 cursor-not-allowed"
+                          disabled
+                        >
+                          <Star className="mr-2 h-5 w-5 text-gray-400" />
+                          Đánh giá khóa học
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Bạn cần hoàn thành khóa học để đánh giá</p>
+                        <p className="text-xs">
+                          Tiến độ hiện tại:{" "}
+                          {Math.round(courseProgressPercentage)}%
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                )}
+            </div>
+          </div>
+
+          <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+            {/* Khối giảng viên đã bỏ */}
+            <Card className="shadow-md hover:shadow-lg transition-shadow">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">
+                  Thời lượng
+                </CardTitle>
+                <Clock className="h-5 w-5 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                {!selectedLesson ? (
-                  <div className="text-center text-muted-foreground h-[500px] flex flex-col justify-center items-center">
-                    <BookOpen className="mx-auto h-12 w-12 mb-4" />
-                    <p className="font-semibold">
-                      Vui lòng chọn một bài học từ tab "Bài học"
-                    </p>
-                    <p className="text-sm mt-2">
-                      Nội dung chi tiết của bài học sẽ được hiển thị tại đây.
-                    </p>
+                <div className="text-lg md:text-xl font-bold">
+                  {course.duration.sessions} buổi (
+                  {course.duration.hoursPerSession}h/buổi)
+                </div>
+                {course.startDate && course.endDate && (
+                  <p className="text-xs text-muted-foreground">
+                    Bắt đầu:{" "}
+                    {new Date(course.startDate).toLocaleDateString("vi-VN")}–
+                    Kết thúc:{" "}
+                    {new Date(course.endDate).toLocaleDateString("vi-VN")}
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+            <Card className="shadow-md hover:shadow-lg transition-shadow">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">
+                  Loại ghi danh
+                </CardTitle>
+                <Info className="h-5 w-5 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <Badge
+                  variant={
+                    course.enrollmentType === "mandatory"
+                      ? "default"
+                      : "secondary"
+                  }
+                >
+                  {course.enrollmentType === "mandatory"
+                    ? "Bắt buộc"
+                    : "Tùy chọn"}
+                </Badge>
+                {course.enrollmentType === "optional" &&
+                  course.registrationDeadline && (
+                    <div className="text-xs text-muted-foreground mt-1">
+                      Hạn ĐK:{" "}
+                      {new Date(course.registrationDeadline).toLocaleDateString(
+                        "vi-VN"
+                      )}
+                      {!isRegistrationOpen(course.registrationDeadline) && (
+                        <Badge
+                          variant="destructive"
+                          className="ml-1 text-xs px-1 py-0"
+                        >
+                          Hết hạn
+                        </Badge>
+                      )}
+                    </div>
+                  )}
+              </CardContent>
+            </Card>
+
+            {/* New Card for Completed Lessons */}
+            <Card className="shadow-md hover:shadow-lg transition-shadow">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">
+                  Bài học đã hoàn thành
+                </CardTitle>
+                <CheckCircle className="h-5 w-5 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                {isLoadingCompletedLessons ? (
+                  <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                ) : (
+                  <div className="text-xl font-bold">
+                    {completedLessonsCount}
+                    <span className="text-sm text-muted-foreground ml-1">
+                      bài
+                    </span>
                   </div>
-                ) : selectedLesson.type === "video_url" ? (
-                  selectedLesson.link ? (
-                    <div className="w-full aspect-video border rounded-md overflow-hidden bg-black">
-                      <ReactPlayer
-                        ref={playerRef}
-                        url={selectedLesson.link}
-                        width="100%"
-                        height="100%"
-                        controls
-                        onReady={handlePlayerReady}
-                        onProgress={(progress) => {
-                          setVideoProgress(progress);
+                )}
+              </CardContent>
+            </Card>
+          </div>
 
-                          // Check if video is near the end (within last 5 seconds)
-                          if (playerRef.current) {
-                            const duration = playerRef.current.getDuration();
-                            const remainingTime =
-                              duration - progress.playedSeconds;
+          <Tabs
+            value={activeTab}
+            onValueChange={handleTabChange}
+            className="space-y-6"
+          >
+            <TabsList className="flex w-full overflow-x-auto h-auto items-center rounded-md bg-muted p-1 text-muted-foreground justify-start">
+              <TabsTrigger value="content">Nội dung chính</TabsTrigger>
+              <TabsTrigger value="objectives">Mục tiêu</TabsTrigger>
+              <TabsTrigger value="lessons">Bài học</TabsTrigger>
+              <TabsTrigger value="tests" disabled={!canViewContent}>
+                Bài kiểm tra
+              </TabsTrigger>
+              {(course as any).requirements &&
+                String((course as any).requirements).trim().length > 0 && (
+                  <TabsTrigger value="requirements">Yêu cầu</TabsTrigger>
+                )}
+              <TabsTrigger value="materials">Tài liệu</TabsTrigger>
+              {(currentUser?.role === "ADMIN" ||
+                currentUser?.role === "HR") && (
+                <TabsTrigger value="activity-logs">
+                  Nhật ký hoạt động
+                </TabsTrigger>
+              )}
+              <TabsTrigger value="evaluations">Phản hồi học viên</TabsTrigger>
+              {currentUser?.role === "ADMIN" && (
+                <TabsTrigger value="students">Học viên & Tiến độ</TabsTrigger>
+              )}
+            </TabsList>
 
-                            // If less than 5 seconds remaining, save progress immediately
-                            if (remainingTime <= 5 && remainingTime > 0) {
-                              const finalTime = Math.floor(
-                                progress.playedSeconds
-                              );
-                              if (finalTime !== lastReportedTimeRef.current) {
-                                lastReportedTimeRef.current = finalTime;
+            <TabsContent value="content">
+              <Card>
+                <CardHeader>
+                  <div className="flex justify-between items-start">
+                    <div>
+                      {selectedLesson && (
+                        <CardTitle className="flex items-center gap-3">
+                          {renderLessonIcon(selectedLesson.type)}
+                          {selectedLesson.title}
+                          {isSavingProgress && (
+                            <div className="flex items-center gap-1 ml-auto">
+                              <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
+                              <span className="text-xs text-blue-500">
+                                Đang lưu...
+                              </span>
+                            </div>
+                          )}
+                        </CardTitle>
+                      )}
+                    </div>
+                  </div>
+                </CardHeader>
+
+                <CardContent>
+                  {!selectedLesson ? (
+                    <div className="text-center text-muted-foreground h-[500px] flex flex-col justify-center items-center">
+                      <BookOpen className="mx-auto h-12 w-12 mb-4" />
+                      <p className="font-semibold">
+                        Vui lòng chọn một bài học từ tab "Bài học"
+                      </p>
+                      <p className="text-sm mt-2">
+                        Nội dung chi tiết của bài học sẽ được hiển thị tại đây.
+                      </p>
+                    </div>
+                  ) : selectedLesson.type === "video_url" ? (
+                    selectedLesson.link ? (
+                      <div className="w-full max-w-full mx-auto">
+                        <div className="relative aspect-video bg-black rounded-lg overflow-hidden shadow-lg">
+                          <ReactPlayer
+                            ref={playerRef}
+                            url={selectedLesson.link}
+                            width="100%"
+                            height="100%"
+                            controls
+                            onReady={handlePlayerReady}
+                            onDuration={(duration) => {
+                              setVideoDuration(duration);
+                            }}
+                            onProgress={(progress) => {
+                              // Only update if we're actually watching this lesson and it has valid duration
+                              if (
+                                !selectedLesson ||
+                                selectedLesson.type !== "video_url" ||
+                                !videoDuration
+                              ) {
+                                return;
+                              }
+
+                              setVideoProgress(progress);
+
+                              // Check for completion during playback with a 5-second window before end
+                              // This handles cases where onEnded might not fire reliably
+                              const timeToEnd =
+                                videoDuration - progress.playedSeconds;
+                              if (
+                                timeToEnd <= 5 &&
+                                timeToEnd > 0 &&
+                                !hasReportedCompletionRef.current.has(
+                                  selectedLesson.id
+                                )
+                              ) {
+                                hasReportedCompletionRef.current.add(
+                                  selectedLesson.id
+                                );
+
+                                // Report as completed
                                 saveImmediately({
                                   lessonId: selectedLesson.id,
-                                  currentTimeSecond: finalTime,
+                                  currentTimeSecond: Math.floor(videoDuration), // Report full duration
                                 });
                               }
-                            }
-                          }
-                        }}
-                        onEnded={() => {
-                          // When video ends, save the complete duration
-                          if (playerRef.current) {
-                            const duration = Math.floor(
-                              playerRef.current.getDuration()
-                            );
-                            saveImmediately({
-                              lessonId: selectedLesson.id,
-                              currentTimeSecond: duration,
-                            });
-                          }
-                        }}
-                      />
-                    </div>
-                  ) : (
-                    <div className="text-center text-muted-foreground h-[500px] flex flex-col justify-center items-center">
-                      <p>Nội dung video không có sẵn.</p>
-                    </div>
-                  )
-                ) : selectedLesson.type === "pdf_url" ? (
-                  selectedLesson.fileUrl ? (
-                    <PdfLessonViewer
-                      pdfUrl={selectedLesson.fileUrl}
-                      initialPage={selectedLesson.currentPage || 1}
-                      onVisiblePageChange={handleVisiblePageChange}
-                    />
-                  ) : (
-                    <div className="text-center text-muted-foreground h-[500px] flex flex-col justify-center items-center">
-                      <p>Nội dung PDF không có sẵn.</p>
-                    </div>
-                  )
-                ) : (
-                  <div className="text-center text-muted-foreground h-[500px] flex flex-col justify-center items-center">
-                    <p>
-                      Nội dung bài học này hiện không có hoặc không được hỗ trợ.
-                    </p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="objectives">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <Target className="mr-2 h-5 w-5" />
-                  Mục tiêu khóa học
-                </CardTitle>
-                <CardDescription>
-                  Những kiến thức và kỹ năng bạn sẽ đạt được sau khi hoàn thành
-                  khóa học.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {course.objectives ? (
-                  <div className="space-y-3">
-                    {(course.objectives || "").split("\n").map(
-                      (objective, index) =>
-                        objective.trim() && (
-                          <div key={index} className="flex items-start mb-2">
-                            <CheckCircle className="h-5 w-5 text-orange-500 mr-3 mt-1 flex-shrink-0" />
-                            <p className="text-muted-foreground">
-                              {objective.replace(/^- /, "")}
-                            </p>
-                          </div>
-                        )
-                    )}
-                  </div>
-                ) : (
-                  <p className="text-muted-foreground">
-                    Mục tiêu khóa học đang được cập nhật.
-                  </p>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="lessons">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <Library className="mr-2 h-5 w-5" />
-                  Danh sách Bài học
-                </CardTitle>
-                <CardDescription>
-                  Chọn một bài học để xem nội dung chi tiết trong tab "Nội dung
-                  chính".
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {isLoadingProgress ? (
-                  <div className="flex flex-col items-center justify-center p-8">
-                    <div className="relative">
-                      <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                      <div className="absolute inset-0 h-8 w-8 bg-primary/20 rounded-full animate-pulse"></div>
-                    </div>
-                    <p className="mt-4 text-sm text-muted-foreground font-medium">
-                      Đang tải danh sách bài học...
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      Vui lòng đợi trong giây lát
-                    </p>
-                  </div>
-                ) : lessonsWithProgress.length > 0 ? (
-                  <div className="space-y-3">
-                    {lessonsWithProgress.map((lesson, index) => {
-                      const isCompleted = lesson.progressPercentage >= 100;
-                      const isInProgress =
-                        lesson.progressPercentage > 0 &&
-                        lesson.progressPercentage < 100;
-                      return (
-                        <div
-                          key={lesson.id}
-                          className={cn(
-                            "group relative overflow-hidden rounded-xl border bg-card transition-all duration-300 hover:shadow-lg hover:scale-[1.02]",
-                            !canViewContent && "opacity-60 cursor-not-allowed",
-                            selectedLesson?.id === lesson.id &&
-                              "ring-2 ring-primary ring-offset-2"
-                          )}
-                        >
-                          <div className="absolute top-3 left-3 z-10">
-                            <div
-                              className={cn(
-                                "flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold text-white shadow-lg",
-                                isCompleted
-                                  ? "bg-orange-500"
-                                  : isInProgress
-                                  ? "bg-orange-500"
-                                  : "bg-gray-400"
-                              )}
-                            >
-                              {index + 1}
-                            </div>
-                          </div>
-                          {isCompleted && (
-                            <div className="absolute top-2 left-2 z-20">
-                              <CheckCircle className="h-10 w-10 text-orange-500 bg-white rounded-full" />
-                            </div>
-                          )}
-                          <button
-                            onClick={() => handleSelectLesson(lesson)}
-                            className="w-full text-left p-6 pl-16 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 rounded-xl"
-                            disabled={!canViewContent}
-                          >
-                            <div className="flex items-start justify-between gap-4">
-                              <div className="flex items-start gap-4 flex-grow min-w-0">
-                                <div
-                                  className={cn(
-                                    "flex h-12 w-12 items-center justify-center rounded-lg shadow-sm transition-colors",
-                                    lesson.type === "video_url" &&
-                                      "bg-red-50 text-red-600",
-                                    lesson.type === "pdf_url" &&
-                                      "bg-orange-50 text-orange-600",
-                                    lesson.type === "text" &&
-                                      "bg-green-50 text-green-600",
-                                    lesson.type === "external_link" &&
-                                      "bg-purple-50 text-purple-600"
-                                  )}
-                                >
-                                  {renderLessonIcon(lesson.type)}
-                                </div>
-                                <div className="flex-grow min-w-0">
-                                  <h3 className="font-semibold text-lg text-foreground group-hover:text-primary transition-colors mb-1">
-                                    {lesson.title}
-                                  </h3>
-                                  <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground mb-2">
-                                    {lesson.duration && (
-                                      <div className="flex items-center gap-1">
-                                        <Clock className="h-3 w-3" />
-                                        <span>{lesson.duration}</span>
-                                      </div>
-                                    )}
-                                    <div className="flex items-center gap-1">
-                                      {lesson.type === "video_url" && (
-                                        <>
-                                          <Video className="h-3 w-3" />
-                                          <span>Video</span>
-                                        </>
-                                      )}
-                                      {lesson.type === "pdf_url" && (
-                                        <>
-                                          <FileText className="h-3 w-3" />
-                                          <span>Tài liệu PDF</span>
-                                        </>
-                                      )}
-                                      {lesson.type === "text" && (
-                                        <>
-                                          <BookOpen className="h-3 w-3" />
-                                          <span>Bài đọc</span>
-                                        </>
-                                      )}
-                                      {lesson.type === "external_link" && (
-                                        <>
-                                          <LinkIcon className="h-3 w-3" />
-                                          <span>Liên kết</span>
-                                        </>
-                                      )}
-                                    </div>
-                                  </div>
-                                  {canViewContent &&
-                                    lesson.progressPercentage >= 0 && (
-                                      <div className="space-y-2">
-                                        <div className="flex items-center justify-between">
-                                          <span className="text-xs font-medium text-muted-foreground">
-                                            Tiến độ học tập
-                                          </span>
-                                          <span
-                                            className={cn(
-                                              "text-xs font-semibold px-2 py-1 rounded-full",
-                                              isCompleted
-                                                ? "bg-orange-100 text-orange-700"
-                                                : isInProgress
-                                                ? "bg-orange-100 text-orange-700"
-                                                : "bg-gray-100 text-gray-700"
-                                            )}
-                                          >
-                                            {lesson.progressPercentage}%
-                                          </span>
-                                        </div>
-                                        <Progress
-                                          value={lesson.progressPercentage}
-                                          className="h-2"
-                                        />
-                                      </div>
-                                    )}
-                                </div>
-                              </div>
-                              <div className="flex items-center gap-2 flex-shrink-0">
-                                {isCompleted && (
-                                  <Badge
-                                    variant="secondary"
-                                    className="bg-orange-100 text-orange-700 hover:bg-orange-100"
-                                  >
-                                    <CheckCircle className="h-3 w-3 mr-1" />
-                                    Hoàn thành
-                                  </Badge>
-                                )}
-                                {isInProgress && !isCompleted && (
-                                  <Badge
-                                    variant="secondary"
-                                    className="bg-orange-100 text-orange-700 hover:bg-orange-100"
-                                  >
-                                    <Play className="h-3 w-3 mr-1" />
-                                    Đang học
-                                  </Badge>
-                                )}
-                                <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
-                              </div>
-                            </div>
-                          </button>
-                          <div className="absolute inset-0 bg-gradient-to-r from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none rounded-xl" />
+                            }}
+                            onEnded={() => {
+                              // When video ends, ensure completion is recorded
+                              if (
+                                selectedLesson &&
+                                videoDuration &&
+                                !hasReportedCompletionRef.current.has(
+                                  selectedLesson.id
+                                )
+                              ) {
+                                hasReportedCompletionRef.current.add(
+                                  selectedLesson.id
+                                );
+                                saveImmediately({
+                                  lessonId: selectedLesson.id,
+                                  currentTimeSecond: Math.floor(videoDuration),
+                                });
+                              }
+                            }}
+                          />
                         </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
-                    <div className="w-20 h-20 bg-muted rounded-full flex items-center justify-center mb-4">
-                      <BookOpen className="h-10 w-10 text-muted-foreground" />
-                    </div>
-                    <h3 className="text-lg font-semibold text-foreground mb-2">
-                      Chưa có bài học nào
-                    </h3>
-                    <p className="text-muted-foreground max-w-md">
-                      Khóa học này chưa có bài học nào được thêm. Vui lòng quay
-                      lại sau hoặc liên hệ hỗ trợ để biết thêm thông tin.
-                    </p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="tests">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <FileQuestion className="mr-2 h-5 w-5" />
-                  Danh sách Bài kiểm tra
-                </CardTitle>
-                <CardDescription>
-                  Các bài kiểm tra và yêu cầu để hoàn thành.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {isLoadingTests ? (
-                  <div className="flex items-center justify-center p-6">
-                    <Loader2 className="h-6 w-6 animate-spin mr-2" />
-                    <span>Đang tải bài kiểm tra...</span>
-                  </div>
-                ) : testsError ? (
-                  <div className="text-center p-6 text-muted-foreground">
-                    <AlertTriangle className="h-8 w-8 mx-auto mb-2 text-yellow-500" />
-                    <p>Lỗi khi tải danh sách bài kiểm tra</p>
-                    <p className="text-sm">{extractErrorMessage(testsError)}</p>
-                  </div>
-                ) : tests && tests.length > 0 ? (
-                  <div className="space-y-4">
-                    {tests.map((test) => (
-                      <TestItem
-                        key={test.id}
-                        test={test}
-                        courseId={course.id}
-                        isEnrolled={isEnrolled}
+                      </div>
+                    ) : (
+                      <div className="text-center text-muted-foreground h-[500px] flex flex-col justify-center items-center">
+                        <p>Nội dung video không có sẵn.</p>
+                      </div>
+                    )
+                  ) : selectedLesson.type === "pdf_url" ? (
+                    selectedLesson.fileUrl ? (
+                      <PdfLessonViewer
+                        pdfUrl={selectedLesson.fileUrl}
+                        initialPage={selectedLesson.currentPage || 1}
+                        onVisiblePageChange={handleVisiblePageChange}
                       />
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-muted-foreground text-center py-4">
-                    Chưa có bài kiểm tra nào cho khóa học này.
-                  </p>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
+                    ) : (
+                      <div className="text-center text-muted-foreground h-[500px] flex flex-col justify-center items-center">
+                        <p>Nội dung PDF không có sẵn.</p>
+                      </div>
+                    )
+                  ) : (
+                    <div className="text-center text-muted-foreground h-[500px] flex flex-col justify-center items-center">
+                      <p>
+                        Nội dung bài học này hiện không có hoặc không được hỗ
+                        trợ.
+                      </p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
 
-          {(course as any).requirements &&
-            String((course as any).requirements).trim().length > 0 && (
-              <TabsContent value="requirements">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center">
-                      <ListChecks className="mr-2 h-5 w-5" />
-                      Yêu cầu tiên quyết
-                    </CardTitle>
-                    <CardDescription>
-                      Những kiến thức và kỹ năng cần có trước khi tham gia khóa
-                      học.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
+            <TabsContent value="objectives">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center">
+                    <Target className="mr-2 h-5 w-5" />
+                    Mục tiêu khóa học
+                  </CardTitle>
+                  <CardDescription>
+                    Những kiến thức và kỹ năng bạn sẽ đạt được sau khi hoàn
+                    thành khóa học.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {course.objectives ? (
+                    <div className="space-y-3">
+                      {(course.objectives || "").split("\n").map(
+                        (objective, index) =>
+                          objective.trim() && (
+                            <div key={index} className="flex items-start mb-2">
+                              <CheckCircle className="h-5 w-5 text-orange-500 mr-3 mt-1 flex-shrink-0" />
+                              <p className="text-muted-foreground">
+                                {objective.replace(/^- /, "")}
+                              </p>
+                            </div>
+                          )
+                      )}
+                    </div>
+                  ) : (
                     <p className="text-muted-foreground">
-                      {String((course as any).requirements)}
+                      Mục tiêu khóa học đang được cập nhật.
                     </p>
-                  </CardContent>
-                </Card>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="lessons">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center">
+                    <Library className="mr-2 h-5 w-5" />
+                    Danh sách Bài học
+                  </CardTitle>
+                  <CardDescription>
+                    Chọn một bài học để xem nội dung chi tiết trong tab "Nội
+                    dung chính".
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {isLoadingProgress ? (
+                    <div className="flex flex-col items-center justify-center p-8">
+                      <div className="relative">
+                        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                        <div className="absolute inset-0 h-8 w-8 bg-primary/20 rounded-full animate-pulse"></div>
+                      </div>
+                      <p className="mt-4 text-sm text-muted-foreground font-medium">
+                        Đang tải danh sách bài học...
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Vui lòng đợi trong giây lát
+                      </p>
+                    </div>
+                  ) : lessonsWithProgress.length > 0 ? (
+                    <div className="space-y-3 max-w-full">
+                      {lessonsWithProgress.map((lesson, index) => {
+                        const isCompleted = lesson.progressPercentage >= 100;
+                        const isInProgress =
+                          lesson.progressPercentage > 0 &&
+                          lesson.progressPercentage < 100;
+                        return (
+                          <div
+                            key={lesson.id}
+                            className={cn(
+                              "group relative overflow-hidden rounded-xl border bg-card transition-all duration-300 hover:shadow-lg hover:scale-[1.01] sm:hover:scale-[1.02]",
+                              !canViewContent &&
+                                "opacity-60 cursor-not-allowed",
+                              selectedLesson?.id === lesson.id &&
+                                "ring-2 ring-primary ring-offset-2"
+                            )}
+                          >
+                            <div className="absolute top-2 sm:top-3 left-2 sm:left-3 z-10">
+                              <div
+                                className={cn(
+                                  "flex h-6 w-6 sm:h-8 sm:w-8 items-center justify-center rounded-full text-xs font-bold text-white shadow-lg",
+                                  isCompleted
+                                    ? "bg-orange-500"
+                                    : isInProgress
+                                    ? "bg-orange-500"
+                                    : "bg-gray-400"
+                                )}
+                              >
+                                {index + 1}
+                              </div>
+                            </div>
+                            {isCompleted && (
+                              <div className="absolute top-1 sm:top-2 left-1 sm:left-2 z-20">
+                                <CheckCircle className="h-8 w-8 sm:h-10 sm:w-10 text-orange-500 bg-white rounded-full" />
+                              </div>
+                            )}
+                            <button
+                              onClick={() => handleSelectLesson(lesson)}
+                              className="w-full text-left p-3 sm:p-6 pl-10 sm:pl-16 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 rounded-xl"
+                              disabled={!canViewContent}
+                            >
+                              <div className="flex flex-col sm:flex-row items-start sm:justify-between gap-2 sm:gap-4">
+                                <div className="flex items-start gap-2 sm:gap-4 flex-grow min-w-0 w-full">
+                                  <div
+                                    className={cn(
+                                      "flex h-8 w-8 sm:h-12 sm:w-12 items-center justify-center rounded-lg shadow-sm transition-colors flex-shrink-0",
+                                      lesson.type === "video_url" &&
+                                        "bg-red-50 text-red-600",
+                                      lesson.type === "pdf_url" &&
+                                        "bg-orange-50 text-orange-600",
+                                      lesson.type === "text" &&
+                                        "bg-green-50 text-green-600",
+                                      lesson.type === "external_link" &&
+                                        "bg-purple-50 text-purple-600"
+                                    )}
+                                  >
+                                    {renderLessonIcon(lesson.type)}
+                                  </div>
+                                  <div className="flex-grow min-w-0">
+                                    <h3 className="font-semibold text-lg text-foreground group-hover:text-primary transition-colors mb-1">
+                                      {lesson.title}
+                                    </h3>
+                                    <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground mb-2">
+                                      {lesson.duration && (
+                                        <div className="flex items-center gap-1">
+                                          <Clock className="h-3 w-3" />
+                                          <span>{lesson.duration}</span>
+                                        </div>
+                                      )}
+                                      <div className="flex items-center gap-1">
+                                        {lesson.type === "video_url" && (
+                                          <>
+                                            <Video className="h-3 w-3" />
+                                            <span>Video</span>
+                                          </>
+                                        )}
+                                        {lesson.type === "pdf_url" && (
+                                          <>
+                                            <FileText className="h-3 w-3" />
+                                            <span>Tài liệu PDF</span>
+                                          </>
+                                        )}
+                                        {lesson.type === "text" && (
+                                          <>
+                                            <BookOpen className="h-3 w-3" />
+                                            <span>Bài đọc</span>
+                                          </>
+                                        )}
+                                        {lesson.type === "external_link" && (
+                                          <>
+                                            <LinkIcon className="h-3 w-3" />
+                                            <span>Liên kết</span>
+                                          </>
+                                        )}
+                                      </div>
+                                    </div>
+                                    {canViewContent &&
+                                      lesson.progressPercentage >= 0 && (
+                                        <div className="space-y-2">
+                                          <div className="flex items-center justify-between">
+                                            <span className="text-xs font-medium text-muted-foreground">
+                                              Tiến độ học tập
+                                            </span>
+                                            <span
+                                              className={cn(
+                                                "text-xs font-semibold px-2 py-1 rounded-full",
+                                                isCompleted
+                                                  ? "bg-orange-100 text-orange-700"
+                                                  : isInProgress
+                                                  ? "bg-orange-100 text-orange-700"
+                                                  : "bg-gray-100 text-gray-700"
+                                              )}
+                                            >
+                                              {lesson.progressPercentage}%
+                                            </span>
+                                          </div>
+                                          <Progress
+                                            value={lesson.progressPercentage}
+                                            className="h-2"
+                                          />
+                                        </div>
+                                      )}
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-2 flex-shrink-0">
+                                  {isCompleted && (
+                                    <Badge
+                                      variant="secondary"
+                                      className="bg-orange-100 text-orange-700 hover:bg-orange-100"
+                                    >
+                                      <CheckCircle className="h-3 w-3 mr-1" />
+                                      Hoàn thành
+                                    </Badge>
+                                  )}
+                                  {isInProgress && !isCompleted && (
+                                    <Badge
+                                      variant="secondary"
+                                      className="bg-orange-100 text-orange-700 hover:bg-orange-100"
+                                    >
+                                      <Play className="h-3 w-3 mr-1" />
+                                      Đang học
+                                    </Badge>
+                                  )}
+                                  <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
+                                </div>
+                              </div>
+                            </button>
+                            <div className="absolute inset-0 bg-gradient-to-r from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none rounded-xl" />
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
+                      <div className="w-20 h-20 bg-muted rounded-full flex items-center justify-center mb-4">
+                        <BookOpen className="h-10 w-10 text-muted-foreground" />
+                      </div>
+                      <h3 className="text-lg font-semibold text-foreground mb-2">
+                        Chưa có bài học nào
+                      </h3>
+                      <p className="text-muted-foreground max-w-md">
+                        Khóa học này chưa có bài học nào được thêm. Vui lòng
+                        quay lại sau hoặc liên hệ hỗ trợ để biết thêm thông tin.
+                      </p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="tests">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center">
+                    <FileQuestion className="mr-2 h-5 w-5" />
+                    Danh sách Bài kiểm tra
+                  </CardTitle>
+                  <CardDescription>
+                    Các bài kiểm tra và yêu cầu để hoàn thành.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {isLoadingTests ? (
+                    <div className="flex items-center justify-center p-6">
+                      <Loader2 className="h-6 w-6 animate-spin mr-2" />
+                      <span>Đang tải bài kiểm tra...</span>
+                    </div>
+                  ) : testsError ? (
+                    <div className="text-center p-6 text-muted-foreground">
+                      <AlertTriangle className="h-8 w-8 mx-auto mb-2 text-yellow-500" />
+                      <p>Lỗi khi tải danh sách bài kiểm tra</p>
+                      <p className="text-sm">
+                        {extractErrorMessage(testsError)}
+                      </p>
+                    </div>
+                  ) : tests && tests.length > 0 ? (
+                    <div className="space-y-4">
+                      {tests.map((test) => (
+                        <TestItem
+                          key={test.id}
+                          test={test}
+                          courseId={course.id}
+                          isEnrolled={isEnrolled}
+                        />
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-muted-foreground text-center py-4">
+                      Chưa có bài kiểm tra nào cho khóa học này.
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {(course as any).requirements &&
+              String((course as any).requirements).trim().length > 0 && (
+                <TabsContent value="requirements">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center">
+                        <ListChecks className="mr-2 h-5 w-5" />
+                        Yêu cầu tiên quyết
+                      </CardTitle>
+                      <CardDescription>
+                        Những kiến thức và kỹ năng cần có trước khi tham gia
+                        khóa học.
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-muted-foreground">
+                        {String((course as any).requirements)}
+                      </p>
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+              )}
+
+            <TabsContent value="materials">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center">
+                    <Download className="mr-2 h-5 w-5" />
+                    Tài liệu khóa học
+                  </CardTitle>
+                  <CardDescription>
+                    Các tài liệu bổ sung, bài tập, hoặc tài nguyên tham khảo.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {isLoadingAttachedFiles ? (
+                    <div className="flex items-center justify-center p-6">
+                      <Loader2 className="h-6 w-6 animate-spin mr-2" />
+                      <span>Đang tải tài liệu...</span>
+                    </div>
+                  ) : attachedFilesError ? (
+                    <div className="text-center p-6 text-muted-foreground">
+                      <AlertTriangle className="h-8 w-8 mx-auto mb-2 text-yellow-500" />
+                      <p>Lỗi khi tải danh sách tài liệu</p>
+                      <p className="text-sm">
+                        {extractErrorMessage(attachedFilesError)}
+                      </p>
+                    </div>
+                  ) : attachedFiles && attachedFiles.length > 0 ? (
+                    <div className="space-y-4">
+                      {attachedFiles.map((material, index) => (
+                        <Card
+                          key={material.id || index}
+                          className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 gap-4 hover:shadow-md transition-shadow"
+                        >
+                          <div className="flex items-center gap-3">
+                            {renderMaterialIcon(material.type as any)}
+                            <div>
+                              <h4 className="font-semibold">
+                                {material.title}
+                              </h4>
+                            </div>
+                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            asChild
+                            className="w-full sm:w-auto mt-2 sm:mt-0"
+                          >
+                            <a
+                              href={material.link}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                            >
+                              <Download className="mr-2 h-4 w-4" />
+                              {material.type === "Link"
+                                ? "Truy cập"
+                                : "Tải xuống"}
+                            </a>
+                          </Button>
+                        </Card>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-muted-foreground text-center py-4">
+                      Không có tài liệu bổ sung cho khóa học này.
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+            {(currentUser?.role === "ADMIN" || currentUser?.role === "HR") && (
+              <TabsContent value="activity-logs">
+                <AuditLog courseId={courseIdFromParams} />
               </TabsContent>
             )}
 
-          <TabsContent value="materials">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <Download className="mr-2 h-5 w-5" />
-                  Tài liệu khóa học
-                </CardTitle>
-                <CardDescription>
-                  Các tài liệu bổ sung, bài tập, hoặc tài nguyên tham khảo.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {isLoadingAttachedFiles ? (
-                  <div className="flex items-center justify-center p-6">
-                    <Loader2 className="h-6 w-6 animate-spin mr-2" />
-                    <span>Đang tải tài liệu...</span>
-                  </div>
-                ) : attachedFilesError ? (
-                  <div className="text-center p-6 text-muted-foreground">
-                    <AlertTriangle className="h-8 w-8 mx-auto mb-2 text-yellow-500" />
-                    <p>Lỗi khi tải danh sách tài liệu</p>
-                    <p className="text-sm">
-                      {extractErrorMessage(attachedFilesError)}
-                    </p>
-                  </div>
-                ) : attachedFiles && attachedFiles.length > 0 ? (
-                  <div className="space-y-4">
-                    {attachedFiles.map((material, index) => (
-                      <Card
-                        key={material.id || index}
-                        className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 gap-4 hover:shadow-md transition-shadow"
-                      >
-                        <div className="flex items-center gap-3">
-                          {renderMaterialIcon(material.type as any)}
-                          <div>
-                            <h4 className="font-semibold">{material.title}</h4>
-                          </div>
-                        </div>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          asChild
-                          className="w-full sm:w-auto mt-2 sm:mt-0"
-                        >
-                          <a
-                            href={material.link}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                          >
-                            <Download className="mr-2 h-4 w-4" />
-                            {material.type === "Link"
-                              ? "Truy cập"
-                              : "Tải xuống"}
-                          </a>
-                        </Button>
-                      </Card>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-muted-foreground text-center py-4">
-                    Không có tài liệu bổ sung cho khóa học này.
-                  </p>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {(currentUser?.role === "ADMIN" || currentUser?.role === "HR") && (
-            <TabsContent value="activity-logs">
-              <AuditLog courseId={courseIdFromParams} />
-            </TabsContent>
-          )}
-
-          <TabsContent value="evaluations">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <MessageSquare className="mr-2 h-5 w-5 text-primary" /> Phản
-                  hồi của Học viên
-                </CardTitle>
-                <CardDescription>
-                  Tổng hợp các đánh giá và góp ý từ học viên đã tham gia khóa
-                  học.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                {isLoadingFeedbacks ? (
-                  <div className="flex items-center justify-center p-6">
-                    <Loader2 className="h-6 w-6 animate-spin" />
-                  </div>
-                ) : feedbacks.length > 0 ? (
-                  feedbacks.map((fb, index) => (
-                    <Card key={fb.id || index} className="p-4 bg-muted/30">
-                      <div className="flex items-start gap-4">
-                        <Avatar>
-                          <AvatarImage src={fb.userAvatar} />
-                          <AvatarFallback>
-                            <UserCircle2 />
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1">
-                          <div className="flex items-center justify-between">
-                            <p className="font-semibold">
-                              {fb.userName || "Học viên ẩn danh"}
-                            </p>
-                            {fb.createdAt && (
-                              <span className="text-xs text-muted-foreground">
-                                <ClientTime date={fb.createdAt} />
-                              </span>
+            <TabsContent value="evaluations">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center">
+                    <MessageSquare className="mr-2 h-5 w-5 text-primary" /> Phản
+                    hồi của Học viên
+                  </CardTitle>
+                  <CardDescription>
+                    Tổng hợp các đánh giá và góp ý từ học viên đã tham gia khóa
+                    học.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  {isLoadingFeedbacks ? (
+                    <div className="flex items-center justify-center p-6">
+                      <Loader2 className="h-6 w-6 animate-spin" />
+                    </div>
+                  ) : feedbacks.length > 0 ? (
+                    feedbacks.map((fb, index) => (
+                      <Card key={fb.id || index} className="p-4 bg-muted/30">
+                        <div className="flex items-start gap-4">
+                          <Avatar>
+                            <AvatarImage src={fb.userAvatar} />
+                            <AvatarFallback>
+                              <UserCircle2 />
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1">
+                            <div className="flex items-center justify-between">
+                              <p className="font-semibold">
+                                {fb.userName || "Học viên ẩn danh"}
+                              </p>
+                              {fb.createdAt && (
+                                <span className="text-xs text-muted-foreground">
+                                  <ClientTime date={fb.createdAt} />
+                                </span>
+                              )}
+                            </div>
+                            <StarRatingDisplay
+                              rating={fb.averageScore}
+                              size={4}
+                              className="my-2"
+                            />
+                            {fb.comment && (
+                              <p className="text-sm text-foreground italic border-l-2 pl-3 py-1 my-3">
+                                "{fb.comment}"
+                              </p>
                             )}
-                          </div>
-                          <StarRatingDisplay
-                            rating={fb.averageScore}
-                            size={4}
-                            className="my-2"
-                          />
-                          {fb.comment && (
-                            <p className="text-sm text-foreground italic border-l-2 pl-3 py-1 my-3">
-                              "{fb.comment}"
-                            </p>
-                          )}
-                          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-y-3 gap-x-6 pt-3 mt-3 border-t">
-                            {(
-                              Object.keys(
-                                EVALUATION_CRITERIA_SHORT_LABELS
-                              ) as Array<
-                                keyof typeof EVALUATION_CRITERIA_SHORT_LABELS
-                              >
-                            ).map((key) => (
-                              <div key={key}>
-                                <p className="text-xs font-medium text-muted-foreground">
-                                  {EVALUATION_CRITERIA_SHORT_LABELS[key]}
-                                </p>
-                                <StarRatingDisplay
-                                  rating={fb[key as keyof Feedback] as number}
-                                  size={4}
-                                />
-                              </div>
-                            ))}
+                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-y-3 gap-x-6 pt-3 mt-3 border-t">
+                              {(
+                                Object.keys(
+                                  EVALUATION_CRITERIA_SHORT_LABELS
+                                ) as Array<
+                                  keyof typeof EVALUATION_CRITERIA_SHORT_LABELS
+                                >
+                              ).map((key) => (
+                                <div key={key}>
+                                  <p className="text-xs font-medium text-muted-foreground">
+                                    {EVALUATION_CRITERIA_SHORT_LABELS[key]}
+                                  </p>
+                                  <StarRatingDisplay
+                                    rating={fb[key as keyof Feedback] as number}
+                                    size={4}
+                                  />
+                                </div>
+                              ))}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    </Card>
-                  ))
-                ) : (
-                  <p className="text-muted-foreground text-center py-4">
-                    Chưa có đánh giá nào cho khóa học này.
-                  </p>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {currentUser?.role === "ADMIN" && (
-            <TabsContent value="students">
-              <CourseProgressList courseId={courseIdFromParams} />
+                      </Card>
+                    ))
+                  ) : (
+                    <p className="text-muted-foreground text-center py-4">
+                      Chưa có đánh giá nào cho khóa học này.
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
             </TabsContent>
-          )}
-        </Tabs>
-      </div>
 
-      <Dialog
-        open={isEvaluationDialogOpen}
-        onOpenChange={setIsEvaluationDialogOpen}
-      >
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Đánh giá khóa học: {course?.title}</DialogTitle>
-            <DialogDescription>
-              Cảm ơn bạn đã tham gia khóa học. Vui lòng chia sẻ ý kiến của bạn
-              để chúng tôi cải thiện hơn.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="py-4 space-y-6 max-h-[60vh] overflow-y-auto pr-2">
-            {(
-              Object.keys(EVALUATION_CRITERIA_LABELS) as Array<
-                keyof typeof EVALUATION_CRITERIA_LABELS
-              >
-            ).map((key) => (
-              <div key={key.toString()} className="space-y-2">
-                <Label htmlFor={`rating-${String(key)}`}>
-                  {EVALUATION_CRITERIA_LABELS[key]}
+            {currentUser?.role === "ADMIN" && (
+              <TabsContent value="students">
+                <CourseProgressList courseId={courseIdFromParams} />
+              </TabsContent>
+            )}
+          </Tabs>
+        </div>
+
+        <Dialog
+          open={isEvaluationDialogOpen}
+          onOpenChange={setIsEvaluationDialogOpen}
+        >
+          <DialogContent className="sm:max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Đánh giá khóa học: {course?.title}</DialogTitle>
+              <DialogDescription>
+                Cảm ơn bạn đã tham gia khóa học. Vui lòng chia sẻ ý kiến của bạn
+                để chúng tôi cải thiện hơn.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="py-4 space-y-6 max-h-[60vh] overflow-y-auto pr-2">
+              {(
+                Object.keys(EVALUATION_CRITERIA_LABELS) as Array<
+                  keyof typeof EVALUATION_CRITERIA_LABELS
+                >
+              ).map((key) => (
+                <div key={key.toString()} className="space-y-2">
+                  <Label htmlFor={`rating-${String(key)}`}>
+                    {EVALUATION_CRITERIA_LABELS[key]}
+                  </Label>
+                  <StarRatingInput
+                    rating={evaluationFormData[key] || 0}
+                    setRating={(rating) =>
+                      handleEvaluationRatingChange(key, rating)
+                    }
+                    size={6}
+                  />
+                </div>
+              ))}
+              <div className="space-y-2">
+                <Label htmlFor="suggestions">
+                  Điều anh/chị chưa hài lòng hoặc đề xuất cải tiến:
                 </Label>
-                <StarRatingInput
-                  rating={evaluationFormData[key] || 0}
-                  setRating={(rating) =>
-                    handleEvaluationRatingChange(key, rating)
+                <Textarea
+                  id="suggestions"
+                  value={evaluationFormData.comment || ""}
+                  onChange={(e) =>
+                    setEvaluationFormData((prev) => ({
+                      ...prev,
+                      comment: e.target.value,
+                    }))
                   }
-                  size={6}
+                  placeholder="Ý kiến của bạn..."
+                  rows={4}
+                  className="resize-none"
                 />
               </div>
-            ))}
-            <div className="space-y-2">
-              <Label htmlFor="suggestions">
-                Điều anh/chị chưa hài lòng hoặc đề xuất cải tiến:
-              </Label>
-              <Textarea
-                id="suggestions"
-                value={evaluationFormData.comment || ""}
-                onChange={(e) =>
-                  setEvaluationFormData((prev) => ({
-                    ...prev,
-                    comment: e.target.value,
-                  }))
-                }
-                placeholder="Ý kiến của bạn..."
-                rows={4}
-                className="resize-none"
-              />
             </div>
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setIsEvaluationDialogOpen(false)}
-              disabled={createFeedbackMutation.isPending}
-            >
-              Hủy
-            </Button>
-            <Button
-              onClick={handleSubmitEvaluation}
-              disabled={createFeedbackMutation.isPending}
-            >
-              {createFeedbackMutation.isPending && (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              )}
-              Gửi đánh giá
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setIsEvaluationDialogOpen(false)}
+                disabled={createFeedbackMutation.isPending}
+              >
+                Hủy
+              </Button>
+              <Button
+                onClick={handleSubmitEvaluation}
+                disabled={createFeedbackMutation.isPending}
+              >
+                {createFeedbackMutation.isPending && (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                )}
+                Gửi đánh giá
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
     </>
   );
 }
