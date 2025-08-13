@@ -46,9 +46,9 @@ export function useCourses(
         pagination: apiResponse.pagination,
       };
     },
-    staleTime: 10 * 1000, // Very short stale time for real-time feel
+    staleTime: 3 * 60 * 1000, // 3 minutes - longer stale time to avoid interrupting user actions
     refetchOnWindowFocus: true, // Enable refetch on window focus
-    refetchInterval: 15 * 1000, // Auto-refresh every 15 seconds for real-time updates
+    // refetchInterval: 15 * 1000, // Disabled auto-refresh to prevent interrupting user work
     refetchIntervalInBackground: false, // Don't refresh when tab is not active
     retry: 1,
   });
@@ -128,8 +128,8 @@ export function useCourse(courseId: string) {
       return mapCourseApiToUi(await coursesService.getCourseById(courseId));
     },
     enabled: !!courseId,
-    staleTime: 10 * 1000, // 10 seconds
-    refetchInterval: 15 * 1000, // Poll every 15 seconds
+    staleTime: 5 * 60 * 1000, // 5 minutes - longer stale time to avoid interrupting user actions
+    // refetchInterval: 15 * 1000, // Disabled auto-refresh to prevent interrupting user work
     refetchOnWindowFocus: true,
   });
 
