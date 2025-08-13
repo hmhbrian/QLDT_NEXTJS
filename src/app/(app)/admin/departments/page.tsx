@@ -498,7 +498,7 @@ export default function DepartmentsPage() {
                 <div className="flex h-60 w-full items-center justify-center">
                   <Loader2 className="h-10 w-10 animate-spin text-primary" />
                   <p className="ml-3 text-muted-foreground">
-                    Đang tải danh sách phòng ban...
+                    Đang tải...
                   </p>
                 </div>
               ) : (
