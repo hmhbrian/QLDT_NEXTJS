@@ -312,12 +312,12 @@ export default function CoursesPage() {
 
       {viewMode === "card" ? (
         <>
-          {(isFetching || isRefetching) && !isFetchingCourses && (
+          {/* {(isFetching || isRefetching) && !isFetchingCourses && (
             <div className="flex items-center justify-center py-2 text-sm text-muted-foreground">
               <div className="animate-spin h-4 w-4 border-2 border-primary border-t-transparent rounded-full mr-2"></div>
               Đang tải...
             </div>
-          )}
+          )} */}
           {isFetchingCourses && filteredCourses.length === 0 ? (
             <div className="grid gap-6 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {Array.from({ length: pagination.pageSize }).map((_, index) => (
