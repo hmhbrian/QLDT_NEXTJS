@@ -44,10 +44,12 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loadingAuth, setLoadingAuth] = useState(true);
+  const [authAttempts, setAuthAttempts] = useState(0);
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { navigateInstant } = useInstantNavigation();
   const pathname = usePathname();
+  const maxAuthAttempts = 3;
 
   const logout = useCallback(() => {
     // Clear auth service state
@@ -124,6 +126,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       setUser(mappedUser);
     } catch (error: any) {
+      setAuthAttempts((prev) => prev + 1);
+
       // Clear all auth data
       setUser(null);
       cookieManager.removeSecureAuth();
@@ -133,7 +137,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // ALWAYS set loading to false regardless of success or failure
       setLoadingAuth(false);
     }
-  }, []);
+  }, [authAttempts, maxAuthAttempts]);
 
   useEffect(() => {
     initializeAuth();
