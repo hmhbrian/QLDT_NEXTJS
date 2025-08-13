@@ -133,7 +133,7 @@ export interface UserApiResponse {
   startWork?: string;
   endWork?: string;
   createdAt?: string;
-  modifedAt?: string; // Typo from backend DTO
+  modifiedAt?: string; // Typo from backend DTO
   accessToken?: string;
   department?: UserDepartmentInfo | null;
 }

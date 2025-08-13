@@ -1,7 +1,14 @@
 "use client";
 
 import { ColumnDef } from "@tanstack/react-table";
-import { ArrowUpDown, MoreHorizontal, Pencil, Copy, Trash2, Eye } from "lucide-react";
+import {
+  ArrowUpDown,
+  MoreHorizontal,
+  Pencil,
+  Copy,
+  Trash2,
+  Eye,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -36,7 +43,9 @@ type AdminActions = {
 type UserActions = {
   currentUserId: string | undefined;
   handleEnroll: (courseId: string) => void;
+  handleCancelEnroll?: (courseId: string) => void;
   isEnrolling: (courseId: string) => boolean;
+  isCancellingEnroll?: (courseId: string) => boolean;
   isCourseAccessible: (course: Course) => boolean;
   enrolledCourses: Course[];
   currentUserRole?: string;
@@ -236,13 +245,13 @@ const sharedInfoColumns = (
     },
   },
   {
-    accessorKey: "isPublic",
+    accessorKey: "isPrivate",
     header: "Công khai",
     cell: ({ row }) => {
-      const isPublic = row.original.isPublic;
+      const isPrivate = row.original.isPrivate;
       return (
-        <Badge variant={isPublic ? "default" : "outline"}>
-          {isPublic ? "Công khai" : "Nội bộ"}
+        <Badge variant={isPrivate ? "outline" : "default"}>
+          {isPrivate ? "Nội bộ" : "Công khai"}
         </Badge>
       );
     },
@@ -381,13 +390,25 @@ const userActionsColumn = (
     }
     if (isEnrolled) {
       return (
-        <Button
-          variant="default"
-          size="sm"
-          onClick={() => handleViewDetails(course.id)}
-        >
-          <Eye className="mr-2 h-4 w-4" /> Vào học
-        </Button>
+        <div className="flex flex-col gap-1">
+          <Button
+            variant="default"
+            size="sm"
+            onClick={() => handleViewDetails(course.id)}
+          >
+            <Eye className="mr-2 h-4 w-4" /> Vào học
+          </Button>
+          {registrationOpen && actions.handleCancelEnroll && (
+            <LoadingButton
+              variant="outline"
+              size="sm"
+              onClick={() => actions.handleCancelEnroll!(course.id)}
+              isLoading={actions.isCancellingEnroll?.(course.id) || false}
+            >
+              Hủy ĐK
+            </LoadingButton>
+          )}
+        </div>
       );
     }
     if (

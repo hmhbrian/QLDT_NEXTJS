@@ -193,7 +193,6 @@ const filteredTrainees = useMemo(() => {
         departmentId: formData.department?.departmentId,
         roleId: hocvienRole.id,
       };
-      console.log("Updating user with payload:", updatePayload);
       await updateTraineeMutation.mutateAsync({
         id: editingTrainee.id,
         payload: updatePayload,

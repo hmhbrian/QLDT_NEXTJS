@@ -55,7 +55,8 @@ import {
   UserCircle2,
   Eye,
   RefreshCw,
-  Timer, // Added Timer import
+  Timer,
+  XCircle, // Added Timer import
 } from "lucide-react";
 import {
   Tooltip,
@@ -79,8 +80,10 @@ import { getCategoryLabel, isRegistrationOpen } from "@/lib/helpers";
 import {
   useCourse,
   useEnrollCourse,
+  useCancelEnrollCourse,
   useEnrolledCourses,
   useCompletedLessonsCount, // Import the new hook
+  useIsCourseCompleted,
 } from "@/hooks/use-courses";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useTests, useHasSubmittedTest } from "@/hooks/use-tests";
@@ -246,10 +249,16 @@ export default function CourseDetailPage() {
 
   const { user: currentUser } = useAuth();
   const enrollCourseMutation = useEnrollCourse();
+  const cancelEnrollMutation = useCancelEnrollCourse();
   const createFeedbackMutation = useCreateFeedback(courseIdFromParams);
 
   const { data: completedLessonsCount, isLoading: isLoadingCompletedLessons } =
     useCompletedLessonsCount(courseIdFromParams);
+
+  const {
+    isCompleted: isCourseCompleted,
+    progressPercentage: courseProgressPercentage,
+  } = useIsCourseCompleted(courseIdFromParams);
 
   const {
     debouncedUpsert,
@@ -365,13 +374,10 @@ export default function CourseDetailPage() {
 
   const hasSubmittedEvaluation = useMemo(() => {
     if (!currentUser) return false;
-    return (
-      feedbacks?.some(
-        (fb) =>
-          fb.userId === currentUser.id && fb.courseId === courseIdFromParams
-      ) ?? false
-    );
-  }, [feedbacks, currentUser, courseIdFromParams]);
+    // Since backend doesn't return userId/courseId, we check if any feedback exists
+    // for this course (assuming the endpoint only returns current user's feedback)
+    return Boolean(feedbacks && feedbacks.length > 0);
+  }, [feedbacks, currentUser]);
 
   const showRegisterGate = useMemo(
     () =>
@@ -447,10 +453,20 @@ export default function CourseDetailPage() {
     enrollCourseMutation.mutate(course.id);
   }, [course, currentUser, router, isEnrolled, enrollCourseMutation]);
 
+  const handleCancelEnroll = useCallback(() => {
+    if (!course || !currentUser) {
+      if (!currentUser) router.push("/login");
+      return;
+    }
+    if (!isEnrolled) return;
+    cancelEnrollMutation.mutate(course.id);
+  }, [course, currentUser, router, isEnrolled, cancelEnrollMutation]);
+
   const handleSubmitEvaluation = useCallback(() => {
     if (!currentUser || !course) return;
     createFeedbackMutation.mutate(evaluationFormData, {
       onSuccess: () => {
+        // Close dialog and reset form
         setIsEvaluationDialogOpen(false);
         setEvaluationFormData({
           q1_relevance: 0,
@@ -460,6 +476,26 @@ export default function CourseDetailPage() {
           q5_material: 0,
           comment: "",
         });
+        // Data refresh is automatically handled by useCreateFeedback hook
+      },
+      onError: (error) => {
+        const errorMessage = extractErrorMessage(error);
+        // Close dialog if user has already submitted evaluation
+        if (
+          errorMessage.includes("đã đánh giá") ||
+          errorMessage.includes("already")
+        ) {
+          setIsEvaluationDialogOpen(false);
+          setEvaluationFormData({
+            q1_relevance: 0,
+            q2_clarity: 0,
+            q3_structure: 0,
+            q4_duration: 0,
+            q5_material: 0,
+            comment: "",
+          });
+        }
+        // Other errors keep dialog open so user can see and try again
       },
     });
   }, [currentUser, course, evaluationFormData, createFeedbackMutation]);
@@ -622,16 +658,38 @@ export default function CourseDetailPage() {
             {currentUser?.role === "HOCVIEN" &&
               course.enrollmentType === "optional" &&
               isEnrolled && (
-                <Button
-                  variant="secondary"
-                  size="lg"
-                  className="w-full sm:w-auto"
-                  disabled
-                >
-                  <CheckCircle className="mr-2 h-5 w-5" /> Đã đăng ký
-                </Button>
+                <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                  <Button
+                    variant="secondary"
+                    size="lg"
+                    className="w-full sm:w-auto"
+                    disabled
+                  >
+                    <CheckCircle className="mr-2 h-5 w-5" /> Đã đăng ký
+                  </Button>
+                  {isRegistrationOpen(course.registrationDeadline) && (
+                    <Button
+                      onClick={handleCancelEnroll}
+                      disabled={cancelEnrollMutation.isPending}
+                      variant="outline"
+                      size="lg"
+                      className="w-full sm:w-auto"
+                    >
+                      {cancelEnrollMutation.isPending ? (
+                        <>
+                          <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Đang
+                          hủy...
+                        </>
+                      ) : (
+                        <>
+                          <XCircle className="mr-2 h-5 w-5" /> Hủy đăng ký
+                        </>
+                      )}
+                    </Button>
+                  )}
+                </div>
               )}
-            {currentUser?.role === "HOCVIEN" && (
+            {currentUser?.role === "HOCVIEN" && isCourseCompleted && (
               <Button
                 onClick={() => setIsEvaluationDialogOpen(true)}
                 disabled={hasSubmittedEvaluation}
@@ -655,6 +713,32 @@ export default function CourseDetailPage() {
                 {hasSubmittedEvaluation ? "Đã đánh giá" : "Đánh giá khóa học"}
               </Button>
             )}
+            {currentUser?.role === "HOCVIEN" &&
+              isEnrolled &&
+              !isCourseCompleted && (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="lg"
+                        className="w-full sm:w-auto opacity-50 cursor-not-allowed"
+                        disabled
+                      >
+                        <Star className="mr-2 h-5 w-5 text-gray-400" />
+                        Đánh giá khóa học
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Bạn cần hoàn thành khóa học để đánh giá</p>
+                      <p className="text-xs">
+                        Tiến độ hiện tại: {Math.round(courseProgressPercentage)}
+                        %
+                      </p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
           </div>
         </div>
 
@@ -672,8 +756,9 @@ export default function CourseDetailPage() {
               </div>
               {course.startDate && course.endDate && (
                 <p className="text-xs text-muted-foreground">
-                  Bắt đầu: {new Date(course.startDate).toLocaleDateString("vi-VN")} 
-                  – Kết thúc: {new Date(course.endDate).toLocaleDateString("vi-VN")}
+                  Bắt đầu:{" "}
+                  {new Date(course.startDate).toLocaleDateString("vi-VN")}– Kết
+                  thúc: {new Date(course.endDate).toLocaleDateString("vi-VN")}
                 </p>
               )}
             </CardContent>
@@ -752,9 +837,10 @@ export default function CourseDetailPage() {
             <TabsTrigger value="tests" disabled={!canViewContent}>
               Bài kiểm tra
             </TabsTrigger>
-            {((course as any).requirements && String((course as any).requirements).trim().length > 0) && (
-              <TabsTrigger value="requirements">Yêu cầu</TabsTrigger>
-            )}
+            {(course as any).requirements &&
+              String((course as any).requirements).trim().length > 0 && (
+                <TabsTrigger value="requirements">Yêu cầu</TabsTrigger>
+              )}
             <TabsTrigger value="materials">Tài liệu</TabsTrigger>
             {(currentUser?.role === "ADMIN" || currentUser?.role === "HR") && (
               <TabsTrigger value="activity-logs">Nhật ký hoạt động</TabsTrigger>
@@ -1063,8 +1149,7 @@ export default function CourseDetailPage() {
                     </h3>
                     <p className="text-muted-foreground max-w-md">
                       Khóa học này chưa có bài học nào được thêm. Vui lòng quay
-                  lại sau hoặc liên hệ hỗ trợ để biết thêm thông
-                      tin.
+                      lại sau hoặc liên hệ hỗ trợ để biết thêm thông tin.
                     </p>
                   </div>
                 )}
@@ -1115,26 +1200,28 @@ export default function CourseDetailPage() {
             </Card>
           </TabsContent>
 
-          {((course as any).requirements && String((course as any).requirements).trim().length > 0) && (
-            <TabsContent value="requirements">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center">
-                    <ListChecks className="mr-2 h-5 w-5" />
-                    Yêu cầu tiên quyết
-                  </CardTitle>
-                  <CardDescription>
-                    Những kiến thức và kỹ năng cần có trước khi tham gia khóa học.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-muted-foreground">
-                    {String((course as any).requirements)}
-                  </p>
-                </CardContent>
-              </Card>
-            </TabsContent>
-          )}
+          {(course as any).requirements &&
+            String((course as any).requirements).trim().length > 0 && (
+              <TabsContent value="requirements">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center">
+                      <ListChecks className="mr-2 h-5 w-5" />
+                      Yêu cầu tiên quyết
+                    </CardTitle>
+                    <CardDescription>
+                      Những kiến thức và kỹ năng cần có trước khi tham gia khóa
+                      học.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-muted-foreground">
+                      {String((course as any).requirements)}
+                    </p>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            )}
 
           <TabsContent value="materials">
             <Card>
@@ -1248,7 +1335,7 @@ export default function CourseDetailPage() {
                             )}
                           </div>
                           <StarRatingDisplay
-                            rating={fb.averageRating}
+                            rating={fb.averageScore}
                             size={4}
                             className="my-2"
                           />

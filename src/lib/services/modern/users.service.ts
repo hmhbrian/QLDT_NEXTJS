@@ -109,6 +109,15 @@ export class UsersService extends BaseService<
     const url = API_CONFIG.endpoints.users.resetPassword(userId);
     await this.patch<void>(url, payload);
   }
+
+  async getManagersForDepartments(): Promise<
+    Array<{ id: string; name: string; email: string }>
+  > {
+    const response = await this.get<
+      Array<{ id: string; name: string; email: string }>
+    >(API_CONFIG.endpoints.users.managerDept);
+    return response || [];
+  }
 }
 
 export const usersService = new UsersService();

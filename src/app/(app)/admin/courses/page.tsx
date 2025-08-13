@@ -223,7 +223,7 @@ export default function CoursesPage() {
 
   const handleDeleteCourse = async () => {
     if (!canManageCourses || !deletingCourse) return;
-    deleteCourseMutation.mutate([deletingCourse.id], {
+    deleteCourseMutation.mutate(deletingCourse.id, {
       onSuccess: () => setDeletingCourse(null),
     });
   };
@@ -281,17 +281,17 @@ export default function CoursesPage() {
 
   return (
     <>
-      <Card className="border-0 shadow-lg bg-gradient-to-br from-white to-orange-50/30">
+        <Card className="border-0 shadow-lg bg-card">
         <CardHeader className="border-b p-6">
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
             <div className="space-y-1">
-              <CardTitle className="text-2xl font-bold text-gray-800 flex items-center gap-3">
-                <div className="p-2 bg-orange-500 rounded-lg text-white">
+              <CardTitle className="text-2xl font-bold text-foreground flex items-center gap-3">
+                <div className="p-2 bg-primary rounded-lg text-white">
                   <LayoutGrid className="h-6 w-6" />
                 </div>
                 Quản lý Khóa học
               </CardTitle>
-              <CardDescription className="text-gray-600 text-base">
+              <CardDescription className="text-muted-foreground text-base">
                 Tạo, chỉnh sửa và quản lý tất cả khóa học nội bộ một cách chuyên
                 nghiệp.
               </CardDescription>
@@ -344,7 +344,7 @@ export default function CoursesPage() {
                   onChange={(e) =>
                     handleFilterChange("keyword", e.target.value)
                   }
-                  className="pl-12 bg-white shadow-sm text-gray-700 placeholder:text-gray-500"
+                  className="pl-12"
                 />
               </div>
               <Select
@@ -457,7 +457,7 @@ export default function CoursesPage() {
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                className="bg-white/30 hover:bg-white/50 text-black"
+                                className="bg-white/30 dark:bg-black/30 hover:bg-white/40 dark:hover:bg-black/40 text-black dark:text-white"
                                 onClick={(e) => e.stopPropagation()}
                               >
                                 <MoreHorizontal className="h-4 w-4" />
@@ -530,10 +530,10 @@ export default function CoursesPage() {
                             : "Không có"}
                         </Badge>
                         <Badge
-                          variant={course.isPublic ? "default" : "outline"}
+                          variant={course.isPrivate ? "outline" : "default"}
                           className="whitespace-nowrap"
                         >
-                          {course.isPublic ? "Công khai" : "Nội bộ"}
+                          {course.isPrivate ? "Nội bộ" : "Công khai" }
                         </Badge>
                       </div>
                       <p

@@ -21,7 +21,10 @@ import { useAuth } from "./useAuth";
 import { useToast } from "@/components/ui/use-toast";
 import { extractErrorMessage } from "@/lib/core";
 import { API_CONFIG } from "@/lib/config";
-import { buildPaginationParams, normalizePaginationMeta } from "@/lib/utils/pagination";
+import {
+  buildPaginationParams,
+  normalizePaginationMeta,
+} from "@/lib/utils/pagination";
 
 export const COURSES_QUERY_KEY = "courses";
 export const ENROLLED_COURSES_QUERY_KEY = "enrolledCourses";
@@ -31,52 +34,75 @@ export function useCourses(
 ) {
   const queryKey = [COURSES_QUERY_KEY, "list", params];
 
-  const { data, isLoading, error } = useQuery<PaginatedResponse<Course>, Error>(
-    {
-      queryKey,
-      queryFn: async ({ signal }) => {
-        console.log(`♻️ [useCourses] Refetching courses with params:`, params);
-        const apiResponse = await coursesService.getCourses(params);
-        return {
-          items: (apiResponse.items || []).map(mapCourseApiToUi),
-          pagination: apiResponse.pagination,
-        };
-      },
-      staleTime: 60 * 1000,
-      refetchOnWindowFocus: false,
-      retry: 1,
-    }
-  );
+  const { data, isLoading, error, isFetching, isRefetching } = useQuery<
+    PaginatedResponse<Course>,
+    Error
+  >({
+    queryKey,
+    queryFn: async ({ signal }) => {
+      const apiResponse = await coursesService.getCourses(params);
+      return {
+        items: (apiResponse.items || []).map(mapCourseApiToUi),
+        pagination: apiResponse.pagination,
+      };
+    },
+    staleTime: 10 * 1000, // Very short stale time for real-time feel
+    refetchOnWindowFocus: true, // Enable refetch on window focus
+    refetchInterval: 15 * 1000, // Auto-refresh every 15 seconds for real-time updates
+    refetchIntervalInBackground: false, // Don't refresh when tab is not active
+    retry: 1,
+  });
 
   return {
     courses: data?.items ?? [],
     paginationInfo: data?.pagination,
     isLoading,
+    isFetching,
+    isRefetching,
     error,
   };
 }
 
-export function useEnrolledCourses(enabled: boolean = true, page: number = 1, limit: number = 9) {
+export function useEnrolledCourses(
+  enabled: boolean = true,
+  page: number = 1,
+  limit: number = 10
+) {
   const { user } = useAuth();
   const queryKey = [ENROLLED_COURSES_QUERY_KEY, user?.id, page, limit];
 
-  const { data, isLoading, error } = useQuery<{ courses: Course[]; pagination: { totalItems: number; itemsPerPage: number; currentPage: number; totalPages: number } }, Error>({
+  const { data, isLoading, error } = useQuery<
+    {
+      courses: Course[];
+      pagination: {
+        totalItems: number;
+        itemsPerPage: number;
+        currentPage: number;
+        totalPages: number;
+      };
+    },
+    Error
+  >({
     queryKey,
     queryFn: async ({ signal }) => {
-      console.log(
-        `♻️ [useEnrolledCourses] Refetching enrolled courses for user: ${user?.id}`
-      );
       const enrolledResponse = await coursesService.getEnrolledCourses(
-        buildPaginationParams({ page, pageSize: limit }, { pageKey: "Page", sizeKey: "Limit" })
+        buildPaginationParams(
+          { page, pageSize: limit },
+          { pageKey: "Page", sizeKey: "Limit" }
+        )
       );
       return {
-        courses: (enrolledResponse.items || []).map(mapUserEnrollCourseDtoToCourse),
+        courses: (enrolledResponse.items || []).map(
+          mapUserEnrollCourseDtoToCourse
+        ),
         pagination: normalizePaginationMeta(enrolledResponse.pagination, {}),
       };
     },
     enabled: enabled && !!user,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 10 * 1000, // Very short stale time for real-time feel
     refetchOnWindowFocus: true,
+    refetchInterval: 15 * 1000, // Auto-refresh every 15 seconds for real-time updates
+    refetchIntervalInBackground: false, // Don't refresh when tab is not active
   });
 
   return {
@@ -90,7 +116,10 @@ export function useEnrolledCourses(enabled: boolean = true, page: number = 1, li
 export function useCourse(courseId: string) {
   const queryKey = [COURSES_QUERY_KEY, "detail", courseId];
 
-  const { data, isLoading, error } = useQuery<Course, Error>({
+  const { data, isLoading, isFetching, isRefetching, error } = useQuery<
+    Course,
+    Error
+  >({
     queryKey,
     queryFn: async () => {
       console.log(
@@ -99,11 +128,12 @@ export function useCourse(courseId: string) {
       return mapCourseApiToUi(await coursesService.getCourseById(courseId));
     },
     enabled: !!courseId,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 10 * 1000, // 10 seconds
+    refetchInterval: 15 * 1000, // Poll every 15 seconds
     refetchOnWindowFocus: true,
   });
 
-  return { course: data, isLoading, error };
+  return { course: data, isLoading, isFetching, isRefetching, error };
 }
 
 export function useCreateCourse() {
@@ -112,14 +142,9 @@ export function useCreateCourse() {
 
   return useMutation<CourseApiResponse, Error, CreateCourseRequest>({
     mutationFn: (courseData) => {
-      console.log(
-        "▶️ [useCreateCourse] Mutation started with payload:",
-        courseData
-      );
       return coursesService.createCourse(courseData);
     },
     onSuccess: (data, variables) => {
-      console.log("✅ [useCreateCourse] Mutation successful:", data);
       const displayName = data?.name || variables?.Name || "khóa học";
       toast({
         title: "Thành công",
@@ -136,9 +161,6 @@ export function useCreateCourse() {
       });
     },
     onSettled: () => {
-      console.log(`🔄 [useCreateCourse] Invalidating queries with key:`, [
-        COURSES_QUERY_KEY,
-      ]);
       queryClient.invalidateQueries({ queryKey: [COURSES_QUERY_KEY] });
     },
   });
@@ -158,18 +180,14 @@ export function useUpdateCourse() {
     }
   >({
     mutationFn: ({ courseId, payload }) => {
-      console.log(
-        `▶️ [useUpdateCourse] Mutation started for course ${courseId} with payload:`,
-        payload
-      );
       return coursesService.updateCourse(courseId, payload);
     },
     onSuccess: (data, variables) => {
-      console.log("✅ [useUpdateCourse] Mutation successful:", data);
       toast({
         title: "Thành công",
-        description: `Đã cập nhật khóa học "${variables.payload.Name || "khóa học"
-          }" thành công.`,
+        description: `Đã cập nhật khóa học "${
+          variables.payload.Name || "khóa học"
+        }" thành công.`,
         variant: "success",
       });
     },
@@ -202,12 +220,12 @@ export function useDeleteCourse() {
   return useMutation<
     void,
     Error,
-    string[],
+    string,
     { previousCourses?: PaginatedResponse<Course> }
   >({
-    mutationFn: (ids) => {
-      console.log("▶️ [useDeleteCourse] Mutation started for IDs:", ids);
-      return coursesService.softDeleteCourses(ids);
+    mutationFn: (courseId) => {
+      console.log("▶️ [useDeleteCourse] Mutation started for ID:", courseId);
+      return coursesService.softDeleteCourse(courseId);
     },
     onSuccess: () => {
       console.log("✅ [useDeleteCourse] Mutation successful");
@@ -234,16 +252,66 @@ export function useDeleteCourse() {
   });
 }
 
+interface OptimisticContext {
+  previousEnrolledCourses: unknown;
+  previousCourses: unknown;
+}
+
 export function useEnrollCourse() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  return useMutation<any, Error, string>({
+  return useMutation<any, Error, string, OptimisticContext>({
     mutationFn: (courseId) => {
       console.log(
         `▶️ [useEnrollCourse] Mutation started for course ${courseId}`
       );
       return coursesService.enrollCourse(courseId);
+    },
+    // Optimistic update - update UI immediately
+    onMutate: async (courseId) => {
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({
+        queryKey: [ENROLLED_COURSES_QUERY_KEY],
+      });
+      await queryClient.cancelQueries({ queryKey: [COURSES_QUERY_KEY] });
+
+      // Snapshot the previous values
+      const previousEnrolledCourses = queryClient.getQueryData([
+        ENROLLED_COURSES_QUERY_KEY,
+      ]);
+      const previousCourses = queryClient.getQueryData([COURSES_QUERY_KEY]);
+
+      // Optimistically update enrolled courses
+      queryClient.setQueryData([ENROLLED_COURSES_QUERY_KEY], (old: any) => {
+        if (!old) return old;
+        // Find the course and add it to enrolled list
+        const coursesData = queryClient.getQueryData([
+          COURSES_QUERY_KEY,
+          "list",
+        ]);
+        if (
+          coursesData &&
+          typeof coursesData === "object" &&
+          "items" in coursesData
+        ) {
+          const course = (coursesData as any).items.find(
+            (c: any) => c.id === courseId
+          );
+          if (course) {
+            return {
+              ...old,
+              courses: [
+                ...(old.courses || []),
+                { ...course, progressPercentage: 0 },
+              ],
+            };
+          }
+        }
+        return old;
+      });
+
+      return { previousEnrolledCourses, previousCourses };
     },
     onSuccess: () => {
       console.log("✅ [useEnrollCourse] Mutation successful");
@@ -253,8 +321,20 @@ export function useEnrollCourse() {
         variant: "success",
       });
     },
-    onError: (error) => {
+    onError: (error, courseId, context) => {
       console.error("❌ [useEnrollCourse] Mutation failed:", error);
+
+      // Rollback optimistic updates
+      if (context?.previousEnrolledCourses) {
+        queryClient.setQueryData(
+          [ENROLLED_COURSES_QUERY_KEY],
+          context.previousEnrolledCourses
+        );
+      }
+      if (context?.previousCourses) {
+        queryClient.setQueryData([COURSES_QUERY_KEY], context.previousCourses);
+      }
+
       toast({
         title: "Lỗi",
         description: extractErrorMessage(error),
@@ -265,6 +345,82 @@ export function useEnrollCourse() {
       console.log(
         `🔄 [useEnrollCourse] Invalidating enrolled courses and all courses.`
       );
+      // Always refetch to ensure we have latest data
+      queryClient.invalidateQueries({ queryKey: [ENROLLED_COURSES_QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: [COURSES_QUERY_KEY] });
+    },
+  });
+}
+
+export function useCancelEnrollCourse() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation<any, Error, string, OptimisticContext>({
+    mutationFn: (courseId) => {
+      console.log(
+        `▶️ [useCancelEnrollCourse] Mutation started for course ${courseId}`
+      );
+      return coursesService.cancelEnrollCourse(courseId);
+    },
+    // Optimistic update - remove from enrolled courses immediately
+    onMutate: async (courseId) => {
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({
+        queryKey: [ENROLLED_COURSES_QUERY_KEY],
+      });
+      await queryClient.cancelQueries({ queryKey: [COURSES_QUERY_KEY] });
+
+      // Snapshot the previous values
+      const previousEnrolledCourses = queryClient.getQueryData([
+        ENROLLED_COURSES_QUERY_KEY,
+      ]);
+      const previousCourses = queryClient.getQueryData([COURSES_QUERY_KEY]);
+
+      // Optimistically remove from enrolled courses
+      queryClient.setQueryData([ENROLLED_COURSES_QUERY_KEY], (old: any) => {
+        if (!old || !old.courses) return old;
+        return {
+          ...old,
+          courses: old.courses.filter((course: any) => course.id !== courseId),
+        };
+      });
+
+      return { previousEnrolledCourses, previousCourses };
+    },
+    onSuccess: () => {
+      console.log("✅ [useCancelEnrollCourse] Mutation successful");
+      toast({
+        title: "Thành công",
+        description: "Đã hủy đăng ký khóa học thành công.",
+        variant: "success",
+      });
+    },
+    onError: (error, courseId, context) => {
+      console.error("❌ [useCancelEnrollCourse] Mutation failed:", error);
+
+      // Rollback optimistic updates
+      if (context?.previousEnrolledCourses) {
+        queryClient.setQueryData(
+          [ENROLLED_COURSES_QUERY_KEY],
+          context.previousEnrolledCourses
+        );
+      }
+      if (context?.previousCourses) {
+        queryClient.setQueryData([COURSES_QUERY_KEY], context.previousCourses);
+      }
+
+      toast({
+        title: "Lỗi",
+        description: extractErrorMessage(error),
+        variant: "destructive",
+      });
+    },
+    onSettled: () => {
+      console.log(
+        `🔄 [useCancelEnrollCourse] Invalidating enrolled courses and all courses.`
+      );
+      // Always refetch to ensure we have latest data
       queryClient.invalidateQueries({ queryKey: [ENROLLED_COURSES_QUERY_KEY] });
       queryClient.invalidateQueries({ queryKey: [COURSES_QUERY_KEY] });
     },
@@ -276,8 +432,9 @@ function getAbsoluteImageUrl(
   name?: string
 ): string {
   // Provide plain text; Next/Image will encode when proxying to /_next/image
-  const defaultImageUrl = `https://placehold.co/600x400/f97316/white?text=${name || "Course"
-    }`;
+  const defaultImageUrl = `https://placehold.co/600x400/f97316/white?text=${
+    name || "Course"
+  }`;
   if (!thumbUrl || thumbUrl.toLowerCase().includes("formfile"))
     return defaultImageUrl;
   if (thumbUrl.startsWith("http") || thumbUrl.startsWith("data:"))
@@ -332,6 +489,24 @@ export function useCourseProgressDetail(courseId: string, userId: string) {
   });
 }
 
+// Hook to check if current user has completed the course
+export function useIsCourseCompleted(courseId: string) {
+  const { user } = useAuth();
+  const { enrolledCourses, isLoadingEnrolled } = useEnrolledCourses(
+    !!user && user.role === "HOCVIEN"
+  );
+
+  const courseProgress = enrolledCourses.find(
+    (course) => course.id === courseId
+  );
+
+  return {
+    isCompleted: courseProgress?.progressPercentage >= 100,
+    progressPercentage: courseProgress?.progressPercentage || 0,
+    isLoading: isLoadingEnrolled,
+  };
+}
+
 export function useCompletedLessonsCount(courseId: string) {
   return useQuery<number, Error>({
     queryKey: ["completedLessonsCount", courseId],
@@ -343,14 +518,31 @@ export function useCompletedLessonsCount(courseId: string) {
     },
     enabled: !!courseId,
     staleTime: 5 * 60 * 1000,
-    refetchOnWindowFocus: true,
+    refetchOnWindowFocus: false,
   });
+}
+
+export interface CompletedCourse extends Course {
+  completedAt?: string;
+  score?: number;
 }
 
 export function useCompletedCoursesCount(page: number = 1, limit: number = 10) {
   const { user } = useAuth();
 
-  return useQuery<{ count: number; courses: Course[]; pagination: { totalItems: number; itemsPerPage: number; currentPage: number; totalPages: number } }, Error>({
+  return useQuery<
+    {
+      count: number;
+      courses: CompletedCourse[];
+      pagination: {
+        totalItems: number;
+        itemsPerPage: number;
+        currentPage: number;
+        totalPages: number;
+      };
+    },
+    Error
+  >({
     queryKey: ["completedCoursesCount", user?.id, page, limit],
     queryFn: async () => {
       console.log(
@@ -358,7 +550,10 @@ export function useCompletedCoursesCount(page: number = 1, limit: number = 10) {
       );
       const [coursesResponse, countResponse] = await Promise.all([
         coursesService.getCompletedCourses(
-          buildPaginationParams({ page, pageSize: limit }, { pageKey: "Page", sizeKey: "Limit" })
+          buildPaginationParams(
+            { page, pageSize: limit },
+            { pageKey: "Page", sizeKey: "Limit" }
+          )
         ),
         coursesService.getCompletedCoursesCount(),
       ]);
@@ -374,7 +569,7 @@ export function useCompletedCoursesCount(page: number = 1, limit: number = 10) {
         status: "completed",
         statusId: 4,
         enrollmentType: "optional" as const,
-        isPublic: true,
+        isPrivate: true,
         instructor: "",
         duration: { sessions: 0, hoursPerSession: 0 },
         learningType: "online" as const,
@@ -398,9 +593,13 @@ export function useCompletedCoursesCount(page: number = 1, limit: number = 10) {
         modifiedAt: "",
         createdBy: "",
         modifiedBy: null,
+        // Extended fields for completed courses - remove fake data
+        completedAt: undefined,
+        score: undefined,
       }));
 
-      const finalCount = countResponse ?? coursesResponse.pagination?.totalItems ?? 0;
+      const finalCount =
+        countResponse ?? coursesResponse.pagination?.totalItems ?? 0;
 
       const meta = normalizePaginationMeta(coursesResponse.pagination, {
         totalItemsKey: "totalItems",
@@ -413,6 +612,6 @@ export function useCompletedCoursesCount(page: number = 1, limit: number = 10) {
     },
     enabled: !!user && user.role === "HOCVIEN",
     staleTime: 5 * 60 * 1000,
-    refetchOnWindowFocus: true,
+    refetchOnWindowFocus: false,
   });
 }

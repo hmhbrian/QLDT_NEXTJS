@@ -107,7 +107,7 @@ export default function StudentCourseCatalog() {
       Page: pagination.pageIndex + 1,
       Limit: pagination.pageSize,
       // Only show public or courses user has access to
-      isPublic: true,
+      isPrivate: true,
     };
     if (debouncedFilters.keyword) {
       params.keyword = debouncedFilters.keyword;
@@ -157,7 +157,6 @@ export default function StudentCourseCatalog() {
 
   const handleEnrollCourse = (courseId: string) => {
     // In real app, this would make an API call to enroll
-    console.log("Enrolling in course:", courseId);
     router.push(`/courses/${courseId}`);
   };
 
@@ -398,7 +397,7 @@ export default function StudentCourseCatalog() {
 
                   <div className="flex flex-wrap gap-2">
                     <Badge variant="outline">
-                      {course.isPublic ? "Công khai" : "Nội bộ"}
+                      {course.isPrivate ? "Nội bộ" : "Công khai"}
                     </Badge>
                     {/* Mock level badge */}
                     <Badge variant="secondary">Trung cấp</Badge>
@@ -487,8 +486,8 @@ export default function StudentCourseCatalog() {
                 accessorKey: "isPublic",
                 header: "Loại",
                 cell: ({ row }) => (
-                  <Badge variant={row.original.isPublic ? "default" : "outline"}>
-                    {row.original.isPublic ? "Công khai" : "Nội bộ"}
+                  <Badge variant={row.original.isPrivate ? "outline" : "default"}>
+                    {row.original.isPrivate ? "Nội bộ" : "Công khai" }
                   </Badge>
                 ),
               },

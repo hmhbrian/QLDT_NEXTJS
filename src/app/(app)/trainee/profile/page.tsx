@@ -24,6 +24,7 @@ import {
   Calendar,
   TrendingUp,
   Upload,
+  CheckCircle,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -49,8 +50,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { getLevelBadgeColor, getStatusColor } from "@/lib/helpers";
 import { useCompletedCoursesCount } from "@/hooks/use-courses";
 import { CourseCard } from "@/components/courses/CourseCard";
-import { useCertificates } from "@/hooks/use-certificates";
-import { CertificatesList } from "@/components/certificates";
+import { CompletedCourseCard } from "@/components/courses/CompletedCourseCard";
+
 import { PaginationControls } from "@/components/ui/PaginationControls";
 
 export default function UserProfilePage() {
@@ -61,8 +62,6 @@ export default function UserProfilePage() {
   const [completedPageSize, setCompletedPageSize] = useState(10);
   const { data: completedCoursesData, isLoading: isLoadingCompletedCourses } =
     useCompletedCoursesCount(completedPageIndex + 1, completedPageSize);
-  const { data: certificates, isLoading: isLoadingCertificates } =
-    useCertificates();
 
   const [isEditing, setIsEditing] = useState(false);
 
@@ -242,8 +241,7 @@ export default function UserProfilePage() {
           <TabsTrigger value="overview">Tổng quan</TabsTrigger>
           {user.role === "HOCVIEN" && (
             <>
-              <TabsTrigger value="courses">Khóa học</TabsTrigger>
-              <TabsTrigger value="certificates">Chứng chỉ</TabsTrigger>
+              <TabsTrigger value="courses-certificates">Khóa học hoàn thành</TabsTrigger>
               <TabsTrigger value="evaluations">Đánh giá</TabsTrigger>
             </>
           )}
@@ -387,110 +385,118 @@ export default function UserProfilePage() {
         </TabsContent>
 
         {user.role === "HOCVIEN" && (
-          <TabsContent value="courses">
-            <Card className="shadow-xl border-2 border-primary/20">
-              <CardHeader className="pb-2 bg-gradient-to-r from-primary/5 to-transparent rounded-t-md border-b border-primary/10">
-                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                  <div className="mb-2 md:mb-0">
-                    <CardTitle className="text-2xl font-bold text-primary flex items-center gap-2">
-                      <Award className="h-7 w-7 text-primary" />
+          <TabsContent value="courses-certificates">
+            <Card className="border shadow-sm">
+              <CardHeader className="pb-4 border-b bg-gray-50/50">
+                <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                  <div>
+                    <CardTitle className="text-xl font-semibold text-gray-900 flex items-center gap-2">
+                      <Award className="h-6 w-6 text-primary" />
                       Khóa học đã hoàn thành
                     </CardTitle>
-                    <CardDescription className="mt-1 text-base text-muted-foreground">
-                      Danh sách các khóa học bạn đã hoàn thành cùng kết quả học
-                      tập
+                    <CardDescription className="mt-1 text-muted-foreground">
+                      Quản lý khóa học hoàn thành và tạo chứng chỉ xác nhận
                     </CardDescription>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-2xl font-bold text-primary">
-                      {completedCoursesData?.count || 0}
-                    </span>
-                    <span className="text-sm font-medium text-muted-foreground">
-                      Khóa học đã hoàn thành
-                    </span>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="pt-5">
-                {isLoadingCompletedCourses ? (
-                  <div className="flex justify-center items-center gap-2">
-                    <p className="text-muted-foreground">Đang tải...</p>
-                  </div>
-                ) : (completedCoursesData?.count || 0) === 0 ? (
-                  <div className="flex flex-col items-center justify-center min-h-[120px] gap-2">
-                    <Award className="h-10 w-10 text-muted-foreground mb-1" />
-                    <p className="text-muted-foreground text-sm text-center font-normal">
-                      Bạn chưa hoàn thành khóa học nào.
-                      <br />
-                      Hãy tham gia học tập để tích lũy kiến thức!
-                    </p>
-                  </div>
-                ) : (
-                  <>
-                    {/* <div className="mb-4">
-                      <p className="text-muted-foreground text-sm font-normal">
-                        🎉 Chúc mừng bạn đã hoàn thành <span className="font-semibold text-primary">{completedCoursesData?.count}</span> khóa học. Tiếp tục phát triển bản thân!
-                      </p>
-                    </div> */}
-                    <div className="w-full overflow-x-auto pb-2">
-                      {(() => {
-                        const allCourses = completedCoursesData?.courses || [];
-                        const totalItems = completedCoursesData?.pagination?.totalItems || allCourses.length;
-                        const totalPages = completedCoursesData?.pagination?.totalPages || Math.max(1, Math.ceil(totalItems / completedPageSize));
-                        const start = (completedCoursesData?.pagination?.currentPage ? (completedCoursesData.pagination.currentPage - 1) : completedPageIndex) * completedPageSize;
-                        const end = Math.min(start + completedPageSize, totalItems);
-                        const currentItems = allCourses;
-
-                        return (
-                          <>
-                            <div className="grid grid-cols-1 lg:grid-cols-1 gap-1 min-w-[320px]">
-                              {currentItems.map((course, idx) => (
-                                <CourseCard
-                                  key={course.id || `${completedPageIndex}-${idx}`}
-                                  course={course}
-                                />
-                              ))}
-                            </div>
-
-                            {/* Pagination controls - match DataTable style */}
-                            <PaginationControls
-                              page={completedPageIndex + 1}
-                              pageSize={completedPageSize}
-                              totalPages={totalPages}
-                              totalItems={totalItems}
-                              onPageChange={(p) => setCompletedPageIndex(p - 1)}
-                              onPageSizeChange={(s) => {
-                                setCompletedPageSize(s);
-                                setCompletedPageIndex(0);
-                              }}
-                            />
-                          </>
-                        );
-                      })()}
+                    <div className="flex items-center gap-3">
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-primary">
+                          {completedCoursesData?.count || 0}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          Khóa học
+                        </div>
+                      </div>
                     </div>
-                  </>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-        )}
+                  </div>
+                </CardHeader>
+                <CardContent className="p-6">
+                  {isLoadingCompletedCourses ? (
+                    <div className="flex justify-center items-center py-12">
+                      <div className="text-center space-y-2">
+                        <div className="inline-block w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+                        <p className="text-muted-foreground text-sm">Đang tải khóa học...</p>
+                      </div>
+                    </div>
+                  ) : (completedCoursesData?.count || 0) === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-12 text-center">
+                      <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                        <Award className="h-8 w-8 text-gray-400" />
+                      </div>
+                      <h3 className="text-lg font-medium text-gray-900 mb-2">Chưa có khóa học nào</h3>
+                      <p className="text-muted-foreground text-sm max-w-sm">
+                        Bạn chưa hoàn thành khóa học nào. Hãy tham gia học tập để tích lũy kiến thức và nhận chứng chỉ!
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {/* Success Message */}
+                      <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                        <div className="flex items-center gap-2">
+                          <CheckCircle className="h-5 w-5 text-green-600" />
+                          <p className="text-sm text-green-800">
+                            🎉 Chúc mừng! Bạn đã hoàn thành <span className="font-semibold">{completedCoursesData?.count}</span> khóa học. 
+                            Hãy tạo chứng chỉ để ghi nhận thành tích của mình.
+                          </p>
+                        </div>
+                      </div>
 
-        {user.role === "HOCVIEN" && (
-          <TabsContent value="certificates">
-            <Card>
-              <CardHeader>
-                <CardTitle>Chứng chỉ đã đạt được</CardTitle>
-                <CardDescription>
-                  Danh sách các chứng chỉ và thành tích học tập của bạn
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <CertificatesList
-                  certificates={certificates || []}
-                  isLoading={isLoadingCertificates}
-                />
-              </CardContent>
-            </Card>
+                      {/* Courses List */}
+                      <div className="space-y-4">
+                        {(() => {
+                          const allCourses = completedCoursesData?.courses || [];
+                          const totalItems = completedCoursesData?.pagination?.totalItems || allCourses.length;
+                          const totalPages = completedCoursesData?.pagination?.totalPages || Math.max(1, Math.ceil(totalItems / completedPageSize));
+                          const currentPage = completedCoursesData?.pagination?.currentPage || (completedPageIndex + 1);
+                          const itemsPerPage = completedCoursesData?.pagination?.itemsPerPage || completedPageSize;
+
+                          return (
+                            <>
+                              {/* Course items count info */}
+                              <div className="flex items-center justify-between text-sm text-muted-foreground mb-4">
+                                <span>
+                                  Hiển thị {allCourses.length} trên tổng {totalItems} khóa học
+                                </span>
+                                {totalPages > 1 && (
+                                  <span>
+                                    Trang {currentPage} / {totalPages}
+                                  </span>
+                                )}
+                              </div>
+
+                              <div className="space-y-3">
+                                {allCourses.map((course, idx) => (
+                                  <CompletedCourseCard
+                                    key={course.id || `${completedPageIndex}-${idx}`}
+                                    course={course}
+                                  />
+                                ))}
+                              </div>
+
+                              {/* Pagination - only show if more than 1 page */}
+                              {totalPages > 1 && (
+                                <div className="mt-6 border-t pt-4">
+                                  <PaginationControls
+                                    page={currentPage}
+                                    pageSize={itemsPerPage}
+                                    totalPages={totalPages}
+                                    totalItems={totalItems}
+                                    onPageChange={(p) => setCompletedPageIndex(p - 1)}
+                                    onPageSizeChange={(s) => {
+                                      setCompletedPageSize(s);
+                                      setCompletedPageIndex(0);
+                                    }}
+                                  />
+                                </div>
+                              )}
+                            </>
+                          );
+                        })()}
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
           </TabsContent>
         )}
 

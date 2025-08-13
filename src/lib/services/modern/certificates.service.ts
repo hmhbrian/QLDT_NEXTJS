@@ -62,6 +62,18 @@ export class CertificatesService extends BaseService<Certificate, any, any> {
     }
   }
 
+  async createCertificate(courseId: string): Promise<Certificate> {
+    try {
+      const endpoint = `${this.endpoint}/${courseId}`;
+      const data = await this.post<Certificate>(endpoint, {});
+      console.log(`Creating certificate for course ${courseId}:`, data);
+      return data;
+    } catch (error) {
+      console.error(`Error creating certificate for course ${courseId}:`, error);
+      throw this.handleError("POST", `${this.endpoint}/${courseId}`, error);
+    }
+  }
+
   async downloadCertificate(certificateUrl: string): Promise<void> {
     try {
       // Open certificate in new tab for download

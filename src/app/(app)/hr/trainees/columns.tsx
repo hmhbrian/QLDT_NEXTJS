@@ -108,7 +108,6 @@ export const getColumns = (
     header: "Phòng ban",
     cell: ({ row }) => {
       const department = row.original.department;
-      console.log("🔍 Department data:", department);
 
       if (!department) return "Không có";
 
@@ -132,7 +131,6 @@ export const getColumns = (
     header: "Cấp bậc",
     cell: ({ row }) => {
       const employeeLevel = row.original.employeeLevel;
-      console.log("🔍 EmployeeLevel data:", employeeLevel);
 
       if (!employeeLevel) return "Không có";
 

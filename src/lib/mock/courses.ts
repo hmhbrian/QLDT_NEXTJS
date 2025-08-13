@@ -141,7 +141,7 @@ export const mockCourses: Course[] = [
     registrationStartDate: "2024-07-15",
     registrationDeadline: "2024-07-25",
     userIds: ["3"],
-    isPublic: true,
+    isPrivate: true,
     maxParticipants: 25,
   },
   {
@@ -189,7 +189,7 @@ export const mockCourses: Course[] = [
     modifiedBy: "1",
     enrollmentType: "mandatory",
     userIds: ["3"],
-    isPublic: true,
+    isPrivate: true,
     registrationStartDate: null,
     registrationDeadline: null,
     maxParticipants: 50,
@@ -231,7 +231,7 @@ export const mockCourses: Course[] = [
     enrollmentType: "optional",
     registrationStartDate: "2024-09-01",
     registrationDeadline: "2024-09-20",
-    isPublic: false,
+    isPrivate: false,
     userIds: [],
     maxParticipants: 20,
   },
@@ -268,7 +268,7 @@ export const mockCourses: Course[] = [
     modifiedBy: "1",
     enrollmentType: "mandatory",
     userIds: [],
-    isPublic: true,
+    isPrivate: true,
     registrationStartDate: null,
     registrationDeadline: null,
     maxParticipants: 100,
@@ -310,7 +310,7 @@ export const mockCourses: Course[] = [
     enrollmentType: "optional",
     registrationStartDate: "2024-08-15",
     registrationDeadline: "2024-08-30",
-    isPublic: true,
+    isPrivate: true,
     userIds: ["3"],
     maxParticipants: 30,
   },
@@ -358,7 +358,7 @@ export const mockCourses: Course[] = [
     createdBy: "hr_user",
     modifiedBy: "hr_user",
     enrollmentType: "mandatory",
-    isPublic: false,
+    isPrivate: false,
     registrationStartDate: null,
     registrationDeadline: null,
     userIds: [],
@@ -430,7 +430,7 @@ export const mockCourseDetail: Course = {
   registrationStartDate: "2024-07-01",
   registrationDeadline: "2024-07-25",
   userIds: ["3"],
-  isPublic: true,
+  isPrivate: true,
 };
 
 // Mock My Courses for trainees
@@ -481,7 +481,7 @@ export interface PublicCourse {
 }
 
 export const mockPublicCourses: PublicCourse[] = mockCourses
-  .filter((course) => course.isPublic) // Filter for public courses
+  .filter((course) => course.isPrivate) // Filter for public courses
   .map((course) => ({
     id: course.id,
     title: course.title,
@@ -493,6 +493,6 @@ export const mockPublicCourses: PublicCourse[] = mockCourses
     dataAiHint: course.category?.categoryName || "Lập trình", // Ensure dataAiHint is a string
     enrollmentType: course.enrollmentType,
     registrationDeadline: course.registrationDeadline,
-    isPublic: course.isPublic,
+    isPrivate: course.isPrivate,
     userIds: course.userIds,
   }));

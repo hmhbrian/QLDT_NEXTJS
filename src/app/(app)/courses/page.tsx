@@ -33,6 +33,7 @@ import { isRegistrationOpen } from "@/lib/helpers";
 import {
   useCourses,
   useEnrollCourse,
+  useCancelEnrollCourse,
   useEnrolledCourses,
 } from "@/hooks/use-courses";
 import { useError } from "@/hooks/use-error";
@@ -73,13 +74,15 @@ export default function CoursesPage() {
 
   // Reset pagination to page 1 when search term changes
   useEffect(() => {
-    setPagination(prev => ({ ...prev, pageIndex: 0 }));
+    setPagination((prev) => ({ ...prev, pageIndex: 0 }));
   }, [debouncedSearchTerm]);
 
   const {
     courses: publicCourses,
     paginationInfo,
     isLoading: isFetchingCourses,
+    isFetching,
+    isRefetching,
     error: coursesError,
   } = useCourses({
     keyword: debouncedSearchTerm,
@@ -107,25 +110,22 @@ export default function CoursesPage() {
   const isInitialLoading = isLoading && !publicCourses.length;
 
   const enrollMutation = useEnrollCourse();
+  const cancelEnrollMutation = useCancelEnrollCourse();
 
   const filteredCourses = useMemo(() => {
     // Admin/HR hoặc chưa đăng nhập: giữ nguyên danh sách công khai
     if (!currentUser || currentUser.role !== "HOCVIEN") {
       return publicCourses;
     }
-    // Học viên: chỉ hiển thị các khóa có thể đăng ký
-    const enrolledCourseIds = new Set(enrolledCourses.map((c) => c.id));
+    // Học viên: hiển thị tất cả khóa học công khai
+    // Không lọc theo trạng thái đăng ký để học viên thấy được tất cả khóa học
     return publicCourses.filter((course) => {
-      const notEnrolled = !enrolledCourseIds.has(course.id);
-      const isOptional = course.enrollmentType === "optional" || course.enrollmentType === "mandatory";
-      const registrationOpen = isRegistrationOpen(course.registrationDeadline);
-      if (showExpired) {
-        // Hiển thị cả hết hạn để người dùng biết đã bỏ lỡ
-        return notEnrolled && isOptional;
-      }
-      return notEnrolled && isOptional && registrationOpen;
+      const isOptional =
+        course.enrollmentType === "optional" ||
+        course.enrollmentType === "mandatory";
+      return isOptional; // Hiển thị tất cả khóa học công khai
     });
-  }, [publicCourses, currentUser, enrolledCourses, showExpired]);
+  }, [publicCourses, currentUser]);
 
   const isCourseAccessible = useCallback(
     (course: Course): boolean => {
@@ -133,7 +133,7 @@ export default function CoursesPage() {
       if (currentUser.role === "ADMIN" || currentUser.role === "HR") {
         return true;
       }
-      if (course.isPublic) {
+      if (course.isPrivate) {
         return true;
       }
       // This check might need revision if `course.department` is just an array of IDs
@@ -160,6 +160,18 @@ export default function CoursesPage() {
     [currentUser, router, showError, enrollMutation]
   );
 
+  const handleCancelEnroll = useCallback(
+    (courseId: string) => {
+      if (!currentUser) {
+        showError("AUTH002");
+        router.push("/login");
+        return;
+      }
+      cancelEnrollMutation.mutate(courseId);
+    },
+    [currentUser, router, showError, cancelEnrollMutation]
+  );
+
   const columns = useMemo(
     () =>
       getUserCourseColumns(
@@ -172,6 +184,10 @@ export default function CoursesPage() {
           isCourseAccessible,
           enrolledCourses,
           currentUserRole: currentUser?.role,
+          handleCancelEnroll,
+          isCancellingEnroll: (id) =>
+            cancelEnrollMutation.isPending &&
+            cancelEnrollMutation.variables === id,
         },
         departments,
         EmployeeLevel
@@ -187,6 +203,9 @@ export default function CoursesPage() {
       enrolledCourses,
       departments,
       EmployeeLevel,
+      handleCancelEnroll,
+      cancelEnrollMutation.isPending,
+      cancelEnrollMutation.variables,
     ]
   );
 
@@ -258,6 +277,11 @@ export default function CoursesPage() {
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
+            {(isFetching || isRefetching) && (
+              <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                <div className="animate-spin h-4 w-4 border-2 border-primary border-t-transparent rounded-full"></div>
+              </div>
+            )}
           </div>
           {/* {currentUser?.role === "HOCVIEN" && (
             <div className="flex items-center gap-2 px-2">
@@ -288,6 +312,12 @@ export default function CoursesPage() {
 
       {viewMode === "card" ? (
         <>
+          {(isFetching || isRefetching) && !isFetchingCourses && (
+            <div className="flex items-center justify-center py-2 text-sm text-muted-foreground">
+              <div className="animate-spin h-4 w-4 border-2 border-primary border-t-transparent rounded-full mr-2"></div>
+              Đang tải...
+            </div>
+          )}
           {isFetchingCourses && filteredCourses.length === 0 ? (
             <div className="grid gap-6 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {Array.from({ length: pagination.pageSize }).map((_, index) => (
@@ -429,16 +459,38 @@ export default function CoursesPage() {
                             : "Đăng ký"}
                         </LoadingButton>
                       ) : isEnrolled ? (
-                        <Button
-                          variant="default"
-                          className="w-full"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            router.push(`/courses/${course.id}`);
-                          }}
-                        >
-                          <Eye className="mr-2 h-4 w-4" /> Vào học
-                        </Button>
+                        <div className="w-full space-y-2">
+                          <Button
+                            variant="default"
+                            className="w-full"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              router.push(`/courses/${course.id}`);
+                            }}
+                          >
+                            <Eye className="mr-2 h-4 w-4" /> Vào học
+                          </Button>
+                          {registrationOpen && (
+                            <LoadingButton
+                              variant="outline"
+                              className="w-full"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleCancelEnroll(course.id);
+                              }}
+                              isLoading={
+                                cancelEnrollMutation.isPending &&
+                                cancelEnrollMutation.variables === course.id
+                              }
+                              disabled={cancelEnrollMutation.isPending}
+                            >
+                              {cancelEnrollMutation.isPending &&
+                              cancelEnrollMutation.variables === course.id
+                                ? "Đang hủy..."
+                                : "Hủy đăng ký"}
+                            </LoadingButton>
+                          )}
+                        </div>
                       ) : currentUser?.role === "HOCVIEN" &&
                         course.enrollmentType === "optional" &&
                         !registrationOpen ? (
@@ -518,14 +570,22 @@ export default function CoursesPage() {
           />
         </>
       ) : (
-        <DataTable
-          columns={columns}
-          data={filteredCourses}
-          isLoading={isFetchingCourses}
-          pageCount={pageCount}
-          pagination={pagination}
-          onPaginationChange={setPagination}
-        />
+        <>
+          {(isFetching || isRefetching) && !isFetchingCourses && (
+            <div className="flex items-center justify-center py-2 text-sm text-muted-foreground">
+              <div className="animate-spin h-4 w-4 border-2 border-primary border-t-transparent rounded-full mr-2"></div>
+              Đang cập nhật dữ liệu...
+            </div>
+          )}
+          <DataTable
+            columns={columns}
+            data={filteredCourses}
+            isLoading={isFetchingCourses}
+            pageCount={pageCount}
+            pagination={pagination}
+            onPaginationChange={setPagination}
+          />
+        </>
       )}
     </div>
   );

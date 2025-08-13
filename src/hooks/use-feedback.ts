@@ -62,6 +62,11 @@ export function useCreateFeedback(courseId: string) {
         errorMessage.includes("đã đánh giá") ||
         errorMessage.includes("already")
       ) {
+        // Refresh data to update UI state immediately
+        queryClient.invalidateQueries({
+          queryKey: [FEEDBACK_QUERY_KEY, courseId],
+        });
+
         toast({
           title: "Thông báo",
           description: "Bạn đã đánh giá khóa học này rồi.",

@@ -1,12 +1,13 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   certificatesService,
   Certificate,
 } from "@/lib/services/modern/certificates.service";
 import { useAuth } from "./useAuth";
 import { useError } from "./use-error";
+import { useToast } from "@/components/ui/use-toast";
 
 export const CERTIFICATES_QUERY_KEY = "certificates";
 
@@ -49,6 +50,30 @@ export function useCertificateByCourse(courseId: string) {
     staleTime: 10 * 60 * 1000,
     refetchOnWindowFocus: false,
     refetchOnMount: false,
+  });
+}
+
+export function useCreateCertificate() {
+  const { showError } = useError();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (courseId: string) => {
+      return await certificatesService.createCertificate(courseId);
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "Thành công",
+        description: "Chứng chỉ đã được tạo thành công!",
+        variant: "success",
+      });
+      // Invalidate certificates queries to refresh data
+      queryClient.invalidateQueries({ queryKey: [CERTIFICATES_QUERY_KEY] });
+    },
+    onError: (error) => {
+      showError(error);
+    },
   });
 }
 

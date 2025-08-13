@@ -43,8 +43,7 @@ import type {
   CreateDepartmentPayload,
   UpdateDepartmentPayload,
 } from "@/lib/types/department.types";
-import type { User, EmployeeLevel } from "@/lib/types/user.types";
-import { usersService, EmployeeLevelService } from "@/lib/services";
+import { useManagersForDepartments } from "@/hooks/use-users";
 import {
   useDepartments,
   useCreateDepartment,
@@ -74,20 +73,9 @@ export default function DepartmentsPage() {
   const updateDeptMutation = useUpdateDepartment();
   const deleteDeptMutation = useDeleteDepartment();
 
-  const { data: usersData = { items: [] }, isLoading: isUsersLoading } =
-    useQuery({
-      queryKey: ["users"],
-      queryFn: () => usersService.getUsersWithPagination(),
-      staleTime: 5 * 60 * 1000,
-    });
-  const users = usersData.items;
-
-  const { data: EmployeeLevel = [], isLoading: isEmployeeLevelLoading } =
-    useQuery<EmployeeLevel[], Error>({
-      queryKey: ["EmployeeLevel"],
-      queryFn: () => EmployeeLevelService.getEmployeeLevel(),
-      staleTime: 5 * 60 * 1000,
-    });
+  // Use new hook for managers suitable for departments
+  const { managers, isLoading: isLoadingManagers } =
+    useManagersForDepartments();
 
   const { userStatuses, isLoading: isStatusesLoading } = useUserStatuses();
 
@@ -115,55 +103,6 @@ export default function DepartmentsPage() {
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
-
-  const managers = useMemo(() => {
-    if (!users || !EmployeeLevel) {
-      return [];
-    }
-
-    // Tìm vị trí "Quản Lý Cấp Trung" (ID = 4) trở lên
-    const managerEmployeeLevel = EmployeeLevel.find(
-      (p) =>
-        p.eLevelId === 4 || // Quản Lý Cấp Trung
-        p.eLevelName?.toLowerCase().includes("quản lý cấp trung")
-    );
-
-    console.log("- managerEmployeeLevel found:", managerEmployeeLevel);
-
-    if (!managerEmployeeLevel) {
-      console.log(
-        "- No manager employeeLevel found, returning all active users"
-      );
-      // If no specific manager employeeLevel, return all active users
-      return users.filter((user) => user.userStatus?.name === "Đang làm việc");
-    }
-
-    const managerBaseLevelId = managerEmployeeLevel.eLevelId; // Should be 4
-    console.log("- managerBaseLevelId:", managerBaseLevelId);
-
-    const filteredManagers = users.filter((user) => {
-      const hasEmployeeLevel =
-        user.eLevel &&
-        typeof user.eLevel === "object" &&
-        user.eLevel.eLevelId !== null;
-      const isActive = user.userStatus?.name === "Đang làm việc"; // Fixed: changed from "Hoạt động" to "Đang làm việc"
-      const hasValidLevel =
-        hasEmployeeLevel && user.eLevel.eLevelId >= managerBaseLevelId; // >= 4 (Cấp trung trở lên)
-
-      console.log(
-        `- User ${user.fullName}: hasEmployeeLevel=${hasEmployeeLevel}, isActive=${isActive}, hasValidLevel=${hasValidLevel}, eLevelId=${user.eLevel?.eLevelId}, status="${user.userStatus?.name}"`
-      );
-
-      return hasEmployeeLevel && isActive && hasValidLevel;
-    });
-
-    console.log(
-      "- Final managers:",
-      filteredManagers?.length || 0,
-      filteredManagers
-    );
-    return filteredManagers;
-  }, [users, EmployeeLevel]);
 
   const validation = useMemo(
     () => validateDepartmentTree(departments),
@@ -226,7 +165,7 @@ export default function DepartmentsPage() {
     }
   }, [departments, selectedDepartment?.departmentId]);
 
-  if (isDepartmentsLoading || isUsersLoading || isEmployeeLevelLoading) {
+  if (isDepartmentsLoading || isLoadingManagers) {
     return (
       <div className="space-y-6">
         <div className="flex justify-between items-center">
@@ -267,14 +206,16 @@ export default function DepartmentsPage() {
           payload: payload as UpdateDepartmentPayload,
         });
       } else {
-        await createDeptMutation.mutateAsync(payload as CreateDepartmentPayload);
+        await createDeptMutation.mutateAsync(
+          payload as CreateDepartmentPayload
+        );
       }
       // Only close form on success
       setIsFormOpen(false);
       setEditingDepartment(null);
     } catch (error) {
       // Form stays open on error, let DepartmentFormDialog handle the error display
-      console.error('Failed to save department:', error);
+      console.error("Failed to save department:", error);
     }
   };
 
@@ -472,13 +413,13 @@ export default function DepartmentsPage() {
         </Alert>
       )}
 
-      <Card className="shadow-md border bg-white">
-        <CardHeader className="pb-4 border-b bg-white rounded-t-md">
+      <Card className="shadow-md border bg-card">
+        <CardHeader className="pb-4 border-b bg-card rounded-t-md">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div className="flex items-center gap-3 mb-2 md:mb-0">
               <Building2 className="h-8 w-8 text-primary" />
               <div>
-                <CardTitle className="text-2xl font-bold text-primary">
+                <CardTitle className="text-2xl font-bold text-foreground">
                   Quản lý Phòng ban
                 </CardTitle>
                 <CardDescription className="text-base text-muted-foreground mt-1">
@@ -576,7 +517,7 @@ export default function DepartmentsPage() {
         existingDepartments={departments}
         managers={managers}
         isLoading={createDeptMutation.isPending || updateDeptMutation.isPending}
-        isLoadingManagers={isUsersLoading || isEmployeeLevelLoading}
+        isLoadingManagers={isLoadingManagers}
         departmentStatuses={departmentStatuses || []}
       />
 

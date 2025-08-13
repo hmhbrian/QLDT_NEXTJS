@@ -370,7 +370,6 @@ export default function UsersPage() {
           startWork: newUser.startWork ? `${newUser.startWork}T00:00:00` : undefined,
           endWork: newUser.endWork ? `${newUser.endWork}T00:00:00` : undefined,
         };
-        console.log("Admin updating user with payload:", updatePayload);
 
         await updateUserMutation.mutateAsync({
           id: editingUser.id,

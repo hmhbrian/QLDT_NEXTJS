@@ -45,7 +45,8 @@ export function mapCourseApiToUi(apiCourse: CourseApiResponse): Course {
     statusId: apiCourse.status?.id,
     enrollmentType:
       apiCourse.optional === "Bắt buộc" ? "mandatory" : "optional",
-    isPublic: apiCourse.optional !== "Bắt buộc",
+    // Map trực tiếp isPrivate từ backend
+    isPrivate: apiCourse.isPrivate ?? false,
     instructor: "Không có",
     duration: {
       sessions: apiCourse.sessions || 0,
@@ -70,12 +71,24 @@ export function mapCourseApiToUi(apiCourse: CourseApiResponse): Course {
         eLevelId: Number(e.eLevelId),
         eLevelName: e.eLevelName,
       })),
-    category: apiCourse.category
-      ? {
-        id: apiCourse.category.id,
-        categoryName: apiCourse.category.name || "Không có",
+    category: (() => {
+      // Prefer nested category object
+      if (apiCourse.category && (apiCourse.category.id !== undefined || apiCourse.category.name)) {
+        return {
+          id: (apiCourse.category.id as number) ?? 0,
+          categoryName:
+            (apiCourse.category as any).categoryName ||
+            apiCourse.category.name ||
+            "Không có",
+        };
       }
-      : null,
+      // Fallbacks: some endpoints may return only a name string
+      const topLevelName = (apiCourse as any).categoryName || (apiCourse as any).category;
+      if (typeof topLevelName === "string" && topLevelName.trim()) {
+        return { id: 0, categoryName: topLevelName };
+      }
+      return null;
+    })(),
     // Legacy fields for backward compatibility
     department: (apiCourse.departments || apiCourse.DepartmentInfo || []).map(
       (d) => String(d.departmentId)
@@ -110,7 +123,7 @@ export function mapUserEnrollCourseDtoToCourse(
     location: dto.location || "",
     status: "Đang mở",
     enrollmentType: dto.optional === "Bắt buộc" ? "mandatory" : "optional",
-    isPublic: dto.optional !== "Bắt buộc",
+    isPrivate: (dto as any).isPrivate ?? false,
     instructor: "Không có",
     duration: {
       sessions: dto.sessions || 0,
@@ -146,6 +159,11 @@ export function mapUserEnrollCourseDtoToCourse(
 export function mapCourseUiToCreatePayload(
   course: Partial<Course>
 ): CreateCourseRequest {
+  const formatDateForCreate = (date: string | null | undefined): string | undefined => {
+    if (date == null) return ""; // send empty value when not provided
+    return toApiDateStartOfDay(date || undefined);
+  };
+
   const payload: CreateCourseRequest = {
     Code: course.courseCode || "",
     Name: course.title || "",
@@ -156,16 +174,15 @@ export function mapCourseUiToCreatePayload(
     HoursPerSessions: course.duration?.hoursPerSession,
     Optional: course.enrollmentType === "mandatory" ? "Bắt buộc" : "Tùy chọn",
     MaxParticipant: course.maxParticipants,
-    StartDate: toApiDateStartOfDay(course.startDate || undefined),
-    EndDate: toApiDateStartOfDay(course.endDate || undefined),
-    RegistrationStartDate: toApiDateStartOfDay(
-      course.registrationStartDate || undefined
-    ),
-    RegistrationClosingDate: toApiDateStartOfDay(
-      course.registrationDeadline || undefined
-    ),
+    StartDate: formatDateForCreate(course.startDate),
+    EndDate: formatDateForCreate(course.endDate),
+    RegistrationStartDate: formatDateForCreate(course.registrationStartDate),
+    RegistrationClosingDate: formatDateForCreate(course.registrationDeadline),
     Location: course.location,
     StatusId: course.statusId,
+    // Backend expects only IsPrivate; UI uses isPublic => invert
+    IsPrivate: course.isPrivate === undefined ? undefined : course.isPrivate,
+    CategoryId: course.category?.id,
     DepartmentIds: (course.department || [])
       .map((id) => {
         if (typeof id === "string") return parseInt(id, 10);
@@ -207,8 +224,12 @@ export function mapCourseUiToUpdatePayload(
     return true;
   };
 
-  const formatDate = (date: string | null): string | undefined =>
-    toApiDateStartOfDay(date || undefined);
+  // For update payload: when user clears a date, backend expects an empty value ("")
+  // Otherwise, send ISO string at start of day with Z
+  const formatDateForUpdate = (date: string | null | undefined): string | undefined => {
+    if (date === null) return "";
+    return toApiDateStartOfDay(date || undefined);
+  };
 
   if (isDifferent(course.title, originalCourse?.title))
     payload.Name = course.title;
@@ -227,6 +248,8 @@ export function mapCourseUiToUpdatePayload(
     payload.MaxParticipant = course.maxParticipants;
   if (isDifferent(course.statusId, originalCourse?.statusId))
     payload.StatusId = course.statusId;
+  if (isDifferent(course.isPrivate, originalCourse?.isPrivate))
+    payload.IsPrivate = course.isPrivate === undefined ? undefined : course.isPrivate;
 
   const newEnrollmentType =
     course.enrollmentType === "mandatory" ? "Bắt buộc" : "Tùy chọn";
@@ -242,23 +265,23 @@ export function mapCourseUiToUpdatePayload(
   }
 
   if (isDifferent(course.startDate, originalCourse?.startDate))
-    payload.StartDate = formatDate(course.startDate);
+    payload.StartDate = formatDateForUpdate(course.startDate);
   if (isDifferent(course.endDate, originalCourse?.endDate))
-    payload.EndDate = formatDate(course.endDate);
+    payload.EndDate = formatDateForUpdate(course.endDate);
   if (
     isDifferent(
       course.registrationStartDate,
       originalCourse?.registrationStartDate
     )
   )
-    payload.RegistrationStartDate = formatDate(course.registrationStartDate);
+    payload.RegistrationStartDate = formatDateForUpdate(course.registrationStartDate);
   if (
     isDifferent(
       course.registrationDeadline,
       originalCourse?.registrationDeadline
     )
   )
-    payload.RegistrationClosingDate = formatDate(course.registrationDeadline);
+    payload.RegistrationClosingDate = formatDateForUpdate(course.registrationDeadline);
 
   const newDepartmentIds = (course.department || []).map((id) =>
     parseInt(id, 10)

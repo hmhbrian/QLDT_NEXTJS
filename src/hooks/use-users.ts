@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { usersService } from "@/lib/services";
 import {
@@ -17,12 +16,10 @@ export const USERS_QUERY_KEY = "users";
 export function useUsers(params?: QueryParams) {
   const queryKey = [USERS_QUERY_KEY, "list", params];
 
-  const {
-    data,
-    isLoading,
-    error,
-    isError,
-  } = useQuery<PaginatedResponse<User>, Error>({
+  const { data, isLoading, error, isError } = useQuery<
+    PaginatedResponse<User>,
+    Error
+  >({
     queryKey,
     queryFn: async () => {
       console.log(`♻️ [useUsers] Refetching users with params:`, params);
@@ -52,8 +49,11 @@ export function useCreateUserMutation() {
 
   return useMutation<UserApiResponse, Error, CreateUserRequest>({
     mutationFn: (payload) => {
-      console.log("▶️ [useCreateUserMutation] Mutation started with payload:", payload);
-      return usersService.createUser(payload)
+      console.log(
+        "▶️ [useCreateUserMutation] Mutation started with payload:",
+        payload
+      );
+      return usersService.createUser(payload);
     },
     onSuccess: (data, variables) => {
       console.log("✅ [useCreateUserMutation] Mutation successful:", data);
@@ -73,7 +73,9 @@ export function useCreateUserMutation() {
       });
     },
     onSettled: () => {
-      console.log(`🔄 [useCreateUserMutation] Invalidating queries with key:`, [USERS_QUERY_KEY]);
+      console.log(`🔄 [useCreateUserMutation] Invalidating queries with key:`, [
+        USERS_QUERY_KEY,
+      ]);
       queryClient.invalidateQueries({ queryKey: [USERS_QUERY_KEY] });
     },
   });
@@ -90,12 +92,16 @@ export function useUpdateUserMutation() {
     { previousUsers?: PaginatedResponse<User> }
   >({
     mutationFn: ({ id, payload }) => {
-      console.log(`▶️ [useUpdateUserMutation] Mutation started for user ${id} with payload:`, payload);
-      return usersService.updateUserByAdmin(id, payload)
+      console.log(
+        `▶️ [useUpdateUserMutation] Mutation started for user ${id} with payload:`,
+        payload
+      );
+      return usersService.updateUserByAdmin(id, payload);
     },
     onSuccess: (data, variables) => {
       console.log("✅ [useUpdateUserMutation] Mutation successful");
-      const displayName = variables.payload.fullName || data?.fullName || "người dùng";
+      const displayName =
+        variables.payload.fullName || data?.fullName || "người dùng";
       toast({
         title: "Thành công",
         description: `Đã cập nhật người dùng "${displayName}" thành công.`,
@@ -117,7 +123,9 @@ export function useUpdateUserMutation() {
       });
     },
     onSettled: () => {
-      console.log(`🔄 [useUpdateUserMutation] Invalidating queries with key:`, [USERS_QUERY_KEY]);
+      console.log(`🔄 [useUpdateUserMutation] Invalidating queries with key:`, [
+        USERS_QUERY_KEY,
+      ]);
       queryClient.invalidateQueries({ queryKey: [USERS_QUERY_KEY] });
     },
   });
@@ -134,8 +142,11 @@ export function useDeleteUserMutation() {
     { previousUsers?: PaginatedResponse<User> }
   >({
     mutationFn: (userIds: string[]) => {
-      console.log("▶️ [useDeleteUserMutation] Mutation started for IDs:", userIds);
-      return usersService.deleteUsers(userIds)
+      console.log(
+        "▶️ [useDeleteUserMutation] Mutation started for IDs:",
+        userIds
+      );
+      return usersService.deleteUsers(userIds);
     },
     onSuccess: () => {
       console.log("✅ [useDeleteUserMutation] Mutation successful");
@@ -154,8 +165,39 @@ export function useDeleteUserMutation() {
       });
     },
     onSettled: () => {
-      console.log(`🔄 [useDeleteUserMutation] Invalidating queries with key:`, [USERS_QUERY_KEY]);
+      console.log(`🔄 [useDeleteUserMutation] Invalidating queries with key:`, [
+        USERS_QUERY_KEY,
+      ]);
       queryClient.invalidateQueries({ queryKey: [USERS_QUERY_KEY] });
     },
   });
+}
+
+export function useManagersForDepartments() {
+  const queryKey = [USERS_QUERY_KEY, "managers-for-departments"];
+
+  const { data, isLoading, error, isError } = useQuery<
+    Array<{ id: string; name: string; email: string }>,
+    Error
+  >({
+    queryKey,
+    queryFn: async () => {
+      try {
+        const result = await usersService.getManagersForDepartments();
+        return result;
+      } catch (error) {
+        console.error("❌ [useManagersForDepartments] Error:", error);
+        throw error;
+      }
+    },
+    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+    refetchOnWindowFocus: false,
+  });
+
+  return {
+    managers: data ?? [],
+    isLoading,
+    error,
+    isError,
+  };
 }

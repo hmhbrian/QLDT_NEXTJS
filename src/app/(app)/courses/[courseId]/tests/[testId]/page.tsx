@@ -98,9 +98,7 @@ export default function TestDetailPage() {
   } = useQuery({
     queryKey: ["test-info", courseId, testId],
     queryFn: async () => {
-      console.log(
-        `♻️ [TestPage] Fetching test basic info for test ID: ${testId}`
-      );
+
       // Only fetch basic test info from the tests list API
       const tests = await testsService.getTests(courseId);
       const test = tests.find((t) => t.id === testId);
@@ -129,16 +127,10 @@ export default function TestDetailPage() {
   // --- Effects ---
   useEffect(() => {
     if (fetchedTest) {
-      console.log(
-        "⚙️ [TestPage] Setting test basic info from fetch:",
-        fetchedTest
-      );
       setTestData(fetchedTest);
       // Check if the user has already completed this test
       if (fetchedTest.isDone) {
-        console.log(
-          "✅ [TestPage] Test is already marked as done. Fetching results."
-        );
+
         refetchResult();
       }
     }
@@ -146,10 +138,6 @@ export default function TestDetailPage() {
 
   useEffect(() => {
     if (secureQuestionsData && isStarted) {
-      console.log(
-        "⚙️ [TestPage] Setting secure questions data:",
-        secureQuestionsData
-      );
       setSecureQuestions(secureQuestionsData);
     }
   }, [secureQuestionsData, isStarted]);
@@ -213,7 +201,6 @@ export default function TestDetailPage() {
   };
 
   const handleStartTest = () => {
-    console.log("▶️ [TestPage] Starting test and fetching secure questions...");
     setAnswers({});
     setSecureQuestions([]);
     setCurrentQuestionIndex(0);
@@ -247,7 +234,6 @@ export default function TestDetailPage() {
   const handleSubmit = async () => {
     if (submitTestMutation.isPending || !startedAt) return;
     setShowSubmitConfirmation(false); // Close confirmation dialog
-    console.log("📤 [TestPage] Submitting test...");
 
     const submissionAnswers: SelectedAnswer[] = Object.entries(answers).map(
       ([questionId, selectedOptions]) => ({
@@ -314,7 +300,6 @@ export default function TestDetailPage() {
   if (!isStarted) {
     // Has a result (already took the test)
     if (result) {
-      console.log("🎨 [TestPage] Rendering result screen.");
       return (
         <div className="min-h-screen bg-gray-50">
           {/* Success Banner */}
@@ -405,7 +390,6 @@ export default function TestDetailPage() {
     }
 
     // Initial start screen
-    console.log("🎨 [TestPage] Rendering start screen.");
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-4">
         <Card className="max-w-2xl w-full">

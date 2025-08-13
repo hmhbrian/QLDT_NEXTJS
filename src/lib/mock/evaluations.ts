@@ -1,4 +1,3 @@
-
 import type { Feedback } from "@/lib/types/course.types";
 
 export const mockEvaluations: Feedback[] = [
@@ -15,7 +14,7 @@ export const mockEvaluations: Feedback[] = [
     comment:
       "Khóa học rất hay và thực tế. Tuy nhiên, phần tài liệu về Promises có thể chi tiết hơn một chút.",
     createdAt: new Date().toISOString(),
-    averageRating: (5 + 4 + 4 + 5 + 3) / 5,
+    averageScore: (5 + 4 + 4 + 5 + 3) / 5,
   },
   {
     id: 2,
@@ -30,7 +29,7 @@ export const mockEvaluations: Feedback[] = [
     comment:
       "Giảng viên nhiệt tình, nội dung dễ hiểu. Nên có thêm bài tập thực hành nhóm.",
     createdAt: new Date().toISOString(),
-    averageRating: (4 + 5 + 5 + 4 + 4) / 5,
+    averageScore: (4 + 5 + 5 + 4 + 4) / 5,
   },
   {
     id: 3,
@@ -45,7 +44,7 @@ export const mockEvaluations: Feedback[] = [
     comment:
       "Tài liệu slide rất tốt, dễ theo dõi. Phần bài tập hơi khó với người mới.",
     createdAt: new Date().toISOString(),
-    averageRating: (4 + 3 + 4 + 4 + 5) / 5,
+    averageScore: (4 + 3 + 4 + 4 + 5) / 5,
   },
   {
     id: 4,
@@ -60,6 +59,6 @@ export const mockEvaluations: Feedback[] = [
     comment:
       "Rất thích phần thực hành với Pandas. Có thể thêm một module về triển khai mô hình đơn giản.",
     createdAt: new Date().toISOString(),
-    averageRating: (5 + 4 + 5 + 5 + 4) / 5,
+    averageScore: (5 + 4 + 5 + 5 + 4) / 5,
   },
 ];
