@@ -83,5 +83,10 @@ function extractApiError(responseData: any): string {
         return responseData.message;
     }
 
-    return "An unknown API error occurred.";
+    // Fallback for string errors
+    if (typeof responseData === 'string') {
+        return responseData;
+    }
+
+    return "Có lỗi xảy ra khi xử lý yêu cầu.";
 }
