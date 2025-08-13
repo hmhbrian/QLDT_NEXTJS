@@ -407,12 +407,16 @@ export default function CourseDetailPage() {
       selectedLesson?.type === "video_url" &&
       videoProgress.playedSeconds > 0
     ) {
-      const currentTime = Math.round(videoProgress.playedSeconds);
-      if (Math.abs(currentTime - lastReportedTimeRef.current) > 2) {
-        lastReportedTimeRef.current = currentTime;
+      // Use higher precision and only round for comparison
+      // Keep one decimal place for better accuracy
+      const currentTime = Math.round(videoProgress.playedSeconds * 10) / 10;
+      const currentTimeInt = Math.floor(currentTime);
+
+      if (Math.abs(currentTimeInt - lastReportedTimeRef.current) > 2) {
+        lastReportedTimeRef.current = currentTimeInt;
         debouncedUpsert({
           lessonId: selectedLesson.id,
-          currentTimeSecond: currentTime,
+          currentTimeSecond: currentTimeInt,
         });
       }
     }
@@ -431,9 +435,11 @@ export default function CourseDetailPage() {
         selectedLesson?.type === "video_url" &&
         videoProgress.playedSeconds > 0
       ) {
+        // Use floor for final save to ensure we don't exceed actual video duration
+        const finalTime = Math.floor(videoProgress.playedSeconds);
         saveImmediately({
           lessonId: selectedLesson.id,
-          currentTimeSecond: Math.round(videoProgress.playedSeconds),
+          currentTimeSecond: finalTime,
         });
       } else if (selectedLesson?.type === "pdf_url" && visiblePage > 0) {
         saveImmediately({
@@ -894,7 +900,42 @@ export default function CourseDetailPage() {
                         height="100%"
                         controls
                         onReady={handlePlayerReady}
-                        onProgress={setVideoProgress}
+                        onProgress={(progress) => {
+                          setVideoProgress(progress);
+
+                          // Check if video is near the end (within last 5 seconds)
+                          if (playerRef.current) {
+                            const duration = playerRef.current.getDuration();
+                            const remainingTime =
+                              duration - progress.playedSeconds;
+
+                            // If less than 5 seconds remaining, save progress immediately
+                            if (remainingTime <= 5 && remainingTime > 0) {
+                              const finalTime = Math.floor(
+                                progress.playedSeconds
+                              );
+                              if (finalTime !== lastReportedTimeRef.current) {
+                                lastReportedTimeRef.current = finalTime;
+                                saveImmediately({
+                                  lessonId: selectedLesson.id,
+                                  currentTimeSecond: finalTime,
+                                });
+                              }
+                            }
+                          }
+                        }}
+                        onEnded={() => {
+                          // When video ends, save the complete duration
+                          if (playerRef.current) {
+                            const duration = Math.floor(
+                              playerRef.current.getDuration()
+                            );
+                            saveImmediately({
+                              lessonId: selectedLesson.id,
+                              currentTimeSecond: duration,
+                            });
+                          }
+                        }}
                       />
                     </div>
                   ) : (
