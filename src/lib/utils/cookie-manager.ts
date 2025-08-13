@@ -234,12 +234,6 @@ export class CookieManager {
     // Default persistent
     const tokenCookieName = "qldt_auth_token";
 
-    console.log("🔒 [CookieManager] Setting secure auth:", {
-      tokenCookieName,
-      rememberMe,
-      tokenLength: token.length,
-    });
-
     // Luôn lưu persistent (30 days) trừ khi rõ ràng muốn session
     if (rememberMe) {
       this.setPersistentAuth(tokenCookieName, token, 30);
@@ -249,11 +243,6 @@ export class CookieManager {
 
     // Verify token was set
     const verifyToken = this.get(tokenCookieName);
-    console.log("✅ [CookieManager] Cookie verification:", {
-      tokenSet: !!verifyToken,
-      tokenMatches: verifyToken === token,
-      tokenPreview: verifyToken ? verifyToken.slice(0, 10) + "..." : null,
-    });
 
     if (!verifyToken) {
       console.error("❌ [CookieManager] Failed to set token cookie!");
@@ -265,11 +254,7 @@ export class CookieManager {
   getSecureAuth(): string | null {
     const cookieName = "qldt_auth_token";
     const token = this.get(cookieName);
-    console.log("🔍 [CookieManager] Getting secure auth token:", {
-      cookieName,
-      hasToken: !!token,
-      tokenPreview: token ? token.slice(0, 10) + "..." : null,
-    });
+
     return token;
   }
 
@@ -277,17 +262,11 @@ export class CookieManager {
   removeSecureAuth(): void {
     const tokenCookieName = "qldt_auth_token";
 
-    console.log("🗑️ [CookieManager] Removing secure auth:", {
-      tokenCookieName,
-    });
     this.remove(tokenCookieName);
     this.remove("session_id"); // remove decoy
 
     // Verify removal
     const verifyToken = this.get(tokenCookieName);
-    console.log("✅ [CookieManager] Removal verification:", {
-      tokenRemoved: !verifyToken,
-    });
   }
 
   // Generate decoy value
