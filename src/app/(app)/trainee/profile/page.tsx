@@ -20,9 +20,6 @@ import {
   Image as ImageIcon,
   KeyRound,
   Award,
-  Star,
-  Calendar,
-  TrendingUp,
   Upload,
   CheckCircle,
 } from "lucide-react";
@@ -44,12 +41,9 @@ import type {
   EmployeeLevel,
   UserDepartmentInfo,
 } from "@/lib/types/user.types";
-import type { DepartmentInfo } from "@/lib/types/department.types";
-import type { Course } from "@/lib/types/course.types";
 import { Checkbox } from "@/components/ui/checkbox";
 import { getLevelBadgeColor, getStatusColor } from "@/lib/helpers";
 import { useCompletedCoursesCount } from "@/hooks/use-courses";
-import { CourseCard } from "@/components/courses/CourseCard";
 import { CompletedCourseCard } from "@/components/courses/CompletedCourseCard";
 
 import { PaginationControls } from "@/components/ui/PaginationControls";
@@ -222,7 +216,7 @@ export default function UserProfilePage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 container mx-auto px-2 sm:px-4 md:px-6">
       <div className="flex flex-col md:flex-row justify-between items-center gap-4">
         <h1 className="text-2xl md:text-3xl font-headline font-semibold">
           Hồ sơ của tôi
@@ -237,7 +231,7 @@ export default function UserProfilePage() {
       </div>
 
       <Tabs defaultValue="overview" className="space-y-6">
-        <TabsList>
+        <TabsList className="flex w-full overflow-x-auto h-auto items-center rounded-md bg-muted p-1 text-muted-foreground justify-start">
           <TabsTrigger value="overview">Tổng quan</TabsTrigger>
           {user.role === "HOCVIEN" && (
             <>
@@ -247,7 +241,7 @@ export default function UserProfilePage() {
           )}
         </TabsList>
 
-        <TabsContent value="overview">
+         <TabsContent value="overview">
           <Card className="shadow-lg">
             <CardHeader className="items-center text-center border-b pb-6">
               <Avatar className="h-24 w-24 mb-4 ring-4 ring-primary ring-offset-2 ring-offset-background">
@@ -277,8 +271,8 @@ export default function UserProfilePage() {
                 <Badge variant="secondary">{profileData.role}</Badge>
               </CardDescription>
             </CardHeader>
-            <CardContent className="pt-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+             <CardContent className="pt-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
                 <div>
                   <h3 className="font-semibold mb-2">Thông tin Cá nhân</h3>
                   <div className="space-y-2">
@@ -410,7 +404,7 @@ export default function UserProfilePage() {
                     </div>
                   </div>
                 </CardHeader>
-                <CardContent className="p-6">
+                <CardContent className="p-4 sm:p-6">
                   {isLoadingCompletedCourses ? (
                     <div className="flex justify-center items-center py-12">
                       <div className="text-center space-y-2">
@@ -453,8 +447,8 @@ export default function UserProfilePage() {
                           return (
                             <>
                               {/* Course items count info */}
-                              <div className="flex items-center justify-between text-sm text-muted-foreground mb-4">
-                                <span>
+                              <div className="flex flex-col sm:flex-row gap-2 sm:gap-0 items-center justify-between text-xs sm:text-sm text-muted-foreground mb-4">
+                                <span className="text-center sm:text-left">
                                   Hiển thị {allCourses.length} trên tổng {totalItems} khóa học
                                 </span>
                                 {totalPages > 1 && (
@@ -532,7 +526,7 @@ export default function UserProfilePage() {
           }
         }}
       >
-        <DialogContent className="sm:max-w-[525px]">
+        <DialogContent className="sm:max-w-[525px] max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center">
               <Edit3 className="mr-2 h-5 w-5" /> Chỉnh sửa Hồ sơ
