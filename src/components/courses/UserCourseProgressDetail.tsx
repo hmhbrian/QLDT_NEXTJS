@@ -1,6 +1,5 @@
 import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { useCourseProgressDetail } from "@/hooks/use-courses";
 import {
@@ -11,7 +10,6 @@ import {
   XCircle,
   CheckCircle,
   Clock,
-  Target,
   TrendingUp,
   Star,
   RefreshCw,

@@ -5,7 +5,6 @@ import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import dynamic from "next/dynamic";
-import { parseISO, isValid } from "date-fns";
 
 import {
   Card,
@@ -29,7 +28,6 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Clock,
-  GraduationCap,
   BookOpen,
   CheckCircle,
   FileText,
@@ -49,13 +47,9 @@ import {
   Check,
   Loader2,
   ChevronRight,
-  User,
-  Calendar,
   Play,
   UserCircle2,
   Eye,
-  RefreshCw,
-  Timer,
   XCircle, // Added Timer import
 } from "lucide-react";
 import {
@@ -66,7 +60,6 @@ import {
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import {
-  Course,
   Lesson,
   Feedback,
   LessonContentType,
@@ -99,7 +92,6 @@ import { useFeedbacks, useCreateFeedback } from "@/hooks/use-feedback";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ClientTime } from "@/components/ClientTime";
 import { CourseProgressList } from "@/components/courses/CourseProgressList";
-import { useCourseProgressList } from "@/hooks/use-courses";
 
 const PdfLessonViewer = dynamic(
   () => import("@/components/lessons/PdfLessonViewer"),
@@ -643,7 +635,7 @@ export default function CourseDetailPage() {
 
           <div className="flex flex-col md:flex-row justify-between items-start gap-4">
             <div className="flex-1">
-              <p className="mt-1 text-base md:text-lg text-muted-foreground">
+              <p className="mt-1 text-base md:text-lg text-muted-foreground line-clamp-5">
                 {course.description}
               </p>
               {(currentUser?.role === "ADMIN" ||
@@ -1161,7 +1153,7 @@ export default function CourseDetailPage() {
                                     {renderLessonIcon(lesson.type)}
                                   </div>
                                   <div className="flex-grow min-w-0">
-                                    <h3 className="font-semibold text-lg text-foreground group-hover:text-primary transition-colors mb-1">
+                                    <h3 className="font-semibold text-lg text-foreground group-hover:text-primary transition-colors mb-1 line-clamp-2">
                                       {lesson.title}
                                     </h3>
                                     <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground mb-2">

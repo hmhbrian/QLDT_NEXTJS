@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -16,7 +16,6 @@ import {
 import { useToast } from "@/components/ui/use-toast";
 import {
   Activity,
-  User,
   Plus,
   Edit,
   Trash2,
@@ -32,7 +31,6 @@ import {
   Copy,
   ExternalLink,
   Info,
-  Loader2,
 } from "lucide-react";
 import {
   ActivityLog,

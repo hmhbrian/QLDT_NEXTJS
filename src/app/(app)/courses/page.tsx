@@ -17,11 +17,8 @@ import {
   CalendarClock,
   LayoutGrid,
   List,
-  Loader2,
   BookOpen,
   XCircle,
-  ChevronLeft,
-  ChevronRight,
   Eye,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
@@ -39,13 +36,6 @@ import {
 import { useError } from "@/hooks/use-error";
 import { useDebounce } from "@/hooks/use-debounce";
 import type { PaginationState } from "@tanstack/react-table";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { LoadingButton } from "@/components/ui/loading";
 import {
   Tooltip,
@@ -53,9 +43,6 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { useDepartments } from "@/hooks/use-departments";
-import { useEmployeeLevel } from "@/hooks/use-employeeLevel";
-import { Switch } from "@/components/ui/switch";
 import { PaginationControls } from "@/components/ui/PaginationControls";
 
 export default function CoursesPage() {
@@ -261,12 +248,10 @@ export default function CoursesPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 container mx-auto px-2 sm:px-4 md:px-6">
       <div className="flex flex-col md:flex-row justify-between items-center gap-4">
         <h1 className="text-2xl md:text-3xl font-headline font-semibold">
-          {currentUser?.role === "HOCVIEN"
-            ? "Khóa học có thể đăng ký"
-            : "Khóa học Công khai"}
+          Khóa học Công khai
         </h1>
         <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto items-center">
           <div className="relative flex-grow md:flex-grow-0">
@@ -342,7 +327,7 @@ export default function CoursesPage() {
               ))}
             </div>
           ) : (
-            <div className="grid gap-6 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            <div className="grid gap-4 sm:gap-6 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {filteredCourses.map((course) => {
                 const enrolledCourseIds = new Set(
                   enrolledCourses.map((c) => c.id)

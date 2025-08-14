@@ -19,7 +19,7 @@ function CourseEditPageContent() {
   const isCreating = courseId === "new";
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 container mx-auto px-2 sm:px-4 md:px-6">
       <div className="flex items-center gap-4">
         <Button
           variant="outline"

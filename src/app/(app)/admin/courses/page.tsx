@@ -51,8 +51,6 @@ import {
   LayoutGrid,
   List,
   Loader2,
-  ChevronLeft,
-  ChevronRight,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import type { Course } from "@/lib/types/course.types";
@@ -281,7 +279,7 @@ export default function CoursesPage() {
 
   return (
     <>
-        <Card className="border-0 shadow-lg bg-card">
+        <Card className="border-0 shadow-lg bg-card container mx-auto px-2 sm:px-4 md:px-6">
         <CardHeader className="border-b p-6">
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
             <div className="space-y-1">
@@ -296,7 +294,7 @@ export default function CoursesPage() {
                 nghiệp.
               </CardDescription>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <Button
                 variant={viewMode === "table" ? "default" : "outline"}
                 size="icon"
@@ -321,10 +319,10 @@ export default function CoursesPage() {
               >
                 <LayoutGrid className="h-4 w-4" />
               </Button>
-              {canManageCourses && (
+               {canManageCourses && (
                 <Button
                   onClick={handleOpenAddDialog}
-                  className="ml-2 hover:bg-orange-600 text-white shadow-lg px-6 py-2 h-auto"
+                  className="ml-0 md:ml-2 hover:bg-orange-600 text-white shadow-lg px-6 py-2 h-auto w-full sm:w-auto"
                 >
                   <PlusCircle className="mr-2 h-5 w-5" />
                   Thêm khóa học
@@ -334,7 +332,7 @@ export default function CoursesPage() {
           </div>
         </CardHeader>
         <CardContent className="p-6">
-          <div className="mb-6 space-y-4">
+            <div className="mb-6 space-y-4">
             <div className="flex flex-col sm:flex-row gap-4">
               <div className="relative flex-grow">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-orange-400 z-10" />
@@ -414,22 +412,24 @@ export default function CoursesPage() {
             </div>
           </div>
 
-          {isLoading && courses.length === 0 ? (
+            {isLoading && courses.length === 0 ? (
             <div className="flex h-60 w-full items-center justify-center">
               <Loader2 className="h-10 w-10 animate-spin text-primary" />
               <p className="ml-3 text-muted-foreground">
                 Đang tải danh sách khóa học...
               </p>
             </div>
-          ) : viewMode === "table" ? (
-            <DataTable
-              columns={columns}
-              data={courses}
-              isLoading={isLoading}
-              pageCount={pageCount}
-              pagination={pagination}
-              onPaginationChange={setPagination}
-            />
+            ) : viewMode === "table" ? (
+            <div className="overflow-x-auto">
+              <DataTable
+                columns={columns}
+                data={courses}
+                isLoading={isLoading}
+                pageCount={pageCount}
+                pagination={pagination}
+                onPaginationChange={setPagination}
+              />
+            </div>
           ) : (
             <>
               <div className="grid gap-6 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">

@@ -48,9 +48,7 @@ import { Loading } from "@/components/ui/loading";
 import { useToast } from "@/components/ui/use-toast";
 
 import type { Course, EnrollmentType } from "@/lib/types/course.types";
-import type { User } from "@/lib/types/user.types";
 import { generateCourseCode } from "@/lib/utils/code-generator";
-import { categoryOptions } from "@/lib/config/constants";
 import { useCourseCategories } from "@/hooks/use-course-categories";
 import {
   useCourse,

@@ -13,18 +13,13 @@ import {
 } from "@/components/ui/select";
 import {
   BookOpen,
-  Clock,
   Users,
   Star,
   Play,
   Award,
   Calendar,
-  Filter,
-  TrendingUp,
-  Heart,
   BookMarked,
   CheckCircle,
-  User,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useCourses } from "@/hooks/use-courses";
@@ -51,7 +46,6 @@ import {
 import {
   OptimizedCard,
   StatusBadge,
-  ActionButtons,
   EmptyState,
 } from "@/components/ui/optimized";
 

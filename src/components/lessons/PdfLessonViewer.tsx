@@ -100,13 +100,6 @@ export function PdfLessonViewer({
   const mainContainerRef = useRef<HTMLDivElement>(null);
   const pageRefs = useRef<(HTMLDivElement | null)[]>([]);
 
-  // Debug logging để kiểm tra initialPage - LOG CHI TIẾT HÔN
-  console.log(`🚀 PdfLessonViewer rendered:`, {
-    pdfUrl: pdfUrl.split("/").pop(),
-    initialPage,
-    currentPage,
-    timestamp: new Date().toISOString(),
-  });
 
   const onDocumentLoadSuccess = ({ numPages }: { numPages: number }) => {
     setNumPages(numPages);
@@ -147,7 +140,6 @@ export function PdfLessonViewer({
       setCurrentPage(page);
       // Khi user chủ động chuyển trang thì luôn lưu tiến trình
       onVisiblePageChange(page);
-      console.log(`📄 User navigated to page ${page}, saving progress`);
     }
   };
 
@@ -158,10 +150,6 @@ export function PdfLessonViewer({
       if (!isInitialLoad) {
         setCurrentPage(page);
         onVisiblePageChange(page);
-      } else {
-        console.log(
-          `🚫 Page ${page} in view but initial load, not saving progress`
-        );
       }
     },
     [onVisiblePageChange, isInitialLoad, currentPage]
@@ -184,8 +172,8 @@ export function PdfLessonViewer({
 
   return (
     <div className="w-full h-[85vh] flex flex-col bg-background dark:bg-zinc-900 rounded-lg shadow-lg border">
-      <div className="flex-shrink-0 h-14 bg-card border-b flex items-center justify-between gap-2 px-4 sticky top-0 z-20">
-        <div className="flex items-center gap-2">
+      <div className="flex-shrink-0 h-auto bg-card border-b flex flex-wrap items-center justify-between gap-2 px-2 sm:px-4 py-2 sticky top-0 z-20">
+        <div className="flex items-center gap-2 min-w-[120px]">
           <Button
             variant="ghost"
             size="icon"
@@ -193,12 +181,9 @@ export function PdfLessonViewer({
           >
             <PanelLeft className="h-5 w-5" />
           </Button>
-          <span className="text-sm font-medium text-muted-foreground hidden sm:inline">
-            {pdfUrl.split("/").pop()}
-          </span>
         </div>
 
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 order-3 w-full justify-center sm:order-none sm:w-auto">
           <Button
             variant="ghost"
             size="icon"
@@ -217,7 +202,7 @@ export function PdfLessonViewer({
                 goToPage(1);
               }
             }}
-            className="w-16 h-8 text-center"
+            className="w-16 sm:w-20 h-8 text-center"
           />
           <span className="text-sm text-muted-foreground">
             / {numPages || "..."}
@@ -232,7 +217,7 @@ export function PdfLessonViewer({
           </Button>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 order-2">
           <div className="h-6 w-px bg-border mx-2 hidden sm:block"></div>
           <Button
             variant="ghost"
@@ -282,7 +267,7 @@ export function PdfLessonViewer({
           className="flex-grow flex overflow-hidden"
         >
           {isThumbnailsOpen && numPages > 0 && (
-            <div className="w-48 bg-muted/40 border-r overflow-y-auto p-2 space-y-2">
+            <div className="hidden md:block w-48 bg-muted/40 border-r overflow-y-auto p-2 space-y-2">
               {Array.from(new Array(numPages), (_, index) => (
                 <div
                   key={`thumb-${index + 1}`}

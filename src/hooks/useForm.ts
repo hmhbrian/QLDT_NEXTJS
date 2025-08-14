@@ -7,7 +7,7 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { z } from "zod";
 import { useError } from "./use-error";
-import { sanitizeFormData, formatFormErrors } from "@/lib/utils/form.utils";
+import { sanitizeFormData } from "@/lib/utils/form.utils";
 
 interface UseFormOptions<T> {
   initialValues: T;
