@@ -13,7 +13,6 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   AlertTriangle,
@@ -21,7 +20,6 @@ import {
   XCircle,
   ArrowLeft,
   ArrowRight,
-  RefreshCw,
   Loader2,
   Clock,
   User,
@@ -34,7 +32,6 @@ import {
   Flag,
   Eye,
   Send,
-  CheckSquare,
   Check,
 } from "lucide-react";
 import {
@@ -52,9 +49,6 @@ import { mapApiTestToUiTest } from "@/lib/mappers/test.mapper";
 import { useAuth } from "@/hooks/useAuth";
 import type {
   Test,
-  Question,
-  TestSubmissionResponse,
-  DetailedTestResult,
   SelectedAnswer,
   QuestionNoAnswer,
 } from "@/lib/types/test.types";
@@ -442,19 +436,17 @@ export default function TestDetailPage() {
               </div>
             </div>
           </CardContent>
-          <CardFooter className="flex flex-col sm:flex-row gap-2">
+          <CardFooter className="flex flex-col sm:flex-row gap-2 pt-2">
             <Button
               onClick={handleStartTest}
-              className="w-full sm:w-auto flex-1"
-              size="lg"
-            >
-              <BookOpen className="mr-2 h-5 w-5" />
+              className="w-full sm:w-auto flex-1 rounded-lg shadow-sm">
+              <BookOpen className="w-full sm:w-auto h-11 rounded-lg" />
               Bắt đầu làm bài
             </Button>
             <Button
               onClick={() => router.back()}
-              variant="secondary"
-              className="w-full sm:w-auto"
+              variant="outline"
+              className="w-full sm:w-auto h-11 rounded-lg"
             >
               Quay lại khóa học
             </Button>
@@ -919,7 +911,7 @@ export default function TestDetailPage() {
         open={showSubmitConfirmation}
         onOpenChange={setShowSubmitConfirmation}
       >
-        <DialogContent>
+        <DialogContent className="max-h-[80vh] overflow-y-auto sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Xác nhận nộp bài</DialogTitle>
             <DialogDescription>
