@@ -50,7 +50,16 @@ import {
   Play,
   UserCircle2,
   Eye,
-  XCircle, // Added Timer import
+  XCircle,
+  ChevronLeft,
+  X,
+  SkipBack,
+  SkipForward,
+  MoreVertical,
+  Menu,
+  // MoreVertical, // removed – no three-dot menu
+  // Menu,
+  EyeOff,
 } from "lucide-react";
 import {
   Tooltip,
@@ -92,6 +101,7 @@ import { useFeedbacks, useCreateFeedback } from "@/hooks/use-feedback";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ClientTime } from "@/components/ClientTime";
 import { CourseProgressList } from "@/components/courses/CourseProgressList";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const PdfLessonViewer = dynamic(
   () => import("@/components/lessons/PdfLessonViewer"),
@@ -234,10 +244,31 @@ export default function CourseDetailPage() {
   const courseIdFromParams = params.courseId as string;
 
   const [isEvaluationDialogOpen, setIsEvaluationDialogOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState("content");
+  const [activeTab, setActiveTab] = useState("lessons");
   const [selectedLesson, setSelectedLesson] =
     useState<LessonWithProgress | null>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [showControls, setShowControls] = useState(true);
+  const [controlsEnabled, setControlsEnabled] = useState(false); // toggle ẩn/hiện controls
   const playerRef = useRef<ReactPlayer>(null);
+  const isMobile = useIsMobile();
+
+  // Helper function to render lesson type icons
+  const renderLessonIcon = (type: LessonContentType) => {
+    switch (type) {
+      case "video_url":
+        return <Video className="h-4 w-4" />;
+      case "pdf_url":
+        return <FileText className="h-4 w-4" />;
+      case "text":
+        return <BookOpen className="h-4 w-4" />;
+      case "external_link":
+        return <LinkIcon className="h-4 w-4" />;
+      default:
+        return <FileText className="h-4 w-4" />;
+    }
+  };
 
   const { user: currentUser } = useAuth();
   const enrollCourseMutation = useEnrollCourse();
@@ -522,22 +553,59 @@ export default function CourseDetailPage() {
     });
   }, [currentUser, course, evaluationFormData, createFeedbackMutation]);
 
-  const handleSelectLesson = useCallback((lesson: LessonWithProgress) => {
-    setSelectedLesson(lesson);
-    lastReportedTimeRef.current = lesson.currentTimeSecond || 0;
-    setActiveTab("content");
+  const handleSelectLesson = useCallback(
+    (lesson: LessonWithProgress) => {
+      // Simply update lesson without any fullscreen interruption
+      setSelectedLesson(lesson);
+      lastReportedTimeRef.current = lesson.currentTimeSecond || 0;
 
-    // Reset video state for new lesson
-    setVideoProgress({ playedSeconds: 0 });
-    setVideoDuration(null);
+      // If not in fullscreen, open it
+      if (!isFullscreen) {
+        setActiveTab("lessons");
+        setIsFullscreen(true);
+        setIsSidebarOpen(true);
+      }
 
-    // Don't clear completion tracking - let it accumulate across session
-    // hasReportedCompletionRef.current.clear(); // Removed this line
+      // Reset video state for new lesson
+      setVideoProgress({ playedSeconds: 0 });
+      setVideoDuration(null);
+
+      // Don't clear completion tracking - let it accumulate across session
+      // hasReportedCompletionRef.current.clear(); // Removed this line
+    },
+    [isFullscreen]
+  );
+
+  const handleNextLesson = useCallback(() => {
+    if (!selectedLesson || lessonsWithProgress.length === 0) return;
+    const currentIndex = lessonsWithProgress.findIndex(
+      (l) => l.id === selectedLesson.id
+    );
+    if (currentIndex < lessonsWithProgress.length - 1) {
+      handleSelectLesson(lessonsWithProgress[currentIndex + 1]);
+    }
+  }, [selectedLesson, lessonsWithProgress, handleSelectLesson]);
+
+  const handlePrevLesson = useCallback(() => {
+    if (!selectedLesson || lessonsWithProgress.length === 0) return;
+    const currentIndex = lessonsWithProgress.findIndex(
+      (l) => l.id === selectedLesson.id
+    );
+    if (currentIndex > 0) {
+      handleSelectLesson(lessonsWithProgress[currentIndex - 1]);
+    }
+  }, [selectedLesson, lessonsWithProgress, handleSelectLesson]);
+
+  const closeFullscreen = useCallback(() => {
+    setIsFullscreen(false);
+    setIsSidebarOpen(true); // Reset sidebar state
+    // Keep selectedLesson for potential resume
   }, []);
 
   const handleTabChange = (value: string) => {
-    if (value !== "content") {
+    if (value !== "lessons") {
       setSelectedLesson(null);
+      setIsFullscreen(false);
     }
     setActiveTab(value);
   };
@@ -545,6 +613,15 @@ export default function CourseDetailPage() {
   const handleVisiblePageChange = useCallback((page: number) => {
     setVisiblePage(page);
   }, []);
+
+  // Auto-hide controls on mobile after a short delay
+  useEffect(() => {
+    if (!isMobile) return;
+    if (!controlsEnabled) return;
+    if (!showControls) return;
+    const t = setTimeout(() => setShowControls(false), 3000);
+    return () => clearTimeout(t);
+  }, [isMobile, controlsEnabled, showControls]);
 
   const handlePlayerReady = useCallback(() => {
     if (playerRef.current && selectedLesson?.currentTimeSecond) {
@@ -560,6 +637,35 @@ export default function CourseDetailPage() {
       setVideoDuration(duration);
     }
   }, [selectedLesson]);
+
+  // Keyboard shortcuts for fullscreen mode
+  useEffect(() => {
+    if (!isFullscreen) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        closeFullscreen();
+      } else if (e.key === "ArrowLeft" && e.altKey) {
+        e.preventDefault();
+        handlePrevLesson();
+      } else if (e.key === "ArrowRight" && e.altKey) {
+        e.preventDefault();
+        handleNextLesson();
+      } else if (e.key === "Tab" && e.shiftKey) {
+        e.preventDefault();
+        setIsSidebarOpen(!isSidebarOpen);
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [
+    isFullscreen,
+    closeFullscreen,
+    handlePrevLesson,
+    handleNextLesson,
+    isSidebarOpen,
+  ]);
 
   // Instant navigation - show skeleton while loading
   if (isLoading || courseError) {
@@ -604,6 +710,424 @@ export default function CourseDetailPage() {
 
   return (
     <>
+      {/* Fullscreen Learning View - Udemy Style */}
+      {isFullscreen && selectedLesson && (
+        <div className="fixed inset-0 z-50 bg-white">
+          <div className="flex h-full">
+            {/* Main Content Area */}
+            <div className="flex-1 relative">
+              {/* Floating Controls - Like Udemy */}
+              {controlsEnabled && !isMobile && (
+                <div className="absolute top-4 left-4 z-50 flex items-center gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={closeFullscreen}
+                    aria-label="Đóng"
+                    className="bg-white text-gray-900 hover:bg-white/90 border border-gray-200 rounded-full w-10 h-10 p-0 shadow-md"
+                  >
+                    <X className="h-5 w-5" />
+                  </Button>
+                </div>
+              )}
+              {controlsEnabled && !isMobile && (
+                <div className="absolute top-4 right-4 z-50 flex items-center gap-2">
+                  {/* Navigation Controls */}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handlePrevLesson}
+                    disabled={
+                      !selectedLesson ||
+                      lessonsWithProgress.findIndex(
+                        (l) => l.id === selectedLesson.id
+                      ) === 0
+                    }
+                    aria-label="Bài trước"
+                    className="bg-white text-gray-900 hover:bg-white/90 border border-gray-200 rounded-full w-10 h-10 p-0 shadow-md disabled:opacity-40"
+                  >
+                    <SkipBack className="h-5 w-5" />
+                  </Button>
+
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleNextLesson}
+                    disabled={
+                      !selectedLesson ||
+                      lessonsWithProgress.findIndex(
+                        (l) => l.id === selectedLesson.id
+                      ) ===
+                        lessonsWithProgress.length - 1
+                    }
+                    aria-label="Bài tiếp theo"
+                    className="bg-white text-gray-900 hover:bg-white/90 border border-gray-200 rounded-full w-10 h-10 p-0 shadow-md disabled:opacity-40"
+                  >
+                    <SkipForward className="h-5 w-5" />
+                  </Button>
+
+                  {/* Sidebar Toggle */}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+                    aria-label="Mở danh sách bài học"
+                    className="bg-white text-gray-900 hover:bg-white/90 border border-gray-200 rounded-full w-10 h-10 p-0 shadow-md"
+                  >
+                    <Library className="h-5 w-5" />
+                  </Button>
+                </div>
+              )}
+
+              {/* Content Area - Full Height */}
+              <div
+                className="w-full h-full"
+                onClick={() => {
+                  if (isMobile && controlsEnabled) setShowControls((s) => !s);
+                }}
+              >
+                {selectedLesson.type === "video_url" && selectedLesson.link ? (
+                  <div className="w-full h-full">
+                    <ReactPlayer
+                      key={selectedLesson.id} // Force re-render when lesson changes
+                      ref={playerRef}
+                      url={selectedLesson.link}
+                      width="100%"
+                      height="100%"
+                      controls
+                      onReady={handlePlayerReady}
+                      onDuration={(duration) => {
+                        setVideoDuration(duration);
+                      }}
+                      onProgress={(progress) => {
+                        if (
+                          !selectedLesson ||
+                          selectedLesson.type !== "video_url" ||
+                          !videoDuration
+                        ) {
+                          return;
+                        }
+
+                        setVideoProgress(progress);
+
+                        const timeToEnd =
+                          videoDuration - progress.playedSeconds;
+                        if (
+                          timeToEnd <= 5 &&
+                          timeToEnd > 0 &&
+                          !hasReportedCompletionRef.current.has(
+                            selectedLesson.id
+                          )
+                        ) {
+                          hasReportedCompletionRef.current.add(
+                            selectedLesson.id
+                          );
+                          saveImmediately({
+                            lessonId: selectedLesson.id,
+                            currentTimeSecond: Math.floor(videoDuration),
+                          });
+                        }
+                      }}
+                      onEnded={() => {
+                        if (
+                          selectedLesson &&
+                          videoDuration &&
+                          !hasReportedCompletionRef.current.has(
+                            selectedLesson.id
+                          )
+                        ) {
+                          hasReportedCompletionRef.current.add(
+                            selectedLesson.id
+                          );
+                          saveImmediately({
+                            lessonId: selectedLesson.id,
+                            currentTimeSecond: Math.floor(videoDuration),
+                          });
+                        }
+                      }}
+                    />
+                  </div>
+                ) : selectedLesson.type === "pdf_url" &&
+                  selectedLesson.fileUrl ? (
+                  <div className="w-full h-full bg-gray-100 relative overflow-hidden">
+                    {/* PDF Container with proper styling */}
+                    <div className="w-full h-full">
+                      <PdfLessonViewer
+                        key={selectedLesson.id} // Force re-render when lesson changes
+                        pdfUrl={selectedLesson.fileUrl}
+                        initialPage={selectedLesson.currentPage || 1}
+                        onVisiblePageChange={handleVisiblePageChange}
+                        isMobile={isMobile}
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-center h-full bg-slate-900">
+                    <div className="text-center">
+                      <div className="w-16 h-16 bg-slate-700 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <FileText className="h-8 w-8 text-slate-400" />
+                      </div>
+                      <p className="text-white font-medium">
+                        Nội dung không khả dụng
+                      </p>
+                      <p className="text-sm text-slate-400 mt-1">
+                        Vui lòng thử lại sau
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Sidebar - Course Content */}
+            {isSidebarOpen && (
+              <div
+                className={cn(
+                  "bg-white border-l border-orange-200 flex flex-col shadow-xl",
+                  isMobile
+                    ? "fixed inset-y-0 right-0 w-[85%] max-w-sm z-50"
+                    : "w-full max-w-xs md:w-80"
+                )}
+              >
+                <div className="p-4 border-b border-orange-200 bg-orange-50">
+                  <div className="flex items-center justify-between gap-2">
+                    <h3 className="font-semibold text-lg text-orange-800">
+                      Nội dung khóa học
+                    </h3>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      aria-label="Đóng danh sách"
+                      onClick={() => setIsSidebarOpen(false)}
+                      className="bg-white text-gray-900 hover:bg-white/90 border border-gray-200 rounded-full w-8 h-8 p-0 shadow-sm"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <div className="flex items-center justify-between mt-1">
+                    <p className="text-sm text-orange-600">
+                      {lessonsWithProgress.length} bài học
+                    </p>
+                    <span className="text-xs text-orange-500">
+                      {Math.round(
+                        ((completedLessonsCount || 0) /
+                          lessonsWithProgress.length) *
+                          100
+                      )}
+                      % hoàn thành
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex-1 overflow-y-auto">
+                  <div className="p-3 space-y-2">
+                    {lessonsWithProgress.map((lesson, index) => {
+                      const isCompleted = lesson.progressPercentage >= 100;
+                      const isActive = selectedLesson?.id === lesson.id;
+
+                      return (
+                        <button
+                          key={lesson.id}
+                          onClick={() => handleSelectLesson(lesson)}
+                          disabled={!canViewContent}
+                          className={cn(
+                            "w-full text-left p-3 rounded-lg transition-all duration-200 border",
+                            isActive
+                              ? "bg-orange-50 border-orange-200 shadow-sm"
+                              : "hover:bg-gray-50 border-transparent hover:border-orange-200",
+                            !canViewContent && "opacity-50 cursor-not-allowed"
+                          )}
+                        >
+                          <div className="flex items-start gap-3">
+                            <div
+                              className={cn(
+                                "flex h-8 w-8 items-center justify-center rounded-lg text-xs font-semibold flex-shrink-0 border",
+                                isCompleted
+                                  ? "bg-emerald-100 text-emerald-700 border-emerald-200"
+                                  : isActive
+                                  ? "bg-orange-100 text-orange-700 border-orange-200"
+                                  : "bg-gray-100 text-gray-600 border-gray-200"
+                              )}
+                            >
+                              {isCompleted ? (
+                                <Check className="h-4 w-4" />
+                              ) : isActive ? (
+                                <Play className="h-4 w-4" />
+                              ) : (
+                                index + 1
+                              )}
+                            </div>
+
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 mb-1">
+                                <div
+                                  className={cn(
+                                    "w-4 h-4",
+                                    lesson.type === "video_url" &&
+                                      "text-red-500",
+                                    lesson.type === "pdf_url" &&
+                                      "text-orange-500",
+                                    lesson.type === "text" && "text-green-500",
+                                    lesson.type === "external_link" &&
+                                      "text-blue-500"
+                                  )}
+                                >
+                                  {renderLessonIcon(lesson.type)}
+                                </div>
+                                <span className="text-xs font-medium text-orange-500 uppercase tracking-wide">
+                                  {lesson.type === "video_url" && "Video"}
+                                  {lesson.type === "pdf_url" && "PDF"}
+                                  {lesson.type === "text" && "Văn bản"}
+                                  {lesson.type === "external_link" &&
+                                    "Liên kết"}
+                                </span>
+                              </div>
+
+                              <h4
+                                className={cn(
+                                  "font-medium text-sm line-clamp-2 mb-2",
+                                  isActive ? "text-orange-700" : "text-gray-800"
+                                )}
+                              >
+                                {lesson.title}
+                              </h4>
+
+                              {canViewContent &&
+                                lesson.progressPercentage > 0 && (
+                                  <div className="space-y-1">
+                                    <div className="flex items-center justify-between">
+                                      <span className="text-xs text-gray-500">
+                                        Tiến độ
+                                      </span>
+                                      <span className="text-xs font-medium text-gray-700">
+                                        {lesson.progressPercentage}%
+                                      </span>
+                                    </div>
+                                    <div className="w-full bg-gray-200 rounded-full h-1.5">
+                                      <div
+                                        className={cn(
+                                          "h-1.5 rounded-full transition-all duration-300",
+                                          isCompleted
+                                            ? "bg-emerald-500"
+                                            : "bg-orange-500"
+                                        )}
+                                        style={{
+                                          width: `${lesson.progressPercentage}%`,
+                                        }}
+                                      />
+                                    </div>
+                                  </div>
+                                )}
+                            </div>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+                {/* Backdrop for mobile */}
+                {isMobile && (
+                  <div
+                    className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40"
+                    onClick={() => setIsSidebarOpen(false)}
+                  />
+                )}
+              </div>
+            )}
+            {/* Eye toggle for mobile (top-left) */}
+            {isMobile && (
+              <div className="fixed top-3 left-3 z-50">
+                <Button
+                  size="sm"
+                  className="bg-white text-gray-900 hover:bg-white/90 rounded-full h-9 px-3 shadow-md border border-gray-200 flex items-center gap-1"
+                  onClick={() => setControlsEnabled((v) => !v)}
+                  title={controlsEnabled ? "Ẩn điều khiển" : "Hiện điều khiển"}
+                >
+                  {controlsEnabled ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                  <span className="text-[11px] hidden xs:inline">
+                    {controlsEnabled ? "Ẩn" : "Hiện"}
+                  </span>
+                </Button>
+              </div>
+            )}
+            {/* Mobile bottom controls */}
+            {isMobile && controlsEnabled && showControls && !isSidebarOpen && (
+              <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 bg-white/95 backdrop-blur-sm border border-gray-200 rounded-full shadow-lg px-2 py-1 flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={closeFullscreen}
+                  aria-label="Thoát"
+                  className="bg-white text-gray-900 hover:bg-white/90 rounded-full w-11 h-11 p-0"
+                >
+                  <X className="h-5 w-5" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handlePrevLesson}
+                  disabled={
+                    !selectedLesson ||
+                    lessonsWithProgress.findIndex(
+                      (l) => l.id === selectedLesson.id
+                    ) === 0
+                  }
+                  aria-label="Bài trước"
+                  className="bg-white text-gray-900 hover:bg-white/90 rounded-full w-11 h-11 p-0 disabled:opacity-40"
+                >
+                  <SkipBack className="h-5 w-5" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleNextLesson}
+                  disabled={
+                    !selectedLesson ||
+                    lessonsWithProgress.findIndex(
+                      (l) => l.id === selectedLesson.id
+                    ) ===
+                      lessonsWithProgress.length - 1
+                  }
+                  aria-label="Bài tiếp theo"
+                  className="bg-white text-gray-900 hover:bg-white/90 rounded-full w-11 h-11 p-0 disabled:opacity-40"
+                >
+                  <SkipForward className="h-5 w-5" />
+                </Button>
+                <div className="h-6 w-px bg-gray-200 mx-1" />
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setIsSidebarOpen(true)}
+                  aria-label="Danh sách bài"
+                  className="bg-white text-gray-900 hover:bg-white/90 rounded-full w-11 h-11 p-0"
+                >
+                  <Library className="h-5 w-5" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setControlsEnabled((v) => !v)}
+                  aria-label={
+                    controlsEnabled ? "Ẩn điều khiển" : "Hiện điều khiển"
+                  }
+                  className="bg-white text-gray-900 hover:bg-white/90 rounded-full w-11 h-11 p-0"
+                >
+                  {controlsEnabled ? (
+                    <EyeOff className="h-5 w-5" />
+                  ) : (
+                    <Eye className="h-5 w-5" />
+                  )}
+                </Button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       <div className="min-h-screen bg-gradient-to-br from-background to-muted/20">
         <div className="container mx-auto px-2 sm:px-4 md:px-6 lg:px-8 py-4 md:py-6 lg:py-8 space-y-6 md:space-y-8">
           {course.image && (
@@ -875,161 +1399,65 @@ export default function CourseDetailPage() {
             onValueChange={handleTabChange}
             className="space-y-6"
           >
-            <TabsList className="flex w-full overflow-x-auto h-auto items-center rounded-md bg-muted p-1 text-muted-foreground justify-start">
-              <TabsTrigger value="content">Nội dung chính</TabsTrigger>
-              <TabsTrigger value="objectives">Mục tiêu</TabsTrigger>
-              <TabsTrigger value="lessons">Bài học</TabsTrigger>
-              <TabsTrigger value="tests" disabled={!canViewContent}>
+            <TabsList className="flex w-full overflow-x-auto h-auto items-center rounded-lg bg-slate-50/80 p-1 text-slate-600 justify-start border">
+              <TabsTrigger
+                value="lessons"
+                className="rounded-md px-4 py-2 font-medium transition-all data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm"
+              >
+                Nội dung chính
+              </TabsTrigger>
+              <TabsTrigger
+                value="objectives"
+                className="rounded-md px-4 py-2 font-medium transition-all data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm"
+              >
+                Mục tiêu
+              </TabsTrigger>
+              <TabsTrigger
+                value="tests"
+                disabled={!canViewContent}
+                className="rounded-md px-4 py-2 font-medium transition-all data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm disabled:opacity-50"
+              >
                 Bài kiểm tra
               </TabsTrigger>
               {(course as any).requirements &&
                 String((course as any).requirements).trim().length > 0 && (
-                  <TabsTrigger value="requirements">Yêu cầu</TabsTrigger>
+                  <TabsTrigger
+                    value="requirements"
+                    className="rounded-md px-4 py-2 font-medium transition-all data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm"
+                  >
+                    Yêu cầu
+                  </TabsTrigger>
                 )}
-              <TabsTrigger value="materials">Tài liệu</TabsTrigger>
+              <TabsTrigger
+                value="materials"
+                className="rounded-md px-4 py-2 font-medium transition-all data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm"
+              >
+                Tài liệu
+              </TabsTrigger>
               {(currentUser?.role === "ADMIN" ||
                 currentUser?.role === "HR") && (
-                <TabsTrigger value="activity-logs">
+                <TabsTrigger
+                  value="activity-logs"
+                  className="rounded-md px-4 py-2 font-medium transition-all data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm"
+                >
                   Nhật ký hoạt động
                 </TabsTrigger>
               )}
-              <TabsTrigger value="evaluations">Phản hồi học viên</TabsTrigger>
+              <TabsTrigger
+                value="evaluations"
+                className="rounded-md px-4 py-2 font-medium transition-all data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm"
+              >
+                Phản hồi học viên
+              </TabsTrigger>
               {currentUser?.role === "ADMIN" && (
-                <TabsTrigger value="students">Học viên & Tiến độ</TabsTrigger>
+                <TabsTrigger
+                  value="students"
+                  className="rounded-md px-4 py-2 font-medium transition-all data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm"
+                >
+                  Học viên & Tiến độ
+                </TabsTrigger>
               )}
             </TabsList>
-
-            <TabsContent value="content">
-              <Card>
-                <CardHeader>
-                  <div className="flex justify-between items-start">
-                    <div>
-                      {selectedLesson && (
-                        <CardTitle className="flex items-center gap-3">
-                          {renderLessonIcon(selectedLesson.type)}
-                          {selectedLesson.title}
-                          {isSavingProgress && (
-                            <div className="flex items-center gap-1 ml-auto">
-                              <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
-                              <span className="text-xs text-blue-500">
-                                Đang lưu...
-                              </span>
-                            </div>
-                          )}
-                        </CardTitle>
-                      )}
-                    </div>
-                  </div>
-                </CardHeader>
-
-                <CardContent>
-                  {!selectedLesson ? (
-                    <div className="text-center text-muted-foreground h-[500px] flex flex-col justify-center items-center">
-                      <BookOpen className="mx-auto h-12 w-12 mb-4" />
-                      <p className="font-semibold">
-                        Vui lòng chọn một bài học từ tab "Bài học"
-                      </p>
-                      <p className="text-sm mt-2">
-                        Nội dung chi tiết của bài học sẽ được hiển thị tại đây.
-                      </p>
-                    </div>
-                  ) : selectedLesson.type === "video_url" ? (
-                    selectedLesson.link ? (
-                      <div className="w-full max-w-full mx-auto">
-                        <div className="relative aspect-video bg-black rounded-lg overflow-hidden shadow-lg">
-                          <ReactPlayer
-                            ref={playerRef}
-                            url={selectedLesson.link}
-                            width="100%"
-                            height="100%"
-                            controls
-                            onReady={handlePlayerReady}
-                            onDuration={(duration) => {
-                              setVideoDuration(duration);
-                            }}
-                            onProgress={(progress) => {
-                              // Only update if we're actually watching this lesson and it has valid duration
-                              if (
-                                !selectedLesson ||
-                                selectedLesson.type !== "video_url" ||
-                                !videoDuration
-                              ) {
-                                return;
-                              }
-
-                              setVideoProgress(progress);
-
-                              // Check for completion during playback with a 5-second window before end
-                              // This handles cases where onEnded might not fire reliably
-                              const timeToEnd =
-                                videoDuration - progress.playedSeconds;
-                              if (
-                                timeToEnd <= 5 &&
-                                timeToEnd > 0 &&
-                                !hasReportedCompletionRef.current.has(
-                                  selectedLesson.id
-                                )
-                              ) {
-                                hasReportedCompletionRef.current.add(
-                                  selectedLesson.id
-                                );
-
-                                // Report as completed
-                                saveImmediately({
-                                  lessonId: selectedLesson.id,
-                                  currentTimeSecond: Math.floor(videoDuration), // Report full duration
-                                });
-                              }
-                            }}
-                            onEnded={() => {
-                              // When video ends, ensure completion is recorded
-                              if (
-                                selectedLesson &&
-                                videoDuration &&
-                                !hasReportedCompletionRef.current.has(
-                                  selectedLesson.id
-                                )
-                              ) {
-                                hasReportedCompletionRef.current.add(
-                                  selectedLesson.id
-                                );
-                                saveImmediately({
-                                  lessonId: selectedLesson.id,
-                                  currentTimeSecond: Math.floor(videoDuration),
-                                });
-                              }
-                            }}
-                          />
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="text-center text-muted-foreground h-[500px] flex flex-col justify-center items-center">
-                        <p>Nội dung video không có sẵn.</p>
-                      </div>
-                    )
-                  ) : selectedLesson.type === "pdf_url" ? (
-                    selectedLesson.fileUrl ? (
-                      <PdfLessonViewer
-                        pdfUrl={selectedLesson.fileUrl}
-                        initialPage={selectedLesson.currentPage || 1}
-                        onVisiblePageChange={handleVisiblePageChange}
-                      />
-                    ) : (
-                      <div className="text-center text-muted-foreground h-[500px] flex flex-col justify-center items-center">
-                        <p>Nội dung PDF không có sẵn.</p>
-                      </div>
-                    )
-                  ) : (
-                    <div className="text-center text-muted-foreground h-[500px] flex flex-col justify-center items-center">
-                      <p>
-                        Nội dung bài học này hiện không có hoặc không được hỗ
-                        trợ.
-                      </p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </TabsContent>
 
             <TabsContent value="objectives">
               <Card>
@@ -1068,200 +1496,220 @@ export default function CourseDetailPage() {
             </TabsContent>
 
             <TabsContent value="lessons">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center">
-                    <Library className="mr-2 h-5 w-5" />
-                    Danh sách Bài học
-                  </CardTitle>
-                  <CardDescription>
-                    Chọn một bài học để xem nội dung chi tiết trong tab "Nội
-                    dung chính".
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {isLoadingProgress ? (
-                    <div className="flex flex-col items-center justify-center p-8">
-                      <div className="relative">
-                        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                        <div className="absolute inset-0 h-8 w-8 bg-primary/20 rounded-full animate-pulse"></div>
+              <div className="space-y-6">
+                {/* Course Overview */}
+                <Card className="border-0 shadow-sm bg-gradient-to-r from-slate-50 to-white">
+                  <CardHeader className="pb-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <CardTitle className="text-xl font-semibold text-slate-800 mb-1">
+                          Nội dung khóa học
+                        </CardTitle>
+                        <CardDescription className="text-slate-600">
+                          {lessonsWithProgress.length} bài học •{" "}
+                          {completedLessonsCount || 0} đã hoàn thành
+                        </CardDescription>
                       </div>
-                      <p className="mt-4 text-sm text-muted-foreground font-medium">
-                        Đang tải danh sách bài học...
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        Vui lòng đợi trong giây lát
-                      </p>
+                      <div className="text-right">
+                        <div className="text-2xl font-bold text-slate-800">
+                          {lessonsWithProgress.length > 0
+                            ? Math.round(
+                                ((completedLessonsCount || 0) /
+                                  lessonsWithProgress.length) *
+                                  100
+                              )
+                            : 0}
+                          %
+                        </div>
+                        <div className="text-xs text-slate-500">hoàn thành</div>
+                      </div>
                     </div>
-                  ) : lessonsWithProgress.length > 0 ? (
-                    <div className="space-y-3 max-w-full">
-                      {lessonsWithProgress.map((lesson, index) => {
-                        const isCompleted = lesson.progressPercentage >= 100;
-                        const isInProgress =
-                          lesson.progressPercentage > 0 &&
-                          lesson.progressPercentage < 100;
-                        return (
-                          <div
-                            key={lesson.id}
-                            className={cn(
-                              "group relative overflow-hidden rounded-xl border bg-card transition-all duration-300 hover:shadow-lg hover:scale-[1.01] sm:hover:scale-[1.02]",
-                              !canViewContent &&
-                                "opacity-60 cursor-not-allowed",
-                              selectedLesson?.id === lesson.id &&
-                                "ring-2 ring-primary ring-offset-2"
-                            )}
-                          >
-                            <div className="absolute top-2 sm:top-3 left-2 sm:left-3 z-10">
-                              <div
-                                className={cn(
-                                  "flex h-6 w-6 sm:h-8 sm:w-8 items-center justify-center rounded-full text-xs font-bold text-white shadow-lg",
-                                  isCompleted
-                                    ? "bg-orange-500"
-                                    : isInProgress
-                                    ? "bg-orange-500"
-                                    : "bg-gray-400"
-                                )}
-                              >
-                                {index + 1}
+                  </CardHeader>
+                </Card>
+
+                {/* Lessons List */}
+                {isLoadingProgress ? (
+                  <div className="flex flex-col items-center justify-center py-16">
+                    <div className="relative mb-4">
+                      <div className="w-12 h-12 border-4 border-slate-200 rounded-full animate-pulse"></div>
+                      <div className="absolute inset-0 w-12 h-12 border-4 border-slate-600 border-t-transparent rounded-full animate-spin"></div>
+                    </div>
+                    <p className="text-slate-600 font-medium">
+                      Đang tải nội dung...
+                    </p>
+                    <p className="text-sm text-slate-400 mt-1">
+                      Vui lòng đợi trong giây lát
+                    </p>
+                  </div>
+                ) : lessonsWithProgress.length > 0 ? (
+                  <div className="space-y-3">
+                    {lessonsWithProgress.map((lesson, index) => {
+                      const isCompleted = lesson.progressPercentage >= 100;
+                      const isInProgress =
+                        lesson.progressPercentage > 0 &&
+                        lesson.progressPercentage < 100;
+
+                      return (
+                        <Card
+                          key={lesson.id}
+                          className={cn(
+                            "group border transition-all duration-200 hover:shadow-md cursor-pointer",
+                            "bg-white border-slate-200/60 hover:border-slate-300",
+                            !canViewContent && "opacity-50 cursor-not-allowed"
+                          )}
+                          onClick={() =>
+                            canViewContent && handleSelectLesson(lesson)
+                          }
+                        >
+                          <CardContent className="p-4">
+                            <div className="flex items-start gap-4">
+                              {/* Lesson Number/Status */}
+                              <div className="flex-shrink-0">
+                                <div
+                                  className={cn(
+                                    "relative w-12 h-12 rounded-lg flex items-center justify-center font-semibold text-sm transition-all",
+                                    isCompleted
+                                      ? "bg-emerald-100 text-emerald-700 border-2 border-emerald-200"
+                                      : isInProgress
+                                      ? "bg-blue-100 text-blue-700 border-2 border-blue-200"
+                                      : "bg-slate-100 text-slate-600 border-2 border-slate-200 group-hover:border-slate-300"
+                                  )}
+                                >
+                                  {isCompleted ? (
+                                    <CheckCircle className="w-6 h-6" />
+                                  ) : isInProgress ? (
+                                    <Play className="w-5 h-5" />
+                                  ) : (
+                                    index + 1
+                                  )}
+                                </div>
                               </div>
-                            </div>
-                            {isCompleted && (
-                              <div className="absolute top-1 sm:top-2 left-1 sm:left-2 z-20">
-                                <CheckCircle className="h-8 w-8 sm:h-10 sm:w-10 text-orange-500 bg-white rounded-full" />
-                              </div>
-                            )}
-                            <button
-                              onClick={() => handleSelectLesson(lesson)}
-                              className="w-full text-left p-3 sm:p-6 pl-10 sm:pl-16 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 rounded-xl"
-                              disabled={!canViewContent}
-                            >
-                              <div className="flex flex-col sm:flex-row items-start sm:justify-between gap-2 sm:gap-4">
-                                <div className="flex items-start gap-2 sm:gap-4 flex-grow min-w-0 w-full">
+
+                              {/* Lesson Content */}
+                              <div className="flex-1 min-w-0">
+                                {/* Lesson Type & Duration */}
+                                <div className="flex items-center gap-2 mb-2">
                                   <div
                                     className={cn(
-                                      "flex h-8 w-8 sm:h-12 sm:w-12 items-center justify-center rounded-lg shadow-sm transition-colors flex-shrink-0",
+                                      "w-5 h-5 flex items-center justify-center",
                                       lesson.type === "video_url" &&
-                                        "bg-red-50 text-red-600",
+                                        "text-red-500",
                                       lesson.type === "pdf_url" &&
-                                        "bg-orange-50 text-orange-600",
+                                        "text-orange-500",
                                       lesson.type === "text" &&
-                                        "bg-green-50 text-green-600",
+                                        "text-green-500",
                                       lesson.type === "external_link" &&
-                                        "bg-purple-50 text-purple-600"
+                                        "text-blue-500"
                                     )}
                                   >
                                     {renderLessonIcon(lesson.type)}
                                   </div>
-                                  <div className="flex-grow min-w-0">
-                                    <h3 className="font-semibold text-lg text-foreground group-hover:text-primary transition-colors mb-1 line-clamp-2">
-                                      {lesson.title}
-                                    </h3>
-                                    <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground mb-2">
-                                      {lesson.duration && (
-                                        <div className="flex items-center gap-1">
-                                          <Clock className="h-3 w-3" />
-                                          <span>{lesson.duration}</span>
-                                        </div>
-                                      )}
-                                      <div className="flex items-center gap-1">
-                                        {lesson.type === "video_url" && (
-                                          <>
-                                            <Video className="h-3 w-3" />
-                                            <span>Video</span>
-                                          </>
-                                        )}
-                                        {lesson.type === "pdf_url" && (
-                                          <>
-                                            <FileText className="h-3 w-3" />
-                                            <span>Tài liệu PDF</span>
-                                          </>
-                                        )}
-                                        {lesson.type === "text" && (
-                                          <>
-                                            <BookOpen className="h-3 w-3" />
-                                            <span>Bài đọc</span>
-                                          </>
-                                        )}
-                                        {lesson.type === "external_link" && (
-                                          <>
-                                            <LinkIcon className="h-3 w-3" />
-                                            <span>Liên kết</span>
-                                          </>
-                                        )}
+                                  <span className="text-xs font-medium text-slate-500 uppercase tracking-wide">
+                                    {lesson.type === "video_url" && "Video"}
+                                    {lesson.type === "pdf_url" &&
+                                      "Tài liệu PDF"}
+                                    {lesson.type === "text" && "Bài đọc"}
+                                    {lesson.type === "external_link" &&
+                                      "Liên kết"}
+                                  </span>
+                                  {lesson.duration && (
+                                    <>
+                                      <span className="text-slate-300">•</span>
+                                      <span className="text-xs text-slate-500">
+                                        {lesson.duration}
+                                      </span>
+                                    </>
+                                  )}
+                                </div>
+
+                                {/* Lesson Title */}
+                                <h3
+                                  className={cn(
+                                    "font-semibold text-slate-800 line-clamp-2 mb-3 transition-colors",
+                                    "group-hover:text-slate-900"
+                                  )}
+                                >
+                                  {lesson.title}
+                                </h3>
+
+                                {/* Progress Bar */}
+                                {canViewContent &&
+                                  lesson.progressPercentage >= 0 && (
+                                    <div className="space-y-2">
+                                      <div className="flex items-center justify-between">
+                                        <span className="text-xs font-medium text-slate-500">
+                                          Tiến độ
+                                        </span>
+                                        <span className="text-xs font-semibold text-slate-700">
+                                          {lesson.progressPercentage}%
+                                        </span>
+                                      </div>
+                                      <div className="w-full bg-slate-200 rounded-full h-1.5 overflow-hidden">
+                                        <div
+                                          className={cn(
+                                            "h-full transition-all duration-300 rounded-full",
+                                            isCompleted
+                                              ? "bg-emerald-500"
+                                              : "bg-blue-500"
+                                          )}
+                                          style={{
+                                            width: `${lesson.progressPercentage}%`,
+                                          }}
+                                        />
                                       </div>
                                     </div>
-                                    {canViewContent &&
-                                      lesson.progressPercentage >= 0 && (
-                                        <div className="space-y-2">
-                                          <div className="flex items-center justify-between">
-                                            <span className="text-xs font-medium text-muted-foreground">
-                                              Tiến độ học tập
-                                            </span>
-                                            <span
-                                              className={cn(
-                                                "text-xs font-semibold px-2 py-1 rounded-full",
-                                                isCompleted
-                                                  ? "bg-orange-100 text-orange-700"
-                                                  : isInProgress
-                                                  ? "bg-orange-100 text-orange-700"
-                                                  : "bg-gray-100 text-gray-700"
-                                              )}
-                                            >
-                                              {lesson.progressPercentage}%
-                                            </span>
-                                          </div>
-                                          <Progress
-                                            value={lesson.progressPercentage}
-                                            className="h-2"
-                                          />
-                                        </div>
-                                      )}
-                                  </div>
-                                </div>
-                                <div className="flex items-center gap-2 flex-shrink-0">
-                                  {isCompleted && (
-                                    <Badge
-                                      variant="secondary"
-                                      className="bg-orange-100 text-orange-700 hover:bg-orange-100"
-                                    >
-                                      <CheckCircle className="h-3 w-3 mr-1" />
-                                      Hoàn thành
-                                    </Badge>
                                   )}
-                                  {isInProgress && !isCompleted && (
-                                    <Badge
-                                      variant="secondary"
-                                      className="bg-orange-100 text-orange-700 hover:bg-orange-100"
-                                    >
-                                      <Play className="h-3 w-3 mr-1" />
-                                      Đang học
-                                    </Badge>
-                                  )}
-                                  <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
-                                </div>
                               </div>
-                            </button>
-                            <div className="absolute inset-0 bg-gradient-to-r from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none rounded-xl" />
-                          </div>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
-                      <div className="w-20 h-20 bg-muted rounded-full flex items-center justify-center mb-4">
-                        <BookOpen className="h-10 w-10 text-muted-foreground" />
+
+                              {/* Status Badge & Action */}
+                              <div className="flex-shrink-0 flex items-center gap-3">
+                                {/* Status Badge */}
+                                {isCompleted && (
+                                  <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 hover:bg-emerald-100">
+                                    <CheckCircle className="w-3 h-3 mr-1" />
+                                    Hoàn thành
+                                  </Badge>
+                                )}
+                                {isInProgress && !isCompleted && (
+                                  <Badge className="bg-blue-100 text-blue-700 border-blue-200 hover:bg-blue-100">
+                                    <Play className="w-3 h-3 mr-1" />
+                                    Đang học
+                                  </Badge>
+                                )}
+
+                                {/* Action Button */}
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  disabled={!canViewContent}
+                                  className="opacity-0 group-hover:opacity-100 transition-all duration-200 text-slate-600 hover:text-slate-800 hover:bg-slate-100"
+                                >
+                                  <ChevronRight className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <Card className="border-0 shadow-sm">
+                    <CardContent className="text-center py-16">
+                      <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <BookOpen className="w-8 h-8 text-slate-400" />
                       </div>
-                      <h3 className="text-lg font-semibold text-foreground mb-2">
-                        Chưa có bài học nào
+                      <h3 className="text-lg font-semibold text-slate-700 mb-2">
+                        Chưa có bài học
                       </h3>
-                      <p className="text-muted-foreground max-w-md">
-                        Khóa học này chưa có bài học nào được thêm. Vui lòng
-                        quay lại sau hoặc liên hệ hỗ trợ để biết thêm thông tin.
+                      <p className="text-slate-500 max-w-md mx-auto">
+                        Nội dung khóa học đang được cập nhật. Vui lòng quay lại
+                        sau.
                       </p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
             </TabsContent>
 
             <TabsContent value="tests">
@@ -1564,6 +2012,283 @@ export default function CourseDetailPage() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {/* Fullscreen Learning Modal */}
+        {isFullscreen && selectedLesson && (
+          <div className="fixed z-[99]">
+            {/* Main Content Area */}
+            <div className="flex h-full relative">
+              {/* Content Area - Left Side */}
+              <div className="flex-1 relative">
+                {selectedLesson.type === "video_url" && selectedLesson.link && (
+                  <div className="h-full flex items-center justify-center bg-black">
+                    <ReactPlayer
+                      key={`fullscreen-${selectedLesson.id}`}
+                      url={selectedLesson.link}
+                      playing
+                      controls
+                      width="100%"
+                      height="100%"
+                      style={{
+                        maxWidth: "100%",
+                        maxHeight: "100%",
+                      }}
+                    />
+                  </div>
+                )}
+
+                {selectedLesson.type === "pdf_url" && selectedLesson.link && (
+                  <div className="h-full relative z-[1]">
+                    <PdfLessonViewer
+                      key={`fullscreen-pdf-${selectedLesson.id}`}
+                      pdfUrl={selectedLesson.link}
+                      onVisiblePageChange={(page) => {
+                        setVisiblePage(page);
+                        // Update progress based on page
+                      }}
+                      initialPage={selectedLesson.currentPage || 1}
+                      isMobile={isMobile}
+                    />
+                  </div>
+                )}
+
+                {selectedLesson.type === "text" && (
+                  <div className="h-full overflow-y-auto bg-white">
+                    <div className="max-w-4xl mx-auto p-8">
+                      <h1 className="text-3xl font-bold text-gray-900 mb-6">
+                        {selectedLesson.title}
+                      </h1>
+                      <div className="prose prose-lg max-w-none text-gray-700 leading-relaxed">
+                        <p>Nội dung bài học sẽ được hiển thị ở đây.</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {selectedLesson.type === "external_link" &&
+                  selectedLesson.link && (
+                    <div className="h-full">
+                      <iframe
+                        src={selectedLesson.link}
+                        className="w-full h-full border-0"
+                        title={selectedLesson.title}
+                      />
+                    </div>
+                  )}
+              </div>
+
+              {/* Mobile Backdrop Overlay */}
+              {isMobile && isSidebarOpen && (
+                <div
+                  className="fixed inset-0 bg-black/50 z-[90] backdrop-blur-sm"
+                  onClick={() => setIsSidebarOpen(false)}
+                />
+              )}
+
+              {/* Sidebar - Right Side */}
+              <div
+                className={cn(
+                  "bg-white transition-all duration-300 overflow-hidden relative z-[95] shadow-xl",
+                  isMobile
+                    ? cn(
+                        "fixed top-0 right-0 h-full",
+                        isSidebarOpen
+                          ? "w-full max-w-xs translate-x-0"
+                          : "w-0 translate-x-full"
+                      )
+                    : cn(
+                        "border-l border-gray-200",
+                        isSidebarOpen ? "w-80 min-w-[320px]" : "w-0"
+                      )
+                )}
+              >
+                {isSidebarOpen && (
+                  <div className="h-full overflow-y-auto">
+                    <div className="p-4 border-b border-gray-200 flex items-center justify-between bg-gradient-to-r from-orange-50 to-orange-100">
+                      <div>
+                        <h3 className="font-semibold text-gray-900 text-sm">
+                          Nội dung khóa học
+                        </h3>
+                        <p className="text-xs text-gray-600 mt-1">
+                          {lessonsWithProgress.length} bài học
+                        </p>
+                      </div>
+                      {/* Close Button inside sidebar */}
+                      <Button
+                        size="sm"
+                        onClick={() => setIsSidebarOpen(false)}
+                        className="bg-white/80 text-gray-700 hover:bg-white hover:text-gray-900 rounded-full w-8 h-8 p-0 shadow-sm border border-gray-200"
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    </div>
+                    <div className="p-2">
+                      {lessonsWithProgress.map((lesson, index) => {
+                        const isActive = lesson.id === selectedLesson?.id;
+                        const isCompleted = lesson.progressPercentage >= 100;
+                        const isInProgress =
+                          lesson.progressPercentage > 0 &&
+                          lesson.progressPercentage < 100;
+
+                        return (
+                          <div
+                            key={lesson.id}
+                            className={cn(
+                              "p-3 rounded-lg cursor-pointer transition-all duration-200 mb-2",
+                              isActive
+                                ? "bg-orange-100 border-2 border-orange-300"
+                                : "hover:bg-gray-100 border-2 border-transparent"
+                            )}
+                            onClick={() => handleSelectLesson(lesson)}
+                          >
+                            <div className="flex items-center gap-3">
+                              <div
+                                className={cn(
+                                  "w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium",
+                                  isCompleted
+                                    ? "bg-green-100 text-green-700"
+                                    : isInProgress
+                                    ? "bg-blue-100 text-blue-700"
+                                    : isActive
+                                    ? "bg-orange-100 text-orange-700"
+                                    : "bg-gray-100 text-gray-600"
+                                )}
+                              >
+                                {isCompleted ? (
+                                  <CheckCircle className="w-5 h-5" />
+                                ) : (
+                                  index + 1
+                                )}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p
+                                  className={cn(
+                                    "font-medium text-sm truncate",
+                                    isActive
+                                      ? "text-orange-900"
+                                      : "text-gray-900"
+                                  )}
+                                >
+                                  {lesson.title}
+                                </p>
+                                <div className="flex items-center gap-2 mt-1">
+                                  <div className="w-4 h-4 text-gray-500">
+                                    {renderLessonIcon(lesson.type)}
+                                  </div>
+                                  <span className="text-xs text-gray-500">
+                                    {lesson.type === "video_url" && "Video"}
+                                    {lesson.type === "pdf_url" && "PDF"}
+                                    {lesson.type === "text" && "Bài đọc"}
+                                    {lesson.type === "external_link" &&
+                                      "Liên kết"}
+                                  </span>
+                                  {lesson.duration && (
+                                    <>
+                                      <span className="text-gray-300">•</span>
+                                      <span className="text-xs text-gray-500">
+                                        {lesson.duration}
+                                      </span>
+                                    </>
+                                  )}
+                                </div>
+                                {lesson.progressPercentage > 0 && (
+                                  <div className="mt-2">
+                                    <Progress
+                                      value={lesson.progressPercentage}
+                                      className="h-1"
+                                    />
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Fixed top-right controls: only toggle (no 3-dot menu) */}
+            <div
+              className={cn(
+                "fixed top-16 z-[100] transition-all duration-300 flex items-center gap-2",
+                isSidebarOpen ? "right-[330px]" : "right-4"
+              )}
+            >
+              <Button
+                size="sm"
+                className="bg-white text-gray-900 hover:bg-white/90 rounded-full h-8 px-3 shadow-md border border-gray-200 flex items-center gap-1"
+                onClick={() => setControlsEnabled((v) => !v)}
+                title={
+                  controlsEnabled
+                    ? "Ẩn các nút điều khiển"
+                    : "Hiện các nút điều khiển"
+                }
+              >
+                {controlsEnabled ? (
+                  <EyeOff className="h-3 w-3" />
+                ) : (
+                  <Eye className="h-3 w-3" />
+                )}
+                <span className="text-[11px]">
+                  {controlsEnabled ? "Ẩn" : "Hiện"}
+                </span>
+              </Button>
+            </div>
+
+            {/* Navigation Controls - hover only when enabled */}
+            {controlsEnabled && (
+              <div
+                className="absolute inset-0 z-[49] pointer-events-none"
+                onMouseEnter={() => controlsEnabled && setShowControls(true)}
+              >
+                {showControls && (
+                  <>
+                    {/* Previous Button - Left Center */}
+                    <div className="absolute left-4 top-1/2 transform -translate-y-1/2 pointer-events-auto">
+                      <Button
+                        size="sm"
+                        onClick={handlePrevLesson}
+                        disabled={
+                          lessonsWithProgress.findIndex(
+                            (l) => l.id === selectedLesson.id
+                          ) === 0
+                        }
+                        className="bg-white/90 text-gray-700 hover:bg-white hover:text-gray-900 rounded-full w-8 h-8 p-0 shadow-lg border border-gray-200 disabled:opacity-30 disabled:cursor-not-allowed"
+                      >
+                        <ChevronLeft className="h-3 w-3" />
+                      </Button>
+                    </div>
+
+                    {/* Next Button - Right Center */}
+                    <div
+                      className={cn(
+                        "absolute top-1/2 transform -translate-y-1/2 transition-all duration-300 pointer-events-auto",
+                        isSidebarOpen ? "right-[340px]" : "right-4"
+                      )}
+                    >
+                      <Button
+                        size="sm"
+                        onClick={handleNextLesson}
+                        disabled={
+                          lessonsWithProgress.findIndex(
+                            (l) => l.id === selectedLesson.id
+                          ) ===
+                          lessonsWithProgress.length - 1
+                        }
+                        className="bg-white/90 text-gray-700 hover:bg-white hover:text-gray-900 rounded-full w-8 h-8 p-0 shadow-lg border border-gray-200 disabled:opacity-30 disabled:cursor-not-allowed"
+                      >
+                        <ChevronRight className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </>
   );
