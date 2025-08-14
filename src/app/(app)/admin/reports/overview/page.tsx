@@ -454,7 +454,7 @@ export default function TrainingOverviewReportPage() {
 
   return (
     <div className="min-h-screen from-orange-50 via-amber-50/50 to-red-50/30 dark:from-slate-950 dark:via-orange-950/20 dark:to-red-950/10">
-      <div className="container mx-auto px-4 py-8 space-y-8">
+      <div className="container mx-auto px-2 sm:px-4 md:px-6 py-8 space-y-8">
         <div className="relative">
           <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
             <div className="flex-1">
