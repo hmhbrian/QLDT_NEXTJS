@@ -3,7 +3,7 @@ import { usersService } from "@/lib/services";
 import { useAuth } from "@/hooks/useAuth";
 import { useEffect, useState } from "react";
 import { ErrorHandler } from "@/lib/utils/error.utils";
-import type { User, UserApiResponse } from "@/lib/types/user.types";
+import type { User } from "@/lib/types/user.types";
 import { mapUserApiToUi } from "@/lib/mappers/user.mapper";
 
 export default function UserList() {

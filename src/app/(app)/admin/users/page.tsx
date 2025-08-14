@@ -27,7 +27,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DatePicker } from "@/components/ui/datepicker";
 import { useAuth } from "@/hooks/useAuth";
 import { useError } from "@/hooks/use-error";
@@ -37,13 +36,11 @@ import {
   Role,
   CreateUserRequest,
   UpdateUserRequest,
-  EmployeeLevel,
   ResetPasswordRequest,
   ServiceRole,
   UserDepartmentInfo,
 } from "@/lib/types/user.types";
 import { UserDetailDialog } from "@/components/users";
-import { DepartmentInfo } from "@/lib/types/department.types";
 import { useToast } from "@/components/ui/use-toast";
 import { DataTable } from "@/components/ui/data-table";
 import { getColumns } from "./columns";
@@ -62,9 +59,6 @@ import { useQuery } from "@tanstack/react-query";
 import {
   PlusCircle,
   Search,
-  UserCircle2,
-  Calendar,
-  Award,
   Eye,
   EyeOff,
   Pencil,
@@ -483,7 +477,7 @@ export default function UsersPage() {
 
   return (
     <>
-      <Card>
+      <Card className="container mx-auto px-2 sm:px-4 md:px-6">
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
@@ -501,19 +495,24 @@ export default function UsersPage() {
           <div className="mb-6 space-y-4">
             <div className="flex flex-col sm:flex-row gap-4">
               <div className="relative flex-grow">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10" />
+                <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10" />
                 <Input
                   placeholder="Tìm kiếm theo tên, email, mã NV..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className={cn("pl-9", isUsersLoading && "pr-10")}
+                  className={cn(
+                    "pl-9 pr-9",
+                    isUsersLoading && "pr-10",
+                    "transition-colors"
+                  )}
                 />
-                {isUsersLoading && (
-                  <Spinner
-                    className="absolute right-3 top-1/2 -translate-y-1/2"
-                    size="sm"
-                  />
-                )}
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center">
+                  {isUsersLoading ? (
+                    <Spinner size="sm" />
+                  ) : (
+                    <div className="h-4 w-4 rounded-full border-muted-foreground/30" />
+                  )}
+                </div>
               </div>
             </div>
           </div>

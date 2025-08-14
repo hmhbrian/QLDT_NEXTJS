@@ -27,18 +27,15 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-import { PlusCircle, Search, Building2, Eye, EyeOff } from "lucide-react";
+import { PlusCircle, Search, Eye, EyeOff } from "lucide-react";
 import { useState, useMemo, useCallback, useEffect } from "react";
 import {
   User,
-  Role,
   CreateUserRequest,
   UpdateUserRequest,
   ServiceRole,
-  UserDepartmentInfo,
 } from "@/lib/types/user.types";
 import { UserDetailDialog } from "@/components/users";
-import { DepartmentInfo } from "@/lib/types/department.types";
 import { useToast } from "@/components/ui/use-toast";
 import { useError } from "@/hooks/use-error";
 import { DataTable } from "@/components/ui/data-table";
