@@ -4,7 +4,6 @@ import type {
   DepartmentInfo,
   CreateDepartmentPayload,
   UpdateDepartmentPayload,
-  DepartmentApiResponse,
 } from "@/lib/types/department.types";
 import { extractErrorMessage } from "@/lib/core";
 import { useToast } from "@/components/ui/use-toast";

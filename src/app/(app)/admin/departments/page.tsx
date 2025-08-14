@@ -398,7 +398,7 @@ export default function DepartmentsPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 container mx-auto px-2 sm:px-4 md:px-6">
       {!validation.valid && validation.issues && (
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
@@ -497,9 +497,7 @@ export default function DepartmentsPage() {
               {isDepartmentsLoading || isStatusesLoading ? (
                 <div className="flex h-60 w-full items-center justify-center">
                   <Loader2 className="h-10 w-10 animate-spin text-primary" />
-                  <p className="ml-3 text-muted-foreground">
-                    Đang tải...
-                  </p>
+                  <p className="ml-3 text-muted-foreground">Đang tải...</p>
                 </div>
               ) : (
                 <DataTable columns={columns} data={filteredDepartments} />
