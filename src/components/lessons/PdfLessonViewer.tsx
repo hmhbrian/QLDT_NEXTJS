@@ -30,18 +30,19 @@ interface PdfLessonViewerProps {
   pdfUrl: string;
   initialPage?: number;
   onVisiblePageChange: (page: number) => void;
+  isMobile?: boolean;
 }
 
 const MemoizedPage = memo(Page);
 
 function PageWithObserver({
   pageNumber,
-  scale,
+  width,
   onInView,
   setRef,
 }: {
   pageNumber: number;
-  scale: number;
+  width: number;
   onInView: () => void;
   setRef: (el: HTMLDivElement | null) => void;
 }) {
@@ -62,21 +63,22 @@ function PageWithObserver({
     [setRef, ref]
   );
 
+  const aspect = 1260 / 891; // H / W
   return (
     <div ref={combinedRef} className="mb-4 shadow-lg flex justify-center">
       <MemoizedPage
         pageNumber={pageNumber}
-        scale={scale}
+        width={Math.max(280, Math.floor(width))}
         renderAnnotationLayer={false}
         renderTextLayer={false}
         loading={
           <Skeleton
-            className="w-full aspect-[891/1260] max-w-none"
+            className="w-full max-w-none"
             style={{
-              width: `${891 * scale}px`,
-              height: `${1260 * scale}px`,
-              minWidth: `${891 * scale}px`,
-              minHeight: `${1260 * scale}px`,
+              width: `${Math.max(280, Math.floor(width))}px`,
+              height: `${Math.floor(Math.max(280, Math.floor(width)) * aspect)}px`,
+              minWidth: `${Math.max(280, Math.floor(width))}px`,
+              minHeight: `${Math.floor(Math.max(280, Math.floor(width)) * aspect)}px`,
             }}
           />
         }
@@ -89,16 +91,33 @@ export function PdfLessonViewer({
   pdfUrl,
   initialPage = 1,
   onVisiblePageChange,
+  isMobile = false,
 }: PdfLessonViewerProps) {
   const [numPages, setNumPages] = useState<number>(0);
   const [currentPage, setCurrentPage] = useState<number>(initialPage);
-  const [scale, setScale] = useState(1.5);
+  const [scale, setScale] = useState(1); // acts as a width multiplier
   const [pdfError, setPdfError] = useState<string | null>(null);
-  const [isThumbnailsOpen, setIsThumbnailsOpen] = useState(true);
+  const [isThumbnailsOpen, setIsThumbnailsOpen] = useState(!isMobile);
   const [isInitialLoad, setIsInitialLoad] = useState(true); // Thêm state để track initial load
 
   const mainContainerRef = useRef<HTMLDivElement>(null);
   const pageRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const [containerWidth, setContainerWidth] = useState<number>(0);
+
+  // Observe container width for responsive pages
+  useEffect(() => {
+    const el = mainContainerRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const cr = entry.contentRect;
+        setContainerWidth(cr.width);
+      }
+    });
+    ro.observe(el);
+    setContainerWidth(el.clientWidth);
+    return () => ro.disconnect();
+  }, []);
 
 
   const onDocumentLoadSuccess = ({ numPages }: { numPages: number }) => {
@@ -171,13 +190,14 @@ export function PdfLessonViewer({
   }, [pdfUrl, initialPage]);
 
   return (
-    <div className="w-full h-[85vh] flex flex-col bg-background dark:bg-zinc-900 rounded-lg shadow-lg border">
-      <div className="flex-shrink-0 h-auto bg-card border-b flex flex-wrap items-center justify-between gap-2 px-2 sm:px-4 py-2 sticky top-0 z-20">
+    <div className="w-full h-full flex flex-col bg-gray-50 rounded-lg shadow-lg border relative" style={{ zIndex: 1 }}>
+      <div className="flex-shrink-0 h-auto bg-white border-b flex flex-wrap items-center justify-between gap-2 px-2 sm:px-4 py-2 sticky top-0" style={{ zIndex: 20 }}>
         <div className="flex items-center gap-2 min-w-[120px]">
           <Button
             variant="ghost"
             size="icon"
             onClick={() => setIsThumbnailsOpen((prev) => !prev)}
+            className={cn(isThumbnailsOpen && "bg-orange-100 text-orange-600")}
           >
             <PanelLeft className="h-5 w-5" />
           </Button>
@@ -307,7 +327,7 @@ export function PdfLessonViewer({
                   <PageWithObserver
                     key={`page-${index + 1}`}
                     pageNumber={index + 1}
-                    scale={scale}
+                    width={containerWidth * scale * 0.9}
                     onInView={() => handlePageInView(index + 1)}
                     setRef={(el) => (pageRefs.current[index] = el)}
                   />
