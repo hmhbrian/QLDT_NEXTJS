@@ -16,16 +16,9 @@ import {
   YAxis,
   Tooltip,
   Legend,
-  PieChart,
-  Pie,
-  Cell,
-  Area,
-  AreaChart,
 } from "recharts";
 import {
   BarChart as BarChartIcon,
-  PieChart as PieChartIcon,
-  TrendingUp,
 } from "lucide-react";
 
 interface ProgressChartsProps {

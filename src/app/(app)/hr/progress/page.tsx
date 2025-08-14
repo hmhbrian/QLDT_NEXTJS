@@ -8,13 +8,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   Users,
   BookOpen,
   Loader2,
@@ -22,7 +15,7 @@ import {
   Activity,
   AlertTriangle,
 } from "lucide-react";
-import { ReportFilter, FilterType } from "@/components/common/ReportFilter";
+import { FilterType } from "@/components/common/ReportFilter";
 import dynamic from "next/dynamic";
 import { useMemo, useState } from "react";
 import { useCourses } from "@/hooks/use-courses";
@@ -400,7 +393,7 @@ export default function ProgressPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 container mx-auto px-2 sm:px-4 md:px-6">
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl md:text-3xl font-headline font-semibold">
