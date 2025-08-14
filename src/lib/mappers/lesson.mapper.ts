@@ -10,7 +10,7 @@ import { API_CONFIG } from "../config";
 export function mapApiLessonToUi(apiLesson: ApiLesson): Lesson {
   let contentType: LessonContentType = "text"; 
   let finalFileUrl = apiLesson.fileUrl || null;
-  let finalLink = apiLesson.link || null;
+  const finalLink = apiLesson.link || null;
 
   if (finalLink && (finalLink.includes("youtube.com") || finalLink.includes("youtu.be"))) {
       contentType = "video_url";
