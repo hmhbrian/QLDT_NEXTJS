@@ -35,13 +35,13 @@ export function PaginationControls({
   const end = Math.min(page * pageSize, totalItems);
 
   return (
-    <div className={`flex items-center justify-between px-2 py-4 ${className || ""}`}> 
-      <div className="flex-1 text-sm text-muted-foreground">
+    <div className={`flex flex-col md:flex-row items-center gap-3 md:gap-4 justify-between px-2 py-4 ${className || ""}`}>
+      <div className="w-full md:flex-1 text-xs sm:text-sm text-muted-foreground text-center md:text-left">
         {start}–{end} trên {totalItems}
       </div>
-      <div className="flex items-center space-x-6 lg:space-x-8">
-        <div className="flex items-center space-x-2">
-          <p className="text-sm font-medium">Số dòng mỗi trang</p>
+      <div className="w-full md:w-auto flex flex-wrap items-center justify-center md:justify-end gap-3 md:gap-4">
+        <div className="flex items-center gap-2">
+          <p className="text-xs sm:text-sm font-medium hidden xs:block">Số dòng</p>
           <Select
             value={`${pageSize}`}
             onValueChange={(value) => onPageSizeChange(Number(value))}
@@ -58,10 +58,10 @@ export function PaginationControls({
             </SelectContent>
           </Select>
         </div>
-        <div className="flex w-[100px] items-center justify-center text-sm font-medium">
-          Trang {page} của {totalPages}
+        <div className="flex min-w-[120px] items-center justify-center text-xs sm:text-sm font-medium">
+          Trang {page} / {Math.max(totalPages, 1)}
         </div>
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center gap-2">
           <Button
             variant="outline"
             className="hidden h-8 w-8 p-0 lg:flex"
@@ -83,7 +83,7 @@ export function PaginationControls({
           <Button
             variant="outline"
             className="h-8 w-8 p-0"
-            onClick={() => onPageChange(Math.min(totalPages, page + 1))}
+            onClick={() => onPageChange(Math.min(Math.max(totalPages, 1), page + 1))}
             disabled={page >= totalPages}
             aria-label="Trang sau"
           >
@@ -92,7 +92,7 @@ export function PaginationControls({
           <Button
             variant="outline"
             className="hidden h-8 w-8 p-0 lg:flex"
-            onClick={() => onPageChange(totalPages)}
+            onClick={() => onPageChange(Math.max(totalPages, 1))}
             disabled={page >= totalPages}
             aria-label="Trang cuối"
           >

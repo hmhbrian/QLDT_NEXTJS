@@ -1,15 +1,12 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
 import { useToast } from "@/components/ui/use-toast";
-import { extractErrorMessage } from "@/lib/core";
 import type {
   Status,
   CreateStatusRequest,
   UpdateStatusRequest,
 } from "@/lib/types/status.types";
-import type { QueryParams } from "@/lib/core/types";
 import { statusService } from "@/lib/services/modern/status.service";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 

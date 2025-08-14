@@ -3,8 +3,6 @@
 import {
   User,
   LoginDTO,
-  UserApiResponse,
-  ChangePasswordRequest,
   UserProfileUpdateRequest,
 } from "@/lib/types/user.types";
 import React, {
