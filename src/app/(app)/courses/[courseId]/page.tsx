@@ -563,7 +563,8 @@ export default function CourseDetailPage() {
       if (!isFullscreen) {
         setActiveTab("lessons");
         setIsFullscreen(true);
-        setIsSidebarOpen(true);
+        // Mặc định ẩn sidebar để tập trung nội dung chính
+        setIsSidebarOpen(false);
       }
 
       // Reset video state for new lesson
@@ -614,14 +615,15 @@ export default function CourseDetailPage() {
     setVisiblePage(page);
   }, []);
 
-  // Auto-hide controls on mobile after a short delay
+  // Auto-hide controls trên mobile chỉ với PDF; video giữ controls
   useEffect(() => {
     if (!isMobile) return;
     if (!controlsEnabled) return;
     if (!showControls) return;
+    if (selectedLesson?.type !== "pdf_url") return;
     const t = setTimeout(() => setShowControls(false), 3000);
     return () => clearTimeout(t);
-  }, [isMobile, controlsEnabled, showControls]);
+  }, [isMobile, controlsEnabled, showControls, selectedLesson?.type]);
 
   const handlePlayerReady = useCallback(() => {
     if (playerRef.current && selectedLesson?.currentTimeSecond) {
@@ -717,7 +719,7 @@ export default function CourseDetailPage() {
             {/* Main Content Area */}
             <div className="flex-1 relative">
               {/* Floating Controls - Like Udemy */}
-              {controlsEnabled && !isMobile && (
+              {/* {controlsEnabled && !isMobile && (
                 <div className="absolute top-4 left-4 z-50 flex items-center gap-2">
                   <Button
                     variant="ghost"
@@ -729,10 +731,10 @@ export default function CourseDetailPage() {
                     <X className="h-5 w-5" />
                   </Button>
                 </div>
-              )}
-              {controlsEnabled && !isMobile && (
+              )} */}
+              {/* {controlsEnabled && !isMobile && (
                 <div className="absolute top-4 right-4 z-50 flex items-center gap-2">
-                  {/* Navigation Controls */}
+                 
                   <Button
                     variant="ghost"
                     size="sm"
@@ -766,7 +768,7 @@ export default function CourseDetailPage() {
                     <SkipForward className="h-5 w-5" />
                   </Button>
 
-                  {/* Sidebar Toggle */}
+                  
                   <Button
                     variant="ghost"
                     size="sm"
@@ -777,15 +779,10 @@ export default function CourseDetailPage() {
                     <Library className="h-5 w-5" />
                   </Button>
                 </div>
-              )}
+              )} */}
 
               {/* Content Area - Full Height */}
-              <div
-                className="w-full h-full"
-                onClick={() => {
-                  if (isMobile && controlsEnabled) setShowControls((s) => !s);
-                }}
-              >
+              <div className="w-full h-full">
                 {selectedLesson.type === "video_url" && selectedLesson.link ? (
                   <div className="w-full h-full">
                     <ReactPlayer
@@ -795,6 +792,16 @@ export default function CourseDetailPage() {
                       width="100%"
                       height="100%"
                       controls
+                      playing={false}
+                      config={{
+                        playerVars: {
+                          autoplay: 0,
+                          rel: 0,
+                          modestbranding: 1,
+                          showinfo: 0,
+                          iv_load_policy: 3,
+                        },
+                      }}
                       onReady={handlePlayerReady}
                       onDuration={(duration) => {
                         setVideoDuration(duration);
@@ -847,11 +854,15 @@ export default function CourseDetailPage() {
                       }}
                     />
                   </div>
-                ) : selectedLesson.type === "pdf_url" &&
-                  selectedLesson.fileUrl ? (
+                ) : selectedLesson.type === "pdf_url" && selectedLesson.fileUrl ? (
                   <div className="w-full h-full bg-gray-100 relative overflow-hidden">
                     {/* PDF Container with proper styling */}
-                    <div className="w-full h-full">
+                    <div
+                      className="w-full h-full"
+                      onClick={() => {
+                        if (isMobile && controlsEnabled) setShowControls((s) => !s);
+                      }}
+                    >
                       <PdfLessonViewer
                         key={selectedLesson.id} // Force re-render when lesson changes
                         pdfUrl={selectedLesson.fileUrl}
@@ -1034,13 +1045,16 @@ export default function CourseDetailPage() {
                 )}
               </div>
             )}
-            {/* Eye toggle for mobile (top-left) */}
+            {/* Eye toggle for mobile (top-left)
             {isMobile && (
               <div className="fixed top-3 left-3 z-50">
                 <Button
                   size="sm"
                   className="bg-white text-gray-900 hover:bg-white/90 rounded-full h-9 px-3 shadow-md border border-gray-200 flex items-center gap-1"
-                  onClick={() => setControlsEnabled((v) => !v)}
+                  onClick={() => {
+                    setControlsEnabled((v) => !v);
+                    setShowControls(true);
+                  }}
                   title={controlsEnabled ? "Ẩn điều khiển" : "Hiện điều khiển"}
                 >
                   {controlsEnabled ? (
@@ -1053,9 +1067,9 @@ export default function CourseDetailPage() {
                   </span>
                 </Button>
               </div>
-            )}
+            )} */}
             {/* Mobile bottom controls */}
-            {isMobile && controlsEnabled && showControls && !isSidebarOpen && (
+            { controlsEnabled && !isSidebarOpen && (
               <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 bg-white/95 backdrop-blur-sm border border-gray-200 rounded-full shadow-lg px-2 py-1 flex items-center gap-2">
                 <Button
                   variant="ghost"
@@ -1110,7 +1124,10 @@ export default function CourseDetailPage() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => setControlsEnabled((v) => !v)}
+                  onClick={() => {
+                    setControlsEnabled((v) => !v);
+                    setShowControls(true);
+                  }}
                   aria-label={
                     controlsEnabled ? "Ẩn điều khiển" : "Hiện điều khiển"
                   }
@@ -1384,7 +1401,7 @@ export default function CourseDetailPage() {
                   <Loader2 className="h-4 w-4 animate-spin text-primary" />
                 ) : (
                   <div className="text-xl font-bold">
-                    {completedLessonsCount}
+                    {completedLessonsCount ?? 0}
                     <span className="text-sm text-muted-foreground ml-1">
                       bài
                     </span>
@@ -1506,8 +1523,7 @@ export default function CourseDetailPage() {
                           Nội dung khóa học
                         </CardTitle>
                         <CardDescription className="text-slate-600">
-                          {lessonsWithProgress.length} bài học •{" "}
-                          {completedLessonsCount || 0} đã hoàn thành
+                          {lessonsWithProgress.length} bài học • {completedLessonsCount ?? 0} đã hoàn thành
                         </CardDescription>
                       </div>
                       <div className="text-right">
@@ -2013,7 +2029,7 @@ export default function CourseDetailPage() {
           </DialogContent>
         </Dialog>
 
-        {/* Fullscreen Learning Modal */}
+        {/* Fullscreen Learning Modal (disabled duplicate to prevent background play) */}
         {isFullscreen && selectedLesson && (
           <div className="fixed z-[99]">
             {/* Main Content Area */}
@@ -2025,13 +2041,22 @@ export default function CourseDetailPage() {
                     <ReactPlayer
                       key={`fullscreen-${selectedLesson.id}`}
                       url={selectedLesson.link}
-                      playing
+                      playing={false}
                       controls
                       width="100%"
                       height="100%"
                       style={{
                         maxWidth: "100%",
                         maxHeight: "100%",
+                      }}
+                      config={{
+                        playerVars: {
+                          autoplay: 0,
+                          rel: 0,
+                          modestbranding: 1,
+                          showinfo: 0,
+                          iv_load_policy: 3,
+                        },
                       }}
                     />
                   </div>
@@ -2220,7 +2245,10 @@ export default function CourseDetailPage() {
               <Button
                 size="sm"
                 className="bg-white text-gray-900 hover:bg-white/90 rounded-full h-8 px-3 shadow-md border border-gray-200 flex items-center gap-1"
-                onClick={() => setControlsEnabled((v) => !v)}
+                onClick={() => {
+                  setControlsEnabled((v) => !v);
+                  setShowControls(true);
+                }}
                 title={
                   controlsEnabled
                     ? "Ẩn các nút điều khiển"
@@ -2232,9 +2260,9 @@ export default function CourseDetailPage() {
                 ) : (
                   <Eye className="h-3 w-3" />
                 )}
-                <span className="text-[11px]">
+                {/* <span className="text-[11px]">
                   {controlsEnabled ? "Ẩn" : "Hiện"}
-                </span>
+                </span> */}
               </Button>
             </div>
 
