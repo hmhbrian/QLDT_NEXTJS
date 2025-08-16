@@ -80,25 +80,25 @@ export function AdminDashboard() {
   ];
 
   return (
-    <div className="space-y-6">
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+    <div className="space-y-4 sm:space-y-6">
+      <div className="grid gap-4 sm:gap-6 md:grid-cols-2 lg:grid-cols-3">
         {stats.map((stat) => (
           <Card
             key={stat.title}
-            className="shadow-lg hover:shadow-xl transition-shadow duration-300"
+            className="border border-border bg-card hover:shadow-md transition-shadow duration-200"
           >
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
+              <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground">
                 {stat.title}
               </CardTitle>
-              <stat.icon className={`h-5 w-5 ${stat.color}`} />
+              <stat.icon className={`h-4 w-4 sm:h-5 sm:w-5 ${stat.color}`} />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl md:text-3xl font-bold">{stat.value}</div>
+              <div className="text-xl sm:text-2xl lg:text-3xl font-bold text-foreground">{stat.value}</div>
               <Link href={stat.link} passHref>
                 <Button
                   variant="link"
-                  className="px-0 text-sm text-muted-foreground hover:text-primary"
+                  className="px-0 text-xs sm:text-sm text-muted-foreground hover:text-primary mt-1"
                 >
                   {stat.linkText}
                 </Button>
@@ -109,24 +109,24 @@ export function AdminDashboard() {
         ))}
       </div>
           {/* Course Status Distribution Chart */}
-          <Card className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm border-0 shadow-xl shadow-orange-500/10">
-          <CardHeader>
-            <CardTitle className="flex items-center text-xl font-bold text-slate-900 dark:text-slate-100">
-              <PieChartIcon className="mr-3 h-6 w-6 text-orange-500" />
-              Phân bố Trạng thái Khóa học
+          <Card className="border border-border bg-card">
+          <CardHeader className="p-4 sm:p-6">
+            <CardTitle className="flex items-center text-base sm:text-lg lg:text-xl font-semibold text-foreground">
+              <PieChartIcon className="mr-2 sm:mr-3 h-5 w-5 sm:h-6 sm:w-6 text-primary" />
+              <span className="line-clamp-1">Phân bố Trạng thái Khóa học</span>
               {isLoadingCourseStatus && (
-                <Loader2 className="ml-3 h-5 w-5 animate-spin text-orange-500" />
+                <Loader2 className="ml-2 sm:ml-3 h-4 w-4 sm:h-5 sm:w-5 animate-spin text-primary" />
               )}
             </CardTitle>
-            <CardDescription className="text-slate-600 dark:text-slate-300">
+            <CardDescription className="text-sm text-muted-foreground">
               Tỷ lệ khóa học theo trạng thái hiện tại
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-4 sm:p-6 pt-0">
             {courseStatusDistribution && courseStatusDistribution.length > 0 ? (
               <>
                 {courseStatusDistribution.some((item) => item.percent > 0) ? (
-                  <div className="h-[400px] w-full">
+                  <div className="h-64 sm:h-80 lg:h-[400px] w-full">
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
                         <Pie
@@ -135,8 +135,8 @@ export function AdminDashboard() {
                           )}
                           cx="50%"
                           cy="50%"
-                          innerRadius={60}
-                          outerRadius={120}
+                          innerRadius={30}
+                          outerRadius={80}
                           paddingAngle={5}
                           dataKey="percent"
                           nameKey="statusName"
@@ -191,13 +191,13 @@ export function AdminDashboard() {
                     </ResponsiveContainer>
                   </div>
                 ) : (
-                  <div className="h-[300px] flex items-center justify-center text-slate-500 dark:text-slate-400">
+                  <div className="h-48 sm:h-64 lg:h-[300px] flex items-center justify-center text-muted-foreground">
                     <div className="text-center">
-                      <div className="text-6xl mb-4">📊</div>
-                      <p className="text-lg font-medium">
+                      <div className="text-4xl sm:text-6xl mb-2 sm:mb-4">📊</div>
+                      <p className="text-base sm:text-lg font-medium">
                         Chưa có khóa học nào
                       </p>
-                      <p className="text-sm">
+                      <p className="text-xs sm:text-sm">
                         Tất cả trạng thái đều có 0 khóa học
                       </p>
                     </div>
@@ -205,7 +205,7 @@ export function AdminDashboard() {
                 )}
 
                 {/* Custom Legend hiển thị tất cả trạng thái */}
-                <div className="mt-4 grid grid-cols-2 gap-2 text-sm">
+                <div className="mt-3 sm:mt-4 grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs sm:text-sm">
                   {courseStatusDistribution.map((entry, index) => {
                     const colors = [
                       "#ef4444", // Red for "Đã kết thúc"
@@ -220,12 +220,12 @@ export function AdminDashboard() {
                         className="flex items-center gap-2"
                       >
                         <div
-                          className="w-3 h-3 rounded-full flex-shrink-0"
+                          className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full flex-shrink-0"
                           style={{
                             backgroundColor: colors[index % colors.length],
                           }}
                         />
-                        <span className="text-slate-700 dark:text-slate-300">
+                        <span className="text-muted-foreground line-clamp-1">
                           {entry.statusName}: {entry.percent}%
                         </span>
                       </div>
@@ -234,18 +234,18 @@ export function AdminDashboard() {
                 </div>
               </>
             ) : (
-              <div className="text-center py-12">
-                <PieChartIcon className="h-12 w-12 text-slate-400 mx-auto mb-4" />
-                <h3 className="text-lg font-semibold text-slate-600 dark:text-slate-400 mb-2">
+              <div className="text-center py-8 sm:py-12">
+                <PieChartIcon className="h-8 w-8 sm:h-12 sm:w-12 text-muted-foreground mx-auto mb-2 sm:mb-4" />
+                <h3 className="text-base sm:text-lg font-semibold text-muted-foreground mb-1 sm:mb-2">
                   Chưa có dữ liệu
                 </h3>
-                <p className="text-slate-500 dark:text-slate-400 max-w-md mx-auto">
-                  Không có dữ liệu trạng thái khóa học để hiển thị.
+                <p className="text-xs sm:text-sm text-muted-foreground max-w-md mx-auto">
+                  Không có dữ liệu trạng thái khóa học để hiển thị
                 </p>
               </div>
             )}
           </CardContent>
-        </Card>{" "}
+        </Card>
     </div>
   );
 }

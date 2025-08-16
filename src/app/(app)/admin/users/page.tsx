@@ -477,25 +477,27 @@ export default function UsersPage() {
 
   return (
     <>
-      <Card className="container mx-auto px-2 sm:px-4 md:px-6">
-        <CardHeader>
-          <div className="flex items-center justify-between">
+      <Card className="border border-border bg-card">
+        <CardHeader className="p-4 sm:p-6">
+          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
             <div>
-              <CardTitle>Tất cả Người dùng</CardTitle>
-              <CardDescription>
-                Quản lý tất cả tài khoản người dùng trong hệ thống.
+              <CardTitle className="text-lg sm:text-xl font-semibold">Tất cả Người dùng</CardTitle>
+              <CardDescription className="text-sm text-muted-foreground">
+                Quản lý tất cả tài khoản người dùng trong hệ thống
               </CardDescription>
             </div>
-            <Button onClick={handleOpenAddDialog}>
-              <PlusCircle className="mr-2 h-4 w-4" /> Thêm người dùng
+            <Button onClick={handleOpenAddDialog} className="w-full sm:w-auto h-9 sm:h-10 text-sm">
+              <PlusCircle className="mr-1 sm:mr-2 h-4 w-4" /> 
+              <span className="hidden sm:inline">Thêm người dùng</span>
+              <span className="sm:hidden">Thêm</span>
             </Button>
           </div>
         </CardHeader>
-        <CardContent>
-          <div className="mb-6 space-y-4">
-            <div className="flex flex-col sm:flex-row gap-4">
+        <CardContent className="p-4 sm:p-6 pt-0">
+          <div className="mb-4 sm:mb-6 space-y-3 sm:space-y-4">
+            <div className="flex flex-col lg:flex-row gap-3 sm:gap-4">
               <div className="relative flex-grow">
-                <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10" />
                 <Input
                   placeholder="Tìm kiếm theo tên, email, mã NV..."
                   value={searchTerm}

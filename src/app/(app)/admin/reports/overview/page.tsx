@@ -456,31 +456,30 @@ export default function TrainingOverviewReportPage() {
     <div className="min-h-screen from-orange-50 via-amber-50/50 to-red-50/30 dark:from-slate-950 dark:via-orange-950/20 dark:to-red-950/10">
       <div className="container mx-auto px-2 sm:px-4 md:px-6 py-8 space-y-8">
         <div className="relative">
-          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
+          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 sm:gap-6">
             <div className="flex-1">
-              <div className="flex items-start gap-4 mb-4">
-                <div className="flex-shrink-0 w-16 h-16 bg-gradient-to-br from-orange-500 to-red-500 rounded-xl flex items-center justify-center shadow-xl shadow-orange-500/25">
-                  <BarChart3 className="w-8 h-8 text-white" />
+              <div className="flex flex-col sm:flex-row items-start gap-3 sm:gap-4 mb-3 sm:mb-4">
+                <div className="flex-shrink-0 w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br from-orange-500 to-red-500 rounded-xl flex items-center justify-center shadow-xl shadow-orange-500/25">
+                  <BarChart3 className="w-6 h-6 sm:w-8 sm:h-8 text-white" />
                 </div>
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-2">
-                    <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-slate-900 via-orange-700 to-red-800 dark:from-slate-100 dark:via-orange-200 dark:to-red-200 bg-clip-text text-transparent leading-tight">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 sm:gap-3 mb-1 sm:mb-2">
+                    <h1 className="text-xl sm:text-2xl lg:text-3xl xl:text-4xl font-bold bg-gradient-to-r from-slate-900 via-orange-700 to-red-800 dark:from-slate-100 dark:via-orange-200 dark:to-red-200 bg-clip-text text-transparent leading-tight">
                       Báo cáo Hiệu quả Đào tạo Doanh nghiệp
                     </h1>
                   </div>
-                  <p className="text-lg text-slate-600 dark:text-slate-300 max-w-3xl">
-                    {getFilterDisplayLabel()} • Phân tích tổng thể về chất
-                    lượng, hiệu quả và tác động của chương trình đào tạo
+                  <p className="text-sm sm:text-base lg:text-lg text-slate-600 dark:text-slate-300 max-w-3xl">
+                    {getFilterDisplayLabel()} • Phân tích tổng thể về chất lượng, hiệu quả và tác động của chương trình đào tạo
                   </p>
                 </div>
               </div>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
               <Popover open={isFilterOpen} onOpenChange={setIsFilterOpen}>
                 <PopoverTrigger asChild>
                   <Button
                     variant="outline"
-                    className="flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 shadow-lg hover:shadow-xl transition-all duration-200 min-w-[200px] justify-between"
+                    className="flex items-center gap-2 px-3 sm:px-4 py-2 sm:py-2.5 bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 shadow-lg hover:shadow-xl transition-all duration-200 w-full sm:min-w-[200px] justify-between text-sm"
                   >
                     <div className="flex items-center gap-2">
                       <Filter className="w-4 h-4 text-orange-500" />

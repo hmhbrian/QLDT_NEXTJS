@@ -398,7 +398,44 @@ export default function DepartmentsPage() {
   };
 
   return (
-    <div className="space-y-6 container mx-auto px-2 sm:px-4 md:px-6">
+    <div className="space-y-4 sm:space-y-6">
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+        <h1 className="text-xl sm:text-2xl lg:text-3xl font-headline font-semibold">
+          Quản lý Phòng ban
+        </h1>
+        <div className="flex flex-col sm:flex-row gap-2 w-full lg:w-auto">
+          <div className="flex gap-1 sm:gap-2">
+            <Button
+              variant={activeTab === "tree" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setActiveTab("tree")}
+              className="h-9 text-sm flex-1 sm:flex-none"
+            >
+              <TreePine className="mr-1 h-4 w-4" />
+              <span className="hidden sm:inline">Cây phòng ban</span>
+              <span className="sm:hidden">Cây</span>
+            </Button>
+            <Button
+              variant={activeTab === "table" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setActiveTab("table")}
+              className="h-9 text-sm flex-1 sm:flex-none"
+            >
+              <List className="mr-1 h-4 w-4" />
+              <span className="hidden sm:inline">Bảng</span>
+              <span className="sm:hidden">Bảng</span>
+            </Button>
+          </div>
+          <Button
+            onClick={handleOpenAddDialog}
+            className="w-full sm:w-auto h-9 text-sm"
+          >
+            <PlusCircle className="mr-1 sm:mr-2 h-4 w-4" />
+            <span className="hidden sm:inline">Thêm phòng ban</span>
+            <span className="sm:hidden">Thêm</span>
+          </Button>
+        </div>
+      </div>
       {!validation.valid && validation.issues && (
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
@@ -413,17 +450,17 @@ export default function DepartmentsPage() {
         </Alert>
       )}
 
-      <Card className="shadow-md border bg-card">
-        <CardHeader className="pb-4 border-b bg-card rounded-t-md">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <div className="flex items-center gap-3 mb-2 md:mb-0">
-              <Building2 className="h-8 w-8 text-primary" />
+      <Card className="border border-border bg-card">
+        <CardHeader className="pb-4 border-b p-4 sm:p-6">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <Building2 className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />
               <div>
-                <CardTitle className="text-2xl font-bold text-foreground">
+                <CardTitle className="text-lg sm:text-xl lg:text-2xl font-semibold text-foreground">
                   Quản lý Phòng ban
                 </CardTitle>
-                <CardDescription className="text-base text-muted-foreground mt-1">
-                  Tạo, chỉnh sửa và quản lý tất cả phòng ban trong tổ chức.
+                <CardDescription className="text-sm text-muted-foreground mt-1">
+                  Tạo, chỉnh sửa và quản lý tất cả phòng ban trong tổ chức
                 </CardDescription>
               </div>
             </div>
@@ -432,6 +469,7 @@ export default function DepartmentsPage() {
                 variant={activeTab === "tree" ? "default" : "outline"}
                 size="icon"
                 onClick={() => setActiveTab("tree")}
+                className="h-9 w-9"
               >
                 <TreePine className="h-4 w-4" />
               </Button>
@@ -439,48 +477,51 @@ export default function DepartmentsPage() {
                 variant={activeTab === "table" ? "default" : "outline"}
                 size="icon"
                 onClick={() => setActiveTab("table")}
+                className="h-9 w-9"
               >
                 <List className="h-4 w-4" />
               </Button>
-              <Button onClick={handleOpenAddDialog} className="ml-2">
-                <PlusCircle className="mr-2 h-4 w-4" /> Thêm phòng ban
+              <Button onClick={handleOpenAddDialog} className="h-9 text-sm">
+                <PlusCircle className="mr-1 sm:mr-2 h-4 w-4" /> 
+                <span className="hidden sm:inline">Thêm phòng ban</span>
+                <span className="sm:hidden">Thêm</span>
               </Button>
             </div>
           </div>
         </CardHeader>
-        <CardContent className="pt-6">
+        <CardContent className="p-4 sm:p-6">
           {activeTab === "tree" ? (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 sm:gap-6 items-start">
               <div className="space-y-4">
                 <DraggableDepartmentTree
                   departments={departments}
                   onSelectDepartment={setSelectedDepartment}
                   onUpdateDepartments={handleUpdateDepartmentParent}
-                  className="shadow-sm"
+                  className="border border-border"
                 />
               </div>
-              <Card className="shadow-sm min-h-[580px]">
+              <Card className="border border-border min-h-[400px] sm:min-h-[580px]">
                 {renderRightPanelContent()}
               </Card>
             </div>
           ) : (
             <>
-              <div className="mb-6">
-                <div className="flex flex-col sm:flex-row gap-4 bg-muted/40 p-4 rounded-lg border border-muted-foreground/10">
+              <div className="mb-4 sm:mb-6">
+                <div className="flex flex-col lg:flex-row gap-3 sm:gap-4 bg-muted/40 p-3 sm:p-4 rounded-lg border border-border">
                   <div className="relative flex-grow">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10" />
                     <Input
                       placeholder="Tìm kiếm phòng ban..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-9"
+                      className="pl-9 h-9 sm:h-10 text-sm"
                     />
                   </div>
                   <Select
                     value={statusFilter}
                     onValueChange={(v) => setStatusFilter(v)}
                   >
-                    <SelectTrigger className="w-full sm:w-[180px]">
+                    <SelectTrigger className="w-full lg:w-[180px] h-9 sm:h-10">
                       <SelectValue placeholder="Trạng thái" />
                     </SelectTrigger>
                     <SelectContent>
@@ -495,12 +536,14 @@ export default function DepartmentsPage() {
                 </div>
               </div>
               {isDepartmentsLoading || isStatusesLoading ? (
-                <div className="flex h-60 w-full items-center justify-center">
-                  <Loader2 className="h-10 w-10 animate-spin text-primary" />
-                  <p className="ml-3 text-muted-foreground">Đang tải...</p>
+                <div className="flex h-48 sm:h-60 w-full items-center justify-center">
+                  <Loader2 className="h-8 w-8 sm:h-10 sm:w-10 animate-spin text-primary" />
+                  <p className="ml-2 sm:ml-3 text-sm text-muted-foreground">Đang tải...</p>
                 </div>
               ) : (
+                <div className="overflow-x-auto">
                 <DataTable columns={columns} data={filteredDepartments} />
+                </div>
               )}
             </>
           )}
