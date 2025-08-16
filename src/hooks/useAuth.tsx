@@ -98,6 +98,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [logout]);
 
   const initializeAuth = useCallback(async () => {
+    // Additional safety: force loading to false after maximum time
+    const emergencyTimeout = setTimeout(() => {
+      console.warn("Authentication taking too long - forcing loadingAuth to false");
+      setLoadingAuth(false);
+    }, 10000); // 10 seconds maximum
+
     try {
       // Check for token from secure cookies first
       const token = cookieManager.getSecureAuth();
@@ -107,14 +113,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         httpClient.clearAuthorizationHeader();
         localStorage.removeItem("qldt_user_info");
         setLoadingAuth(false);
+        clearTimeout(emergencyTimeout);
         return;
       }
 
       // Set the authorization header with the token
       httpClient.setAuthorizationHeader(token);
 
-      // Get user data from API
-      const currentUserData = await authService.getCurrentUser();
+      // Get user data from API with timeout
+      const currentUserData = await Promise.race([
+        authService.getCurrentUser(),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error("Authentication timeout")), 8000)
+        )
+      ]) as any;
+      
       const mappedUser = mapUserApiToUi(currentUserData);
 
       // Validation đơn giản hơn - chỉ cần có ID
@@ -124,6 +137,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       setUser(mappedUser);
     } catch (error: any) {
+      console.error("Authentication error:", error);
       setAuthAttempts((prev) => prev + 1);
 
       // Clear all auth data
@@ -133,6 +147,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       localStorage.removeItem("qldt_user_info");
     } finally {
       // ALWAYS set loading to false regardless of success or failure
+      clearTimeout(emergencyTimeout);
       setLoadingAuth(false);
     }
   }, [authAttempts, maxAuthAttempts]);
@@ -143,10 +158,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Safety net: force loading to false after 5 seconds to prevent infinite loading
     const timeoutId = setTimeout(() => {
       if (loadingAuth) {
+        console.warn("Force stopping auth loading after 5 seconds");
         setLoadingAuth(false);
       }
     }, 5000); // Reduced from 10 to 5 seconds
 
+    // Additional safety: force cleanup on unmount
     return () => {
       clearTimeout(timeoutId);
     };
