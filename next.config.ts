@@ -5,13 +5,34 @@ const withBundleAnalyzer = require("@next/bundle-analyzer")({
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
-  swcMinify: true,
-  output: "standalone",
   typescript: {
     ignoreBuildErrors: true,
   },
   eslint: {
     ignoreDuringBuilds: true,
+  },
+  // Next.js 15 optimizations
+  experimental: {
+    optimizePackageImports: ['lucide-react', '@radix-ui/react-icons'],
+    turbo: {
+      rules: {},
+    },
+  },
+  // Simplified webpack config for Next.js 15
+  webpack: (config, { dev }) => {
+    if (dev) {
+      // Disable the default SWC cache to prevent chunk errors
+      config.cache = false;
+
+      // Ensure proper module resolution
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        fs: false,
+        net: false,
+        tls: false,
+      };
+    }
+    return config;
   },
   images: {
     domains: ["images.unsplash.com", "placehold.co", "localhost"],
@@ -72,12 +93,12 @@ const nextConfig: NextConfig = {
           ...(isDevelopment
             ? []
             : [
-                {
-                  key: "Content-Security-Policy",
-                  value:
-                    "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https: wss: ws:; media-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none';",
-                },
-              ]),
+              {
+                key: "Content-Security-Policy",
+                value:
+                  "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https: wss: ws:; media-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none';",
+              },
+            ]),
         ],
       },
     ];
