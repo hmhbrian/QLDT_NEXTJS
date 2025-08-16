@@ -41,12 +41,12 @@ export default function HRSettingsPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-        <h1 className="text-2xl md:text-3xl font-headline font-semibold">Cài đặt HR</h1>
-        <Button onClick={handleSaveSettings}>
-          <Settings className="mr-2 h-5 w-5" />
-          Lưu thay đổi
+    <div className="space-y-4 sm:space-y-6">
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+        <h1 className="text-xl sm:text-2xl lg:text-3xl font-headline font-semibold">Cài đặt HR</h1>
+        <Button onClick={handleSaveSettings} className="w-full sm:w-auto h-9 sm:h-10">
+          <Settings className="mr-1 sm:mr-2 h-4 w-4 sm:h-5 sm:w-5" />
+          <span className="text-sm">Lưu thay đổi</span>
         </Button>
       </div>
       <HRSettings />

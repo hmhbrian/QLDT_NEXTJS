@@ -393,13 +393,13 @@ export default function ProgressPage() {
   }
 
   return (
-    <div className="space-y-6 container mx-auto px-2 sm:px-4 md:px-6">
-      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+    <div className="space-y-4 sm:space-y-6">
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
         <div>
-          <h1 className="text-2xl md:text-3xl font-headline font-semibold">
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-headline font-semibold">
             Báo cáo Tiến độ Học tập
           </h1>
-          <p className="text-muted-foreground mt-1">
+          <p className="text-sm text-muted-foreground mt-1">
             Tổng quan về hoạt động đào tạo và tiến độ của học viên
             {/* {getFilterDisplayLabel()} */}
           </p>
@@ -422,26 +422,26 @@ export default function ProgressPage() {
       </div>
 
       {isLoading ? (
-        <div className="flex items-center justify-center p-10">
-          <Loader2 className="h-10 w-10 animate-spin text-primary" />
+        <div className="flex items-center justify-center py-8 sm:py-10">
+          <Loader2 className="h-8 w-8 sm:h-10 sm:w-10 animate-spin text-primary" />
         </div>
       ) : (
         <>
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-4 sm:gap-6 grid-cols-2 lg:grid-cols-4">
             {statCards.map((stat, index) => (
               <Card
                 key={index}
-                className="shadow-lg hover:shadow-xl transition-shadow"
+                className="border border-border bg-card hover:shadow-md transition-shadow"
               >
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3 sm:p-4">
+                  <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground line-clamp-2">
                     {stat.title}
                   </CardTitle>
-                  <stat.icon className="h-5 w-5 text-muted-foreground" />
+                  <stat.icon className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground flex-shrink-0" />
                 </CardHeader>
-                <CardContent>
-                  <div className="text-3xl font-bold">{stat.value}</div>
-                  <p className="text-xs text-muted-foreground">
+                <CardContent className="p-3 sm:p-4 pt-0">
+                  <div className="text-lg sm:text-2xl lg:text-3xl font-bold text-foreground">{stat.value}</div>
+                  <p className="text-xs text-muted-foreground line-clamp-2">
                     {stat.description}
                   </p>
                 </CardContent>
@@ -449,24 +449,23 @@ export default function ProgressPage() {
             ))}
           </div>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <BarChart2 className="h-5 w-5" />
+          <Card className="border border-border bg-card">
+            <CardHeader className="p-4 sm:p-6">
+              <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                <BarChart2 className="h-4 w-4 sm:h-5 sm:w-5" />
                 Biểu đồ Tiến độ
               </CardTitle>
-              <CardDescription>
-                Tổng quan chi tiết về tiến độ học tập và trạng thái các khóa
-                học.
+              <CardDescription className="text-sm text-muted-foreground">
+                Tổng quan chi tiết về tiến độ học tập và trạng thái các khóa học
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-4 sm:p-6 pt-0">
               {reportData.courseStats.length === 0 ? (
-                <div className="flex items-center justify-center h-[300px] text-muted-foreground">
+                <div className="flex items-center justify-center h-48 sm:h-[300px] text-muted-foreground">
                   <div className="text-center">
-                    <BarChart2 className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                    <p className="text-lg font-medium">Không có dữ liệu</p>
-                    <p className="text-sm">Chưa có khóa học nào với học viên</p>
+                    <BarChart2 className="h-8 w-8 sm:h-12 sm:w-12 mx-auto mb-2 sm:mb-4 opacity-50" />
+                    <p className="text-base sm:text-lg font-medium">Không có dữ liệu</p>
+                    <p className="text-xs sm:text-sm">Chưa có khóa học nào với học viên</p>
                   </div>
                 </div>
               ) : (
@@ -511,7 +510,7 @@ export default function ProgressPage() {
                       </div>
                     </div>
                   </div> */}
-                  <div className="w-full">
+                  <div className="w-full overflow-x-auto">
                     <ProgressCharts data={reportData.courseStats} />
                   </div>
                 </div>
