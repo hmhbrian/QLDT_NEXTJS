@@ -109,6 +109,20 @@ export function mapCourseApiToUi(apiCourse: CourseApiResponse): Course {
   };
 }
 
+// Helper function to map enrollment status number to text
+function mapEnrollmentStatusToText(status?: number): string {
+  switch (status) {
+    case 2:
+      return "Đang học";
+    case 3:
+      return "Đậu";
+    case 4:
+      return "Rớt";
+    default:
+      return "Không xác định";
+  }
+}
+
 export function mapUserEnrollCourseDtoToCourse(
   dto: UserEnrollCourseDto
 ): Course {
@@ -121,7 +135,7 @@ export function mapUserEnrollCourseDtoToCourse(
     objectives: dto.objectives || "",
     image: imageUrl,
     location: dto.location || "",
-    status: "Đang mở",
+    status: mapEnrollmentStatusToText(dto.status),
     enrollmentType: dto.optional === "Bắt buộc" ? "mandatory" : "optional",
     isPrivate: (dto as any).isPrivate ?? false,
     instructor: "Không có",
@@ -150,9 +164,15 @@ export function mapUserEnrollCourseDtoToCourse(
     modifiedAt: new Date().toISOString(),
     createdBy: "",
     modifiedBy: "",
-    progressPercentage: dto.progressPercentage // Fixed property name
+    progressPercentage: dto.progressPercentage
       ? Math.round(dto.progressPercentage)
       : 0,
+    // Add new enrollment status fields
+    enrollmentStatus: dto.status,
+    lessonCompletedCount: dto.lessonCompletedCount || 0,
+    totalLessonCount: dto.totalLessonCount || 0,
+    testCompletedCount: dto.testCompletedCount || 0,
+    totalTestCount: dto.totalTestCount || 0,
   };
 }
 

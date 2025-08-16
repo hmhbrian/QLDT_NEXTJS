@@ -117,7 +117,13 @@ export interface Course {
   createdBy: string | { id: string; name: string }; // Handle both string and object
   modifiedBy: string | { id: string; name: string } | null; // Handle both string and object
   imageFile?: File | null;
-  progressPercentage?: number; // Add this to UI model
+  progressPercentage?: number;
+  // Add enrollment status for trainee view
+  enrollmentStatus?: number; // 2=đang học, 3=đậu, 4=rớt
+  lessonCompletedCount?: number;
+  totalLessonCount?: number;
+  testCompletedCount?: number;
+  totalTestCount?: number;
 }
 
 export interface Feedback {
@@ -248,7 +254,7 @@ export interface UserEnrollCourseDto {
   courseCode?: string;
   code?: string; // Add this for mapping
   objectives?: string; // Add this for mapping
-  status?: string;
+  status?: number; // Changed to number to match backend API (2=đang học, 3=đậu, 4=rớt)
   startDate?: string;
   endDate?: string;
   registrationStartDate?: string; // Add this for mapping
@@ -262,6 +268,10 @@ export interface UserEnrollCourseDto {
   optional?: string; // Add this for mapping
   maxParticipant?: number; // Add this for mapping
   progressPercentage?: number; // Fix typo
+  lessonCompletedCount?: number; // Add missing fields from API
+  totalLessonCount?: number;
+  testCompletedCount?: number;
+  totalTestCount?: number;
 }
 
 export interface CompletedCourseDto {
