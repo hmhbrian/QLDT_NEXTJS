@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   Card,
   CardContent,
@@ -52,10 +53,14 @@ export default function UserProfilePage() {
   const { user, updateAvatar, changePassword } = useAuth();
   const { toast } = useToast();
   const { showError } = useError();
+  const searchParams = useSearchParams();
   const [completedPageIndex, setCompletedPageIndex] = useState(0);
   const [completedPageSize, setCompletedPageSize] = useState(10);
   const { data: completedCoursesData, isLoading: isLoadingCompletedCourses } =
     useCompletedCoursesCount(completedPageIndex + 1, completedPageSize);
+  
+  // Get tab from URL query parameter
+  const defaultTab = searchParams.get('tab') || 'overview';
 
   const [isEditing, setIsEditing] = useState(false);
 
@@ -230,7 +235,7 @@ export default function UserProfilePage() {
         </Button>
       </div>
 
-      <Tabs defaultValue="overview" className="space-y-6">
+      <Tabs defaultValue={defaultTab} className="space-y-6">
         <TabsList className="flex w-full overflow-x-auto h-auto items-center rounded-md bg-muted p-1 text-muted-foreground justify-start">
           <TabsTrigger value="overview">Tổng quan</TabsTrigger>
           {user.role === "HOCVIEN" && (
