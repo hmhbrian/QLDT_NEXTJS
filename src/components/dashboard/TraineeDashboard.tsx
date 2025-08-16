@@ -80,25 +80,25 @@ export function TraineeDashboard() {
       title: "Khóa học đã đăng ký",
       value: enrolledCoursesCount.toString(),
       icon: GraduationCap,
-      color: "text-teal-500",
+      color: "text-blue-500",
       link: "/trainee/my-courses",
-      linkText: "Khóa học của tôi",
+      linkText: "Xem tất cả",
     },
     {
       title: "Khóa học đã hoàn thành",
       value: `${completedCoursesCount}/${enrolledCoursesCount}`,
       icon: BookMarked,
-      color: "text-cyan-500",
-      link: "/trainee/my-courses",
-      linkText: "Xem Chi tiết",
+      color: "text-green-500",
+      link: "/trainee/my-courses?tab=passed",
+      linkText: "Xem đã hoàn thành",
     },
     {
       title: "Tiến độ tổng thể",
       value: overallProgress,
       icon: Percent,
-      color: "text-sky-500",
-      link: "/trainee/my-courses",
-      linkText: "Xem Chi tiết",
+      color: "text-orange-500",
+      link: "/trainee/my-courses?tab=ongoing",
+      linkText: "Xem tiến độ",
     },
   ];
 
@@ -108,7 +108,7 @@ export function TraineeDashboard() {
         {isLoadingDashboard ? (
           // Show skeleton loading for dashboard cards
           [...Array(3)].map((_, i) => (
-            <Card key={i} className="shadow-lg">
+            <Card key={i} className="border border-border bg-card">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <Skeleton className="h-4 w-24" />
                 <Skeleton className="h-5 w-5 rounded" />
@@ -123,10 +123,10 @@ export function TraineeDashboard() {
           stats.map((stat) => (
             <Card
               key={stat.title}
-              className="shadow-lg hover:shadow-xl transition-shadow duration-300"
+              className="border border-border bg-card hover:shadow-md transition-shadow duration-200"
             >
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
                   {stat.title}
                 </CardTitle>
                 <stat.icon className={`h-5 w-5 ${stat.color}`} />
@@ -134,7 +134,7 @@ export function TraineeDashboard() {
             <CardContent>
               {stat.title === "Tiến độ tổng thể" ? (
                 <>
-                  <div className="text-2xl md:text-3xl font-bold mb-2">
+                  <div className="text-2xl font-bold text-foreground mb-2">
                     {stat.value}%
                   </div>
                   <Progress
@@ -144,7 +144,7 @@ export function TraineeDashboard() {
                   />
                 </>
               ) : (
-                <div className="text-2xl md:text-3xl font-bold">
+                <div className="text-2xl font-bold text-foreground">
                   {stat.value}
                 </div>
               )}
@@ -164,82 +164,73 @@ export function TraineeDashboard() {
       
       {/* Show error state for dashboard data */}
       {dashboardError && (
-        <div className="text-center text-red-500 bg-red-50 p-4 rounded-lg">
+        <div className="text-center text-red-600 bg-red-50 dark:bg-red-950/10 p-4 rounded-lg border border-red-200 dark:border-red-800">
           Có lỗi khi tải dữ liệu dashboard: {dashboardError}
         </div>
       )}
 
-      <Card className="shadow-lg">
+      <Card className="border border-border bg-card">
         <CardHeader>
-          <CardTitle className="font-headline flex items-center">
-            <CalendarDays className="mr-2 h-5 w-5 text-primary" />
+          <CardTitle className="flex items-center text-foreground">
+            <CalendarDays className="mr-2 h-5 w-5 text-blue-500" />
             Lớp học sắp tới / Đang diễn ra
           </CardTitle>
           <CardDescription>
-            Các lớp học đã được lên lịch của bạn trong thời gian tới.
+            Các lớp học đã được lên lịch của bạn trong thời gian tới
           </CardDescription>
         </CardHeader>
         <CardContent>
           {isLoadingUpcomingClasses ? (
-            <p className="text-muted-foreground text-center">
-              Đang tải lớp học sắp tới...
-            </p>
+            <div className="flex items-center justify-center py-8">
+              <div className="text-muted-foreground">Đang tải lớp học...</div>
+            </div>
           ) : upcomingClasses.length > 0 ? (
-            <ul className="space-y-4">
+            <div className="space-y-3">
               {upcomingClasses.map((course) => (
-                <li
+                <div
                   key={course.id}
-                  className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-4 border rounded-lg hover:bg-muted/50 transition-colors"
+                  className="flex items-center justify-between p-4 border border-border rounded-lg hover:bg-muted/50 transition-colors"
                 >
-                  <div className="flex-1">
+                  <div className="flex-1 min-w-0">
                     <Link href={`/courses/${course.id}`} passHref>
-                      <h4 className="font-semibold text-foreground hover:text-primary hover:underline cursor-pointer">
+                      <h4 className="font-semibold text-foreground hover:text-blue-600 transition-colors cursor-pointer truncate">
                         {course.title}
                       </h4>
                     </Link>
-                    {/* Assuming instructor is not directly on Course, or needs to be fetched/mapped differently */}
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      Giảng viên: Không có
-                    </p>
-                  </div>
-                  <div className="text-sm text-muted-foreground text-left sm:text-right w-full sm:w-auto">
-                    {course.startDate ? (
-                      <>
-                        <p>
-                          Bắt đầu:{" "}
-                          {new Date(course.startDate).toLocaleDateString(
-                            "vi-VN"
-                          )}
-                        </p>
-                        {course.endDate && (
-                          <p className="text-xs">
-                            Kết thúc:{" "}
-                            {new Date(course.endDate).toLocaleDateString(
-                              "vi-VN"
-                            )}
-                          </p>
-                        )}
-                      </>
-                    ) : (
-                      <p>Lịch học sẽ sớm được cập nhật.</p>
-                    )}
+                    <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
+                      {course.startDate && (
+                        <span>
+                          📅 {new Date(course.startDate).toLocaleDateString("vi-VN")}
+                        </span>
+                      )}
+                      {course.endDate && (
+                        <span>
+                          🏁 {new Date(course.endDate).toLocaleDateString("vi-VN")}
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <Button
                     variant="outline"
                     size="sm"
                     asChild
-                    className="w-full mt-2 sm:w-auto sm:mt-0"
+                    className="ml-4 flex-shrink-0"
                   >
                     <Link href={`/courses/${course.id}`}>Xem chi tiết</Link>
                   </Button>
-                </li>
+                </div>
               ))}
-            </ul>
+            </div>
           ) : (
-            <div className="flex flex-col items-center justify-center h-40 border-2 border-dashed rounded-md text-center p-4">
-              <CalendarDays className="h-12 w-12 text-muted-foreground" />
-              <p className="ml-0 md:ml-4 mt-2 md:mt-0 text-muted-foreground">
-                Hiện tại không có lớp học nào sắp diễn ra.
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <div className="p-3 bg-muted rounded-full mb-4">
+                <CalendarDays className="h-8 w-8 text-muted-foreground" />
+              </div>
+              <h3 className="font-medium text-foreground mb-1">
+                Không có lớp học nào sắp diễn ra
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                Các lớp học mới sẽ được thông báo tại đây
               </p>
             </div>
           )}

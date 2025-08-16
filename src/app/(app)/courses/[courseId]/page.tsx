@@ -1466,7 +1466,7 @@ export default function CourseDetailPage() {
               >
                 Phản hồi học viên
               </TabsTrigger>
-              {currentUser?.role === "ADMIN" && (
+              {currentUser?.role === "HR" && (
                 <TabsTrigger
                   value="students"
                   className="rounded-md px-4 py-2 font-medium transition-all data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm"
@@ -1950,7 +1950,7 @@ export default function CourseDetailPage() {
               </Card>
             </TabsContent>
 
-            {currentUser?.role === "ADMIN" && (
+            {currentUser?.role === "HR" && (
               <TabsContent value="students">
                 <CourseProgressList courseId={courseIdFromParams} />
               </TabsContent>

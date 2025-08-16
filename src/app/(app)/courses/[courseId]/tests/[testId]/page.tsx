@@ -295,17 +295,29 @@ export default function TestDetailPage() {
     // Has a result (already took the test)
     if (result) {
       return (
-        <div className="min-h-screen bg-gray-50">
+        <div className="min-h-screen bg-gradient-to-br from-background to-muted/20">
           {/* Success Banner */}
           <div>
             <div className="max-w-4xl mx-auto px-4 py-8">
-              <div className="bg-white rounded-lg border shadow-sm">
+              <div className={`rounded-lg border shadow-sm ${
+                result.isPassed 
+                  ? "bg-gradient-to-r from-orange-50 to-orange-100 border-orange-200" 
+                  : "bg-gradient-to-r from-red-50 to-red-100 border-red-200"
+              }`}>
                 <div className="p-6 pt-6 text-center">
-                  <div className="mx-auto w-16 h-16 rounded-full flex items-center justify-center bg-green-100 mb-4">
-                    <CheckCircle className="h-8 w-8 text-green-600" />
+                  <div className={`mx-auto w-16 h-16 rounded-full flex items-center justify-center mb-4 ${
+                    result.isPassed ? "bg-green-100" : "bg-red-100"
+                  }`}>
+                    {result.isPassed ? (
+                      <CheckCircle className="h-8 w-8 text-green-600" />
+                    ) : (
+                      <XCircle className="h-8 w-8 text-red-600" />
+                    )}
                   </div>
-                  <h2 className="text-2xl font-bold mt-4 text-green-700 mb-2">
-                    {result.isPassed ? "Chúc mừng! Bạn đã đạt" : "Bạn chưa đạt yêu cầu"}
+                  <h2 className={`text-2xl font-bold mt-4 mb-2 ${
+                    result.isPassed ? "text-green-700" : "text-red-700"
+                  }`}>
+                    {result.isPassed ? "Chúc mừng! Bạn đã đạt" : "Tiếc quá! Bạn chưa đạt"}
                   </h2>
                   <p className="text-muted-foreground mt-1">
                     Điểm của bạn: <span className="font-semibold">{result.score.toFixed(1)}%</span>
