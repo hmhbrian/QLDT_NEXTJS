@@ -399,57 +399,6 @@ export default function DepartmentsPage() {
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
-        <h1 className="text-xl sm:text-2xl lg:text-3xl font-headline font-semibold">
-          Quản lý Phòng ban
-        </h1>
-        <div className="flex flex-col sm:flex-row gap-2 w-full lg:w-auto">
-          <div className="flex gap-1 sm:gap-2">
-            <Button
-              variant={activeTab === "tree" ? "default" : "outline"}
-              size="sm"
-              onClick={() => setActiveTab("tree")}
-              className="h-9 text-sm flex-1 sm:flex-none"
-            >
-              <TreePine className="mr-1 h-4 w-4" />
-              <span className="hidden sm:inline">Cây phòng ban</span>
-              <span className="sm:hidden">Cây</span>
-            </Button>
-            <Button
-              variant={activeTab === "table" ? "default" : "outline"}
-              size="sm"
-              onClick={() => setActiveTab("table")}
-              className="h-9 text-sm flex-1 sm:flex-none"
-            >
-              <List className="mr-1 h-4 w-4" />
-              <span className="hidden sm:inline">Bảng</span>
-              <span className="sm:hidden">Bảng</span>
-            </Button>
-          </div>
-          <Button
-            onClick={handleOpenAddDialog}
-            className="w-full sm:w-auto h-9 text-sm"
-          >
-            <PlusCircle className="mr-1 sm:mr-2 h-4 w-4" />
-            <span className="hidden sm:inline">Thêm phòng ban</span>
-            <span className="sm:hidden">Thêm</span>
-          </Button>
-        </div>
-      </div>
-      {!validation.valid && validation.issues && (
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Phát hiện lỗi trong cấu trúc phòng ban</AlertTitle>
-          <AlertDescription>
-            <ul className="list-disc pl-5 text-sm mt-2">
-              {validation.issues.slice(0, 3).map((issue, index) => (
-                <li key={index}>{issue.details}</li>
-              ))}
-            </ul>
-          </AlertDescription>
-        </Alert>
-      )}
-
       <Card className="border border-border bg-card">
         <CardHeader className="pb-4 border-b p-4 sm:p-6">
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
