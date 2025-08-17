@@ -42,12 +42,10 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loadingAuth, setLoadingAuth] = useState(true);
-  const [authAttempts, setAuthAttempts] = useState(0);
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { navigateInstant } = useInstantNavigation();
   const pathname = usePathname();
-  const maxAuthAttempts = 3;
 
   const logout = useCallback(() => {
     // Clear auth service state
@@ -67,11 +65,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Clear HTTP client authorization
     httpClient.clearAuthorizationHeader();
 
-    // Clear all React Query cache
-    queryClient.clear();
+    // Clear only auth-related queries instead of all queries
+    queryClient.removeQueries({ queryKey: ['user'] });
+    queryClient.removeQueries({ queryKey: ['auth'] });
 
     navigateInstant("/login");
   }, [queryClient, navigateInstant]);
+
   const refreshUserData = useCallback(async () => {
     try {
       // Ensure we have a valid token
@@ -132,11 +132,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Set the authorization header with the token
       httpClient.setAuthorizationHeader(token);
 
-      // Quick token validation (reduced timeout)
+      // Quick token validation (reduced timeout further)
       const currentUserData = await Promise.race([
         authService.getCurrentUser(),
         new Promise((_, reject) => 
-          setTimeout(() => reject(new Error("Authentication timeout")), 2000) // Reduced to 2 seconds
+          setTimeout(() => reject(new Error("Authentication timeout")), 1000) // Reduced to 1 second
         )
       ]) as any;
       
@@ -214,8 +214,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [user, loadingAuth, pathname, navigateInstant]);
 
   const login = async (credentials: LoginDTO, rememberMe: boolean = false) => {
-    setLoadingAuth(true);
-
     try {
       const loginResponse = await authService.login(credentials);
       const mappedUser = mapUserApiToUi(loginResponse);
@@ -228,7 +226,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       setUser(mappedUser);
-      await queryClient.invalidateQueries();
+
+      // Only invalidate specific queries instead of all queries for better performance
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['user'] }),
+        queryClient.invalidateQueries({ queryKey: ['auth'] }),
+        queryClient.invalidateQueries({ queryKey: ['profile'] })
+      ]);
 
       toast({
         title: "Đăng nhập thành công",
@@ -244,8 +248,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         variant: "destructive",
       });
       throw error;
-    } finally {
-      setLoadingAuth(false);
     }
   };
 
@@ -260,6 +262,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser((prevUser) =>
         prevUser ? { ...prevUser, ...updatedUser } : updatedUser
       );
+      
+      // Invalidate only user-related queries
+      queryClient.invalidateQueries({ queryKey: ['user'] });
+      queryClient.invalidateQueries({ queryKey: ['profile'] });
+      
       toast({
         title: "Thành công",
         description: "Ảnh đại diện đã được cập nhật.",

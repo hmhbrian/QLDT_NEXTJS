@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -19,6 +19,7 @@ import {
 import { LoadingButton } from "@/components/ui/loading";
 import { useAuth } from "@/hooks/useAuth";
 import { extractErrorMessage } from "@/lib/core";
+import { PerformanceMonitor } from "@/lib/utils/performance";
 
 const formSchema = z.object({
   email: z
@@ -29,11 +30,11 @@ const formSchema = z.object({
 });
 
 export function LoginForm() {
-  const [isLoading, setIsLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string>("");
-  const { login, loadingAuth } = useAuth();
+  const { login } = useAuth();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -43,29 +44,56 @@ export function LoginForm() {
     },
   });
 
-  const onSubmit = async (values: z.infer<typeof formSchema>) => {
-    if (isLoading || loadingAuth) return;
-
+  const onSubmit = useCallback(async (values: z.infer<typeof formSchema>) => {
+    // Start performance monitoring
+    PerformanceMonitor.start('login-process');
+    PerformanceMonitor.start('login-ui-feedback');
+    
+    // Immediate UI feedback - set loading state right away
+    setIsSubmitting(true);
+    setErrorMessage(""); // Clear previous errors
+    
+    // Track UI feedback time
+    PerformanceMonitor.end('login-ui-feedback');
+    
     try {
-      setIsLoading(true);
-      setErrorMessage(""); // Clear previous errors
+      PerformanceMonitor.start('login-api-call');
       
       await login(
         { email: values.email, password: values.password },
         rememberMe
       );
+      
+      PerformanceMonitor.end('login-api-call');
+      
       // Login successful - useAuth will handle success toast and navigation
     } catch (error) {
+      PerformanceMonitor.end('login-api-call');
+      
       // Extract and display specific error message
       const errorMsg = extractErrorMessage(error);
       setErrorMessage(errorMsg);
-      
-      // Also show toast for better UX (useAuth already handles this but let's be sure)
       console.error("Login error:", error);
     } finally {
-      setIsLoading(false);
+      setIsSubmitting(false);
+      PerformanceMonitor.end('login-process');
+      
+      // Log performance metrics for debugging
+      if (process.env.NODE_ENV === 'development') {
+        const metrics = PerformanceMonitor.getAllMetrics();
+        console.table(metrics);
+      }
     }
-  };
+  }, [login, rememberMe]);
+
+  // Optimized toggle function
+  const togglePasswordVisibility = useCallback(() => {
+    setShowPassword(prev => !prev);
+  }, []);
+
+  const handleRememberMeChange = useCallback((checked: boolean) => {
+    setRememberMe(checked);
+  }, []);
 
   return (
     <Form {...form}>
@@ -81,6 +109,7 @@ export function LoginForm() {
                   type="email"
                   placeholder="abc@becamex.com"
                   className="h-12 rounded-lg border-border/50 bg-background/50 px-4 text-base transition-all focus:ring-1 focus:ring-primary"
+                  disabled={isSubmitting}
                   {...field}
                 />
               </FormControl>
@@ -100,6 +129,7 @@ export function LoginForm() {
                     type={showPassword ? "text" : "password"}
                     placeholder="Mật khẩu"
                     className="h-12 rounded-lg border-border/50 bg-background/50 px-4 pr-12 text-base transition-all focus:ring-1 focus:ring-primary"
+                    disabled={isSubmitting}
                     {...field}
                   />
                   <Button
@@ -107,7 +137,8 @@ export function LoginForm() {
                     variant="ghost"
                     size="icon"
                     className="absolute right-2 top-1/2 h-8 w-8 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                    onClick={() => setShowPassword(!showPassword)}
+                    onClick={togglePasswordVisibility}
+                    disabled={isSubmitting}
                     aria-label={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
                   >
                     {showPassword ? (
@@ -128,7 +159,8 @@ export function LoginForm() {
           <Checkbox
             id="rememberMe"
             checked={rememberMe}
-            onCheckedChange={(checked) => setRememberMe(checked as boolean)}
+            onCheckedChange={handleRememberMeChange}
+            disabled={isSubmitting}
           />
           <label
             htmlFor="rememberMe"
@@ -138,11 +170,21 @@ export function LoginForm() {
           </label>
         </div>
 
+        {/* Error Message */}
+        {errorMessage && (
+          <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-lg">
+            {errorMessage}
+          </div>
+        )}
+
         <LoadingButton
           type="submit"
-          className="w-full h-12 rounded-lg bg-primary text-primary-foreground font-medium text-base shadow-lg hover:bg-primary/90 transition-all duration-200"
-          isLoading={isLoading || loadingAuth}
-          disabled={isLoading || loadingAuth}
+          size="lg"
+          className="w-full rounded-lg bg-primary text-primary-foreground font-medium shadow-lg hover:bg-primary/90 transition-all duration-200"
+          isLoading={isSubmitting}
+          disabled={isSubmitting}
+          loadingText="Đang đăng nhập..."
+          showLoadingText={true}
         >
           Đăng nhập
         </LoadingButton>
