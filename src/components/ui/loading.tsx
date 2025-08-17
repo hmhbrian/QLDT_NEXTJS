@@ -72,28 +72,69 @@ export function Loading({
   );
 }
 
-// Loading button component for inline loading
+// Loading button component for inline loading with enhanced UX
 export const LoadingButton = React.forwardRef<HTMLButtonElement, {
   children: React.ReactNode;
   isLoading?: boolean;
   disabled?: boolean;
   className?: string;
+  loadingText?: string;
+  showLoadingText?: boolean;
+  size?: "sm" | "md" | "lg";
   [key: string]: any;
-}>(({ children, isLoading, disabled, className, ...props }, ref) => {
+}>(({ 
+  children, 
+  isLoading, 
+  disabled, 
+  className, 
+  loadingText,
+  showLoadingText = false,
+  size = "md",
+  ...props 
+}, ref) => {
+  const sizeClasses = {
+    sm: "h-8 px-3 text-sm",
+    md: "h-10 px-4 text-base", 
+    lg: "h-12 px-6 text-lg"
+  };
+
+  const spinnerSizes = {
+    sm: "h-4 w-4",
+    md: "h-5 w-5",
+    lg: "h-6 w-6"
+  };
+
   return (
     <button
       ref={ref}
       disabled={disabled || isLoading}
       className={cn(
-        "relative inline-flex items-center justify-center px-4 py-2 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-60 disabled:cursor-not-allowed transition-all duration-200",
+        "relative inline-flex items-center justify-center gap-2 rounded-md bg-primary text-primary-foreground font-medium transition-all duration-200",
+        "hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary/50",
+        "disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:bg-primary",
+        // Immediate visual feedback on click
+        "active:scale-[0.98] active:duration-75",
+        sizeClasses[size],
         className
       )}
       {...props}
     >
-      {isLoading ? (
-        <Loader2 className="h-5 w-5 animate-spin" />
+      {isLoading && (
+        <Loader2 className={cn("animate-spin", spinnerSizes[size])} />
+      )}
+      
+      {isLoading && showLoadingText && loadingText ? (
+        <span className="transition-opacity duration-200">{loadingText}</span>
+      ) : isLoading && !showLoadingText ? (
+        // Show spinner only when no text is requested
+        !loadingText && <span className="sr-only">Đang xử lý...</span>
       ) : (
-        children
+        <span className={cn(
+          "transition-opacity duration-200",
+          isLoading && showLoadingText ? "opacity-0" : "opacity-100"
+        )}>
+          {children}
+        </span>
       )}
     </button>
   );
