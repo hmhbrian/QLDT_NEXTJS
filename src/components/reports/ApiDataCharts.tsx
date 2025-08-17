@@ -19,15 +19,11 @@ import {
   PieChart,
   Pie,
   Cell,
-  Area,
-  AreaChart,
 } from "recharts";
 import {
   BarChart as BarChartIcon,
   PieChart as PieChartIcon,
-  TrendingUp,
   Users,
-  BookOpen,
 } from "lucide-react";
 import {
   AvgFeedbackData,

@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useCallback, useRef, useEffect, memo } from "react";
@@ -30,17 +29,20 @@ interface PdfLessonViewerProps {
   pdfUrl: string;
   initialPage?: number;
   onVisiblePageChange: (page: number) => void;
+  isMobile?: boolean;
 }
 
 const MemoizedPage = memo(Page);
 
 function PageWithObserver({
   pageNumber,
+  width,
   scale,
   onInView,
   setRef,
 }: {
   pageNumber: number;
+  width: number;
   scale: number;
   onInView: () => void;
   setRef: (el: HTMLDivElement | null) => void;
@@ -62,21 +64,27 @@ function PageWithObserver({
     [setRef, ref]
   );
 
+  const aspect = 1260 / 891; // H / W
   return (
     <div ref={combinedRef} className="mb-4 shadow-lg flex justify-center">
       <MemoizedPage
         pageNumber={pageNumber}
+        width={Math.max(280, Math.floor(width))}
         scale={scale}
         renderAnnotationLayer={false}
         renderTextLayer={false}
         loading={
           <Skeleton
-            className="w-full aspect-[891/1260] max-w-none"
+            className="w-full max-w-none"
             style={{
-              width: `${891 * scale}px`,
-              height: `${1260 * scale}px`,
-              minWidth: `${891 * scale}px`,
-              minHeight: `${1260 * scale}px`,
+              width: `${Math.max(280, Math.floor(width))}px`,
+              height: `${Math.floor(
+                Math.max(280, Math.floor(width)) * aspect
+              )}px`,
+              minWidth: `${Math.max(280, Math.floor(width))}px`,
+              minHeight: `${Math.floor(
+                Math.max(280, Math.floor(width)) * aspect
+              )}px`,
             }}
           />
         }
@@ -89,45 +97,56 @@ export function PdfLessonViewer({
   pdfUrl,
   initialPage = 1,
   onVisiblePageChange,
+  isMobile = false,
 }: PdfLessonViewerProps) {
   const [numPages, setNumPages] = useState<number>(0);
   const [currentPage, setCurrentPage] = useState<number>(initialPage);
-  const [scale, setScale] = useState(1.5);
+  const [scale, setScale] = useState(1);
   const [pdfError, setPdfError] = useState<string | null>(null);
-  const [isThumbnailsOpen, setIsThumbnailsOpen] = useState(true);
-  const [isInitialLoad, setIsInitialLoad] = useState(true); // Thêm state để track initial load
+  const [isThumbnailsOpen, setIsThumbnailsOpen] = useState(!isMobile);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
 
   const mainContainerRef = useRef<HTMLDivElement>(null);
   const pageRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const [containerWidth, setContainerWidth] = useState<number>(0);
 
-  // Debug logging để kiểm tra initialPage - LOG CHI TIẾT HÔN
-  console.log(`🚀 PdfLessonViewer rendered:`, {
-    pdfUrl: pdfUrl.split("/").pop(),
-    initialPage,
-    currentPage,
-    timestamp: new Date().toISOString(),
-  });
+  useEffect(() => {
+    const el = mainContainerRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const cr = entry.contentRect;
+        setContainerWidth(cr.width);
+      }
+    });
+    ro.observe(el);
+    setContainerWidth(el.clientWidth);
+    return () => ro.disconnect();
+  }, []);
+
+  // Khi thay đổi scale => scroll giữ trang hiện tại ở giữa viewport, tránh cảm giác không thay đổi
+  useEffect(() => {
+    const currentRef = pageRefs.current[currentPage - 1];
+    if (currentRef) {
+      currentRef.scrollIntoView({ behavior: "instant" as any, block: "center" });
+    }
+  }, [scale]);
 
   const onDocumentLoadSuccess = ({ numPages }: { numPages: number }) => {
     setNumPages(numPages);
     setPdfError(null);
     pageRefs.current = Array(numPages).fill(null);
-
-    // Defer scrolling to allow DOM to update và đợi 1 chút để tải trang trước
     setTimeout(() => {
       const pageRef = pageRefs.current[initialPage - 1];
       if (pageRef) {
         pageRef.scrollIntoView({ behavior: "auto", block: "start" });
-        // Đảm bảo currentPage được set đúng NGAY khi scroll
         setCurrentPage(initialPage);
       } else {
-        setCurrentPage(1); // Fallback to page 1
+        setCurrentPage(1);
       }
-
-      // Đặt thêm timeout để đảm bảo đã scroll xong rồi mới cho phép lưu tiến trình
       setTimeout(() => {
-        setIsInitialLoad(false); // Bây giờ mới cho phép lưu tiến trình
-      }, 500); // Giảm thời gian xuống 500ms
+        setIsInitialLoad(false);
+      }, 500);
     }, 300);
   };
 
@@ -145,60 +164,55 @@ export function PdfLessonViewer({
     if (pageRef) {
       pageRef.scrollIntoView({ behavior: "smooth", block: "start" });
       setCurrentPage(page);
-      // Khi user chủ động chuyển trang thì luôn lưu tiến trình
       onVisiblePageChange(page);
-      console.log(`📄 User navigated to page ${page}, saving progress`);
     }
   };
 
   const handlePageInView = useCallback(
     (page: number) => {
-      // Chỉ update currentPage khi KHÔNG phải initial load
-      // Hoặc khi user đã scroll xong trang initial
       if (!isInitialLoad) {
         setCurrentPage(page);
         onVisiblePageChange(page);
-      } else {
-        console.log(
-          `🚫 Page ${page} in view but initial load, not saving progress`
-        );
       }
     },
-    [onVisiblePageChange, isInitialLoad, currentPage]
+    [onVisiblePageChange, isInitialLoad]
   );
 
   useEffect(() => {
     setCurrentPage(initialPage);
-    setIsInitialLoad(true); // Reset initial load khi initialPage thay đổi
+    setIsInitialLoad(true);
   }, [initialPage]);
 
-  // Reset state when the PDF URL changes
   useEffect(() => {
     setNumPages(0);
     setCurrentPage(initialPage);
-    setScale(1.5);
+    setScale(1);
     setPdfError(null);
-    setIsInitialLoad(true); // Reset initial load state
+    setIsInitialLoad(true);
     pageRefs.current = [];
   }, [pdfUrl, initialPage]);
 
   return (
-    <div className="w-full h-[85vh] flex flex-col bg-background dark:bg-zinc-900 rounded-lg shadow-lg border">
-      <div className="flex-shrink-0 h-14 bg-card border-b flex items-center justify-between gap-2 px-4 sticky top-0 z-20">
-        <div className="flex items-center gap-2">
+    <div
+      className="w-full h-full flex flex-col bg-gray-50 rounded-lg shadow-lg border relative"
+      style={{ zIndex: 1 }}
+    >
+      <div
+        className="flex-shrink-0 h-auto bg-white border-b flex flex-wrap items-center justify-between gap-2 px-2 sm:px-4 py-2 sticky top-0"
+        style={{ zIndex: 20 }}
+      >
+        <div className="flex items-center gap-2 min-w-[120px]">
           <Button
             variant="ghost"
             size="icon"
             onClick={() => setIsThumbnailsOpen((prev) => !prev)}
+            className={cn(isThumbnailsOpen && "bg-orange-100 text-orange-600")}
           >
             <PanelLeft className="h-5 w-5" />
           </Button>
-          <span className="text-sm font-medium text-muted-foreground hidden sm:inline">
-            {pdfUrl.split("/").pop()}
-          </span>
         </div>
 
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 order-3 w-full justify-center sm:order-none sm:w-auto">
           <Button
             variant="ghost"
             size="icon"
@@ -217,7 +231,7 @@ export function PdfLessonViewer({
                 goToPage(1);
               }
             }}
-            className="w-16 h-8 text-center"
+            className="w-16 sm:w-20 h-8 text-center"
           />
           <span className="text-sm text-muted-foreground">
             / {numPages || "..."}
@@ -232,19 +246,26 @@ export function PdfLessonViewer({
           </Button>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 order-2">
           <div className="h-6 w-px bg-border mx-2 hidden sm:block"></div>
           <Button
             variant="ghost"
             size="icon"
+            aria-label="Thu nhỏ"
             onClick={() => setScale((s) => Math.max(0.5, s - 0.2))}
+            disabled={scale <= 0.5}
           >
             <ZoomOut className="h-5 w-5" />
           </Button>
+          <span className="text-sm tabular-nums min-w-[48px] text-center select-none">
+            {Math.round(scale * 100)}%
+          </span>
           <Button
             variant="ghost"
             size="icon"
+            aria-label="Phóng to"
             onClick={() => setScale((s) => Math.min(3, s + 0.2))}
+            disabled={scale >= 3}
           >
             <ZoomIn className="h-5 w-5" />
           </Button>
@@ -281,8 +302,9 @@ export function PdfLessonViewer({
           }
           className="flex-grow flex overflow-hidden"
         >
-          {isThumbnailsOpen && numPages > 0 && (
-            <div className="w-48 bg-muted/40 border-r overflow-y-auto p-2 space-y-2">
+          {/* Tắt hoàn toàn sidebar thumbnail */}
+          {isThumbnailsOpen && numPages > 0 && !isMobile && (
+            <div className="hidden md:block w-48 bg-muted/40 border-r overflow-y-auto p-2 space-y-2">
               {Array.from(new Array(numPages), (_, index) => (
                 <div
                   key={`thumb-${index + 1}`}
@@ -314,14 +336,15 @@ export function PdfLessonViewer({
 
           <div
             ref={mainContainerRef}
-            className="flex-grow overflow-auto p-4 bg-muted/20"
+            className={cn("flex-grow overflow-auto p-2 sm:p-4 bg-muted/20")}
           >
             {numPages > 0 && (
               <div className="flex flex-col items-center">
                 {Array.from({ length: numPages }, (_, index) => (
                   <PageWithObserver
-                    key={`page-${index + 1}`}
+                    key={`page-${index + 1}-${Math.round(scale * 100)}`}
                     pageNumber={index + 1}
+                    width={containerWidth * 0.9}
                     scale={scale}
                     onInView={() => handlePageInView(index + 1)}
                     setRef={(el) => (pageRefs.current[index] = el)}

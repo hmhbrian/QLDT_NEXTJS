@@ -16,9 +16,9 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { useError } from "@/hooks/use-error";
 import { LoadingButton } from "@/components/ui/loading";
 import { useAuth } from "@/hooks/useAuth";
+import { extractErrorMessage } from "@/lib/core";
 
 const formSchema = z.object({
   email: z
@@ -32,7 +32,7 @@ export function LoginForm() {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
-  const { showError } = useError();
+  const [errorMessage, setErrorMessage] = useState<string>("");
   const { login, loadingAuth } = useAuth();
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -48,12 +48,20 @@ export function LoginForm() {
 
     try {
       setIsLoading(true);
+      setErrorMessage(""); // Clear previous errors
+      
       await login(
         { email: values.email, password: values.password },
         rememberMe
       );
+      // Login successful - useAuth will handle success toast and navigation
     } catch (error) {
-      showError("AUTH001");
+      // Extract and display specific error message
+      const errorMsg = extractErrorMessage(error);
+      setErrorMessage(errorMsg);
+      
+      // Also show toast for better UX (useAuth already handles this but let's be sure)
+      console.error("Login error:", error);
     } finally {
       setIsLoading(false);
     }

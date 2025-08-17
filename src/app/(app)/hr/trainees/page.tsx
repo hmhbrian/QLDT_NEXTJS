@@ -27,18 +27,15 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-import { PlusCircle, Search, Building2, Eye, EyeOff } from "lucide-react";
+import { PlusCircle, Search, Eye, EyeOff } from "lucide-react";
 import { useState, useMemo, useCallback, useEffect } from "react";
 import {
   User,
-  Role,
   CreateUserRequest,
   UpdateUserRequest,
   ServiceRole,
-  UserDepartmentInfo,
 } from "@/lib/types/user.types";
 import { UserDetailDialog } from "@/components/users";
-import { DepartmentInfo } from "@/lib/types/department.types";
 import { useToast } from "@/components/ui/use-toast";
 import { useError } from "@/hooks/use-error";
 import { DataTable } from "@/components/ui/data-table";
@@ -235,48 +232,54 @@ const filteredTrainees = useMemo(() => {
   );
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-        <h1 className="text-2xl md:text-3xl font-headline font-semibold">
+    <div className="space-y-4 sm:space-y-6">
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+        <h1 className="text-xl sm:text-2xl lg:text-3xl font-headline font-semibold">
           Quản lý Học viên
         </h1>
-        <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
-          <div className="relative flex-grow md:flex-grow-0">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+        <div className="flex flex-col sm:flex-row gap-2 w-full lg:w-auto">
+          <div className="relative flex-grow lg:flex-grow-0">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground" />
             <Input
               placeholder="Tìm kiếm học viên..."
-              className="pl-10 w-full md:w-64"
+              className="pl-9 sm:pl-10 w-full lg:w-64 h-9 sm:h-10 text-sm"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
-          <Button onClick={handleOpenAddDialog} className="w-full sm:w-auto">
-            <PlusCircle className="mr-2 h-5 w-5" /> Thêm Học viên
+          <Button onClick={handleOpenAddDialog} className="w-full sm:w-auto h-9 sm:h-10 text-sm">
+            <PlusCircle className="mr-1 sm:mr-2 h-4 w-4" /> 
+            <span className="hidden sm:inline">Thêm Học viên</span>
+            <span className="sm:hidden">Thêm</span>
           </Button>
         </div>
       </div>
 
-      <Card className="shadow-lg">
-        <CardHeader>
-          <CardTitle>Tất cả Học viên</CardTitle>
-          <CardDescription>
-            Quản lý thông tin học viên, ghi danh và phân công khóa học.
+      <Card className="border border-border bg-card">
+        <CardHeader className="p-4 sm:p-6">
+          <CardTitle className="text-base sm:text-lg">Tất cả Học viên</CardTitle>
+          <CardDescription className="text-sm text-muted-foreground">
+            Quản lý thông tin học viên, ghi danh và phân công khóa học
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-0 sm:p-6 sm:pt-0">
           {traineesError ? (
-            <p className="text-destructive text-center py-10">
-              {extractErrorMessage(traineesError)}
-            </p>
+            <div className="p-6 sm:p-10">
+              <p className="text-destructive text-center text-sm">
+                {extractErrorMessage(traineesError)}
+              </p>
+            </div>
           ) : (
-            <DataTable
-              columns={columns}
-              data={filteredTrainees}
-              isLoading={isTraineesLoading}
-              pageCount={pageCount}
-              pagination={pagination}
-              onPaginationChange={setPagination}
-            />
+            <div className="overflow-x-auto">
+              <DataTable
+                columns={columns}
+                data={filteredTrainees}
+                isLoading={isTraineesLoading}
+                pageCount={pageCount}
+                pagination={pagination}
+                onPaginationChange={setPagination}
+              />
+            </div>
           )}
         </CardContent>
       </Card>

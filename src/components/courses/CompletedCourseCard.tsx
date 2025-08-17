@@ -157,7 +157,7 @@ export function CompletedCourseCard({ course, onViewCertificates }: CompletedCou
           </div>
 
           {/* Certificate Section */}
-          <div className="flex-shrink-0 lg:min-w-[280px]">
+          <div className="flex-shrink-0 lg:min-w-[280px] w-full lg:w-auto">
             <div className="bg-gray-50 rounded-lg p-4 border">
               <div className="flex items-center gap-2 mb-3">
                 <Award className="h-5 w-5 text-primary" />
@@ -175,10 +175,10 @@ export function CompletedCourseCard({ course, onViewCertificates }: CompletedCou
                     <CheckCircle className="h-4 w-4" />
                     <span>Đã có chứng chỉ</span>
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex flex-col sm:flex-row gap-2">
                     <Button 
                       onClick={() => window.open(existingCertificate.certificateUrl, '_blank')}
-                      className="flex-1 h-9 border border-gray-200 bg-white text-gray hover:bg-primary"
+                      className="w-full sm:flex-1 h-9 border border-gray-200 bg-white text-gray hover:bg-primary"
                       size="sm"
                     >
                       <Eye className="h-4 w-4 mr-2" />
@@ -186,7 +186,7 @@ export function CompletedCourseCard({ course, onViewCertificates }: CompletedCou
                     </Button>
                     <Button 
                       onClick={handleDownloadCertificate}
-                      className="flex-1 h-9 bg-primary hover:bg-primary/90"
+                      className="w-full sm:flex-1 h-9 bg-primary hover:bg-primary/90"
                       size="sm"
                     >
                       <Download className="h-4 w-4 mr-2" />

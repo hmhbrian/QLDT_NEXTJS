@@ -20,7 +20,6 @@ import {
   Image as ImageIcon,
   Loader2,
 } from "lucide-react";
-import NextImage from "next/image";
 import type { Course, Lesson } from "@/lib/types/course.types";
 
 // Cấu hình PDF.js worker

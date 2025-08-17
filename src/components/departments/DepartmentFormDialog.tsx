@@ -27,7 +27,6 @@ import type {
   CreateDepartmentPayload,
   UpdateDepartmentPayload,
 } from "@/lib/types/department.types";
-import type { User } from "@/lib/types/user.types";
 import type { Status } from "@/lib/types/status.types";
 import { NO_DEPARTMENT_VALUE } from "@/lib/config/constants";
 import { generateDepartmentCode } from "@/lib/utils/code-generator";
@@ -102,11 +101,11 @@ export default function DepartmentFormDialog({
 
   useEffect(() => {
     if (!managers || managers.length === 0) {
-      // eslint-disable-next-line no-console
+       
       console.warn("[DepartmentFormDialog] managers is empty", managers);
     }
     if (!departmentStatuses || departmentStatuses.length === 0) {
-      // eslint-disable-next-line no-console
+       
       console.warn(
         "[DepartmentFormDialog] departmentStatuses is empty",
         departmentStatuses

@@ -73,25 +73,25 @@ export function HrDashboard() {
   }, [users, courses, allTimeReport]);
 
   return (
-    <div className="space-y-6">
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+    <div className="space-y-4 sm:space-y-6">
+      <div className="grid gap-4 sm:gap-6 md:grid-cols-2 lg:grid-cols-3">
         {stats.map((stat) => (
           <Card
             key={stat.title}
-            className="shadow-lg hover:shadow-xl transition-shadow duration-300"
+            className="border border-border bg-card hover:shadow-md transition-shadow duration-200"
           >
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
+              <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground">
                 {stat.title}
               </CardTitle>
-              <stat.icon className={`h-5 w-5 ${stat.color}`} />
+              <stat.icon className={`h-4 w-4 sm:h-5 sm:w-5 ${stat.color}`} />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl md:text-3xl font-bold">{stat.value}</div>
+              <div className="text-xl sm:text-2xl lg:text-3xl font-bold text-foreground">{stat.value}</div>
               <Link href={stat.link} passHref>
                 <Button
                   variant="link"
-                  className="px-0 text-sm text-muted-foreground hover:text-primary"
+                  className="px-0 text-xs sm:text-sm text-muted-foreground hover:text-primary mt-1"
                 >
                   {stat.linkText}
                 </Button>
@@ -100,16 +100,18 @@ export function HrDashboard() {
           </Card>
         ))}
       </div>
-      <Card className="shadow-lg">
+      <Card className="border border-border bg-card">
         <CardHeader>
-          <CardTitle className="font-headline">Buổi học sắp tới</CardTitle>
-          <CardDescription>Lịch các buổi học cho tuần tới.</CardDescription>
+          <CardTitle className="text-base sm:text-lg font-semibold text-foreground">Buổi học sắp tới</CardTitle>
+          <CardDescription className="text-sm text-muted-foreground">Lịch các buổi học cho tuần tới</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-col items-center justify-center h-40 border-2 border-dashed rounded-md text-center p-4">
-            <CalendarCheck2 className="h-12 w-12 text-muted-foreground" />
-            <p className="ml-0 md:ml-4 mt-2 md:mt-0 text-muted-foreground">
-              Lịch các buổi học sắp tới sẽ được hiển thị ở đây.
+          <div className="flex flex-col items-center justify-center h-32 sm:h-40 border-2 border-dashed border-border rounded-md text-center p-4">
+            <div className="p-2 sm:p-3 bg-muted rounded-full mb-2 sm:mb-3">
+              <CalendarCheck2 className="h-6 w-6 sm:h-8 sm:w-8 text-muted-foreground" />
+            </div>
+            <p className="text-xs sm:text-sm text-muted-foreground">
+              Lịch các buổi học sắp tới sẽ được hiển thị ở đây
             </p>
           </div>
         </CardContent>

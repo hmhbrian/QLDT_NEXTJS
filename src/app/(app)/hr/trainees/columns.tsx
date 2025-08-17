@@ -7,7 +7,6 @@ import {
   Pencil,
   Trash2,
   UserCircle2,
-  BookOpen,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -20,8 +19,6 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Checkbox } from "@/components/ui/checkbox";
 import type { User } from "@/lib/types/user.types";
-import type { DepartmentInfo } from "@/lib/types/department.types";
-import type { EmployeeLevel } from "@/lib/types/user.types";
 import { cn } from "@/lib/utils";
 import { getLevelBadgeColor, getStatusColor } from "@/lib/helpers";
 

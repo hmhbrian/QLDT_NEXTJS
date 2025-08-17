@@ -224,14 +224,13 @@ export function DataTable<TData, TValue>({
           {renderTableBody()}
         </Table>
       </div>
-      <div className="flex items-center justify-between px-2 py-4">
-        <div className="flex-1 text-sm text-muted-foreground">
-          {table.getFilteredSelectedRowModel().rows.length} của{" "}
-          {table.getFilteredRowModel().rows.length} dòng được chọn.
+      <div className="flex flex-col md:flex-row items-center gap-3 md:gap-4 justify-between px-2 py-4">
+        <div className="w-full md:flex-1 text-xs sm:text-sm text-muted-foreground text-center md:text-left">
+          {table.getFilteredSelectedRowModel().rows.length} - {table.getFilteredRowModel().rows.length}
         </div>
-        <div className="flex items-center space-x-6 lg:space-x-8">
-          <div className="flex items-center space-x-2">
-            <p className="text-sm font-medium">Số dòng mỗi trang</p>
+        <div className="w-full md:w-auto flex flex-wrap items-center justify-center md:justify-end gap-3 md:gap-4">
+          <div className="flex items-center gap-2">
+            {/* <p className="text-sm font-medium">Số dòng mỗi trang</p> */}
             <Select
               value={`${table.getState().pagination.pageSize}`}
               onValueChange={(value) => {
@@ -252,11 +251,10 @@ export function DataTable<TData, TValue>({
               </SelectContent>
             </Select>
           </div>
-          <div className="flex w-[100px] items-center justify-center text-sm font-medium">
-            Trang {table.getState().pagination.pageIndex + 1} của{" "}
-            {table.getPageCount()}
+          <div className="flex min-w-[120px] items-center justify-center text-xs sm:text-sm font-medium">
+            Trang {table.getState().pagination.pageIndex + 1} / {table.getPageCount()}
           </div>
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center gap-2">
             <Button
               variant="outline"
               className="hidden h-8 w-8 p-0 lg:flex"

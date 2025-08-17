@@ -12,7 +12,7 @@ export default function DashboardPage() {
 
   if (loadingAuth || !user) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-6 container mx-auto px-2 sm:px-4 md:px-6">
         <Skeleton className="h-10 w-2/3 md:w-1/3" />
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {[...Array(3)].map((_, i) => (
@@ -31,7 +31,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 container mx-auto px-2 sm:px-4 md:px-6">
       <h1 className="text-2xl md:text-3xl font-headline font-semibold">
         Chào mừng, {user.fullName}!
       </h1>

@@ -51,8 +51,6 @@ import {
   LayoutGrid,
   List,
   Loader2,
-  ChevronLeft,
-  ChevronRight,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import type { Course } from "@/lib/types/course.types";
@@ -281,30 +279,26 @@ export default function CoursesPage() {
 
   return (
     <>
-        <Card className="border-0 shadow-lg bg-card">
-        <CardHeader className="border-b p-6">
-          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-            <div className="space-y-1">
-              <CardTitle className="text-2xl font-bold text-foreground flex items-center gap-3">
-                <div className="p-2 bg-primary rounded-lg text-white">
-                  <LayoutGrid className="h-6 w-6" />
-                </div>
+        <Card className="border border-border bg-card">
+        <CardHeader className="p-4 sm:p-6">
+          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+            <div>
+              <CardTitle className="text-lg sm:text-xl font-semibold text-foreground">
                 Quản lý Khóa học
               </CardTitle>
-              <CardDescription className="text-muted-foreground text-base">
-                Tạo, chỉnh sửa và quản lý tất cả khóa học nội bộ một cách chuyên
-                nghiệp.
+              <CardDescription className="text-sm text-muted-foreground">
+                Tạo mới, chỉnh sửa và quản lý tất cả khóa học
               </CardDescription>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 w-full lg:w-auto">
               <Button
                 variant={viewMode === "table" ? "default" : "outline"}
                 size="icon"
                 onClick={() => setViewMode("table")}
                 className={
                   viewMode === "table"
-                    ? " hover:bg-orange-600"
-                    : "text-orange-600 hover:bg-orange-50"
+                    ? "h-9 w-9 sm:h-10 sm:w-10 hover:bg-primary/90"
+                    : "h-9 w-9 sm:h-10 sm:w-10 text-primary hover:bg-primary/10"
                 }
               >
                 <List className="h-4 w-4" />
@@ -315,46 +309,47 @@ export default function CoursesPage() {
                 onClick={() => setViewMode("card")}
                 className={
                   viewMode === "card"
-                    ? " hover:bg-orange-600"
-                    : "text-orange-600 hover:bg-orange-50"
+                    ? "h-9 w-9 sm:h-10 sm:w-10 hover:bg-primary/90"
+                    : "h-9 w-9 sm:h-10 sm:w-10 text-primary hover:bg-primary/10"
                 }
               >
                 <LayoutGrid className="h-4 w-4" />
               </Button>
-              {canManageCourses && (
+               {canManageCourses && (
                 <Button
                   onClick={handleOpenAddDialog}
-                  className="ml-2 hover:bg-orange-600 text-white shadow-lg px-6 py-2 h-auto"
+                  className="w-full sm:w-auto h-9 sm:h-10 text-sm"
                 >
-                  <PlusCircle className="mr-2 h-5 w-5" />
-                  Thêm khóa học
+                  <PlusCircle className="mr-1 sm:mr-2 h-4 w-4" />
+                  <span className="hidden sm:inline">Thêm khóa học</span>
+                  <span className="sm:hidden">Thêm</span>
                 </Button>
               )}
             </div>
           </div>
         </CardHeader>
-        <CardContent className="p-6">
-          <div className="mb-6 space-y-4">
-            <div className="flex flex-col sm:flex-row gap-4">
+        <CardContent className="p-4 sm:p-6 pt-0">
+            <div className="mb-4 sm:mb-6 space-y-3 sm:space-y-4">
+            <div className="flex flex-col lg:flex-row gap-3 sm:gap-4">
               <div className="relative flex-grow">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-orange-400 z-10" />
+                <Search className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground z-10" />
                 <Input
                   placeholder="Tìm kiếm khóa học theo tên, mã khóa học..."
                   value={filters.keyword}
                   onChange={(e) =>
                     handleFilterChange("keyword", e.target.value)
                   }
-                  className="pl-12"
+                  className="pl-9 sm:pl-12 h-9 sm:h-10 text-sm"
                 />
               </div>
               <Select
                 value={filters.statusId}
                 onValueChange={(v) => handleFilterChange("statusId", v)}
               >
-                <SelectTrigger className="w-full sm:w-[180px] focus:border-orange-400 focus:ring-orange-400">
+                <SelectTrigger className="w-full lg:w-[180px] h-9 sm:h-10">
                   <SelectValue placeholder="Trạng thái" />
                 </SelectTrigger>
-                <SelectContent className="border-orange-100">
+                <SelectContent>
                   <SelectItem value="all">Tất cả trạng thái</SelectItem>
                   {courseStatuses.map((o) => (
                     <SelectItem key={o.id} value={String(o.id)}>
@@ -367,10 +362,10 @@ export default function CoursesPage() {
                 value={filters.departmentId}
                 onValueChange={(v) => handleFilterChange("departmentId", v)}
               >
-                <SelectTrigger className="w-full sm:w-[180px] focus:border-orange-400 focus:ring-orange-400">
+                <SelectTrigger className="w-full lg:w-[180px] h-9 sm:h-10">
                   <SelectValue placeholder="Phòng ban" />
                 </SelectTrigger>
-                <SelectContent className="border-orange-100">
+                <SelectContent>
                   <SelectItem value="all">Tất cả phòng ban</SelectItem>
                   {departmentOptions.map((o) => (
                     <SelectItem key={o.value} value={o.value}>
@@ -383,10 +378,10 @@ export default function CoursesPage() {
                 value={filters.levelId}
                 onValueChange={(v) => handleFilterChange("levelId", v)}
               >
-                <SelectTrigger className="w-full sm:w-[180px] focus:border-orange-400 focus:ring-orange-400">
+                <SelectTrigger className="w-full lg:w-[180px] h-9 sm:h-10">
                   <SelectValue placeholder="Cấp độ" />
                 </SelectTrigger>
-                <SelectContent className="border-orange-100">
+                <SelectContent>
                   <SelectItem value="all">Tất cả cấp bậc</SelectItem>
                   {levelOptions.map((o) => (
                     <SelectItem key={o.value} value={o.value}>
@@ -414,22 +409,24 @@ export default function CoursesPage() {
             </div>
           </div>
 
-          {isLoading && courses.length === 0 ? (
+            {isLoading && courses.length === 0 ? (
             <div className="flex h-60 w-full items-center justify-center">
               <Loader2 className="h-10 w-10 animate-spin text-primary" />
               <p className="ml-3 text-muted-foreground">
                 Đang tải danh sách khóa học...
               </p>
             </div>
-          ) : viewMode === "table" ? (
-            <DataTable
-              columns={columns}
-              data={courses}
-              isLoading={isLoading}
-              pageCount={pageCount}
-              pagination={pagination}
-              onPaginationChange={setPagination}
-            />
+            ) : viewMode === "table" ? (
+            <div className="overflow-x-auto">
+              <DataTable
+                columns={columns}
+                data={courses}
+                isLoading={isLoading}
+                pageCount={pageCount}
+                pagination={pagination}
+                onPaginationChange={setPagination}
+              />
+            </div>
           ) : (
             <>
               <div className="grid gap-6 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">

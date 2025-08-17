@@ -14,7 +14,6 @@ import {
 import { useToast } from "@/components/ui/use-toast";
 import { extractErrorMessage } from "@/lib/core";
 import { mapApiTestToUiTest } from "@/lib/mappers/test.mapper";
-import { useError } from "@/hooks/use-error";
 
 export const TESTS_QUERY_KEY = "tests";
 

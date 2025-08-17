@@ -3,8 +3,6 @@
 import {
   User,
   LoginDTO,
-  UserApiResponse,
-  ChangePasswordRequest,
   UserProfileUpdateRequest,
 } from "@/lib/types/user.types";
 import React, {
@@ -44,10 +42,12 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loadingAuth, setLoadingAuth] = useState(true);
+  const [authAttempts, setAuthAttempts] = useState(0);
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { navigateInstant } = useInstantNavigation();
   const pathname = usePathname();
+  const maxAuthAttempts = 3;
 
   const logout = useCallback(() => {
     // Clear auth service state
@@ -99,7 +99,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const initializeAuth = useCallback(async () => {
     try {
-      // Check for token from secure cookies first
+      // Quick check: if we already have user data from localStorage, use it immediately
+      const storedUser = localStorage.getItem("qldt_user_info");
+      if (storedUser) {
+        try {
+          const userInfo = JSON.parse(storedUser);
+          if (userInfo && userInfo.id && userInfo.accessToken) {
+            // Set token and user immediately (cache-first approach)
+            httpClient.setAuthorizationHeader(userInfo.accessToken);
+            const mappedUser = mapUserApiToUi(userInfo);
+            setUser(mappedUser);
+            setLoadingAuth(false);
+            return; // Exit early with cached data
+          }
+        } catch (error) {
+          // Invalid stored data, continue with token check
+          localStorage.removeItem("qldt_user_info");
+        }
+      }
+
+      // Check for token from secure cookies
       const token = cookieManager.getSecureAuth();
 
       if (!token) {
@@ -113,42 +132,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Set the authorization header with the token
       httpClient.setAuthorizationHeader(token);
 
-      // Get user data from API
-      const currentUserData = await authService.getCurrentUser();
+      // Quick token validation (reduced timeout)
+      const currentUserData = await Promise.race([
+        authService.getCurrentUser(),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error("Authentication timeout")), 2000) // Reduced to 2 seconds
+        )
+      ]) as any;
+      
       const mappedUser = mapUserApiToUi(currentUserData);
 
-      // Validation đơn giản hơn - chỉ cần có ID
+      // Simple validation
       if (!mappedUser || !mappedUser.id) {
         throw new Error("Invalid user data - missing ID");
       }
 
       setUser(mappedUser);
     } catch (error: any) {
-      // Clear all auth data
+      console.error("Authentication error:", error);
+
+      // Clear all auth data on error
       setUser(null);
       cookieManager.removeSecureAuth();
       httpClient.clearAuthorizationHeader();
       localStorage.removeItem("qldt_user_info");
     } finally {
-      // ALWAYS set loading to false regardless of success or failure
+      // ALWAYS set loading to false
       setLoadingAuth(false);
     }
-  }, []);
+  }, []); // Remove dependencies that cause re-runs
 
   useEffect(() => {
     initializeAuth();
-
-    // Safety net: force loading to false after 5 seconds to prevent infinite loading
-    const timeoutId = setTimeout(() => {
-      if (loadingAuth) {
-        setLoadingAuth(false);
-      }
-    }, 5000); // Reduced from 10 to 5 seconds
-
-    return () => {
-      clearTimeout(timeoutId);
-    };
-  }, [initializeAuth]);
+  }, []); // Remove the 5-second timeout and dependencies
 
   // Listen for authentication errors from httpClient
   useEffect(() => {

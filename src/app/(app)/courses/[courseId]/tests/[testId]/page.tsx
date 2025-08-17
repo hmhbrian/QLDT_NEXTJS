@@ -13,7 +13,6 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   AlertTriangle,
@@ -21,7 +20,6 @@ import {
   XCircle,
   ArrowLeft,
   ArrowRight,
-  RefreshCw,
   Loader2,
   Clock,
   User,
@@ -34,7 +32,6 @@ import {
   Flag,
   Eye,
   Send,
-  CheckSquare,
   Check,
 } from "lucide-react";
 import {
@@ -52,9 +49,6 @@ import { mapApiTestToUiTest } from "@/lib/mappers/test.mapper";
 import { useAuth } from "@/hooks/useAuth";
 import type {
   Test,
-  Question,
-  TestSubmissionResponse,
-  DetailedTestResult,
   SelectedAnswer,
   QuestionNoAnswer,
 } from "@/lib/types/test.types";
@@ -301,17 +295,29 @@ export default function TestDetailPage() {
     // Has a result (already took the test)
     if (result) {
       return (
-        <div className="min-h-screen bg-gray-50">
+        <div className="min-h-screen bg-gradient-to-br from-background to-muted/20">
           {/* Success Banner */}
           <div>
             <div className="max-w-4xl mx-auto px-4 py-8">
-              <div className="bg-white rounded-lg border shadow-sm">
+              <div className={`rounded-lg border shadow-sm ${
+                result.isPassed 
+                  ? "bg-gradient-to-r from-orange-50 to-orange-100 border-orange-200" 
+                  : "bg-gradient-to-r from-red-50 to-red-100 border-red-200"
+              }`}>
                 <div className="p-6 pt-6 text-center">
-                  <div className="mx-auto w-16 h-16 rounded-full flex items-center justify-center bg-green-100 mb-4">
-                    <CheckCircle className="h-8 w-8 text-green-600" />
+                  <div className={`mx-auto w-16 h-16 rounded-full flex items-center justify-center mb-4 ${
+                    result.isPassed ? "bg-green-100" : "bg-red-100"
+                  }`}>
+                    {result.isPassed ? (
+                      <CheckCircle className="h-8 w-8 text-green-600" />
+                    ) : (
+                      <XCircle className="h-8 w-8 text-red-600" />
+                    )}
                   </div>
-                  <h2 className="text-2xl font-bold mt-4 text-green-700 mb-2">
-                    {result.isPassed ? "Chúc mừng! Bạn đã đạt" : "Bạn chưa đạt yêu cầu"}
+                  <h2 className={`text-2xl font-bold mt-4 mb-2 ${
+                    result.isPassed ? "text-green-700" : "text-red-700"
+                  }`}>
+                    {result.isPassed ? "Chúc mừng! Bạn đã đạt" : "Tiếc quá! Bạn chưa đạt"}
                   </h2>
                   <p className="text-muted-foreground mt-1">
                     Điểm của bạn: <span className="font-semibold">{result.score.toFixed(1)}%</span>
@@ -442,19 +448,17 @@ export default function TestDetailPage() {
               </div>
             </div>
           </CardContent>
-          <CardFooter className="flex flex-col sm:flex-row gap-2">
+          <CardFooter className="flex flex-col sm:flex-row gap-2 pt-2">
             <Button
               onClick={handleStartTest}
-              className="w-full sm:w-auto flex-1"
-              size="lg"
-            >
-              <BookOpen className="mr-2 h-5 w-5" />
+              className="w-full sm:w-auto flex-1 rounded-lg shadow-sm">
+              <BookOpen className="w-full sm:w-auto h-11 rounded-lg" />
               Bắt đầu làm bài
             </Button>
             <Button
               onClick={() => router.back()}
-              variant="secondary"
-              className="w-full sm:w-auto"
+              variant="outline"
+              className="w-full sm:w-auto h-11 rounded-lg"
             >
               Quay lại khóa học
             </Button>
@@ -919,7 +923,7 @@ export default function TestDetailPage() {
         open={showSubmitConfirmation}
         onOpenChange={setShowSubmitConfirmation}
       >
-        <DialogContent>
+        <DialogContent className="max-h-[80vh] overflow-y-auto sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Xác nhận nộp bài</DialogTitle>
             <DialogDescription>

@@ -27,7 +27,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DatePicker } from "@/components/ui/datepicker";
 import { useAuth } from "@/hooks/useAuth";
 import { useError } from "@/hooks/use-error";
@@ -37,13 +36,11 @@ import {
   Role,
   CreateUserRequest,
   UpdateUserRequest,
-  EmployeeLevel,
   ResetPasswordRequest,
   ServiceRole,
   UserDepartmentInfo,
 } from "@/lib/types/user.types";
 import { UserDetailDialog } from "@/components/users";
-import { DepartmentInfo } from "@/lib/types/department.types";
 import { useToast } from "@/components/ui/use-toast";
 import { DataTable } from "@/components/ui/data-table";
 import { getColumns } from "./columns";
@@ -62,9 +59,6 @@ import { useQuery } from "@tanstack/react-query";
 import {
   PlusCircle,
   Search,
-  UserCircle2,
-  Calendar,
-  Award,
   Eye,
   EyeOff,
   Pencil,
@@ -483,37 +477,44 @@ export default function UsersPage() {
 
   return (
     <>
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
+      <Card className="border border-border bg-card">
+        <CardHeader className="p-4 sm:p-6">
+          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
             <div>
-              <CardTitle>Tất cả Người dùng</CardTitle>
-              <CardDescription>
-                Quản lý tất cả tài khoản người dùng trong hệ thống.
+              <CardTitle className="text-lg sm:text-xl font-semibold">Tất cả Người dùng</CardTitle>
+              <CardDescription className="text-sm text-muted-foreground">
+                Quản lý tất cả tài khoản người dùng trong hệ thống
               </CardDescription>
             </div>
-            <Button onClick={handleOpenAddDialog}>
-              <PlusCircle className="mr-2 h-4 w-4" /> Thêm người dùng
+            <Button onClick={handleOpenAddDialog} className="w-full sm:w-auto h-9 sm:h-10 text-sm">
+              <PlusCircle className="mr-1 sm:mr-2 h-4 w-4" /> 
+              <span className="hidden sm:inline">Thêm người dùng</span>
+              <span className="sm:hidden">Thêm</span>
             </Button>
           </div>
         </CardHeader>
-        <CardContent>
-          <div className="mb-6 space-y-4">
-            <div className="flex flex-col sm:flex-row gap-4">
+        <CardContent className="p-4 sm:p-6 pt-0">
+          <div className="mb-4 sm:mb-6 space-y-3 sm:space-y-4">
+            <div className="flex flex-col lg:flex-row gap-3 sm:gap-4">
               <div className="relative flex-grow">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10" />
                 <Input
                   placeholder="Tìm kiếm theo tên, email, mã NV..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className={cn("pl-9", isUsersLoading && "pr-10")}
+                  className={cn(
+                    "pl-9 pr-9",
+                    isUsersLoading && "pr-10",
+                    "transition-colors"
+                  )}
                 />
-                {isUsersLoading && (
-                  <Spinner
-                    className="absolute right-3 top-1/2 -translate-y-1/2"
-                    size="sm"
-                  />
-                )}
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center">
+                  {isUsersLoading ? (
+                    <Spinner size="sm" />
+                  ) : (
+                    <div className="h-4 w-4 rounded-full border-muted-foreground/30" />
+                  )}
+                </div>
               </div>
             </div>
           </div>

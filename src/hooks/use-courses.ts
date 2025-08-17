@@ -7,8 +7,6 @@ import type {
   CreateCourseRequest,
   UpdateCourseRequest,
   CourseApiResponse,
-  UserEnrollCourseDto,
-  CompletedCourseDto,
   UserCourseProgressDto,
   UserCourseProgressDetailDto,
 } from "@/lib/types/course.types";
