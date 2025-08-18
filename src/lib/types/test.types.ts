@@ -24,7 +24,10 @@ export interface Test {
   timeTest: number; // Add timeTest in minutes
   countQuestion: number;
   isDone: boolean;
+  score?: number; // Add score field
+  isPassed?: boolean; // Add isPassed field
   createdBy?: { id: string; name: string };
+  updatedBy?: { id: string; name: string }; // Add updatedBy field
 }
 
 export interface UiQuestion {
@@ -74,8 +77,11 @@ export interface ApiTest {
   timeTest: number; // Ensure this is here
   countQuestion: number;
   isDone?: boolean; // Ensure isDone is here
+  score?: number; // Add score field
+  isPassed?: boolean; // Add isPassed field
   questions?: ApiQuestion[];
   createdBy?: { id: string; name: string };
+  updatedBy?: { id: string; name: string }; // Add updatedBy field
 }
 
 export interface CreateQuestionPayload {
