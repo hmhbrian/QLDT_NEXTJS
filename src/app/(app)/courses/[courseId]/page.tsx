@@ -173,10 +173,15 @@ const TestItem = ({
   courseId: string;
   isEnrolled: boolean;
 }) => {
+  const { user: currentUser } = useAuth();
   const { hasSubmitted, isLoading } = useHasSubmittedTest(
     courseId,
     Number(test.id)
   );
+
+  // Check if user is admin or HR
+  const isAdminOrHR =
+    currentUser?.role === "ADMIN" || currentUser?.role === "HR";
 
   return (
     <Card
@@ -187,53 +192,79 @@ const TestItem = ({
         <h4 className="font-semibold flex items-center gap-2">
           <ShieldQuestion className="h-5 w-5 text-primary" /> {test.title}
         </h4>
-        <Badge>Cần đạt: {test.passingScorePercentage}%</Badge>
+        <div className="flex items-center gap-2">
+          <Badge>
+            Cần đạt: {test.passingScorePercentage || test.passThreshold}%
+          </Badge>
+          {/* Show score for admin/HR if test is done */}
+          {test.isDone && (
+            <Badge
+              variant={test.isPassed ? "default" : "destructive"}
+              className={test.isPassed ? "bg-green-600 text-white" : ""}
+            >
+              Điểm: {test.score || 0}%
+            </Badge>
+          )}
+        </div>
       </div>
       <p className="text-sm text-muted-foreground mt-1">
         Số lượng câu hỏi: {test.countQuestion || 0}
       </p>
-      <TooltipProvider>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <div className="mt-3 flex items-center gap-2">
-              {isLoading ? (
-                <Button variant="outline" size="sm" disabled>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Đang tải...
-                </Button>
-              ) : hasSubmitted ? (
-                <Button asChild variant="outline" size="sm">
-                  <Link href={`/courses/${courseId}/tests/${test.id}`}>
-                    <Eye className="mr-2 h-4 w-4" /> Xem lại bài
-                  </Link>
-                </Button>
-              ) : (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={!isEnrolled}
-                  asChild
-                >
-                  <Link
-                    href={`/courses/${courseId}/tests/${test.id}`}
-                    onClick={(e) => !isEnrolled && e.preventDefault()}
-                    aria-disabled={!isEnrolled}
-                    tabIndex={!isEnrolled ? -1 : undefined}
-                    className={!isEnrolled ? "pointer-events-none" : ""}
+
+      {/* Only show test buttons for regular users (HOCVIEN), not for admin/HR */}
+      {!isAdminOrHR && (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="mt-3 flex items-center gap-2">
+                {isLoading ? (
+                  <Button variant="outline" size="sm" disabled>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Đang
+                    tải...
+                  </Button>
+                ) : hasSubmitted ? (
+                  <Button asChild variant="outline" size="sm">
+                    <Link href={`/courses/${courseId}/tests/${test.id}`}>
+                      <Eye className="mr-2 h-4 w-4" /> Xem lại bài
+                    </Link>
+                  </Button>
+                ) : (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={!isEnrolled}
+                    asChild
                   >
-                    <Check className="mr-2 h-4 w-4" />
-                    Làm bài kiểm tra
-                  </Link>
-                </Button>
-              )}
-            </div>
-          </TooltipTrigger>
-          {!isEnrolled && !hasSubmitted && (
-            <TooltipContent>
-              <p>Bạn cần đăng ký khóa học để làm bài kiểm tra.</p>
-            </TooltipContent>
-          )}
-        </Tooltip>
-      </TooltipProvider>
+                    <Link
+                      href={`/courses/${courseId}/tests/${test.id}`}
+                      onClick={(e) => !isEnrolled && e.preventDefault()}
+                      aria-disabled={!isEnrolled}
+                      tabIndex={!isEnrolled ? -1 : undefined}
+                      className={!isEnrolled ? "pointer-events-none" : ""}
+                    >
+                      <Check className="mr-2 h-4 w-4" />
+                      Làm bài kiểm tra
+                    </Link>
+                  </Button>
+                )}
+              </div>
+            </TooltipTrigger>
+            {!isEnrolled && !hasSubmitted && (
+              <TooltipContent>
+                <p>Bạn cần đăng ký khóa học để làm bài kiểm tra.</p>
+              </TooltipContent>
+            )}
+          </Tooltip>
+        </TooltipProvider>
+      )}
+
+      {/* For admin/HR, show additional test info if available */}
+      {isAdminOrHR && test.isDone && (
+        <div className="mt-3 text-sm text-muted-foreground">
+          <p>Trạng thái: {test.isPassed ? "Đã đậu" : "Chưa đậu"}</p>
+          {test.createdBy && <p>Người tạo: {test.createdBy.name}</p>}
+        </div>
+      )}
     </Card>
   );
 };
