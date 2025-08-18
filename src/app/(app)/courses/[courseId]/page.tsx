@@ -118,7 +118,7 @@ const PdfLessonViewer = dynamic(
 const renderLessonIcon = (contentType: LessonContentType | undefined) => {
   if (!contentType) return <FileText className="h-5 w-5 text-gray-500" />;
   const iconMap: Record<LessonContentType, React.ReactNode> = {
-    video_url: <Video className="h-5 w-5 text-blue-500" />,
+    video_url: <Video className="h-5 w-5 text-orange-500" />,
     pdf_url: <FileText className="h-5 w-5 text-red-500" />,
     slide_url: <FileText className="h-5 w-5 text-yellow-500" />,
     text: <BookOpen className="h-5 w-5 text-green-500" />,
@@ -130,7 +130,7 @@ const renderLessonIcon = (contentType: LessonContentType | undefined) => {
 const renderMaterialIcon = (type: CourseMaterialType) => {
   const iconMap: Record<CourseMaterialType, React.ReactNode> = {
     PDF: <FileText className="h-5 w-5 text-red-500" />,
-    Link: <LinkIcon className="h-5 w-5 text-blue-500" />,
+    Link: <LinkIcon className="h-5 w-5 text-orange-500" />,
   };
   return iconMap[type] || <FileText className="h-5 w-5 text-gray-500" />;
 };
@@ -1005,7 +1005,7 @@ export default function CourseDetailPage() {
                                       "text-orange-500",
                                     lesson.type === "text" && "text-green-500",
                                     lesson.type === "external_link" &&
-                                      "text-blue-500"
+                                      "text-orange-500"
                                   )}
                                 >
                                   {renderLessonIcon(lesson.type)}
@@ -1601,7 +1601,7 @@ export default function CourseDetailPage() {
                                     isCompleted
                                       ? "bg-emerald-100 text-emerald-700 border-2 border-emerald-200"
                                       : isInProgress
-                                      ? "bg-blue-100 text-blue-700 border-2 border-blue-200"
+                                      ? "bg-orange-100 text-orange-700 border-2 border-orange-200"
                                       : "bg-slate-100 text-slate-600 border-2 border-slate-200 group-hover:border-slate-300"
                                   )}
                                 >
@@ -1629,7 +1629,7 @@ export default function CourseDetailPage() {
                                       lesson.type === "text" &&
                                         "text-green-500",
                                       lesson.type === "external_link" &&
-                                        "text-blue-500"
+                                        "text-orange-500"
                                     )}
                                   >
                                     {renderLessonIcon(lesson.type)}
@@ -1680,7 +1680,7 @@ export default function CourseDetailPage() {
                                             "h-full transition-all duration-300 rounded-full",
                                             isCompleted
                                               ? "bg-emerald-500"
-                                              : "bg-blue-500"
+                                              : "bg-primary"
                                           )}
                                           style={{
                                             width: `${lesson.progressPercentage}%`,
@@ -1701,7 +1701,7 @@ export default function CourseDetailPage() {
                                   </Badge>
                                 )}
                                 {isInProgress && !isCompleted && (
-                                  <Badge className="bg-blue-100 text-blue-700 border-blue-200 hover:bg-blue-100">
+                                  <Badge className="bg-orange-100 text-orange-700 border-orange-200 hover:bg-orange-100">
                                     <Play className="w-3 h-3 mr-1" />
                                     Đang học
                                   </Badge>
@@ -2187,7 +2187,7 @@ export default function CourseDetailPage() {
                                   isCompleted
                                     ? "bg-green-100 text-green-700"
                                     : isInProgress
-                                    ? "bg-blue-100 text-blue-700"
+                                    ? "bg-orange-100 text-orange-700"
                                     : isActive
                                     ? "bg-orange-100 text-orange-700"
                                     : "bg-gray-100 text-gray-600"
