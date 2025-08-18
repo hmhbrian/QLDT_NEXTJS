@@ -301,7 +301,7 @@ export default function TestDetailPage() {
             <div className="max-w-4xl mx-auto px-4 py-8">
               <div className={`rounded-lg border shadow-sm ${
                 result.isPassed 
-                  ? "bg-gradient-to-r from-orange-50 to-orange-100 border-orange-200" 
+                  ? "bg-gradient-to-r from-green-50 to-green-100 border-green-200" 
                   : "bg-gradient-to-r from-red-50 to-red-100 border-red-200"
               }`}>
                 <div className="p-6 pt-6 text-center">
