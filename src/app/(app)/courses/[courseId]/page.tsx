@@ -195,12 +195,13 @@ const TestItem = ({
           <ShieldQuestion className="h-5 w-5 text-primary" /> {test.title}
         </h4>
         <div className="flex items-center gap-2">
-          <Badge>
+          <Badge size="sm" className="whitespace-nowrap">
             Cần đạt: {test.passingScorePercentage || test.passThreshold}%
           </Badge>
           {/* Show score for admin/HR if test is done */}
           {test.isDone && (
             <Badge
+              size="sm"
               variant={test.isPassed ? "default" : "destructive"}
               className={test.isPassed ? "bg-green-600 text-white" : ""}
             >

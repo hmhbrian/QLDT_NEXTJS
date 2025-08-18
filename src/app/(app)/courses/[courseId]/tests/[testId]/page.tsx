@@ -602,7 +602,10 @@ export default function TestDetailPage() {
             <h3 className="text-lg font-medium pr-4">
               Câu {currentQuestionIndex + 1}: {q.text}
             </h3>
-            <Badge variant={questionType > 1 ? "secondary" : "default"}>
+            <Badge
+              size="sm"
+              variant={questionType > 1 ? "secondary" : "default"}
+            >
               {questionType > 1 ? "Nhiều đáp án" : "Một đáp án"}
             </Badge>
           </div>
@@ -848,7 +851,10 @@ export default function TestDetailPage() {
                       <h4 className="font-medium pr-4">
                         Câu {idx + 1}: {ua.question.questionText}
                       </h4>
-                      <Badge variant={ua.isCorrect ? "default" : "destructive"}>
+                      <Badge
+                        size="sm"
+                        variant={ua.isCorrect ? "default" : "destructive"}
+                      >
                         {ua.isCorrect ? "Đúng" : "Sai"}
                       </Badge>
                     </div>
@@ -882,7 +888,11 @@ export default function TestDetailPage() {
                               </span>
                               <span>{opt}</span>
                               {isUserChoice && (
-                                <Badge variant="outline" className="ml-auto">
+                                <Badge
+                                  size="sm"
+                                  variant="outline"
+                                  className="ml-auto"
+                                >
                                   Bạn chọn
                                 </Badge>
                               )}
