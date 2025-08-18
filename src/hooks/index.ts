@@ -26,6 +26,20 @@ export * from "./use-statuses";
 export * from "./use-student-dashboard";
 
 // Utility & Common hooks
-export * from "./use-debounce";
+export { useDebounce } from "./use-debounce";
 export * from "./use-mobile";
 export * from "./use-error";
+
+// Performance optimization hooks
+export * from "./use-realtime-sync";
+export * from "./use-optimized-crud";
+export * from "./use-performance-monitor";
+
+// Additional hooks
+export * from "./use-course-attached-files";
+export * from "./use-debounced-lesson-progress";
+export * from "./use-lessons";
+export * from "./use-pagination";
+export * from "./use-performance";
+export * from "./use-positions";
+export * from "./use-course-categories";
