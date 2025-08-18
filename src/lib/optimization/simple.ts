@@ -4,7 +4,8 @@
  */
 
 import React from "react";
-import { useRealtimeSync, usePerformanceMonitoring } from "@/hooks";
+import { usePerformanceMonitoring } from "@/hooks";
+import { useRealtimeSync } from "@/hooks/use-realtime-sync";
 import { useSmartCache, useSmartDebounce } from "@/lib/utils/api-optimization";
 
 /**

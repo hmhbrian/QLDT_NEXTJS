@@ -17,13 +17,13 @@ export {
 export { PerformanceIndicator } from "@/components/common/PerformanceIndicator";
 
 // Core hooks
+export { usePerformanceMonitoring } from "@/hooks";
 export {
   useRealtimeSync,
-  usePerformanceMonitoring,
   useCourseRealtime,
   useLearningProgressRealtime,
   useAdminRealtime,
-} from "@/hooks";
+} from "@/hooks/use-realtime-sync";
 
 /**
  * Quick setup guide:

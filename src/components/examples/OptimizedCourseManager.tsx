@@ -10,10 +10,10 @@ import {
   useAttachedFiles,
   useCreateAttachedFiles,
   useDeleteAttachedFile,
-  useCourseRealtime,
   useOptimizedFilter,
   useDebounce,
 } from "@/hooks";
+import { useCourseRealtime } from "@/hooks/use-realtime-sync";
 import { useSmartCache, useSmartDebounce } from "@/lib/optimization/simple";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

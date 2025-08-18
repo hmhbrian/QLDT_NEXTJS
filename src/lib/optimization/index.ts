@@ -5,7 +5,8 @@
 
 import React from "react";
 import { OptimizedAppProvider } from "@/providers/optimized-app-provider";
-import { useRealtimeSync, usePerformanceMonitoring } from "@/hooks";
+import { usePerformanceMonitoring } from "@/hooks";
+import { useRealtimeSync } from "@/hooks/use-realtime-sync";
 import {
   useSmartCache,
   useSmartDebounce,
