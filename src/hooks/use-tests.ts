@@ -32,9 +32,9 @@ export function useTests(
       return apiTests.map(mapApiTestToUiTest);
     },
     enabled: !!courseId && enabled,
-    staleTime: 5 * 60 * 1000,
-    refetchOnWindowFocus: false,
-    refetchOnMount: false,
+    staleTime: 0, // Set to 0 to always refetch fresh data
+    refetchOnWindowFocus: true, // Enable refetch when user comes back to tab
+    refetchOnMount: true, // Enable refetch when component mounts
     placeholderData: (previousData) => previousData,
   });
 
@@ -202,8 +202,9 @@ export function useSubmitTest(courseId: string, testId: number) {
 
       toast({
         title: "Nộp bài thành công!",
-        description: `Điểm: ${scorePercent}% (${correctCount}/${totalQuestions}) - ${data.isPassed ? "ĐẠT" : "KHÔNG ĐẠT"
-          }`,
+        description: `Điểm: ${scorePercent}% (${correctCount}/${totalQuestions}) - ${
+          data.isPassed ? "ĐẠT" : "KHÔNG ĐẠT"
+        }`,
         variant: "success",
       });
     },

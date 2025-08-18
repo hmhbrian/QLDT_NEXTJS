@@ -68,7 +68,7 @@ class CustomHttpClient implements HttpClient {
   }) {
     this.baseURL = config.baseURL;
     this.defaultHeaders = config.headers || {};
-    this.timeout = config.timeout || 30000;
+    this.timeout = config.timeout || 8000;
   }
 
   public setAuthorizationHeader(token: string | null): void {

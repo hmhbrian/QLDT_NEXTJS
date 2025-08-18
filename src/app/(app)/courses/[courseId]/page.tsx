@@ -118,7 +118,7 @@ const PdfLessonViewer = dynamic(
 const renderLessonIcon = (contentType: LessonContentType | undefined) => {
   if (!contentType) return <FileText className="h-5 w-5 text-gray-500" />;
   const iconMap: Record<LessonContentType, React.ReactNode> = {
-    video_url: <Video className="h-5 w-5 text-blue-500" />,
+    video_url: <Video className="h-5 w-5 text-orange-500" />,
     pdf_url: <FileText className="h-5 w-5 text-red-500" />,
     slide_url: <FileText className="h-5 w-5 text-yellow-500" />,
     text: <BookOpen className="h-5 w-5 text-green-500" />,
@@ -130,7 +130,7 @@ const renderLessonIcon = (contentType: LessonContentType | undefined) => {
 const renderMaterialIcon = (type: CourseMaterialType) => {
   const iconMap: Record<CourseMaterialType, React.ReactNode> = {
     PDF: <FileText className="h-5 w-5 text-red-500" />,
-    Link: <LinkIcon className="h-5 w-5 text-blue-500" />,
+    Link: <LinkIcon className="h-5 w-5 text-orange-500" />,
   };
   return iconMap[type] || <FileText className="h-5 w-5 text-gray-500" />;
 };
@@ -173,10 +173,15 @@ const TestItem = ({
   courseId: string;
   isEnrolled: boolean;
 }) => {
+  const { user: currentUser } = useAuth();
   const { hasSubmitted, isLoading } = useHasSubmittedTest(
     courseId,
     Number(test.id)
   );
+
+  // Check if user is admin or HR
+  const isAdminOrHR =
+    currentUser?.role === "ADMIN" || currentUser?.role === "HR";
 
   return (
     <Card
@@ -187,53 +192,79 @@ const TestItem = ({
         <h4 className="font-semibold flex items-center gap-2">
           <ShieldQuestion className="h-5 w-5 text-primary" /> {test.title}
         </h4>
-        <Badge>Cần đạt: {test.passingScorePercentage}%</Badge>
+        <div className="flex items-center gap-2">
+          <Badge>
+            Cần đạt: {test.passingScorePercentage || test.passThreshold}%
+          </Badge>
+          {/* Show score for admin/HR if test is done */}
+          {test.isDone && (
+            <Badge
+              variant={test.isPassed ? "default" : "destructive"}
+              className={test.isPassed ? "bg-green-600 text-white" : ""}
+            >
+              Điểm: {test.score || 0}%
+            </Badge>
+          )}
+        </div>
       </div>
       <p className="text-sm text-muted-foreground mt-1">
         Số lượng câu hỏi: {test.countQuestion || 0}
       </p>
-      <TooltipProvider>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <div className="mt-3 flex items-center gap-2">
-              {isLoading ? (
-                <Button variant="outline" size="sm" disabled>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Đang tải...
-                </Button>
-              ) : hasSubmitted ? (
-                <Button asChild variant="outline" size="sm">
-                  <Link href={`/courses/${courseId}/tests/${test.id}`}>
-                    <Eye className="mr-2 h-4 w-4" /> Xem lại bài
-                  </Link>
-                </Button>
-              ) : (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={!isEnrolled}
-                  asChild
-                >
-                  <Link
-                    href={`/courses/${courseId}/tests/${test.id}`}
-                    onClick={(e) => !isEnrolled && e.preventDefault()}
-                    aria-disabled={!isEnrolled}
-                    tabIndex={!isEnrolled ? -1 : undefined}
-                    className={!isEnrolled ? "pointer-events-none" : ""}
+
+      {/* Only show test buttons for regular users (HOCVIEN), not for admin/HR */}
+      {!isAdminOrHR && (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="mt-3 flex items-center gap-2">
+                {isLoading ? (
+                  <Button variant="outline" size="sm" disabled>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Đang
+                    tải...
+                  </Button>
+                ) : hasSubmitted ? (
+                  <Button asChild variant="outline" size="sm">
+                    <Link href={`/courses/${courseId}/tests/${test.id}`}>
+                      <Eye className="mr-2 h-4 w-4" /> Xem lại bài
+                    </Link>
+                  </Button>
+                ) : (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={!isEnrolled}
+                    asChild
                   >
-                    <Check className="mr-2 h-4 w-4" />
-                    Làm bài kiểm tra
-                  </Link>
-                </Button>
-              )}
-            </div>
-          </TooltipTrigger>
-          {!isEnrolled && !hasSubmitted && (
-            <TooltipContent>
-              <p>Bạn cần đăng ký khóa học để làm bài kiểm tra.</p>
-            </TooltipContent>
-          )}
-        </Tooltip>
-      </TooltipProvider>
+                    <Link
+                      href={`/courses/${courseId}/tests/${test.id}`}
+                      onClick={(e) => !isEnrolled && e.preventDefault()}
+                      aria-disabled={!isEnrolled}
+                      tabIndex={!isEnrolled ? -1 : undefined}
+                      className={!isEnrolled ? "pointer-events-none" : ""}
+                    >
+                      <Check className="mr-2 h-4 w-4" />
+                      Làm bài kiểm tra
+                    </Link>
+                  </Button>
+                )}
+              </div>
+            </TooltipTrigger>
+            {!isEnrolled && !hasSubmitted && (
+              <TooltipContent>
+                <p>Bạn cần đăng ký khóa học để làm bài kiểm tra.</p>
+              </TooltipContent>
+            )}
+          </Tooltip>
+        </TooltipProvider>
+      )}
+
+      {/* For admin/HR, show additional test info if available */}
+      {isAdminOrHR && test.isDone && (
+        <div className="mt-3 text-sm text-muted-foreground">
+          <p>Trạng thái: {test.isPassed ? "Đã đậu" : "Chưa đậu"}</p>
+          {test.createdBy && <p>Người tạo: {test.createdBy.name}</p>}
+        </div>
+      )}
     </Card>
   );
 };
@@ -854,13 +885,15 @@ export default function CourseDetailPage() {
                       }}
                     />
                   </div>
-                ) : selectedLesson.type === "pdf_url" && selectedLesson.fileUrl ? (
+                ) : selectedLesson.type === "pdf_url" &&
+                  selectedLesson.fileUrl ? (
                   <div className="w-full h-full bg-gray-100 relative overflow-hidden">
                     {/* PDF Container with proper styling */}
                     <div
                       className="w-full h-full"
                       onClick={() => {
-                        if (isMobile && controlsEnabled) setShowControls((s) => !s);
+                        if (isMobile && controlsEnabled)
+                          setShowControls((s) => !s);
                       }}
                     >
                       <PdfLessonViewer
@@ -919,14 +952,6 @@ export default function CourseDetailPage() {
                     <p className="text-sm text-orange-600">
                       {lessonsWithProgress.length} bài học
                     </p>
-                    <span className="text-xs text-orange-500">
-                      {Math.round(
-                        ((completedLessonsCount || 0) /
-                          lessonsWithProgress.length) *
-                          100
-                      )}
-                      % hoàn thành
-                    </span>
                   </div>
                 </div>
 
@@ -980,7 +1005,7 @@ export default function CourseDetailPage() {
                                       "text-orange-500",
                                     lesson.type === "text" && "text-green-500",
                                     lesson.type === "external_link" &&
-                                      "text-blue-500"
+                                      "text-orange-500"
                                   )}
                                 >
                                   {renderLessonIcon(lesson.type)}
@@ -1069,7 +1094,7 @@ export default function CourseDetailPage() {
               </div>
             )} */}
             {/* Mobile bottom controls */}
-            { controlsEnabled && !isSidebarOpen && (
+            {controlsEnabled && !isSidebarOpen && (
               <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 bg-white/95 backdrop-blur-sm border border-gray-200 rounded-full shadow-lg px-2 py-1 flex items-center gap-2">
                 <Button
                   variant="ghost"
@@ -1389,26 +1414,28 @@ export default function CourseDetailPage() {
             </Card>
 
             {/* New Card for Completed Lessons */}
-            <Card className="shadow-md hover:shadow-lg transition-shadow">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Bài học đã hoàn thành
-                </CardTitle>
-                <CheckCircle className="h-5 w-5 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                {isLoadingCompletedLessons ? (
-                  <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                ) : (
-                  <div className="text-xl font-bold">
-                    {completedLessonsCount ?? 0}
-                    <span className="text-sm text-muted-foreground ml-1">
-                      bài
-                    </span>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+            {currentUser?.role === "HOCVIEN" && (
+              <Card className="shadow-md hover:shadow-lg transition-shadow">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">
+                    Bài học đã hoàn thành
+                  </CardTitle>
+                  <CheckCircle className="h-5 w-5 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  {isLoadingCompletedLessons ? (
+                    <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                  ) : (
+                    <div className="text-xl font-bold">
+                      {completedLessonsCount ?? 0}
+                      <span className="text-sm text-muted-foreground ml-1">
+                        bài
+                      </span>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
           </div>
 
           <Tabs
@@ -1523,21 +1550,8 @@ export default function CourseDetailPage() {
                           Nội dung khóa học
                         </CardTitle>
                         <CardDescription className="text-slate-600">
-                          {lessonsWithProgress.length} bài học • {completedLessonsCount ?? 0} đã hoàn thành
+                          {lessonsWithProgress.length} bài học
                         </CardDescription>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-2xl font-bold text-slate-800">
-                          {lessonsWithProgress.length > 0
-                            ? Math.round(
-                                ((completedLessonsCount || 0) /
-                                  lessonsWithProgress.length) *
-                                  100
-                              )
-                            : 0}
-                          %
-                        </div>
-                        <div className="text-xs text-slate-500">hoàn thành</div>
                       </div>
                     </div>
                   </CardHeader>
@@ -1587,7 +1601,7 @@ export default function CourseDetailPage() {
                                     isCompleted
                                       ? "bg-emerald-100 text-emerald-700 border-2 border-emerald-200"
                                       : isInProgress
-                                      ? "bg-blue-100 text-blue-700 border-2 border-blue-200"
+                                      ? "bg-orange-100 text-orange-700 border-2 border-orange-200"
                                       : "bg-slate-100 text-slate-600 border-2 border-slate-200 group-hover:border-slate-300"
                                   )}
                                 >
@@ -1615,7 +1629,7 @@ export default function CourseDetailPage() {
                                       lesson.type === "text" &&
                                         "text-green-500",
                                       lesson.type === "external_link" &&
-                                        "text-blue-500"
+                                        "text-orange-500"
                                     )}
                                   >
                                     {renderLessonIcon(lesson.type)}
@@ -1666,7 +1680,7 @@ export default function CourseDetailPage() {
                                             "h-full transition-all duration-300 rounded-full",
                                             isCompleted
                                               ? "bg-emerald-500"
-                                              : "bg-blue-500"
+                                              : "bg-primary"
                                           )}
                                           style={{
                                             width: `${lesson.progressPercentage}%`,
@@ -1687,7 +1701,7 @@ export default function CourseDetailPage() {
                                   </Badge>
                                 )}
                                 {isInProgress && !isCompleted && (
-                                  <Badge className="bg-blue-100 text-blue-700 border-blue-200 hover:bg-blue-100">
+                                  <Badge className="bg-orange-100 text-orange-700 border-orange-200 hover:bg-orange-100">
                                     <Play className="w-3 h-3 mr-1" />
                                     Đang học
                                   </Badge>
@@ -2173,7 +2187,7 @@ export default function CourseDetailPage() {
                                   isCompleted
                                     ? "bg-green-100 text-green-700"
                                     : isInProgress
-                                    ? "bg-blue-100 text-blue-700"
+                                    ? "bg-orange-100 text-orange-700"
                                     : isActive
                                     ? "bg-orange-100 text-orange-700"
                                     : "bg-gray-100 text-gray-600"

@@ -53,31 +53,37 @@ export class AuthService extends BaseService<UserApiResponse> {
 
   async getCurrentUser(): Promise<UserApiResponse> {
     try {
-      // Lấy user info từ localStorage (đã lưu khi login)
+      // Quick localStorage check with minimal processing
       const storedUser = localStorage.getItem("qldt_user_info");
 
       if (storedUser) {
-        try {
-          const userInfo = JSON.parse(storedUser);
+        const userInfo = JSON.parse(storedUser);
 
-          // Đảm bảo token được set trong httpClient
+        // Enhanced validation
+        if (userInfo && userInfo.id && userInfo.accessToken) {
+          // Only set token if not already set (avoid redundant operations)
           const currentToken = httpClient.getAuthorizationToken();
-          if (!currentToken && userInfo.accessToken) {
+          if (!currentToken || currentToken !== userInfo.accessToken) {
             httpClient.setAuthorizationHeader(userInfo.accessToken);
           }
 
           return userInfo;
-        } catch (error) {
-          throw new Error("Invalid stored user data");
         }
       }
 
-      // Fallback: nếu không có trong localStorage thì throw error
-      throw new Error("No user info found");
+      // If no valid stored data, throw error immediately
+      throw new Error("No valid user info found");
     } catch (error: any) {
-      // Clear invalid data
-      localStorage.removeItem("qldt_user_info");
-      httpClient.clearAuthorizationHeader();
+      // Efficient cleanup - only clear if something was actually set
+      const hasStoredData = localStorage.getItem("qldt_user_info");
+      if (hasStoredData) {
+        localStorage.removeItem("qldt_user_info");
+      }
+
+      const hasToken = httpClient.getAuthorizationToken();
+      if (hasToken) {
+        httpClient.clearAuthorizationHeader();
+      }
 
       throw error;
     }
@@ -85,18 +91,18 @@ export class AuthService extends BaseService<UserApiResponse> {
 
   async validateToken(): Promise<boolean> {
     try {
-      // Kiểm tra xem có user info trong localStorage không
+      // Optimized validation - minimal operations
       const storedUser = localStorage.getItem("qldt_user_info");
       if (!storedUser) {
         return false;
       }
 
       const userInfo = JSON.parse(storedUser);
-      if (!userInfo || !userInfo.id || !userInfo.accessToken) {
+      if (!userInfo?.id || !userInfo?.accessToken) {
         return false;
       }
 
-      // Ensure token is set in httpClient
+      // Only set token if needed
       const currentToken = httpClient.getAuthorizationToken();
       if (!currentToken) {
         httpClient.setAuthorizationHeader(userInfo.accessToken);
@@ -104,6 +110,23 @@ export class AuthService extends BaseService<UserApiResponse> {
 
       return true;
     } catch (error: any) {
+      return false;
+    }
+  }
+
+  // New method for quick auth check without full user data
+  isAuthenticated(): boolean {
+    try {
+      const token = httpClient.getAuthorizationToken();
+      const storedUser = localStorage.getItem("qldt_user_info");
+
+      if (!token || !storedUser) {
+        return false;
+      }
+
+      const userInfo = JSON.parse(storedUser);
+      return !!(userInfo?.id && userInfo?.accessToken);
+    } catch {
       return false;
     }
   }
