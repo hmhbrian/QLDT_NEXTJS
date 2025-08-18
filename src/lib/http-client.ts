@@ -1,6 +1,6 @@
 /**
- * Simplified HTTP Client for Next.js 15
- * Uses native fetch with Next.js built-in optimizations
+ * Custom HTTP Client - Thay thế axios với native fetch
+ * Cung cấp interface tương tự axios nhưng sử dụng fetch API
  */
 
 import { cookieManager } from "./utils/cookie-manager";
@@ -16,19 +16,43 @@ export interface HttpRequestConfig {
   headers?: Record<string, string>;
   timeout?: number;
   params?: Record<string, any>;
-  cache?: RequestCache; // Use native fetch cache options
-  next?: {
-    revalidate?: number | false;
-    tags?: string[];
-  };
+  withCredentials?: boolean;
+  signal?: AbortSignal;
 }
 
 export interface HttpClient {
-  get<T = any>(url: string, config?: HttpRequestConfig): Promise<HttpResponse<T>>;
-  post<T = any>(url: string, data?: any, config?: HttpRequestConfig): Promise<HttpResponse<T>>;
-  put<T = any>(url: string, data?: any, config?: HttpRequestConfig): Promise<HttpResponse<T>>;
-  patch<T = any>(url: string, data?: any, config?: HttpRequestConfig): Promise<HttpResponse<T>>;
-  delete<T = any>(url: string, data?: any, config?: HttpRequestConfig): Promise<HttpResponse<T>>;
+  get<T = any>(
+    url: string,
+    config?: HttpRequestConfig
+  ): Promise<HttpResponse<T>>;
+  post<T = any>(
+    url: string,
+    data?: any,
+    config?: HttpRequestConfig
+  ): Promise<HttpResponse<T>>;
+  put<T = any>(
+    url: string,
+    data?: any,
+    config?: HttpRequestConfig
+  ): Promise<HttpResponse<T>>;
+  patch<T = any>(
+    url: string,
+    data?: any,
+    config?: HttpRequestConfig
+  ): Promise<HttpResponse<T>>;
+  delete<T = any>(
+    url: string,
+    data?: any, // Allow body for delete
+    config?: HttpRequestConfig
+  ): Promise<HttpResponse<T>>;
+  options<T = any>(
+    url: string,
+    config?: HttpRequestConfig
+  ): Promise<HttpResponse<T>>;
+  head<T = any>(
+    url: string,
+    config?: HttpRequestConfig
+  ): Promise<HttpResponse<T>>;
 }
 
 class CustomHttpClient implements HttpClient {
@@ -44,7 +68,7 @@ class CustomHttpClient implements HttpClient {
   }) {
     this.baseURL = config.baseURL;
     this.defaultHeaders = config.headers || {};
-    this.timeout = config.timeout || 8000; // Reduced from 30s to 8s
+    this.timeout = config.timeout || 8000;
   }
 
   public setAuthorizationHeader(token: string | null): void {
@@ -56,9 +80,13 @@ class CustomHttpClient implements HttpClient {
   }
 
   public getAuthorizationToken(): string | null {
-    if (this.authorizationHeader?.startsWith("Bearer ")) {
+    if (
+      this.authorizationHeader &&
+      this.authorizationHeader.startsWith("Bearer ")
+    ) {
       return this.authorizationHeader.replace("Bearer ", "");
     }
+    // Fallback: get token from cookie if not in memory
     return cookieManager.getSecureAuth();
   }
 
@@ -79,50 +107,54 @@ class CustomHttpClient implements HttpClient {
       ...config?.headers,
     };
 
-    // Add auth header if available
+    // Ưu tiên sử dụng authorization header đã được set
     if (this.authorizationHeader) {
       headers["Authorization"] = this.authorizationHeader;
-    } else if (typeof window !== "undefined") {
-      const token = cookieManager.getSecureAuth();
-      if (token) {
-        headers["Authorization"] = `Bearer ${token}`;
+    }
+    // Fallback: lấy token từ secure cookie nếu chưa có header
+    else if (typeof window !== "undefined") {
+      try {
+        const token = cookieManager.getSecureAuth();
+        if (token) {
+          headers["Authorization"] = `Bearer ${token}`;
+        }
+      } catch (error) {
+        // Silently handle cookie access errors
       }
     }
 
-    // Handle content type
-    if (data && !(data instanceof FormData)) {
+    if (data instanceof FormData) {
+      delete headers["Content-Type"];
+    } else if (data) {
       headers["Content-Type"] = "application/json";
     }
 
-    // Build fetch URL with params
-    let finalUrl = fullUrl;
-    if (config?.params && Object.keys(config.params).length > 0) {
-      const urlObj = new URL(fullUrl);
-      Object.entries(config.params).forEach(([key, value]) => {
-        if (value !== undefined && value !== null) {
-          urlObj.searchParams.set(key, String(value));
-        }
-      });
-      finalUrl = urlObj.toString();
+    const finalUrl = config?.params
+      ? `${fullUrl}?${new URLSearchParams(config.params).toString()}`
+      : fullUrl;
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(
+      () => controller.abort(),
+      config?.timeout || this.timeout
+    );
+    const externalSignal = config?.signal;
+    if (externalSignal) {
+      if (externalSignal.aborted) controller.abort();
+      else externalSignal.addEventListener("abort", () => controller.abort());
     }
 
-    // Use AbortController for timeout
-    const controller = new AbortController();
-    const timeoutMs = config?.timeout || this.timeout;
-    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-
     try {
-      // Use native fetch with Next.js 15 optimizations
       const response = await fetch(finalUrl, {
         method,
         headers,
-        body: data ? (data instanceof FormData ? data : JSON.stringify(data)) : undefined,
+        body: data
+          ? data instanceof FormData
+            ? data
+            : JSON.stringify(data)
+          : undefined,
         signal: controller.signal,
         credentials: "include",
-        // Next.js 15 cache options (default is 'no-store' in v15)
-        cache: config?.cache || 'no-store',
-        // Next.js specific options
-        next: config?.next,
       });
 
       clearTimeout(timeoutId);
@@ -135,10 +167,10 @@ class CustomHttpClient implements HttpClient {
       let responseData: any;
       const contentType = response.headers.get("content-type");
 
-      if (contentType?.includes("json")) {
+      if (contentType && contentType.includes("json")) {
         responseData = await response.json();
       } else {
-        responseData = await response.text();
+        responseData = (await response.text()) as any;
       }
 
       if (!response.ok) {
@@ -149,12 +181,14 @@ class CustomHttpClient implements HttpClient {
           statusText: response.statusText,
           headers: responseHeaders,
         };
+        error.config = { method, url: finalUrl, data, headers };
 
-        // Handle auth errors
+        // Handle authentication errors carefully
         if (response.status === 401) {
           this.clearAuthorizationHeader();
           cookieManager.removeSecureAuth();
 
+          // Dispatch custom event for auth error
           if (typeof window !== "undefined") {
             window.dispatchEvent(
               new CustomEvent("auth-error", {
@@ -162,6 +196,9 @@ class CustomHttpClient implements HttpClient {
               })
             );
           }
+        } else if (response.status === 403) {
+          // 403 might be permission issue, not necessarily invalid token
+          // Don't clear auth state for 403
         }
 
         throw error;
@@ -177,31 +214,66 @@ class CustomHttpClient implements HttpClient {
       clearTimeout(timeoutId);
 
       if (error.name === "AbortError") {
-        error.message = `Request timeout after ${timeoutMs}ms`;
+        const timeoutError: any = new Error("Request timeout");
+        timeoutError.code = "TIMEOUT";
+        throw timeoutError;
       }
 
       throw error;
     }
   }
 
-  async get<T = any>(url: string, config?: HttpRequestConfig): Promise<HttpResponse<T>> {
+  async get<T = any>(
+    url: string,
+    config?: HttpRequestConfig
+  ): Promise<HttpResponse<T>> {
     return this.request<T>("GET", url, undefined, config);
   }
 
-  async post<T = any>(url: string, data?: any, config?: HttpRequestConfig): Promise<HttpResponse<T>> {
+  async post<T = any>(
+    url: string,
+    data?: any,
+    config?: HttpRequestConfig
+  ): Promise<HttpResponse<T>> {
     return this.request<T>("POST", url, data, config);
   }
 
-  async put<T = any>(url: string, data?: any, config?: HttpRequestConfig): Promise<HttpResponse<T>> {
+  async put<T = any>(
+    url: string,
+    data?: any,
+    config?: HttpRequestConfig
+  ): Promise<HttpResponse<T>> {
     return this.request<T>("PUT", url, data, config);
   }
 
-  async patch<T = any>(url: string, data?: any, config?: HttpRequestConfig): Promise<HttpResponse<T>> {
+  async patch<T = any>(
+    url: string,
+    data?: any,
+    config?: HttpRequestConfig
+  ): Promise<HttpResponse<T>> {
     return this.request<T>("PATCH", url, data, config);
   }
 
-  async delete<T = any>(url: string, data?: any, config?: HttpRequestConfig): Promise<HttpResponse<T>> {
+  async delete<T = any>(
+    url: string,
+    data?: any, // Allow body for delete
+    config?: HttpRequestConfig
+  ): Promise<HttpResponse<T>> {
     return this.request<T>("DELETE", url, data, config);
+  }
+
+  async options<T = any>(
+    url: string,
+    config?: HttpRequestConfig
+  ): Promise<HttpResponse<T>> {
+    return this.request<T>("OPTIONS", url, undefined, config);
+  }
+
+  async head<T = any>(
+    url: string,
+    config?: HttpRequestConfig
+  ): Promise<HttpResponse<T>> {
+    return this.request<T>("HEAD", url, undefined, config);
   }
 }
 
