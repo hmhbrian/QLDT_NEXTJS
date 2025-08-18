@@ -2,21 +2,13 @@
 
 import { useMemo, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import {
   GraduationCap,
-  BookOpenCheck,
   PlayCircle,
   Clock,
   CheckCircle,
@@ -33,7 +25,6 @@ import {
   useEnrolledCourses,
   ENROLLED_COURSES_QUERY_KEY,
 } from "@/hooks/use-courses";
-import { PaginationControls } from "@/components/ui/PaginationControls";
 import type { Course } from "@/lib/types/course.types";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -96,9 +87,9 @@ export default function MyCoursesPage() {
     );
   }, [enrolledCourses]);
 
-  // Separate courses by status
+  // Separate courses by status (treat 1 and 2 as ongoing)
   const ongoingCourses = myDisplayCourses.filter(
-    (course) => course.status === 2
+    (course) => course.status === 1 || course.status === 2
   );
   const passedCourses = myDisplayCourses.filter(
     (course) => course.status === 3
@@ -143,7 +134,7 @@ export default function MyCoursesPage() {
               Chưa đậu
             </Badge>
           )}
-          {course.status === 2 && (
+          {(course.status === 1 || course.status === 2) && (
             <Badge className="bg-primary text-primary-foreground text-xs font-medium shadow-sm">
               Đang học
             </Badge>
@@ -205,12 +196,12 @@ export default function MyCoursesPage() {
         {course.status === 3 ? (
           <div className="w-full flex gap-2">
             <Button
-              className="flex-1 h-8 sm:h-10 text-xs sm:text-sm font-medium bg-primary hover:bg-primary/90 text-primary-foreground rounded-md"
+              className="flex-1 h-8 w-8 sm:h-10 sm:w-10 text-xs sm:text-sm font-medium bg-primary hover:bg-primary/90 text-primary-foreground rounded-md"
               asChild
             >
               <Link href={`/courses/${course.id}`}>
                 <Award className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
-                <span className="hidden sm:inline">Xem lại khóa học</span>
+                <span className="hidden sm:inline">Xem lại</span>
                 <span className="sm:hidden">Xem lại</span>
               </Link>
             </Button>
@@ -219,7 +210,7 @@ export default function MyCoursesPage() {
               asChild
             >
               <Link href="/trainee/profile?tab=courses-certificates">
-                <User className="h-3 w-3 sm:h-4 sm:w-4" />
+                <User className="h-3 w-3 sm:h-10 sm:w-10" />
               </Link>
             </Button>
           </div>
