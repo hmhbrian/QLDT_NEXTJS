@@ -28,7 +28,7 @@ import {
 } from "@/components/ui/select";
 
 import { PlusCircle, Search, Eye, EyeOff } from "lucide-react";
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import {
   User,
   CreateUserRequest,
@@ -109,6 +109,90 @@ export default function TraineesPage() {
   const [formData, setFormData] = useState<
     Partial<User & { password?: string; confirmPassword?: string }>
   >({});
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const fullNameRef = useRef<HTMLInputElement | null>(null);
+  const idCardRef = useRef<HTMLInputElement | null>(null);
+  const emailRef = useRef<HTMLInputElement | null>(null);
+  const passwordRef = useRef<HTMLInputElement | null>(null);
+  const confirmPasswordRef = useRef<HTMLInputElement | null>(null);
+
+  const validateField = (
+    field: string,
+    value: any,
+    context: { isEdit: boolean; password?: string } = { isEdit: false }
+  ): string | undefined => {
+    switch (field) {
+      case "fullName":
+        if (!value) return "Họ và tên là bắt buộc.";
+        break;
+      case "idCard":
+        if (!value) return "CMND/CCCD là bắt buộc.";
+        break;
+      case "email":
+        if (!value) return "Email là bắt buộc.";
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value)))
+          return "Email không hợp lệ.";
+        break;
+      case "password":
+        if (!context.isEdit && !value) return "Mật khẩu là bắt buộc.";
+        if (value && String(value).length < 6)
+          return "Mật khẩu phải có ít nhất 6 ký tự.";
+        break;
+      case "confirmPassword":
+        if (!context.isEdit && (value == null || value === ""))
+          return "Xác nhận mật khẩu là bắt buộc.";
+        if (value !== context.password) return "Xác nhận mật khẩu không khớp.";
+        break;
+      default:
+        break;
+    }
+    return undefined;
+  };
+
+  const validateForm = (isEdit: boolean) => {
+    const newErrors: Record<string, string> = {};
+    newErrors.fullName =
+      validateField("fullName", formData.fullName, { isEdit }) || "";
+    newErrors.idCard =
+      validateField("idCard", formData.idCard, { isEdit }) || "";
+    newErrors.email = validateField("email", formData.email, { isEdit }) || "";
+    if (!isEdit) {
+      newErrors.password =
+        validateField("password", formData.password, { isEdit }) || "";
+      const confirmErr = validateField(
+        "confirmPassword",
+        formData.confirmPassword,
+        { isEdit, password: formData.password }
+      );
+      if (confirmErr) newErrors.confirmPassword = confirmErr;
+    }
+
+    // Remove empty entries
+    Object.keys(newErrors).forEach((k) => {
+      if (!newErrors[k]) delete newErrors[k];
+    });
+
+    setErrors(newErrors);
+
+    // Focus first error
+    const order = [
+      "fullName",
+      "idCard",
+      "email",
+      "password",
+      "confirmPassword",
+    ];
+    const first = order.find((k) => !!newErrors[k]);
+    if (first) {
+      if (first === "fullName") fullNameRef.current?.focus();
+      else if (first === "idCard") idCardRef.current?.focus();
+      else if (first === "email") emailRef.current?.focus();
+      else if (first === "password") passwordRef.current?.focus();
+      else if (first === "confirmPassword") confirmPasswordRef.current?.focus();
+    }
+
+    return Object.keys(newErrors).length === 0;
+  };
 
   // Date helpers to avoid timezone shifts (store/display as local YYYY-MM-DD)
   const formatLocalYMD = (date: Date): string => {
@@ -175,6 +259,7 @@ export default function TraineesPage() {
   const handleOpenAddDialog = () => {
     setEditingTrainee(null);
     setFormData(initialNewTraineeState);
+    setErrors({});
     setIsFormOpen(true);
   };
 
@@ -187,6 +272,7 @@ export default function TraineesPage() {
       startWork: trainee.startWork ? trainee.startWork.slice(0, 10) : "",
       endWork: trainee.endWork ? trainee.endWork.slice(0, 10) : "",
     });
+    setErrors({});
     setIsFormOpen(true);
   }, []);
 
@@ -198,27 +284,10 @@ export default function TraineesPage() {
   };
 
   const handleSaveTrainee = async () => {
-    if (!formData.fullName || !formData.email) {
+    const isEdit = !!editingTrainee;
+
+    if (!validateForm(isEdit)) {
       showError("FORM001");
-      return;
-    }
-
-    // Validate password for new trainee
-    if (!editingTrainee && (!formData.password || !formData.confirmPassword)) {
-      toast({
-        title: "Lỗi",
-        description: "Vui lòng nhập mật khẩu và xác nhận mật khẩu.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (!editingTrainee && formData.password !== formData.confirmPassword) {
-      toast({
-        title: "Lỗi",
-        description: "Mật khẩu và xác nhận mật khẩu không khớp.",
-        variant: "destructive",
-      });
       return;
     }
 
@@ -232,46 +301,60 @@ export default function TraineesPage() {
       return;
     }
 
-    setIsFormOpen(false);
+    try {
+      if (editingTrainee) {
+        const updatePayload: UpdateUserRequest = {
+          fullName: formData.fullName,
+          email: formData.email,
+          idCard: formData.idCard,
+          position: formData.position,
+          numberPhone: formData.phoneNumber,
+          departmentId: formData.department?.departmentId,
+          roleId: hocvienRole.id,
+          code: formData.employeeId,
+          startWork: ymdToApiDateTime(formData.startWork as string),
+          endWork: ymdToApiDateTime(formData.endWork as string),
+          eLevelId: formData.employeeLevel?.eLevelId,
+          statusId: formData.userStatus?.id,
+        };
 
-    if (editingTrainee) {
-      const updatePayload: UpdateUserRequest = {
-        fullName: formData.fullName,
-        email: formData.email,
-        idCard: formData.idCard,
-        position: formData.position,
-        numberPhone: formData.phoneNumber,
-        departmentId: formData.department?.departmentId,
-        roleId: hocvienRole.id,
-        code: formData.employeeId,
-        startWork: ymdToApiDateTime(formData.startWork as string),
-        endWork: ymdToApiDateTime(formData.endWork as string),
-        eLevelId: formData.employeeLevel?.eLevelId,
-        statusId: formData.userStatus?.id,
-      };
-      await updateTraineeMutation.mutateAsync({
-        id: editingTrainee.id,
-        payload: updatePayload,
+        await updateTraineeMutation.mutateAsync({
+          id: editingTrainee.id,
+          payload: updatePayload,
+        });
+      } else {
+        const createPayload: CreateUserRequest = {
+          fullName: formData.fullName!,
+          email: formData.email!,
+          password: formData.password!,
+          confirmPassword: formData.confirmPassword!,
+          idCard: formData.idCard,
+          position: formData.position,
+          numberPhone: formData.phoneNumber,
+          departmentId: formData.department?.departmentId,
+          roleId: hocvienRole.id,
+          code: formData.employeeId,
+          startWork: ymdToApiDateTime(formData.startWork as string),
+          endWork: ymdToApiDateTime(formData.endWork as string),
+          eLevelId: formData.employeeLevel?.eLevelId,
+          statusId: formData.userStatus?.id,
+        };
+
+        console.log("Creating user with payload:", createPayload);
+        await createTraineeMutation.mutateAsync(createPayload);
+      }
+
+      // Only close dialog when save succeeds
+      setIsFormOpen(false);
+      setErrors({});
+    } catch (error) {
+      console.error("Failed to save trainee:", error);
+      // keep dialog open and show toast
+      toast({
+        title: "Lỗi",
+        description: extractErrorMessage(error as any) || "Lưu thất bại",
+        variant: "destructive",
       });
-    } else {
-      const createPayload: CreateUserRequest = {
-        fullName: formData.fullName!,
-        email: formData.email!,
-        password: formData.password!,
-        confirmPassword: formData.confirmPassword!,
-        idCard: formData.idCard,
-        position: formData.position,
-        numberPhone: formData.phoneNumber,
-        departmentId: formData.department?.departmentId,
-        roleId: hocvienRole.id,
-        code: formData.employeeId,
-        startWork: ymdToApiDateTime(formData.startWork as string),
-        endWork: ymdToApiDateTime(formData.endWork as string),
-        eLevelId: formData.employeeLevel?.eLevelId,
-        statusId: formData.userStatus?.id,
-      };
-      console.log("Creating user with payload:", createPayload);
-      await createTraineeMutation.mutateAsync(createPayload);
     }
   };
 
@@ -371,11 +454,24 @@ export default function TraineesPage() {
               <Label htmlFor="fullName">Họ và tên *</Label>
               <Input
                 id="fullName"
+                ref={fullNameRef}
                 value={formData.fullName || ""}
                 onChange={(e) =>
                   setFormData({ ...formData, fullName: e.target.value })
                 }
+                onBlur={(e) =>
+                  setErrors((prev) => ({
+                    ...prev,
+                    fullName: validateField("fullName", e.target.value, {
+                      isEdit: !!editingTrainee,
+                    }),
+                  }))
+                }
+                className={errors.fullName ? "border-destructive" : ""}
               />
+              {errors.fullName && (
+                <p className="text-sm text-destructive">{errors.fullName}</p>
+              )}
             </div>
             <div className="grid gap-2">
               <Label htmlFor="employeeId">Mã học viên</Label>
@@ -401,30 +497,53 @@ export default function TraineesPage() {
                   Tạo tự động
                 </Button>
               </div>
-              <p className="text-xs text-muted-foreground">
-                Nếu để trống, hệ thống sẽ tự động tạo mã học viên
-              </p>
             </div>
             <div className="grid gap-2">
               <Label htmlFor="email">Email *</Label>
               <Input
                 id="email"
+                ref={emailRef}
                 type="email"
                 value={formData.email || ""}
                 onChange={(e) =>
                   setFormData({ ...formData, email: e.target.value })
                 }
+                onBlur={(e) =>
+                  setErrors((prev) => ({
+                    ...prev,
+                    email: validateField("email", e.target.value, {
+                      isEdit: !!editingTrainee,
+                    }),
+                  }))
+                }
+                className={errors.email ? "border-destructive" : ""}
               />
+              {errors.email && (
+                <p className="text-sm text-destructive">{errors.email}</p>
+              )}
             </div>
             <div className="grid gap-2">
               <Label htmlFor="idCard">CMND/CCCD</Label>
               <Input
                 id="idCard"
+                ref={idCardRef}
                 value={formData.idCard || ""}
                 onChange={(e) =>
                   setFormData({ ...formData, idCard: e.target.value })
                 }
+                onBlur={(e) =>
+                  setErrors((prev) => ({
+                    ...prev,
+                    idCard: validateField("idCard", e.target.value, {
+                      isEdit: !!editingTrainee,
+                    }),
+                  }))
+                }
+                className={errors.idCard ? "border-destructive" : ""}
               />
+              {errors.idCard && (
+                <p className="text-sm text-destructive">{errors.idCard}</p>
+              )}
             </div>
             <div className="grid gap-2">
               <Label htmlFor="phoneNumber">Số điện thoại</Label>
@@ -624,11 +743,21 @@ export default function TraineesPage() {
                   <div className="relative">
                     <Input
                       id="password"
+                      ref={passwordRef}
                       type={showPassword ? "text" : "password"}
                       value={formData.password || ""}
                       onChange={(e) =>
                         setFormData({ ...formData, password: e.target.value })
                       }
+                      onBlur={(e) =>
+                        setErrors((prev) => ({
+                          ...prev,
+                          password: validateField("password", e.target.value, {
+                            isEdit: !!editingTrainee,
+                          }),
+                        }))
+                      }
+                      className={errors.password ? "border-destructive" : ""}
                     />
                     <Button
                       type="button"
@@ -650,6 +779,7 @@ export default function TraineesPage() {
                   <div className="relative">
                     <Input
                       id="confirmPassword"
+                      ref={confirmPasswordRef}
                       type={showPassword ? "text" : "password"}
                       value={formData.confirmPassword || ""}
                       onChange={(e) =>
@@ -657,6 +787,22 @@ export default function TraineesPage() {
                           ...formData,
                           confirmPassword: e.target.value,
                         })
+                      }
+                      onBlur={(e) =>
+                        setErrors((prev) => ({
+                          ...prev,
+                          confirmPassword: validateField(
+                            "confirmPassword",
+                            e.target.value,
+                            {
+                              isEdit: !!editingTrainee,
+                              password: formData.password,
+                            }
+                          ),
+                        }))
+                      }
+                      className={
+                        errors.confirmPassword ? "border-destructive" : ""
                       }
                     />
                     <Button
