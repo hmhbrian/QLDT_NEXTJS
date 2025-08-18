@@ -854,13 +854,15 @@ export default function CourseDetailPage() {
                       }}
                     />
                   </div>
-                ) : selectedLesson.type === "pdf_url" && selectedLesson.fileUrl ? (
+                ) : selectedLesson.type === "pdf_url" &&
+                  selectedLesson.fileUrl ? (
                   <div className="w-full h-full bg-gray-100 relative overflow-hidden">
                     {/* PDF Container with proper styling */}
                     <div
                       className="w-full h-full"
                       onClick={() => {
-                        if (isMobile && controlsEnabled) setShowControls((s) => !s);
+                        if (isMobile && controlsEnabled)
+                          setShowControls((s) => !s);
                       }}
                     >
                       <PdfLessonViewer
@@ -919,14 +921,6 @@ export default function CourseDetailPage() {
                     <p className="text-sm text-orange-600">
                       {lessonsWithProgress.length} bài học
                     </p>
-                    <span className="text-xs text-orange-500">
-                      {Math.round(
-                        ((completedLessonsCount || 0) /
-                          lessonsWithProgress.length) *
-                          100
-                      )}
-                      % hoàn thành
-                    </span>
                   </div>
                 </div>
 
@@ -1069,7 +1063,7 @@ export default function CourseDetailPage() {
               </div>
             )} */}
             {/* Mobile bottom controls */}
-            { controlsEnabled && !isSidebarOpen && (
+            {controlsEnabled && !isSidebarOpen && (
               <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 bg-white/95 backdrop-blur-sm border border-gray-200 rounded-full shadow-lg px-2 py-1 flex items-center gap-2">
                 <Button
                   variant="ghost"
@@ -1389,26 +1383,28 @@ export default function CourseDetailPage() {
             </Card>
 
             {/* New Card for Completed Lessons */}
-            <Card className="shadow-md hover:shadow-lg transition-shadow">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Bài học đã hoàn thành
-                </CardTitle>
-                <CheckCircle className="h-5 w-5 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                {isLoadingCompletedLessons ? (
-                  <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                ) : (
-                  <div className="text-xl font-bold">
-                    {completedLessonsCount ?? 0}
-                    <span className="text-sm text-muted-foreground ml-1">
-                      bài
-                    </span>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+            {currentUser?.role === "HOCVIEN" && (
+              <Card className="shadow-md hover:shadow-lg transition-shadow">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">
+                    Bài học đã hoàn thành
+                  </CardTitle>
+                  <CheckCircle className="h-5 w-5 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  {isLoadingCompletedLessons ? (
+                    <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                  ) : (
+                    <div className="text-xl font-bold">
+                      {completedLessonsCount ?? 0}
+                      <span className="text-sm text-muted-foreground ml-1">
+                        bài
+                      </span>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
           </div>
 
           <Tabs
@@ -1523,21 +1519,8 @@ export default function CourseDetailPage() {
                           Nội dung khóa học
                         </CardTitle>
                         <CardDescription className="text-slate-600">
-                          {lessonsWithProgress.length} bài học • {completedLessonsCount ?? 0} đã hoàn thành
+                          {lessonsWithProgress.length} bài học
                         </CardDescription>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-2xl font-bold text-slate-800">
-                          {lessonsWithProgress.length > 0
-                            ? Math.round(
-                                ((completedLessonsCount || 0) /
-                                  lessonsWithProgress.length) *
-                                  100
-                              )
-                            : 0}
-                          %
-                        </div>
-                        <div className="text-xs text-slate-500">hoàn thành</div>
                       </div>
                     </div>
                   </CardHeader>
