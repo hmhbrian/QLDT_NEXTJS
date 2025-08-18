@@ -626,10 +626,7 @@ export default function UsersPage() {
                 >
                   Tạo tự động
                 </Button>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Nếu để trống, hệ thống sẽ tự động tạo mã nhân viên
-              </p>
+              </div>  
             </div>
             <div className="grid gap-2">
               <Label htmlFor="email">Email *</Label>
