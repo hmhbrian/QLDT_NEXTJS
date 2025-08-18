@@ -11,7 +11,7 @@ export function QueryProvider({ children }: { children: React.ReactNode }) {
           queries: {
             staleTime: 10 * 60 * 1000, // 10 minutes - increased for better caching
             gcTime: 30 * 60 * 1000, // 30 minutes garbage collection time
-            refetchOnWindowFocus: false, // Disable to reduce unnecessary fetches
+            refetchOnWindowFocus: true, 
             refetchOnReconnect: true, // Refetch when network reconnects
             refetchOnMount: "always", // Smart refetch on mount
             networkMode: "online", // Only run queries when online

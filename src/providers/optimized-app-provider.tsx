@@ -7,11 +7,11 @@
 
 import React, { useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import { usePerformanceMonitoring } from "@/hooks";
 import {
-  usePerformanceMonitoring,
   useAdminRealtime,
   useLearningProgressRealtime,
-} from "@/hooks";
+} from "@/hooks/use-realtime-sync";
 
 interface OptimizedAppProviderProps {
   children: React.ReactNode;
