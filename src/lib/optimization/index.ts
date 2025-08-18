@@ -9,7 +9,6 @@ import { useRealtimeSync, usePerformanceMonitoring } from "@/hooks";
 import {
   useSmartCache,
   useSmartDebounce,
-  useBatcher,
 } from "@/lib/utils/api-optimization";
 
 /**
