@@ -7,10 +7,7 @@ import React from "react";
 import { OptimizedAppProvider } from "@/providers/optimized-app-provider";
 import { usePerformanceMonitoring } from "@/hooks";
 import { useRealtimeSync } from "@/hooks/use-realtime-sync";
-import {
-  useSmartCache,
-  useSmartDebounce,
-} from "@/lib/utils/api-optimization";
+import { useSmartCache, useSmartDebounce } from "@/lib/utils/api-optimization";
 
 /**
  * 1. Tích hợp vào App Layout chính
