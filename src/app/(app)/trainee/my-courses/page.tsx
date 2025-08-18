@@ -29,7 +29,10 @@ import {
 import Image from "next/image";
 import Link from "next/link";
 import { useAuth } from "@/hooks/useAuth";
-import { useEnrolledCourses, ENROLLED_COURSES_QUERY_KEY } from "@/hooks/use-courses";
+import {
+  useEnrolledCourses,
+  ENROLLED_COURSES_QUERY_KEY,
+} from "@/hooks/use-courses";
 import { PaginationControls } from "@/components/ui/PaginationControls";
 import type { Course } from "@/lib/types/course.types";
 import { useQueryClient } from "@tanstack/react-query";
@@ -54,15 +57,12 @@ export default function MyCoursesPage() {
   const searchParams = useSearchParams();
   const [pageIndex, setPageIndex] = useState(0);
   const [pageSize, setPageSize] = useState(10);
-  
+
   // Get default tab from URL params
   const defaultTab = searchParams.get("tab") || "ongoing";
-  
-  const { enrolledCourses, enrolledPagination, isLoadingEnrolled } = useEnrolledCourses(
-    !!currentUser,
-    pageIndex + 1,
-    pageSize
-  );
+
+  const { enrolledCourses, enrolledPagination, isLoadingEnrolled } =
+    useEnrolledCourses(!!currentUser, pageIndex + 1, pageSize);
 
   useEffect(() => {
     const handleFocus = () => {
@@ -97,19 +97,30 @@ export default function MyCoursesPage() {
   }, [enrolledCourses]);
 
   // Separate courses by status
-  const ongoingCourses = myDisplayCourses.filter(course => course.status === 2);
-  const passedCourses = myDisplayCourses.filter(course => course.status === 3);
-  const failedCourses = myDisplayCourses.filter(course => course.status === 4);
+  const ongoingCourses = myDisplayCourses.filter(
+    (course) => course.status === 2
+  );
+  const passedCourses = myDisplayCourses.filter(
+    (course) => course.status === 3
+  );
+  const failedCourses = myDisplayCourses.filter(
+    (course) => course.status === 4
+  );
 
   const totalItems = enrolledPagination?.totalItems ?? myDisplayCourses.length;
-  const totalPages = enrolledPagination?.totalPages ?? Math.max(1, Math.ceil(totalItems / pageSize));
+  const totalPages =
+    enrolledPagination?.totalPages ??
+    Math.max(1, Math.ceil(totalItems / pageSize));
   const start = totalItems === 0 ? 0 : pageIndex * pageSize + 1;
   const end = Math.min((pageIndex + 1) * pageSize, totalItems);
   const pageItems = myDisplayCourses; // server-side đã phân trang
 
   // Helper function to render course card - mobile responsive
   const renderCourseCard = (course: DisplayCourse) => (
-    <Card key={course.id} className="border border-border bg-card hover:shadow-lg transition-shadow duration-200 h-full flex flex-col rounded-lg overflow-hidden">
+    <Card
+      key={course.id}
+      className="border border-border bg-card hover:shadow-lg transition-shadow duration-200 h-full flex flex-col rounded-lg overflow-hidden"
+    >
       <div className="relative h-40 sm:h-48 w-full overflow-hidden">
         <Image
           src={course.image}
@@ -119,27 +130,27 @@ export default function MyCoursesPage() {
           sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, 25vw"
           data-ai-hint={course.dataAiHint}
         />
-        
+
         {/* Status badge - responsive */}
         <div className="absolute top-2 right-2 sm:top-3 sm:right-3">
           {course.status === 3 && (
-            <Badge className="bg-green-600 text-white text-xs px-2 py-1 sm:px-2.5 sm:py-1.5 font-medium shadow-sm rounded-md">
+            <Badge className="bg-green-600 text-white text-xs font-medium shadow-sm">
               Hoàn thành
             </Badge>
           )}
           {course.status === 4 && (
-            <Badge className="bg-red-600 text-white text-xs px-2 py-1 sm:px-2.5 sm:py-1.5 font-medium shadow-sm rounded-md">
+            <Badge className="bg-red-600 text-white text-xs font-medium shadow-sm">
               Chưa đậu
             </Badge>
           )}
           {course.status === 2 && (
-            <Badge className="bg-primary text-primary-foreground text-xs px-2 py-1 sm:px-2.5 sm:py-1.5 font-medium shadow-sm rounded-md">
+            <Badge className="bg-primary text-primary-foreground text-xs font-medium shadow-sm">
               Đang học
             </Badge>
           )}
         </div>
       </div>
-      
+
       <CardContent className="flex-1 p-3 sm:p-4 flex flex-col">
         {/* Title and description section - responsive */}
         <div className="flex-1 space-y-1.5 sm:space-y-2 min-h-0">
@@ -158,14 +169,18 @@ export default function MyCoursesPage() {
             <div className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm">
               <BookOpen className="h-3 w-3 sm:h-4 sm:w-4 text-primary flex-shrink-0" />
               <div className="text-center">
-                <div className="font-medium text-foreground">{course.lessonCompletedCount}/{course.totalLessonCount}</div>
+                <div className="font-medium text-foreground">
+                  {course.lessonCompletedCount}/{course.totalLessonCount}
+                </div>
                 <div className="text-xs text-muted-foreground">bài học</div>
               </div>
             </div>
             <div className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm">
               <FileCheck className="h-3 w-3 sm:h-4 sm:w-4 text-primary flex-shrink-0" />
               <div className="text-center">
-                <div className="font-medium text-foreground">{course.testCompletedCount}/{course.totalTestCount}</div>
+                <div className="font-medium text-foreground">
+                  {course.testCompletedCount}/{course.totalTestCount}
+                </div>
                 <div className="text-xs text-muted-foreground">bài test</div>
               </div>
             </div>
@@ -176,7 +191,9 @@ export default function MyCoursesPage() {
             <div className="space-y-1.5 sm:space-y-2">
               <div className="flex justify-between items-center text-xs sm:text-sm">
                 <span className="text-foreground font-medium">Tiến độ</span>
-                <span className="font-semibold text-primary">{Math.round(course.progress)}%</span>
+                <span className="font-semibold text-primary">
+                  {Math.round(course.progress)}%
+                </span>
               </div>
               <Progress value={course.progress} className="h-1.5 sm:h-2" />
             </div>
@@ -187,21 +204,30 @@ export default function MyCoursesPage() {
       <CardFooter className="p-3 sm:p-4 pt-0 border-t border-border">
         {course.status === 3 ? (
           <div className="w-full flex gap-2">
-            <Button className="flex-1 h-8 sm:h-10 text-xs sm:text-sm font-medium bg-primary hover:bg-primary/90 text-primary-foreground rounded-md" asChild>
+            <Button
+              className="flex-1 h-8 sm:h-10 text-xs sm:text-sm font-medium bg-primary hover:bg-primary/90 text-primary-foreground rounded-md"
+              asChild
+            >
               <Link href={`/courses/${course.id}`}>
                 <Award className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
                 <span className="hidden sm:inline">Xem lại khóa học</span>
                 <span className="sm:hidden">Xem lại</span>
               </Link>
             </Button>
-            <Button className="h-8 w-8 sm:h-10 sm:w-10 p-0 bg-background border border-border hover:bg-muted text-muted-foreground hover:text-foreground rounded-md" asChild>
+            <Button
+              className="h-8 w-8 sm:h-10 sm:w-10 p-0 bg-background border border-border hover:bg-muted text-muted-foreground hover:text-foreground rounded-md"
+              asChild
+            >
               <Link href="/trainee/profile?tab=courses-certificates">
                 <User className="h-3 w-3 sm:h-4 sm:w-4" />
               </Link>
             </Button>
           </div>
         ) : (
-          <Button className="w-full h-8 sm:h-10 text-xs sm:text-sm font-medium bg-primary hover:bg-primary/90 text-primary-foreground rounded-md" asChild>
+          <Button
+            className="w-full h-8 sm:h-10 text-xs sm:text-sm font-medium bg-primary hover:bg-primary/90 text-primary-foreground rounded-md"
+            asChild
+          >
             <Link href={`/courses/${course.id}`}>
               {course.status === 4 ? (
                 <>
@@ -212,8 +238,12 @@ export default function MyCoursesPage() {
               ) : (
                 <>
                   <PlayCircle className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
-                  <span className="hidden sm:inline">{course.progress > 0 ? "Tiếp tục học" : "Bắt đầu học"}</span>
-                  <span className="sm:hidden">{course.progress > 0 ? "Tiếp tục" : "Bắt đầu"}</span>
+                  <span className="hidden sm:inline">
+                    {course.progress > 0 ? "Tiếp tục học" : "Bắt đầu học"}
+                  </span>
+                  <span className="sm:hidden">
+                    {course.progress > 0 ? "Tiếp tục" : "Bắt đầu"}
+                  </span>
                 </>
               )}
             </Link>
@@ -223,11 +253,19 @@ export default function MyCoursesPage() {
     </Card>
   );
 
-  const renderEmptyState = (icon: React.ReactNode, title: string, description: string) => (
+  const renderEmptyState = (
+    icon: React.ReactNode,
+    title: string,
+    description: string
+  ) => (
     <div className="flex flex-col items-center justify-center py-12 sm:py-20 text-center bg-card rounded-xl border border-border shadow-sm">
       <div className="mb-4 sm:mb-6 text-muted-foreground">{icon}</div>
-      <h3 className="text-lg sm:text-xl font-semibold text-card-foreground mb-2 sm:mb-3">{title}</h3>
-      <p className="text-sm sm:text-base text-muted-foreground max-w-md leading-relaxed px-4">{description}</p>
+      <h3 className="text-lg sm:text-xl font-semibold text-card-foreground mb-2 sm:mb-3">
+        {title}
+      </h3>
+      <p className="text-sm sm:text-base text-muted-foreground max-w-md leading-relaxed px-4">
+        {description}
+      </p>
     </div>
   );
 
@@ -244,11 +282,14 @@ export default function MyCoursesPage() {
               </div>
               <div className="h-9 sm:h-11 w-64 sm:w-80 bg-muted rounded-lg animate-pulse"></div>
             </div>
-            
+
             {/* Content skeleton - responsive */}
             <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {[...Array(8)].map((_, i) => (
-                <Card key={i} className="border border-border bg-card rounded-lg overflow-hidden h-full flex flex-col">
+                <Card
+                  key={i}
+                  className="border border-border bg-card rounded-lg overflow-hidden h-full flex flex-col"
+                >
                   <div className="h-40 sm:h-48 w-full bg-muted animate-pulse"></div>
                   <CardContent className="flex-1 p-3 sm:p-4 flex flex-col">
                     <div className="flex-1 space-y-2 sm:space-y-3">
@@ -290,11 +331,14 @@ export default function MyCoursesPage() {
               </div>
               <div className="h-9 sm:h-11 w-64 sm:w-80 bg-muted rounded-lg animate-pulse"></div>
             </div>
-            
+
             {/* Content skeleton - responsive */}
             <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {[...Array(8)].map((_, i) => (
-                <Card key={i} className="border border-border bg-card rounded-lg overflow-hidden h-full flex flex-col">
+                <Card
+                  key={i}
+                  className="border border-border bg-card rounded-lg overflow-hidden h-full flex flex-col"
+                >
                   <div className="h-40 sm:h-48 w-full bg-muted animate-pulse"></div>
                   <CardContent className="flex-1 p-3 sm:p-4 flex flex-col">
                     <div className="flex-1 space-y-2 sm:space-y-3">
@@ -337,32 +381,38 @@ export default function MyCoursesPage() {
 
               {/* Tabs - mobile responsive */}
               <TabsList className="grid w-full grid-cols-3 lg:w-auto lg:grid-cols-3 h-auto bg-background/80 backdrop-blur-md border border-border p-1 sm:p-1.5 rounded-lg sm:rounded-xl shadow-lg">
-                <TabsTrigger 
-                  value="ongoing" 
+                <TabsTrigger
+                  value="ongoing"
                   className="inline-flex items-center justify-center gap-1 sm:gap-2 text-xs sm:text-sm px-2 sm:px-4 py-2 sm:py-3 font-medium text-muted-foreground data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:bg-white rounded-md sm:rounded-lg transition-all duration-200 whitespace-nowrap min-w-0 flex-1"
                 >
                   <Clock className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
                   <span className="hidden sm:inline">Đang học</span>
                   <span className="sm:hidden">Học</span>
-                  <span className="ml-0.5 sm:ml-1 font-semibold">({ongoingCourses.length})</span>
+                  <span className="ml-0.5 sm:ml-1 font-semibold">
+                    ({ongoingCourses.length})
+                  </span>
                 </TabsTrigger>
-                <TabsTrigger 
-                  value="passed" 
+                <TabsTrigger
+                  value="passed"
                   className="inline-flex items-center justify-center gap-1 sm:gap-2 text-xs sm:text-sm px-2 sm:px-4 py-2 sm:py-3 font-medium text-muted-foreground data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:bg-white rounded-md sm:rounded-lg transition-all duration-200 whitespace-nowrap min-w-0 flex-1"
                 >
                   <Award className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
                   <span className="hidden sm:inline">Đã đậu</span>
                   <span className="sm:hidden">Đậu</span>
-                  <span className="ml-0.5 sm:ml-1 font-semibold">({passedCourses.length})</span>
+                  <span className="ml-0.5 sm:ml-1 font-semibold">
+                    ({passedCourses.length})
+                  </span>
                 </TabsTrigger>
-                <TabsTrigger 
-                  value="failed" 
+                <TabsTrigger
+                  value="failed"
                   className="inline-flex items-center justify-center gap-1 sm:gap-2 text-xs sm:text-sm px-2 sm:px-4 py-2 sm:py-3 font-medium text-muted-foreground data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:bg-white rounded-md sm:rounded-lg transition-all duration-200 whitespace-nowrap min-w-0 flex-1"
                 >
                   <XCircle className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
                   <span className="hidden sm:inline">Chưa đậu</span>
                   <span className="sm:hidden">Rớt</span>
-                  <span className="ml-0.5 sm:ml-1 font-semibold">({failedCourses.length})</span>
+                  <span className="ml-0.5 sm:ml-1 font-semibold">
+                    ({failedCourses.length})
+                  </span>
                 </TabsTrigger>
               </TabsList>
             </div>
@@ -416,9 +466,14 @@ export default function MyCoursesPage() {
               Bạn chưa đăng ký khóa học nào
             </h3>
             <p className="text-sm sm:text-base text-muted-foreground mb-4 sm:mb-6 lg:mb-8 max-w-md">
-              Hãy khám phá các khóa học công khai và bắt đầu hành trình học tập của bạn!
+              Hãy khám phá các khóa học công khai và bắt đầu hành trình học tập
+              của bạn!
             </p>
-            <Button asChild size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground h-10 sm:h-12 px-4 sm:px-6 lg:px-8 rounded-lg text-sm sm:text-base">
+            <Button
+              asChild
+              size="lg"
+              className="bg-primary hover:bg-primary/90 text-primary-foreground h-10 sm:h-12 px-4 sm:px-6 lg:px-8 rounded-lg text-sm sm:text-base"
+            >
               <Link href="/courses">
                 <GraduationCap className="mr-2 h-4 w-4 sm:h-5 sm:w-5" />
                 Khám phá khóa học
