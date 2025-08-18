@@ -22,9 +22,9 @@ export function useFeedbacks(courseId: string) {
     queryKey,
     queryFn: () => feedbackService.getFeedbacks(courseId),
     enabled: !!courseId, // Enable for all roles to check if trainee has submitted
-    staleTime: 5 * 60 * 1000,
-    refetchOnWindowFocus: false,
-    refetchOnMount: false,
+    staleTime: 0, // Set to 0 to always refetch fresh data
+    refetchOnWindowFocus: true, // Enable refetch when user comes back to tab
+    refetchOnMount: true, // Enable refetch when component mounts
   });
 
   return {

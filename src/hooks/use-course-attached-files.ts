@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -13,27 +12,25 @@ export const ATTACHED_FILES_QUERY_KEY = "attachedFiles";
 export function useAttachedFiles(courseId: string | null) {
   const queryKey = [ATTACHED_FILES_QUERY_KEY, courseId];
 
-  const {
-    data,
-    isLoading,
-    error,
-    refetch,
-  } = useQuery<CourseMaterial[], Error>({
-    queryKey,
-    queryFn: async () => {
-      if (!courseId) return [];
-      return await courseAttachedFilesService.getAttachedFiles(courseId);
-    },
-    enabled: !!courseId,
-    staleTime: 5 * 60 * 1000,
-    refetchOnWindowFocus: false,
-  });
+  const { data, isLoading, error, refetch } = useQuery<CourseMaterial[], Error>(
+    {
+      queryKey,
+      queryFn: async () => {
+        if (!courseId) return [];
+        return await courseAttachedFilesService.getAttachedFiles(courseId);
+      },
+      enabled: !!courseId,
+      staleTime: 0, // Set to 0 to always refetch fresh data
+      refetchOnWindowFocus: true, // Enable refetch when user comes back to tab
+      refetchOnMount: true, // Enable refetch when component mounts
+    }
+  );
 
   return {
     attachedFiles: data ?? [],
     isLoading,
     error,
-    refetch
+    refetch,
   };
 }
 
@@ -69,7 +66,7 @@ export function useCreateAttachedFiles() {
       queryClient.invalidateQueries({
         queryKey: [ATTACHED_FILES_QUERY_KEY, variables.courseId],
       });
-    }
+    },
   });
 }
 
@@ -95,9 +92,9 @@ export function useDeleteAttachedFile() {
       });
     },
     onSettled: (data, error, variables) => {
-       queryClient.invalidateQueries({
+      queryClient.invalidateQueries({
         queryKey: [ATTACHED_FILES_QUERY_KEY, variables.courseId],
       });
-    }
+    },
   });
 }

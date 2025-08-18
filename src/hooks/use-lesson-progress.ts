@@ -22,7 +22,9 @@ export function useLessonProgress(courseId: string, enabled: boolean = true) {
     queryKey,
     queryFn: () => lessonProgressService.getLessonProgress(courseId),
     enabled: !!courseId && enabled,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 0, // Set to 0 to always refetch fresh data
+    refetchOnWindowFocus: true, // Enable refetch when user comes back to tab
+    refetchOnMount: true, // Enable refetch when component mounts
   });
 
   return {

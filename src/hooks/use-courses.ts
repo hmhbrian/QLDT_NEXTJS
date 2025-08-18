@@ -44,9 +44,9 @@ export function useCourses(
         pagination: apiResponse.pagination,
       };
     },
-    staleTime: 3 * 60 * 1000, // 3 minutes - longer stale time to avoid interrupting user actions
+    staleTime: 0, // Set to 0 to always refetch fresh data
     refetchOnWindowFocus: true, // Enable refetch on window focus
-    // refetchInterval: 15 * 1000, // Disabled auto-refresh to prevent interrupting user work
+    refetchOnMount: true, // Enable refetch when component mounts
     refetchIntervalInBackground: false, // Don't refresh when tab is not active
     retry: 1,
   });
@@ -97,8 +97,9 @@ export function useEnrolledCourses(
       };
     },
     enabled: enabled && !!user,
-    staleTime: 10 * 1000, // Very short stale time for real-time feel
-    refetchOnWindowFocus: true,
+    staleTime: 0, // Set to 0 to always refetch fresh data
+    refetchOnWindowFocus: true, // Enable refetch when user comes back to tab
+    refetchOnMount: true, // Enable refetch when component mounts
     refetchInterval: 15 * 1000, // Auto-refresh every 15 seconds for real-time updates
     refetchIntervalInBackground: false, // Don't refresh when tab is not active
   });
@@ -126,9 +127,9 @@ export function useCourse(courseId: string) {
       return mapCourseApiToUi(await coursesService.getCourseById(courseId));
     },
     enabled: !!courseId,
-    staleTime: 5 * 60 * 1000, // 5 minutes - longer stale time to avoid interrupting user actions
-    // refetchInterval: 15 * 1000, // Disabled auto-refresh to prevent interrupting user work
-    refetchOnWindowFocus: true,
+    staleTime: 0, // Set to 0 to always refetch fresh data
+    refetchOnWindowFocus: true, // Enable refetch when user comes back to tab
+    refetchOnMount: true, // Enable refetch when component mounts
   });
 
   return { course: data, isLoading, isFetching, isRefetching, error };
