@@ -2,6 +2,7 @@ import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useCourseProgressDetail } from "@/hooks/use-courses";
+import { useWebSocketRealtime } from "@/hooks/use-websocket-realtime";
 import {
   Loader2,
   User,
@@ -34,14 +35,13 @@ export const UserCourseProgressDetail: React.FC<
     isFetching,
   } = useCourseProgressDetail(courseId, userId);
 
-  // Auto refresh every 60 seconds
-  React.useEffect(() => {
-    const interval = setInterval(() => {
-      refetch();
-    }, 60000);
-
-    return () => clearInterval(interval);
-  }, [refetch]);
+  // Frontend-only revalidation (no WebSocket/SSE): tự động revalidate khi focus/online
+  const { refresh } = useWebSocketRealtime({
+    courseId,
+    revalidateOnFocus: true,
+    revalidateOnReconnect: true,
+    pollInterval: null,
+  });
 
   const handleRefresh = async () => {
     await refetch();
@@ -141,6 +141,14 @@ export const UserCourseProgressDetail: React.FC<
             </div>
 
             <div className="flex items-center gap-3">
+              {/* Auto-refresh indicator (focus/online/polling) */}
+              <div className="flex items-center gap-2">
+                <RefreshCw className="h-4 w-4 text-green-500" />
+                <span className="text-xs text-green-600 font-medium">
+                  Auto refresh
+                </span>
+              </div>
+
               <Badge
                 variant="secondary"
                 className={cn(
