@@ -14,7 +14,7 @@ export function useAuditLog(params?: AuditLogParams) {
     queryFn: () => auditLogService.getAuditLog(params),
     enabled: canViewAuditLog,
     staleTime: 10 * 60 * 1000, // 10 minutes
-    refetchOnWindowFocus: false,
+    refetchOnWindowFocus: true,
     refetchOnMount: false,
   });
 }
@@ -30,7 +30,7 @@ export function useCourseAuditLog(courseId: string, params?: AuditLogParams) {
     queryFn: () => auditLogService.getCourseAuditLog(courseId, params),
     enabled: canViewAuditLog && !!courseId,
     staleTime: 5 * 60 * 1000, // 5 minutes for course audit logs
-    refetchOnWindowFocus: false,
+    refetchOnWindowFocus: true,
     refetchOnMount: false,
   });
 }

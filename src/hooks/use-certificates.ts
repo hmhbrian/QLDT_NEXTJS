@@ -27,7 +27,7 @@ export function useCertificates() {
     },
     enabled: !!user,
     staleTime: 10 * 60 * 1000, // Cache for 10 minutes
-    refetchOnWindowFocus: false,
+    refetchOnWindowFocus: true,
     refetchOnMount: false,
   });
 }
@@ -48,7 +48,7 @@ export function useCertificateByCourse(courseId: string) {
     },
     enabled: !!user && !!courseId,
     staleTime: 10 * 60 * 1000,
-    refetchOnWindowFocus: false,
+    refetchOnWindowFocus: true,
     refetchOnMount: false,
   });
 }

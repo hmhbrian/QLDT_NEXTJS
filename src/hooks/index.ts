@@ -31,8 +31,8 @@ export * from "./use-mobile";
 export * from "./use-error";
 
 // Performance optimization hooks
-export * from "./use-realtime-sync";
-export * from "./use-optimized-crud";
+export * from "./use-websocket-realtime";
+export * from "./use-optimized-query";
 export * from "./use-performance-monitor";
 
 // Additional hooks

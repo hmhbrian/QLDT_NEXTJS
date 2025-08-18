@@ -80,7 +80,7 @@ export function useInfiniteData<T>(
       lastPage.hasMore ? pages.length + 1 : undefined,
     enabled,
     staleTime: 5 * 60 * 1000,
-    refetchOnWindowFocus: false,
+    refetchOnWindowFocus: true,
   });
 }
 

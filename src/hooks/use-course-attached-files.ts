@@ -25,7 +25,7 @@ export function useAttachedFiles(courseId: string | null) {
       enabled: !!courseId,
       staleTime: 10 * 60 * 1000, // 10 minutes - reasonable cache time
       gcTime: 30 * 60 * 1000, // 30 minutes garbage collection
-      refetchOnWindowFocus: false, // Disable excessive refetching
+      refetchOnWindowFocus: true, // Enable revalidate on window focus for student screens
       refetchOnMount: "always", // Smart refetch on mount
       placeholderData: (previousData) => previousData, // Keep previous data while refetching
     }

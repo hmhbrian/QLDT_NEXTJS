@@ -9,7 +9,7 @@ export const useEmployeeLevel = () => {
     queryKey: [EmployeeLevel_QUERY_KEY],
     queryFn: () => EmployeeLevelService.getEmployeeLevel(),
     staleTime: 10 * 60 * 1000, // Cache for 10 minutes
-    refetchOnWindowFocus: false,
+    refetchOnWindowFocus: true,
     refetchOnMount: false,
   });
 

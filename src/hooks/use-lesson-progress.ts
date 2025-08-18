@@ -24,7 +24,7 @@ export function useLessonProgress(courseId: string, enabled: boolean = true) {
     enabled: !!courseId && enabled,
     staleTime: 2 * 60 * 1000, // 2 minutes - balance between freshness and performance
     gcTime: 10 * 60 * 1000, // 10 minutes garbage collection
-    refetchOnWindowFocus: false, // Disable excessive refetching
+    refetchOnWindowFocus: true, // Enable revalidate on window focus for student screens
     refetchOnMount: "always", // Smart refetch on mount
     placeholderData: (previousData) => previousData, // Keep previous data while refetching
     networkMode: "online", // Only run when online

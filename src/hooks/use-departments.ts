@@ -26,7 +26,7 @@ export function useDepartments(params?: { status?: "active" }) {
       return (apiResponse || []).map(mapDepartmentApiToUi);
     },
     staleTime: 10 * 60 * 1000,
-    refetchOnWindowFocus: false,
+    refetchOnWindowFocus: true,
   });
 
   return {
