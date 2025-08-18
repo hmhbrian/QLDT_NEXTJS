@@ -3,6 +3,8 @@
  * Centralized, type-safe configuration for all API endpoints and settings
  */
 export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "/api";
+export const WS_BASE_URL =
+  process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:5228/ws";
 export const API_TIMEOUT = parseInt(
   process.env.NEXT_PUBLIC_API_TIMEOUT || "30000"
 );
@@ -174,4 +176,5 @@ export const API_CONFIG = {
     user: "qldt_user_data",
   },
   endpoints: API_ENDPOINTS,
+  WS_BASE_URL: WS_BASE_URL,
 } as const;
