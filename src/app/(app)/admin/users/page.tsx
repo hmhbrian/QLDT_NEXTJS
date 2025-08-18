@@ -158,7 +158,7 @@ export default function UsersPage() {
     queryKey: ["roles"],
     queryFn: () => rolesService.getRoles(),
     staleTime: 5 * 60 * 1000,
-    refetchOnWindowFocus: false,
+    refetchOnWindowFocus: true,
     refetchOnMount: false,
   });
   const roles = rolesResponse?.items || [];
