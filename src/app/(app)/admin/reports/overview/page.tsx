@@ -22,9 +22,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { StarRatingDisplay } from "@/components/ui/StarRatingDisplay";
 import {
   Popover,
   PopoverContent,
@@ -43,10 +41,7 @@ import {
   Activity,
   Loader2,
   AlertTriangle,
-  TrendingUp,
-  PieChart as PieChartIcon,
   RefreshCw,
-  Calendar,
   Filter,
   ChevronDown,
   Building2,
@@ -68,20 +63,10 @@ import {
 import {
   AvgFeedbackData,
   CourseAndAvgFeedback,
-  StudentsOfCourse,
   ReportData,
 } from "@/lib/services/modern/report.service";
-import { extractErrorMessage } from "@/lib/core";
 import { ApiDataCharts } from "@/components/reports/ApiDataCharts";
 import dynamic from "next/dynamic";
-import {
-  PieChart,
-  Pie,
-  Cell,
-  ResponsiveContainer,
-  Legend,
-  Tooltip,
-} from "recharts";
 
 const evaluationCriteriaLabels: Record<keyof AvgFeedbackData, string> = {
   q1_relevanceAvg: "Nội dung phù hợp công việc",
