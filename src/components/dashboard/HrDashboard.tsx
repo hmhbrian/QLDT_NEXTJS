@@ -1,4 +1,3 @@
-
 "use client";
 
 import {
@@ -28,21 +27,9 @@ export function HrDashboard() {
   const { data: allTimeReport } = useAllTimeReport(true);
 
   const stats = useMemo(() => {
-    // Filter users to count only active trainees
-    const activeTrainees =
-      users?.filter(
-        (u) =>
-          u.role === "HOCVIEN" && u.userStatus?.name === "Đang làm việc"
-      ).length || 0;
-
-    const ongoingCourses =
-      courses?.filter((c) => {
-        const statusName =
-          typeof c.status === "object" ? c.status.name : c.status;
-        return statusName === "Đang mở";
-      }).length || 0;
-
     const completionRate = allTimeReport?.averangeCompletedPercentage || 0;
+    const activeTrainees = allTimeReport?.numberOfStudents || 0;
+    const ongoingCourses = allTimeReport?.numberOfCourses || 0;
 
     return [
       {
@@ -87,7 +74,9 @@ export function HrDashboard() {
               <stat.icon className={`h-4 w-4 sm:h-5 sm:w-5 ${stat.color}`} />
             </CardHeader>
             <CardContent>
-              <div className="text-xl sm:text-2xl lg:text-3xl font-bold text-foreground">{stat.value}</div>
+              <div className="text-xl sm:text-2xl lg:text-3xl font-bold text-foreground">
+                {stat.value}
+              </div>
               <Link href={stat.link} passHref>
                 <Button
                   variant="link"
@@ -102,8 +91,12 @@ export function HrDashboard() {
       </div>
       <Card className="border border-border bg-card">
         <CardHeader>
-          <CardTitle className="text-base sm:text-lg font-semibold text-foreground">Buổi học sắp tới</CardTitle>
-          <CardDescription className="text-sm text-muted-foreground">Lịch các buổi học cho tuần tới</CardDescription>
+          <CardTitle className="text-base sm:text-lg font-semibold text-foreground">
+            Buổi học sắp tới
+          </CardTitle>
+          <CardDescription className="text-sm text-muted-foreground">
+            Lịch các buổi học cho tuần tới
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex flex-col items-center justify-center h-32 sm:h-40 border-2 border-dashed border-border rounded-md text-center p-4">
