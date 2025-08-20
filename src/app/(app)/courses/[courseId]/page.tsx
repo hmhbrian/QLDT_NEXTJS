@@ -55,8 +55,6 @@ import {
   X,
   SkipBack,
   SkipForward,
-  MoreVertical,
-  Menu,
   EyeOff,
 } from "lucide-react";
 import {
@@ -98,12 +96,10 @@ import { AuditLog } from "@/components/audit-log";
 import { useFeedbacks, useCreateFeedback } from "@/hooks/use-feedback";
 import { useCourseRealtime } from "@/hooks/use-websocket-realtime";
 import { usePerformanceMonitoring } from "@/hooks/use-performance-monitor";
-import { useOptimizedQuery } from "@/hooks/use-optimized-query";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ClientTime } from "@/components/ClientTime";
 import { CourseProgressList } from "@/components/courses/CourseProgressList";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { EnrollmentStatusBadge } from "@/components/courses/EnrollmentStatusBadge";
 
 const PdfLessonViewer = dynamic(
   () => import("@/components/lessons/PdfLessonViewer"),
@@ -291,8 +287,11 @@ export default function CourseDetailPage() {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [showControls, setShowControls] = useState(true);
-  const [controlsEnabled, setControlsEnabled] = useState(false); // toggle ẩn/hiện controls
+  const [controlsEnabled, setControlsEnabled] = useState(true); // toggle ẩn/hiện controls
   const playerRef = useRef<ReactPlayer>(null);
+  const playerContainerRef = useRef<HTMLDivElement | null>(null);
+  const restoreTimeoutRef = useRef<number | null>(null);
+  const observerRef = useRef<MutationObserver | null>(null);
   const isMobile = useIsMobile();
 
   // Helper function to render lesson type icons
@@ -669,15 +668,26 @@ export default function CourseDetailPage() {
     setVisiblePage(page);
   }, []);
 
-  // Auto-hide controls trên mobile chỉ với PDF; video giữ controls
+  // Show controls khi user tap vào màn hình
   useEffect(() => {
-    if (!isMobile) return;
-    if (!controlsEnabled) return;
-    if (!showControls) return;
-    if (selectedLesson?.type !== "pdf_url") return;
-    const t = setTimeout(() => setShowControls(false), 3000);
-    return () => clearTimeout(t);
-  }, [isMobile, controlsEnabled, showControls, selectedLesson?.type]);
+    if (!isMobile || !isFullscreen) return;
+
+    const handleInteraction = () => {
+      if (controlsEnabled) {
+        setShowControls(true);
+      }
+    };
+
+    document.addEventListener("touchstart", handleInteraction, {
+      passive: true,
+    });
+    document.addEventListener("click", handleInteraction, { passive: true });
+
+    return () => {
+      document.removeEventListener("touchstart", handleInteraction);
+      document.removeEventListener("click", handleInteraction);
+    };
+  }, [isMobile, isFullscreen, controlsEnabled]);
 
   const handlePlayerReady = useCallback(() => {
     if (playerRef.current && selectedLesson?.currentTimeSecond) {
@@ -772,80 +782,21 @@ export default function CourseDetailPage() {
           <div className="flex h-full">
             {/* Main Content Area */}
             <div className="flex-1 relative">
-              {/* Floating Controls - Like Udemy */}
-              {/* {controlsEnabled && !isMobile && (
-                <div className="absolute top-4 left-4 z-50 flex items-center gap-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={closeFullscreen}
-                    aria-label="Đóng"
-                    className="bg-white text-gray-900 hover:bg-white/90 border border-gray-200 rounded-full w-10 h-10 p-0 shadow-md"
-                  >
-                    <X className="h-5 w-5" />
-                  </Button>
-                </div>
-              )} */}
-              {/* {controlsEnabled && !isMobile && (
-                <div className="absolute top-4 right-4 z-50 flex items-center gap-2">
-                 
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handlePrevLesson}
-                    disabled={
-                      !selectedLesson ||
-                      lessonsWithProgress.findIndex(
-                        (l) => l.id === selectedLesson.id
-                      ) === 0
-                    }
-                    aria-label="Bài trước"
-                    className="bg-white dark:bg-background text-gray-900 dark:text-gray-100 hover:bg-white/90 dark:hover:bg-white/5 border border-gray-200 dark:border-gray-700 rounded-full w-10 h-10 p-0 shadow-md disabled:opacity-40"
-                  >
-                    <SkipBack className="h-5 w-5" />
-                  </Button>
-
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleNextLesson}
-                    disabled={
-                      !selectedLesson ||
-                      lessonsWithProgress.findIndex(
-                        (l) => l.id === selectedLesson.id
-                      ) ===
-                        lessonsWithProgress.length - 1
-                    }
-                    aria-label="Bài tiếp theo"
-                    className="bg-white text-gray-900 hover:bg-white/90 border border-gray-200 rounded-full w-10 h-10 p-0 shadow-md disabled:opacity-40"
-                  >
-                    <SkipForward className="h-5 w-5" />
-                  </Button>
-
-                  
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-                    aria-label="Mở danh sách bài học"
-                    className="bg-white dark:bg-background text-gray-900 dark:text-gray-100 hover:bg-white/90 dark:hover:bg-white/5 border border-gray-200 dark:border-gray-700 rounded-full w-10 h-10 p-0 shadow-md"
-                  >
-                    <Library className="h-5 w-5" />
-                  </Button>
-                </div>
-              )} */}
-
               {/* Content Area - Full Height */}
               <div className="w-full h-full">
                 {selectedLesson.type === "video_url" && selectedLesson.link ? (
-                  <div className="w-full h-full">
+                  <div className="w-full h-full relative">
+                    {/* Shield: transparent overlay to capture touches on mobile while controls are visible */}
+                    {isMobile && showControls && isFullscreen && (
+                      <div className="absolute inset-0 z-40 bg-transparent" />
+                    )}
                     <ReactPlayer
                       key={selectedLesson.id} // Force re-render when lesson changes
                       ref={playerRef}
                       url={selectedLesson.link}
                       width="100%"
                       height="100%"
-                      controls
+                      controls={true}
                       playing={false}
                       config={{
                         playerVars: {
@@ -854,6 +805,8 @@ export default function CourseDetailPage() {
                           modestbranding: 1,
                           showinfo: 0,
                           iv_load_policy: 3,
+                          playsinline: 1,
+                          fs: 1,
                         },
                       }}
                       onReady={handlePlayerReady}
@@ -1093,29 +1046,6 @@ export default function CourseDetailPage() {
                 )}
               </div>
             )}
-            {/* Eye toggle for mobile (top-left)
-            {isMobile && (
-              <div className="fixed top-3 left-3 z-50">
-                <Button
-                  size="sm"
-                  className="bg-white text-gray-900 hover:bg-white/90 rounded-full h-9 px-3 shadow-md border border-gray-200 flex items-center gap-1"
-                  onClick={() => {
-                    setControlsEnabled((v) => !v);
-                    setShowControls(true);
-                  }}
-                  title={controlsEnabled ? "Ẩn điều khiển" : "Hiện điều khiển"}
-                >
-                  {controlsEnabled ? (
-                    <EyeOff className="h-4 w-4" />
-                  ) : (
-                    <Eye className="h-4 w-4" />
-                  )}
-                  <span className="text-[11px] hidden xs:inline">
-                    {controlsEnabled ? "Ẩn" : "Hiện"}
-                  </span>
-                </Button>
-              </div>
-            )} */}
             {/* Mobile bottom controls */}
             {controlsEnabled && !isSidebarOpen && (
               <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 bg-white/95 dark:bg-background/90 backdrop-blur-sm border border-gray-200 dark:border-gray-700 rounded-full shadow-lg px-2 py-1 flex items-center gap-2">
@@ -1173,8 +1103,11 @@ export default function CourseDetailPage() {
                   variant="ghost"
                   size="sm"
                   onClick={() => {
-                    setControlsEnabled((v) => !v);
-                    setShowControls(true);
+                    setControlsEnabled((v) => {
+                      const newV = !v;
+                      setShowControls(newV);
+                      return newV;
+                    });
                   }}
                   aria-label={
                     controlsEnabled ? "Ẩn điều khiển" : "Hiện điều khiển"
@@ -2079,7 +2012,11 @@ export default function CourseDetailPage() {
               {/* Content Area - Left Side */}
               <div className="flex-1 relative">
                 {selectedLesson.type === "video_url" && selectedLesson.link && (
-                  <div className="h-full flex items-center justify-center bg-black">
+                  <div className="h-full flex items-center justify-center bg-black relative">
+                    {/* Shield for modal/fullscreen player */}
+                    {isMobile && showControls && isFullscreen && (
+                      <div className="absolute inset-0 z-40 bg-transparent" />
+                    )}
                     <ReactPlayer
                       key={`fullscreen-${selectedLesson.id}`}
                       url={selectedLesson.link}
@@ -2290,8 +2227,31 @@ export default function CourseDetailPage() {
                 size="sm"
                 className="bg-white dark:bg-background text-gray-900 dark:text-gray-100 hover:bg-white/90 dark:hover:bg-white/5 rounded-full w-11 h-11 p-0 disabled:opacity-40"
                 onClick={() => {
-                  setControlsEnabled((v) => !v);
-                  setShowControls(true);
+                  setControlsEnabled((prev) => {
+                    const newV = !prev;
+                    setShowControls(newV);
+                    if (newV) {
+                      try {
+                        const container = playerContainerRef?.current;
+                        const iframes =
+                          container?.querySelectorAll("iframe") ?? [];
+                        iframes.forEach((f) => {
+                          // only change if it was modified
+                          if (
+                            (f as HTMLIFrameElement).style.pointerEvents !==
+                            "auto"
+                          ) {
+                            (f as HTMLIFrameElement).style.pointerEvents =
+                              "auto";
+                          }
+                        });
+                      } catch (e) {}
+                    } else {
+                      // hiding controls -> hide UI
+                      setShowControls(false);
+                    }
+                    return newV;
+                  });
                 }}
                 title={
                   controlsEnabled
@@ -2304,16 +2264,13 @@ export default function CourseDetailPage() {
                 ) : (
                   <Eye className="h-3 w-3" />
                 )}
-                {/* <span className="text-[11px]">
-                  {controlsEnabled ? "Ẩn" : "Hiện"}
-                </span> */}
               </Button>
             </div>
 
             {/* Navigation Controls - hover only when enabled */}
             {controlsEnabled && (
               <div
-                className="absolute inset-0 z-[49] pointer-events-none"
+                className="absolute z-[49] pointer-events-none"
                 onMouseEnter={() => controlsEnabled && setShowControls(true)}
               >
                 {showControls && (
