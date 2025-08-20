@@ -91,12 +91,11 @@ export default function DepartmentsPage() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
 
   // Fetch department statuses from API
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
   const { data: departmentStatuses } = useQuery({
     queryKey: ["departmentStatuses"],
     queryFn: async () => {
-      const response = await fetch(
-        "http://localhost:5228/api/status/department"
-      );
+      const response = await fetch(`${apiUrl}/status/department`);
       if (!response.ok) throw new Error("Failed to fetch department statuses");
       const result = await response.json();
       return result.data || [];
@@ -431,7 +430,7 @@ export default function DepartmentsPage() {
                 <List className="h-4 w-4" />
               </Button>
               <Button onClick={handleOpenAddDialog} className="h-9 text-sm">
-                <PlusCircle className="mr-1 sm:mr-2 h-4 w-4" /> 
+                <PlusCircle className="mr-1 sm:mr-2 h-4 w-4" />
                 <span className="hidden sm:inline">Thêm phòng ban</span>
                 <span className="sm:hidden">Thêm</span>
               </Button>
@@ -487,11 +486,13 @@ export default function DepartmentsPage() {
               {isDepartmentsLoading || isStatusesLoading ? (
                 <div className="flex h-48 sm:h-60 w-full items-center justify-center">
                   <Loader2 className="h-8 w-8 sm:h-10 sm:w-10 animate-spin text-primary" />
-                  <p className="ml-2 sm:ml-3 text-sm text-muted-foreground">Đang tải...</p>
+                  <p className="ml-2 sm:ml-3 text-sm text-muted-foreground">
+                    Đang tải...
+                  </p>
                 </div>
               ) : (
                 <div className="overflow-x-auto">
-                <DataTable columns={columns} data={filteredDepartments} />
+                  <DataTable columns={columns} data={filteredDepartments} />
                 </div>
               )}
             </>
