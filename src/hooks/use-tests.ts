@@ -33,7 +33,7 @@ export function useTests(
     },
     enabled: !!courseId && enabled,
     staleTime: 0, // Set to 0 to always refetch fresh data
-    refetchOnWindowFocus: true, // Enable refetch when user comes back to tab
+    refetchOnWindowFocus: true, // Ensure student sees fresh test list when returning to tab
     refetchOnMount: true, // Enable refetch when component mounts
     placeholderData: (previousData) => previousData,
   });
@@ -245,7 +245,7 @@ export function useTestResult(
     },
     enabled: !!courseId && !!testId && enabled,
     staleTime: 5 * 60 * 1000,
-    refetchOnWindowFocus: false,
+    refetchOnWindowFocus: true,
     retry: (failureCount, error: any) => {
       if (error?.message?.includes("chưa làm bài") || error?.status === 404) {
         console.log(
@@ -298,7 +298,7 @@ export function useTestQuestionsNoAnswer(
     },
     enabled: !!courseId && !!testId && enabled,
     staleTime: Infinity, // Cache cho đến hết session làm bài
-    refetchOnWindowFocus: false,
+    refetchOnWindowFocus: true,
     refetchOnMount: false,
     retry: 2,
   });

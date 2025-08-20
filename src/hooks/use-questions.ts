@@ -33,7 +33,7 @@ export function useQuestions(testId: number | undefined) {
     },
     enabled: !!testId,
     staleTime: 5 * 60 * 1000,
-    refetchOnWindowFocus: false,
+    refetchOnWindowFocus: true,
     placeholderData: (previousData) => previousData,
   });
 

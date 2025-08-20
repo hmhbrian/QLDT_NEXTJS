@@ -22,9 +22,12 @@ export function useLessonProgress(courseId: string, enabled: boolean = true) {
     queryKey,
     queryFn: () => lessonProgressService.getLessonProgress(courseId),
     enabled: !!courseId && enabled,
-    staleTime: 0, // Set to 0 to always refetch fresh data
-    refetchOnWindowFocus: true, // Enable refetch when user comes back to tab
-    refetchOnMount: true, // Enable refetch when component mounts
+    staleTime: 2 * 60 * 1000, // 2 minutes - balance between freshness and performance
+    gcTime: 10 * 60 * 1000, // 10 minutes garbage collection
+    refetchOnWindowFocus: true, // Enable revalidate on window focus for student screens
+    refetchOnMount: "always", // Smart refetch on mount
+    placeholderData: (previousData) => previousData, // Keep previous data while refetching
+    networkMode: "online", // Only run when online
   });
 
   return {
@@ -95,12 +98,23 @@ export function useUpsertLessonProgress(courseId: string) {
         extractErrorMessage(err)
       );
     },
-    // Always refetch after error or success:
-    onSettled: () => {
-      // Only invalidate after a delay to avoid too frequent refetches
-      setTimeout(() => {
-        queryClient.invalidateQueries({ queryKey });
-      }, 1000);
+    // Smart refetch strategy:
+    onSettled: (data, error) => {
+      // Only invalidate on error or after significant delay to batch updates
+      if (error) {
+        queryClient.invalidateQueries({
+          queryKey,
+          refetchType: "active",
+        });
+      } else {
+        // Batch invalidations for better performance
+        setTimeout(() => {
+          queryClient.invalidateQueries({
+            queryKey,
+            refetchType: "active",
+          });
+        }, 3000); // 3 second delay to batch multiple updates
+      }
     },
   });
 }

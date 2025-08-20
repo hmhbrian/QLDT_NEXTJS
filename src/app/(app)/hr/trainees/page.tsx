@@ -28,7 +28,7 @@ import {
 } from "@/components/ui/select";
 
 import { PlusCircle, Search, Eye, EyeOff } from "lucide-react";
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import {
   User,
   CreateUserRequest,
@@ -44,7 +44,10 @@ import { useDebounce } from "@/hooks/use-debounce";
 import { LoadingButton } from "@/components/ui/loading";
 import { useDepartments } from "@/hooks/use-departments";
 import { useUserStatuses } from "@/hooks/use-statuses";
+import { useEmployeeLevel } from "@/hooks/use-employeeLevel";
 import { NO_DEPARTMENT_VALUE } from "@/lib/config/constants";
+import { DatePicker } from "@/components/ui/datepicker";
+import { formatLocalYMD, parseYMDToLocalDate } from "@/lib/utils/date.utils";
 import {
   useCreateUserMutation,
   useDeleteUserMutation,
@@ -56,21 +59,26 @@ import { useQuery } from "@tanstack/react-query";
 import type { PaginatedResponse } from "@/lib/core";
 import type { PaginationState } from "@tanstack/react-table";
 import { extractErrorMessage } from "@/lib/core";
+import { generateEmployeeId } from "@/lib/utils/code-generator";
 
 const initialNewTraineeState: Partial<
   User & { password?: string; confirmPassword?: string }
 > = {
   fullName: "",
-  employeeId: "",
   email: "",
   phoneNumber: "",
   department: undefined,
+  position: "",
   userStatus: { id: 2, name: "Đang hoạt động" },
   idCard: "",
   role: "HOCVIEN",
   urlAvatar: "https://placehold.co/40x40.png",
   password: "",
   confirmPassword: "",
+  employeeId: "",
+  startWork: "",
+  endWork: "",
+  employeeLevel: undefined,
 };
 
 export default function TraineesPage() {
@@ -87,7 +95,7 @@ export default function TraineesPage() {
 
   // Reset pagination to page 1 when search term changes
   useEffect(() => {
-    setPagination(prev => ({ ...prev, pageIndex: 0 }));
+    setPagination((prev) => ({ ...prev, pageIndex: 0 }));
   }, [debouncedSearchTerm]);
 
   const [selectedTrainee, setSelectedTrainee] = useState<User | null>(null);
@@ -101,6 +109,114 @@ export default function TraineesPage() {
   const [formData, setFormData] = useState<
     Partial<User & { password?: string; confirmPassword?: string }>
   >({});
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const fullNameRef = useRef<HTMLInputElement | null>(null);
+  const idCardRef = useRef<HTMLInputElement | null>(null);
+  const emailRef = useRef<HTMLInputElement | null>(null);
+  const passwordRef = useRef<HTMLInputElement | null>(null);
+  const confirmPasswordRef = useRef<HTMLInputElement | null>(null);
+
+  const validateField = (
+    field: string,
+    value: any,
+    context: { isEdit: boolean; password?: string } = { isEdit: false }
+  ): string | undefined => {
+    switch (field) {
+      case "fullName":
+        if (!value) return "Họ và tên là bắt buộc.";
+        break;
+      case "idCard":
+        if (!value) return "CMND/CCCD là bắt buộc.";
+        break;
+      case "email":
+        if (!value) return "Email là bắt buộc.";
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value)))
+          return "Email không hợp lệ.";
+        break;
+      case "password":
+        if (!context.isEdit && !value) return "Mật khẩu là bắt buộc.";
+        if (value && String(value).length < 6)
+          return "Mật khẩu phải có ít nhất 6 ký tự.";
+        break;
+      case "confirmPassword":
+        if (!context.isEdit && (value == null || value === ""))
+          return "Xác nhận mật khẩu là bắt buộc.";
+        if (value !== context.password) return "Xác nhận mật khẩu không khớp.";
+        break;
+      default:
+        break;
+    }
+    return undefined;
+  };
+
+  const validateForm = (isEdit: boolean) => {
+    const newErrors: Record<string, string> = {};
+    newErrors.fullName =
+      validateField("fullName", formData.fullName, { isEdit }) || "";
+    newErrors.idCard =
+      validateField("idCard", formData.idCard, { isEdit }) || "";
+    newErrors.email = validateField("email", formData.email, { isEdit }) || "";
+    if (!isEdit) {
+      newErrors.password =
+        validateField("password", formData.password, { isEdit }) || "";
+      const confirmErr = validateField(
+        "confirmPassword",
+        formData.confirmPassword,
+        { isEdit, password: formData.password }
+      );
+      if (confirmErr) newErrors.confirmPassword = confirmErr;
+    }
+
+    // Remove empty entries
+    Object.keys(newErrors).forEach((k) => {
+      if (!newErrors[k]) delete newErrors[k];
+    });
+
+    setErrors(newErrors);
+
+    // Focus first error
+    const order = [
+      "fullName",
+      "idCard",
+      "email",
+      "password",
+      "confirmPassword",
+    ];
+    const first = order.find((k) => !!newErrors[k]);
+    if (first) {
+      if (first === "fullName") fullNameRef.current?.focus();
+      else if (first === "idCard") idCardRef.current?.focus();
+      else if (first === "email") emailRef.current?.focus();
+      else if (first === "password") passwordRef.current?.focus();
+      else if (first === "confirmPassword") confirmPasswordRef.current?.focus();
+    }
+
+    return Object.keys(newErrors).length === 0;
+  };
+
+  // Date helpers to avoid timezone shifts (store/display as local YYYY-MM-DD)
+  const formatLocalYMD = (date: Date): string => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+
+  const parseYMDToLocalDate = (ymd?: string): Date | undefined => {
+    if (!ymd) return undefined;
+    const [y, m, d] = ymd.split("-").map((v) => parseInt(v, 10));
+    if (!y || !m || !d) return undefined;
+    return new Date(y, m - 1, d);
+  };
+
+  // Convert YYYY-MM-DD to API datetime string without timezone
+  // Example: "2025-08-14" -> "2025-08-14T00:00:00"
+  const ymdToApiDateTime = (ymd?: string | null): string | undefined => {
+    if (!ymd) return undefined;
+    const part = String(ymd).trim().slice(0, 10);
+    if (!/\d{4}-\d{2}-\d{2}/.test(part)) return undefined;
+    return `${part}T00:00:00`;
+  };
 
   const {
     users: trainees,
@@ -119,11 +235,11 @@ export default function TraineesPage() {
     [paginationInfo]
   );
 
-// Filter out ADMIN and HR users - HR chỉ xem được HOCVIEN
-const filteredTrainees = useMemo(() => {
-  if (!trainees) return [];
-  return trainees.filter(user => user.role === "HOCVIEN");
-}, [trainees]);
+  // Filter out ADMIN and HR users - HR chỉ xem được HOCVIEN
+  const filteredTrainees = useMemo(() => {
+    if (!trainees) return [];
+    return trainees.filter((user) => user.role === "HOCVIEN");
+  }, [trainees]);
 
   const { data: rolesResponse } = useQuery<PaginatedResponse<ServiceRole>>({
     queryKey: ["roles"],
@@ -134,6 +250,7 @@ const filteredTrainees = useMemo(() => {
   const { departments: activeDepartments, isLoading: isDepartmentsLoading } =
     useDepartments({ status: "active" });
   const { userStatuses, isLoading: isStatusesLoading } = useUserStatuses();
+  const { EmployeeLevel, loading: isEmployeeLevelLoading } = useEmployeeLevel();
 
   const createTraineeMutation = useCreateUserMutation();
   const updateTraineeMutation = useUpdateUserMutation();
@@ -142,6 +259,7 @@ const filteredTrainees = useMemo(() => {
   const handleOpenAddDialog = () => {
     setEditingTrainee(null);
     setFormData(initialNewTraineeState);
+    setErrors({});
     setIsFormOpen(true);
   };
 
@@ -151,7 +269,10 @@ const filteredTrainees = useMemo(() => {
       ...trainee,
       password: "",
       confirmPassword: "",
+      startWork: trainee.startWork ? trainee.startWork.slice(0, 10) : "",
+      endWork: trainee.endWork ? trainee.endWork.slice(0, 10) : "",
     });
+    setErrors({});
     setIsFormOpen(true);
   }, []);
 
@@ -163,7 +284,9 @@ const filteredTrainees = useMemo(() => {
   };
 
   const handleSaveTrainee = async () => {
-    if (!formData.fullName || !formData.email) {
+    const isEdit = !!editingTrainee;
+
+    if (!validateForm(isEdit)) {
       showError("FORM001");
       return;
     }
@@ -178,36 +301,60 @@ const filteredTrainees = useMemo(() => {
       return;
     }
 
-    setIsFormOpen(false);
+    try {
+      if (editingTrainee) {
+        const updatePayload: UpdateUserRequest = {
+          fullName: formData.fullName,
+          email: formData.email,
+          idCard: formData.idCard,
+          position: formData.position,
+          numberPhone: formData.phoneNumber,
+          departmentId: formData.department?.departmentId,
+          roleId: hocvienRole.id,
+          code: formData.employeeId,
+          startWork: ymdToApiDateTime(formData.startWork as string),
+          endWork: ymdToApiDateTime(formData.endWork as string),
+          eLevelId: formData.employeeLevel?.eLevelId,
+          statusId: formData.userStatus?.id,
+        };
 
-    if (editingTrainee) {
-      const updatePayload: UpdateUserRequest = {
-        fullName: formData.fullName,
-        email: formData.email,
-        idCard: formData.idCard,
-        position: formData.position,
-        numberPhone: formData.phoneNumber,
-        departmentId: formData.department?.departmentId,
-        roleId: hocvienRole.id,
-      };
-      await updateTraineeMutation.mutateAsync({
-        id: editingTrainee.id,
-        payload: updatePayload,
+        await updateTraineeMutation.mutateAsync({
+          id: editingTrainee.id,
+          payload: updatePayload,
+        });
+      } else {
+        const createPayload: CreateUserRequest = {
+          fullName: formData.fullName!,
+          email: formData.email!,
+          password: formData.password!,
+          confirmPassword: formData.confirmPassword!,
+          idCard: formData.idCard,
+          position: formData.position,
+          numberPhone: formData.phoneNumber,
+          departmentId: formData.department?.departmentId,
+          roleId: hocvienRole.id,
+          code: formData.employeeId,
+          startWork: ymdToApiDateTime(formData.startWork as string),
+          endWork: ymdToApiDateTime(formData.endWork as string),
+          eLevelId: formData.employeeLevel?.eLevelId,
+          statusId: formData.userStatus?.id,
+        };
+
+        console.log("Creating user with payload:", createPayload);
+        await createTraineeMutation.mutateAsync(createPayload);
+      }
+
+      // Only close dialog when save succeeds
+      setIsFormOpen(false);
+      setErrors({});
+    } catch (error) {
+      console.error("Failed to save trainee:", error);
+      // keep dialog open and show toast
+      toast({
+        title: "Lỗi",
+        description: extractErrorMessage(error as any) || "Lưu thất bại",
+        variant: "destructive",
       });
-    } else {
-      const createPayload: CreateUserRequest = {
-        fullName: formData.fullName!,
-        email: formData.email!,
-        password: formData.password!,
-        confirmPassword: formData.confirmPassword!,
-        idCard: formData.idCard,
-        position: formData.position,
-        numberPhone: formData.phoneNumber,
-        departmentId: formData.department?.departmentId,
-        roleId: hocvienRole.id,
-      };
-      console.log("Creating user with payload:", createPayload);
-      await createTraineeMutation.mutateAsync(createPayload);
     }
   };
 
@@ -247,8 +394,11 @@ const filteredTrainees = useMemo(() => {
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
-          <Button onClick={handleOpenAddDialog} className="w-full sm:w-auto h-9 sm:h-10 text-sm">
-            <PlusCircle className="mr-1 sm:mr-2 h-4 w-4" /> 
+          <Button
+            onClick={handleOpenAddDialog}
+            className="w-full sm:w-auto h-9 sm:h-10 text-sm"
+          >
+            <PlusCircle className="mr-1 sm:mr-2 h-4 w-4" />
             <span className="hidden sm:inline">Thêm Học viên</span>
             <span className="sm:hidden">Thêm</span>
           </Button>
@@ -257,7 +407,9 @@ const filteredTrainees = useMemo(() => {
 
       <Card className="border border-border bg-card">
         <CardHeader className="p-4 sm:p-6">
-          <CardTitle className="text-base sm:text-lg">Tất cả Học viên</CardTitle>
+          <CardTitle className="text-base sm:text-lg">
+            Tất cả Học viên
+          </CardTitle>
           <CardDescription className="text-sm text-muted-foreground">
             Quản lý thông tin học viên, ghi danh và phân công khóa học
           </CardDescription>
@@ -291,38 +443,107 @@ const filteredTrainees = useMemo(() => {
             <DialogTitle>
               {editingTrainee ? "Chỉnh sửa Học viên" : "Thêm Học viên Mới"}
             </DialogTitle>
+            <DialogDescription>
+              {editingTrainee
+                ? "Cập nhật thông tin chi tiết cho học viên."
+                : "Điền thông tin chi tiết để tạo học viên mới."}
+            </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4 max-h-[70vh] overflow-y-auto pr-2">
             <div className="grid gap-2">
               <Label htmlFor="fullName">Họ và tên *</Label>
               <Input
                 id="fullName"
+                ref={fullNameRef}
                 value={formData.fullName || ""}
                 onChange={(e) =>
                   setFormData({ ...formData, fullName: e.target.value })
                 }
+                onBlur={(e) =>
+                  setErrors((prev) => ({
+                    ...prev,
+                    fullName: validateField("fullName", e.target.value, {
+                      isEdit: !!editingTrainee,
+                    }),
+                  }))
+                }
+                className={errors.fullName ? "border-destructive" : ""}
               />
+              {errors.fullName && (
+                <p className="text-sm text-destructive">{errors.fullName}</p>
+              )}
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="employeeId">Mã học viên</Label>
+              <div className="flex gap-2">
+                <Input
+                  id="employeeId"
+                  value={formData.employeeId || ""}
+                  onChange={(e) =>
+                    setFormData({ ...formData, employeeId: e.target.value })
+                  }
+                  placeholder="VD: EMP001"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    const id = generateEmployeeId();
+                    setFormData({ ...formData, employeeId: id });
+                  }}
+                  className="whitespace-nowrap"
+                >
+                  Tạo tự động
+                </Button>
+              </div>
             </div>
             <div className="grid gap-2">
               <Label htmlFor="email">Email *</Label>
               <Input
                 id="email"
+                ref={emailRef}
                 type="email"
                 value={formData.email || ""}
                 onChange={(e) =>
                   setFormData({ ...formData, email: e.target.value })
                 }
+                onBlur={(e) =>
+                  setErrors((prev) => ({
+                    ...prev,
+                    email: validateField("email", e.target.value, {
+                      isEdit: !!editingTrainee,
+                    }),
+                  }))
+                }
+                className={errors.email ? "border-destructive" : ""}
               />
+              {errors.email && (
+                <p className="text-sm text-destructive">{errors.email}</p>
+              )}
             </div>
             <div className="grid gap-2">
               <Label htmlFor="idCard">CMND/CCCD</Label>
               <Input
                 id="idCard"
+                ref={idCardRef}
                 value={formData.idCard || ""}
                 onChange={(e) =>
                   setFormData({ ...formData, idCard: e.target.value })
                 }
+                onBlur={(e) =>
+                  setErrors((prev) => ({
+                    ...prev,
+                    idCard: validateField("idCard", e.target.value, {
+                      isEdit: !!editingTrainee,
+                    }),
+                  }))
+                }
+                className={errors.idCard ? "border-destructive" : ""}
               />
+              {errors.idCard && (
+                <p className="text-sm text-destructive">{errors.idCard}</p>
+              )}
             </div>
             <div className="grid gap-2">
               <Label htmlFor="phoneNumber">Số điện thoại</Label>
@@ -332,6 +553,32 @@ const filteredTrainees = useMemo(() => {
                 onChange={(e) =>
                   setFormData({ ...formData, phoneNumber: e.target.value })
                 }
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label>Ngày bắt đầu học tập</Label>
+              <DatePicker
+                date={parseYMDToLocalDate(formData.startWork as string)}
+                setDate={(d) =>
+                  setFormData({
+                    ...formData,
+                    startWork: d ? formatLocalYMD(d) : "",
+                  })
+                }
+                placeholder="Chọn ngày bắt đầu"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label>Ngày kết thúc học tập (nếu có)</Label>
+              <DatePicker
+                date={parseYMDToLocalDate(formData.endWork as string)}
+                setDate={(d) =>
+                  setFormData({
+                    ...formData,
+                    endWork: d ? formatLocalYMD(d) : "",
+                  })
+                }
+                placeholder="Chọn ngày kết thúc"
               />
             </div>
             <div className="grid gap-2">
@@ -399,6 +646,96 @@ const filteredTrainees = useMemo(() => {
                 }
               />
             </div>
+            <div className="grid gap-2">
+              <Label htmlFor="employeeLevel">Cấp bậc</Label>
+              <Select
+                value={
+                  formData.employeeLevel?.eLevelId
+                    ? String(formData.employeeLevel.eLevelId)
+                    : "no_level_selected"
+                }
+                onValueChange={(value: string) => {
+                  if (value === "no_level_selected") {
+                    setFormData({
+                      ...formData,
+                      employeeLevel: undefined,
+                    });
+                  } else {
+                    const selectedLevel = EmployeeLevel.find(
+                      (level) => String(level.eLevelId) === value
+                    );
+                    setFormData({
+                      ...formData,
+                      employeeLevel: selectedLevel || undefined,
+                    });
+                  }
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Chọn cấp bậc" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="no_level_selected">
+                    -- Không chọn --
+                  </SelectItem>
+                  {isEmployeeLevelLoading ? (
+                    <SelectItem value="loading_level" disabled>
+                      Đang tải...
+                    </SelectItem>
+                  ) : EmployeeLevel.length > 0 ? (
+                    EmployeeLevel.map((level) => (
+                      <SelectItem
+                        key={level.eLevelId}
+                        value={String(level.eLevelId)}
+                      >
+                        {level.eLevelName}
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <SelectItem value="no_level" disabled>
+                      Không có dữ liệu
+                    </SelectItem>
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="status">Trạng thái</Label>
+              <Select
+                value={
+                  formData.userStatus?.id ? String(formData.userStatus.id) : ""
+                }
+                onValueChange={(value: string) => {
+                  const selectedStatus = userStatuses.find(
+                    (s) => String(s.id) === value
+                  );
+                  if (selectedStatus) {
+                    setFormData({ ...formData, userStatus: selectedStatus });
+                  }
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Chọn trạng thái" />
+                </SelectTrigger>
+                <SelectContent>
+                  {isStatusesLoading ? (
+                    <SelectItem value="loading_status" disabled>
+                      Đang tải...
+                    </SelectItem>
+                  ) : userStatuses.length > 0 ? (
+                    userStatuses.map((status) => (
+                      <SelectItem key={status.id} value={String(status.id)}>
+                        {status.name}
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <SelectItem value="no_status" disabled>
+                      Không có dữ liệu
+                    </SelectItem>
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
             {!editingTrainee && (
               <>
                 <div className="grid gap-2">
@@ -406,11 +743,21 @@ const filteredTrainees = useMemo(() => {
                   <div className="relative">
                     <Input
                       id="password"
+                      ref={passwordRef}
                       type={showPassword ? "text" : "password"}
                       value={formData.password || ""}
                       onChange={(e) =>
                         setFormData({ ...formData, password: e.target.value })
                       }
+                      onBlur={(e) =>
+                        setErrors((prev) => ({
+                          ...prev,
+                          password: validateField("password", e.target.value, {
+                            isEdit: !!editingTrainee,
+                          }),
+                        }))
+                      }
+                      className={errors.password ? "border-destructive" : ""}
                     />
                     <Button
                       type="button"
@@ -432,6 +779,7 @@ const filteredTrainees = useMemo(() => {
                   <div className="relative">
                     <Input
                       id="confirmPassword"
+                      ref={confirmPasswordRef}
                       type={showPassword ? "text" : "password"}
                       value={formData.confirmPassword || ""}
                       onChange={(e) =>
@@ -439,6 +787,22 @@ const filteredTrainees = useMemo(() => {
                           ...formData,
                           confirmPassword: e.target.value,
                         })
+                      }
+                      onBlur={(e) =>
+                        setErrors((prev) => ({
+                          ...prev,
+                          confirmPassword: validateField(
+                            "confirmPassword",
+                            e.target.value,
+                            {
+                              isEdit: !!editingTrainee,
+                              password: formData.password,
+                            }
+                          ),
+                        }))
+                      }
+                      className={
+                        errors.confirmPassword ? "border-destructive" : ""
                       }
                     />
                     <Button

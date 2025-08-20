@@ -47,6 +47,7 @@ export interface User {
   modifiedAt?: string;
   password?: string; // Optional for forms
   completedCourses?: CompletedCourseInfo[];
+  currentCourseId?: string | null; // For real-time sync
 }
 
 // --- API Request Payloads ---

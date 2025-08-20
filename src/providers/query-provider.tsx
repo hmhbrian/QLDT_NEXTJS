@@ -9,9 +9,12 @@ export function QueryProvider({ children }: { children: React.ReactNode }) {
       new QueryClient({
         defaultOptions: {
           queries: {
-            staleTime: 5 * 60 * 1000, // 5 minutes
-            gcTime: 10 * 60 * 1000, // 10 minutes garbage collection time
-            refetchOnWindowFocus: true, // Refetch when the window gains focus
+            staleTime: 10 * 60 * 1000, // 10 minutes - increased for better caching
+            gcTime: 30 * 60 * 1000, // 30 minutes garbage collection time
+            refetchOnWindowFocus: true, 
+            refetchOnReconnect: true, // Refetch when network reconnects
+            refetchOnMount: "always", // Smart refetch on mount
+            networkMode: "online", // Only run queries when online
             retry: (failureCount, error: any) => {
               // Do not retry on 4xx client errors (except for 408, 429)
               if (
@@ -23,14 +26,24 @@ export function QueryProvider({ children }: { children: React.ReactNode }) {
                   error?.response?.status === 429 // Too Many Requests
                 );
               }
-              // Retry up to 2 times for other errors (e.g., network, 5xx)
-              return failureCount < 2;
+              // Retry up to 3 times for other errors (e.g., network, 5xx)
+              return failureCount < 3;
             },
             retryDelay: (attemptIndex) =>
-              Math.min(1000 * 2 ** attemptIndex, 30000), // Exponential backoff
+              Math.min(1000 * 2 ** attemptIndex, 10000), // Exponential backoff with max 10s
           },
           mutations: {
-            retry: 1, // Retry mutations once on failure
+            retry: (failureCount, error: any) => {
+              // Only retry network errors, not validation errors
+              if (failureCount >= 2) return false;
+              const status = error?.response?.status;
+              return (
+                !status || status >= 500 || status === 408 || status === 429
+              );
+            },
+            retryDelay: (attemptIndex) =>
+              Math.min(500 * 2 ** attemptIndex, 5000), // Faster retry for mutations
+            networkMode: "online",
           },
         },
       })

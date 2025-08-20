@@ -17,8 +17,8 @@ export function useActivityLogs(
       // return activityLogService.getCourseActivityLogs(courseId, params);
     },
     enabled: enabled, // Query runs if enabled, regardless of courseId
-    staleTime: 30 * 1000, // 30 seconds
-    refetchInterval: 60 * 1000, // Refetch every minute for real-time updates
+    staleTime: 2 * 60 * 1000, // 2 minutes - tối ưu caching
+    refetchOnWindowFocus: true, 
   });
 }
 

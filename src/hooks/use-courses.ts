@@ -44,9 +44,9 @@ export function useCourses(
         pagination: apiResponse.pagination,
       };
     },
-    staleTime: 0, // Set to 0 to always refetch fresh data
-    refetchOnWindowFocus: true, // Enable refetch on window focus
-    refetchOnMount: true, // Enable refetch when component mounts
+    staleTime: 5 * 60 * 1000, // 5 minutes - tối ưu caching
+    refetchOnWindowFocus: true, // Enable revalidate on window focus for student screens
+    refetchOnMount: "always", // Smart refetch
     refetchIntervalInBackground: false, // Don't refresh when tab is not active
     retry: 1,
   });
@@ -97,10 +97,10 @@ export function useEnrolledCourses(
       };
     },
     enabled: enabled && !!user,
-    staleTime: 0, // Set to 0 to always refetch fresh data
-    refetchOnWindowFocus: true, // Enable refetch when user comes back to tab
-    refetchOnMount: true, // Enable refetch when component mounts
-    refetchInterval: 15 * 1000, // Auto-refresh every 15 seconds for real-time updates
+    staleTime: 2 * 60 * 1000, // 2 minutes - balance fresh data vs performance
+    refetchOnWindowFocus: true, // Enable revalidate on window focus for student screens
+    refetchOnMount: "always", // Smart refetch
+    // ❌ Removed refetchInterval - thay bằng realtime sync hook
     refetchIntervalInBackground: false, // Don't refresh when tab is not active
   });
 
@@ -499,9 +499,15 @@ export function useIsCourseCompleted(courseId: string) {
     (course) => course.id === courseId
   );
 
+  // Check if course is completed based on enrollmentStatus (3=đậu, 4=rớt) or progressPercentage >= 100
+  const isCompleted =
+    courseProgress?.enrollmentStatus === 3 ||
+    courseProgress?.enrollmentStatus === 4;
+
   return {
-    isCompleted: courseProgress?.progressPercentage >= 100,
+    isCompleted,
     progressPercentage: courseProgress?.progressPercentage || 0,
+    enrollmentStatus: courseProgress?.enrollmentStatus,
     isLoading: isLoadingEnrolled,
   };
 }
@@ -517,7 +523,7 @@ export function useCompletedLessonsCount(courseId: string) {
     },
     enabled: !!courseId,
     staleTime: 5 * 60 * 1000,
-    refetchOnWindowFocus: false,
+    refetchOnWindowFocus: true,
   });
 }
 
@@ -611,6 +617,6 @@ export function useCompletedCoursesCount(page: number = 1, limit: number = 10) {
     },
     enabled: !!user && user.role === "HOCVIEN",
     staleTime: 5 * 60 * 1000,
-    refetchOnWindowFocus: false,
+    refetchOnWindowFocus: true,
   });
 }

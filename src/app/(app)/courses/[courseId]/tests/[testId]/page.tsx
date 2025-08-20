@@ -92,7 +92,6 @@ export default function TestDetailPage() {
   } = useQuery({
     queryKey: ["test-info", courseId, testId],
     queryFn: async () => {
-
       // Only fetch basic test info from the tests list API
       const tests = await testsService.getTests(courseId);
       const test = tests.find((t) => t.id === testId);
@@ -124,7 +123,6 @@ export default function TestDetailPage() {
       setTestData(fetchedTest);
       // Check if the user has already completed this test
       if (fetchedTest.isDone) {
-
         refetchResult();
       }
     }
@@ -299,28 +297,39 @@ export default function TestDetailPage() {
           {/* Success Banner */}
           <div>
             <div className="max-w-4xl mx-auto px-4 py-8">
-              <div className={`rounded-lg border shadow-sm ${
-                result.isPassed 
-                  ? "bg-gradient-to-r from-orange-50 to-orange-100 border-orange-200" 
-                  : "bg-gradient-to-r from-red-50 to-red-100 border-red-200"
-              }`}>
+              <div
+                className={`rounded-lg border shadow-sm ${
+                  result.isPassed
+                    ? "bg-gradient-to-r from-green-50 to-green-100 border-green-200"
+                    : "bg-gradient-to-r from-red-50 to-red-100 border-red-200"
+                }`}
+              >
                 <div className="p-6 pt-6 text-center">
-                  <div className={`mx-auto w-16 h-16 rounded-full flex items-center justify-center mb-4 ${
-                    result.isPassed ? "bg-green-100" : "bg-red-100"
-                  }`}>
+                  <div
+                    className={`mx-auto w-16 h-16 rounded-full flex items-center justify-center mb-4 ${
+                      result.isPassed ? "bg-green-100" : "bg-red-100"
+                    }`}
+                  >
                     {result.isPassed ? (
                       <CheckCircle className="h-8 w-8 text-green-600" />
                     ) : (
                       <XCircle className="h-8 w-8 text-red-600" />
                     )}
                   </div>
-                  <h2 className={`text-2xl font-bold mt-4 mb-2 ${
-                    result.isPassed ? "text-green-700" : "text-red-700"
-                  }`}>
-                    {result.isPassed ? "Chúc mừng! Bạn đã đạt" : "Tiếc quá! Bạn chưa đạt"}
+                  <h2
+                    className={`text-2xl font-bold mt-4 mb-2 ${
+                      result.isPassed ? "text-green-700" : "text-red-700"
+                    }`}
+                  >
+                    {result.isPassed
+                      ? "Chúc mừng! Bạn đã đạt"
+                      : "Tiếc quá! Bạn chưa đạt"}
                   </h2>
                   <p className="text-muted-foreground mt-1">
-                    Điểm của bạn: <span className="font-semibold">{result.score.toFixed(1)}%</span>
+                    Điểm của bạn:{" "}
+                    <span className="font-semibold">
+                      {result.score.toFixed(1)}%
+                    </span>
                   </p>
                 </div>
               </div>
@@ -336,27 +345,36 @@ export default function TestDetailPage() {
                   <div className="flex items-center justify-center w-12 h-12 bg-blue-50 rounded-full mx-auto mb-3">
                     <Target className="h-6 w-6 text-blue-600" />
                   </div>
-                  <div className="text-2xl font-bold text-gray-900 mb-1">{result.correctAnswerCount}</div>
+                  <div className="text-2xl font-bold text-gray-900 mb-1">
+                    {result.correctAnswerCount}
+                  </div>
                   <div className="text-sm text-muted-foreground">Câu đúng</div>
                 </div>
-                
+
                 <div className="bg-white rounded-lg p-6 border shadow-sm text-center">
                   <div className="flex items-center justify-center w-12 h-12 bg-orange-50 rounded-full mx-auto mb-3">
                     <FileText className="h-6 w-6 text-orange-600" />
                   </div>
-                  <div className="text-2xl font-bold text-gray-900 mb-1">{testData.countQuestion}</div>
-                  <div className="text-sm text-muted-foreground">Tổng câu hỏi</div>
+                  <div className="text-2xl font-bold text-gray-900 mb-1">
+                    {testData.countQuestion}
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    Tổng câu hỏi
+                  </div>
                 </div>
-                
+
                 <div className="bg-white rounded-lg p-6 border shadow-sm text-center">
                   <div className="flex items-center justify-center w-12 h-12 bg-purple-50 rounded-full mx-auto mb-3">
                     <Award className="h-6 w-6 text-purple-600" />
                   </div>
-                  <div className="text-2xl font-bold text-gray-900 mb-1">{testData.passingScorePercentage}%</div>
-                  <div className="text-sm text-muted-foreground">Điểm cần đạt</div>
+                  <div className="text-2xl font-bold text-gray-900 mb-1">
+                    {testData.passingScorePercentage}%
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    Điểm cần đạt
+                  </div>
                 </div>
               </div>
-
 
               {/* Action Buttons */}
               <div className="flex flex-col sm:flex-row gap-3">
@@ -386,7 +404,7 @@ export default function TestDetailPage() {
               <div className="text-center pt-4">
                 <div className="inline-flex items-center text-sm text-muted-foreground">
                   <Clock className="h-4 w-4 mr-2" />
-                  Hoàn thành lúc: {new Date().toLocaleString('vi-VN')}
+                  Hoàn thành lúc: {new Date().toLocaleString("vi-VN")}
                 </div>
               </div>
             </div>
@@ -451,7 +469,8 @@ export default function TestDetailPage() {
           <CardFooter className="flex flex-col sm:flex-row gap-2 pt-2">
             <Button
               onClick={handleStartTest}
-              className="w-full sm:w-auto flex-1 rounded-lg shadow-sm">
+              className="w-full sm:w-auto flex-1 rounded-lg shadow-sm"
+            >
               <BookOpen className="w-full sm:w-auto h-11 rounded-lg" />
               Bắt đầu làm bài
             </Button>
@@ -510,18 +529,17 @@ export default function TestDetailPage() {
             {currentQuestions.map((q, idx) => {
               const isAnswered =
                 answers[q.id.toString()] && answers[q.id.toString()].length > 0;
+              const isCurrent = currentQuestionIndex === idx;
               return (
                 <Button
                   key={q.id}
-                  variant={
-                    currentQuestionIndex === idx
-                      ? "default"
-                      : isAnswered
-                      ? "secondary"
-                      : "outline"
-                  }
+                  variant={isCurrent ? "default" : "outline"}
                   size="sm"
-                  className="h-8 w-8 p-0"
+                  className={`h-8 w-8 p-0 ${
+                    !isCurrent && isAnswered
+                      ? "bg-slate-900 text-white shadow-md hover:bg-slate-700"
+                      : ""
+                  }`}
                   onClick={() => goToQuestion(idx)}
                   disabled={!!result}
                 >
@@ -584,7 +602,10 @@ export default function TestDetailPage() {
             <h3 className="text-lg font-medium pr-4">
               Câu {currentQuestionIndex + 1}: {q.text}
             </h3>
-            <Badge variant={questionType > 1 ? "secondary" : "default"}>
+            <Badge
+              size="sm"
+              variant={questionType > 1 ? "secondary" : "default"}
+            >
               {questionType > 1 ? "Nhiều đáp án" : "Một đáp án"}
             </Badge>
           </div>
@@ -830,7 +851,10 @@ export default function TestDetailPage() {
                       <h4 className="font-medium pr-4">
                         Câu {idx + 1}: {ua.question.questionText}
                       </h4>
-                      <Badge variant={ua.isCorrect ? "default" : "destructive"}>
+                      <Badge
+                        size="sm"
+                        variant={ua.isCorrect ? "default" : "destructive"}
+                      >
                         {ua.isCorrect ? "Đúng" : "Sai"}
                       </Badge>
                     </div>
@@ -864,7 +888,11 @@ export default function TestDetailPage() {
                               </span>
                               <span>{opt}</span>
                               {isUserChoice && (
-                                <Badge variant="outline" className="ml-auto">
+                                <Badge
+                                  size="sm"
+                                  variant="outline"
+                                  className="ml-auto"
+                                >
                                   Bạn chọn
                                 </Badge>
                               )}

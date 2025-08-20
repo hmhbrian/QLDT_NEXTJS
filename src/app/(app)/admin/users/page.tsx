@@ -158,7 +158,7 @@ export default function UsersPage() {
     queryKey: ["roles"],
     queryFn: () => rolesService.getRoles(),
     staleTime: 5 * 60 * 1000,
-    refetchOnWindowFocus: false,
+    refetchOnWindowFocus: true,
     refetchOnMount: false,
   });
   const roles = rolesResponse?.items || [];
@@ -626,10 +626,7 @@ export default function UsersPage() {
                 >
                   Tạo tự động
                 </Button>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Nếu để trống, hệ thống sẽ tự động tạo mã nhân viên
-              </p>
+              </div>  
             </div>
             <div className="grid gap-2">
               <Label htmlFor="email">Email *</Label>

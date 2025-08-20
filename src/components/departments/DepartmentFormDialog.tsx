@@ -319,9 +319,7 @@ export default function DepartmentFormDialog({
             {errors.DepartmentCode && (
               <p className="text-sm text-red-500">{errors.DepartmentCode}</p>
             )}
-            <p className="text-xs text-muted-foreground">
-              Nếu để trống, hệ thống sẽ tự động tạo mã phòng ban
-            </p>
+          
           </div>
           <div className="grid gap-2">
             <Label htmlFor="description">Mô tả</Label>

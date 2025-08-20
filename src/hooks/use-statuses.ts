@@ -24,7 +24,7 @@ export function useCourseStatuses() {
     queryKey: [COURSE_STATUSES_QUERY_KEY],
     queryFn: () => statusService.getCourseStatuses(),
     staleTime: 10 * 60 * 1000, // Cache for 10 minutes since statuses rarely change
-    refetchOnWindowFocus: false,
+    refetchOnWindowFocus: true,
     refetchOnMount: false,
   });
 
@@ -129,7 +129,7 @@ export function useUserStatuses() {
     queryKey: [USER_STATUSES_QUERY_KEY],
     queryFn: () => statusService.getUserStatuses(),
     staleTime: 10 * 60 * 1000, // Cache for 10 minutes
-    refetchOnWindowFocus: false,
+    refetchOnWindowFocus: true,
     refetchOnMount: false,
   });
 

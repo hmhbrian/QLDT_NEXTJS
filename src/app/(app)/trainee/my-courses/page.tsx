@@ -126,7 +126,7 @@ export default function MyCoursesPage() {
         <div className="absolute top-2 right-2 sm:top-3 sm:right-3">
           {course.status === 3 && (
             <Badge className="bg-green-600 text-white text-xs font-medium shadow-sm">
-              Hoàn thành
+              Đã đậu
             </Badge>
           )}
           {course.status === 4 && (

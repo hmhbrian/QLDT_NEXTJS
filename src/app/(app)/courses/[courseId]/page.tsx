@@ -55,10 +55,6 @@ import {
   X,
   SkipBack,
   SkipForward,
-  MoreVertical,
-  Menu,
-  // MoreVertical, // removed – no three-dot menu
-  // Menu,
   EyeOff,
 } from "lucide-react";
 import {
@@ -88,7 +84,7 @@ import {
   useIsCourseCompleted,
 } from "@/hooks/use-courses";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { useTests, useHasSubmittedTest } from "@/hooks/use-tests";
+import { useTests } from "@/hooks/use-tests";
 import { useAttachedFiles } from "@/hooks/use-course-attached-files";
 import { extractErrorMessage } from "@/lib/core";
 import { useLessonProgress } from "@/hooks/use-lesson-progress";
@@ -98,6 +94,8 @@ import { useDebounce } from "@/hooks/use-debounce";
 import { Progress } from "@/components/ui/progress";
 import { AuditLog } from "@/components/audit-log";
 import { useFeedbacks, useCreateFeedback } from "@/hooks/use-feedback";
+import { useCourseRealtime } from "@/hooks/use-websocket-realtime";
+import { usePerformanceMonitoring } from "@/hooks/use-performance-monitor";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ClientTime } from "@/components/ClientTime";
 import { CourseProgressList } from "@/components/courses/CourseProgressList";
@@ -174,14 +172,14 @@ const TestItem = ({
   isEnrolled: boolean;
 }) => {
   const { user: currentUser } = useAuth();
-  const { hasSubmitted, isLoading } = useHasSubmittedTest(
-    courseId,
-    Number(test.id)
-  );
 
   // Check if user is admin or HR
   const isAdminOrHR =
     currentUser?.role === "ADMIN" || currentUser?.role === "HR";
+
+  // Use the API-provided `isDone` flag to decide button state to avoid per-item detail calls
+  const hasSubmitted = !!test.isDone;
+  const isLoading = false;
 
   return (
     <Card
@@ -193,12 +191,13 @@ const TestItem = ({
           <ShieldQuestion className="h-5 w-5 text-primary" /> {test.title}
         </h4>
         <div className="flex items-center gap-2">
-          <Badge>
+          <Badge size="sm" className="whitespace-nowrap">
             Cần đạt: {test.passingScorePercentage || test.passThreshold}%
           </Badge>
           {/* Show score for admin/HR if test is done */}
           {test.isDone && (
             <Badge
+              size="sm"
               variant={test.isPassed ? "default" : "destructive"}
               className={test.isPassed ? "bg-green-600 text-white" : ""}
             >
@@ -274,6 +273,13 @@ export default function CourseDetailPage() {
   const router = useRouter();
   const courseIdFromParams = params.courseId as string;
 
+  // Frontend-only revalidation: revalidate on focus/online (backend has no WS/SSE)
+  const { refresh: refreshCourseRealtime } =
+    useCourseRealtime(courseIdFromParams);
+
+  // Performance monitoring
+  usePerformanceMonitoring(true);
+
   const [isEvaluationDialogOpen, setIsEvaluationDialogOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("lessons");
   const [selectedLesson, setSelectedLesson] =
@@ -281,8 +287,11 @@ export default function CourseDetailPage() {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [showControls, setShowControls] = useState(true);
-  const [controlsEnabled, setControlsEnabled] = useState(false); // toggle ẩn/hiện controls
+  const [controlsEnabled, setControlsEnabled] = useState(true); // toggle ẩn/hiện controls
   const playerRef = useRef<ReactPlayer>(null);
+  const playerContainerRef = useRef<HTMLDivElement | null>(null);
+  const restoreTimeoutRef = useRef<number | null>(null);
+  const observerRef = useRef<MutationObserver | null>(null);
   const isMobile = useIsMobile();
 
   // Helper function to render lesson type icons
@@ -353,7 +362,20 @@ export default function CourseDetailPage() {
     tests,
     isLoading: isLoadingTests,
     error: testsError,
+    refetch: refetchTests,
   } = useTests(courseIdFromParams, canViewContent);
+
+  // When user switches to the Tests tab, explicitly refetch the tests list
+  useEffect(() => {
+    if (activeTab === "tests" && canViewContent) {
+      try {
+        refetchTests?.();
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.error("[CourseDetailPage] refetchTests failed:", err);
+      }
+    }
+  }, [activeTab, canViewContent, refetchTests]);
   const {
     attachedFiles,
     isLoading: isLoadingAttachedFiles,
@@ -646,15 +668,26 @@ export default function CourseDetailPage() {
     setVisiblePage(page);
   }, []);
 
-  // Auto-hide controls trên mobile chỉ với PDF; video giữ controls
+  // Show controls khi user tap vào màn hình
   useEffect(() => {
-    if (!isMobile) return;
-    if (!controlsEnabled) return;
-    if (!showControls) return;
-    if (selectedLesson?.type !== "pdf_url") return;
-    const t = setTimeout(() => setShowControls(false), 3000);
-    return () => clearTimeout(t);
-  }, [isMobile, controlsEnabled, showControls, selectedLesson?.type]);
+    if (!isMobile || !isFullscreen) return;
+
+    const handleInteraction = () => {
+      if (controlsEnabled) {
+        setShowControls(true);
+      }
+    };
+
+    document.addEventListener("touchstart", handleInteraction, {
+      passive: true,
+    });
+    document.addEventListener("click", handleInteraction, { passive: true });
+
+    return () => {
+      document.removeEventListener("touchstart", handleInteraction);
+      document.removeEventListener("click", handleInteraction);
+    };
+  }, [isMobile, isFullscreen, controlsEnabled]);
 
   const handlePlayerReady = useCallback(() => {
     if (playerRef.current && selectedLesson?.currentTimeSecond) {
@@ -745,84 +778,25 @@ export default function CourseDetailPage() {
     <>
       {/* Fullscreen Learning View - Udemy Style */}
       {isFullscreen && selectedLesson && (
-        <div className="fixed inset-0 z-50 bg-white">
+        <div className="fixed inset-0 z-50 bg-white dark:bg-background">
           <div className="flex h-full">
             {/* Main Content Area */}
             <div className="flex-1 relative">
-              {/* Floating Controls - Like Udemy */}
-              {/* {controlsEnabled && !isMobile && (
-                <div className="absolute top-4 left-4 z-50 flex items-center gap-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={closeFullscreen}
-                    aria-label="Đóng"
-                    className="bg-white text-gray-900 hover:bg-white/90 border border-gray-200 rounded-full w-10 h-10 p-0 shadow-md"
-                  >
-                    <X className="h-5 w-5" />
-                  </Button>
-                </div>
-              )} */}
-              {/* {controlsEnabled && !isMobile && (
-                <div className="absolute top-4 right-4 z-50 flex items-center gap-2">
-                 
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handlePrevLesson}
-                    disabled={
-                      !selectedLesson ||
-                      lessonsWithProgress.findIndex(
-                        (l) => l.id === selectedLesson.id
-                      ) === 0
-                    }
-                    aria-label="Bài trước"
-                    className="bg-white text-gray-900 hover:bg-white/90 border border-gray-200 rounded-full w-10 h-10 p-0 shadow-md disabled:opacity-40"
-                  >
-                    <SkipBack className="h-5 w-5" />
-                  </Button>
-
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleNextLesson}
-                    disabled={
-                      !selectedLesson ||
-                      lessonsWithProgress.findIndex(
-                        (l) => l.id === selectedLesson.id
-                      ) ===
-                        lessonsWithProgress.length - 1
-                    }
-                    aria-label="Bài tiếp theo"
-                    className="bg-white text-gray-900 hover:bg-white/90 border border-gray-200 rounded-full w-10 h-10 p-0 shadow-md disabled:opacity-40"
-                  >
-                    <SkipForward className="h-5 w-5" />
-                  </Button>
-
-                  
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-                    aria-label="Mở danh sách bài học"
-                    className="bg-white text-gray-900 hover:bg-white/90 border border-gray-200 rounded-full w-10 h-10 p-0 shadow-md"
-                  >
-                    <Library className="h-5 w-5" />
-                  </Button>
-                </div>
-              )} */}
-
               {/* Content Area - Full Height */}
               <div className="w-full h-full">
                 {selectedLesson.type === "video_url" && selectedLesson.link ? (
-                  <div className="w-full h-full">
+                  <div className="w-full h-full relative">
+                    {/* Shield: transparent overlay to capture touches on mobile while controls are visible */}
+                    {isMobile && showControls && isFullscreen && (
+                      <div className="absolute inset-0 z-40 bg-transparent" />
+                    )}
                     <ReactPlayer
                       key={selectedLesson.id} // Force re-render when lesson changes
                       ref={playerRef}
                       url={selectedLesson.link}
                       width="100%"
                       height="100%"
-                      controls
+                      controls={true}
                       playing={false}
                       config={{
                         playerVars: {
@@ -831,6 +805,8 @@ export default function CourseDetailPage() {
                           modestbranding: 1,
                           showinfo: 0,
                           iv_load_policy: 3,
+                          playsinline: 1,
+                          fs: 1,
                         },
                       }}
                       onReady={handlePlayerReady}
@@ -969,8 +945,8 @@ export default function CourseDetailPage() {
                           className={cn(
                             "w-full text-left p-3 rounded-lg transition-all duration-200 border",
                             isActive
-                              ? "bg-orange-50 border-orange-200 shadow-sm"
-                              : "hover:bg-gray-50 border-transparent hover:border-orange-200",
+                              ? "bg-orange-50 dark:bg-orange-900/30 border-orange-200 dark:border-orange-700 shadow-sm"
+                              : "hover:bg-gray-50 dark:hover:bg-gray-800 border-transparent hover:border-orange-200 dark:hover:border-orange-600",
                             !canViewContent && "opacity-50 cursor-not-allowed"
                           )}
                         >
@@ -1070,38 +1046,15 @@ export default function CourseDetailPage() {
                 )}
               </div>
             )}
-            {/* Eye toggle for mobile (top-left)
-            {isMobile && (
-              <div className="fixed top-3 left-3 z-50">
-                <Button
-                  size="sm"
-                  className="bg-white text-gray-900 hover:bg-white/90 rounded-full h-9 px-3 shadow-md border border-gray-200 flex items-center gap-1"
-                  onClick={() => {
-                    setControlsEnabled((v) => !v);
-                    setShowControls(true);
-                  }}
-                  title={controlsEnabled ? "Ẩn điều khiển" : "Hiện điều khiển"}
-                >
-                  {controlsEnabled ? (
-                    <EyeOff className="h-4 w-4" />
-                  ) : (
-                    <Eye className="h-4 w-4" />
-                  )}
-                  <span className="text-[11px] hidden xs:inline">
-                    {controlsEnabled ? "Ẩn" : "Hiện"}
-                  </span>
-                </Button>
-              </div>
-            )} */}
             {/* Mobile bottom controls */}
             {controlsEnabled && !isSidebarOpen && (
-              <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 bg-white/95 backdrop-blur-sm border border-gray-200 rounded-full shadow-lg px-2 py-1 flex items-center gap-2">
+              <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 bg-white/95 dark:bg-background/90 backdrop-blur-sm border border-gray-200 dark:border-gray-700 rounded-full shadow-lg px-2 py-1 flex items-center gap-2">
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={closeFullscreen}
                   aria-label="Thoát"
-                  className="bg-white text-gray-900 hover:bg-white/90 rounded-full w-11 h-11 p-0"
+                  className="bg-white dark:bg-background text-gray-900 dark:text-gray-100 hover:bg-white/90 dark:hover:bg-white/5 rounded-full w-11 h-11 p-0"
                 >
                   <X className="h-5 w-5" />
                 </Button>
@@ -1116,7 +1069,7 @@ export default function CourseDetailPage() {
                     ) === 0
                   }
                   aria-label="Bài trước"
-                  className="bg-white text-gray-900 hover:bg-white/90 rounded-full w-11 h-11 p-0 disabled:opacity-40"
+                  className="bg-white dark:bg-background text-gray-900 dark:text-gray-100 hover:bg-white/90 dark:hover:bg-white/5 rounded-full w-11 h-11 p-0 disabled:opacity-40"
                 >
                   <SkipBack className="h-5 w-5" />
                 </Button>
@@ -1132,7 +1085,7 @@ export default function CourseDetailPage() {
                       lessonsWithProgress.length - 1
                   }
                   aria-label="Bài tiếp theo"
-                  className="bg-white text-gray-900 hover:bg-white/90 rounded-full w-11 h-11 p-0 disabled:opacity-40"
+                  className="bg-white dark:bg-background text-gray-900 dark:text-gray-100 hover:bg-white/90 dark:hover:bg-white/5 rounded-full w-11 h-11 p-0 disabled:opacity-40"
                 >
                   <SkipForward className="h-5 w-5" />
                 </Button>
@@ -1142,7 +1095,7 @@ export default function CourseDetailPage() {
                   size="sm"
                   onClick={() => setIsSidebarOpen(true)}
                   aria-label="Danh sách bài"
-                  className="bg-white text-gray-900 hover:bg-white/90 rounded-full w-11 h-11 p-0"
+                  className="bg-white dark:bg-background text-gray-900 dark:text-gray-100 hover:bg-white/90 dark:hover:bg-white/5 rounded-full w-11 h-11 p-0 disabled:opacity-40"
                 >
                   <Library className="h-5 w-5" />
                 </Button>
@@ -1150,13 +1103,16 @@ export default function CourseDetailPage() {
                   variant="ghost"
                   size="sm"
                   onClick={() => {
-                    setControlsEnabled((v) => !v);
-                    setShowControls(true);
+                    setControlsEnabled((v) => {
+                      const newV = !v;
+                      setShowControls(newV);
+                      return newV;
+                    });
                   }}
                   aria-label={
                     controlsEnabled ? "Ẩn điều khiển" : "Hiện điều khiển"
                   }
-                  className="bg-white text-gray-900 hover:bg-white/90 rounded-full w-11 h-11 p-0"
+                  className="bg-white dark:bg-background text-gray-900 dark:text-gray-100 hover:bg-white/90 dark:hover:bg-white/5 rounded-full w-11 h-11 p-0 disabled:opacity-40"
                 >
                   {controlsEnabled ? (
                     <EyeOff className="h-5 w-5" />
@@ -1170,7 +1126,7 @@ export default function CourseDetailPage() {
         </div>
       )}
 
-      <div className="min-h-screen bg-gradient-to-br from-background to-muted/20">
+      <div className="min-h-screen bg-gradient-to-br from-background to-muted/20 dark:bg-background">
         <div className="container mx-auto px-2 sm:px-4 md:px-6 lg:px-8 py-4 md:py-6 lg:py-8 space-y-6 md:space-y-8">
           {course.image && (
             <div className="relative h-32 sm:h-48 md:h-60 lg:h-80 w-full overflow-hidden rounded-lg shadow-lg">
@@ -1186,7 +1142,7 @@ export default function CourseDetailPage() {
               <div className="absolute bottom-0 left-0 p-4 md:p-6">
                 <Badge
                   variant="secondary"
-                  className="mb-2 text-sm font-medium bg-white/20 text-white backdrop-blur-sm"
+                  className="mb-2 text-sm font-medium bg-white/20 text-white backdrop-blur-sm dark:bg-background"
                 >
                   {getCategoryLabel(
                     course.category?.categoryName || "Không có"
@@ -1343,6 +1299,9 @@ export default function CourseDetailPage() {
                           Tiến độ hiện tại:{" "}
                           {Math.round(courseProgressPercentage)}%
                         </p>
+                        <p className="text-xs text-orange-500">
+                          Có thể đánh giá khi status = 3 (đậu) hoặc 4 (rớt)
+                        </p>
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
@@ -1352,7 +1311,7 @@ export default function CourseDetailPage() {
 
           <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
             {/* Khối giảng viên đã bỏ */}
-            <Card className="shadow-md hover:shadow-lg transition-shadow">
+            <Card className="shadow-md hover:shadow-lg transition-shadow bg-white dark:bg-background">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">
                   Thời lượng
@@ -1374,7 +1333,7 @@ export default function CourseDetailPage() {
                 )}
               </CardContent>
             </Card>
-            <Card className="shadow-md hover:shadow-lg transition-shadow">
+            <Card className="shadow-md hover:shadow-lg transition-shadow bg-white dark:bg-background">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">
                   Loại ghi danh
@@ -1415,7 +1374,7 @@ export default function CourseDetailPage() {
 
             {/* New Card for Completed Lessons */}
             {currentUser?.role === "HOCVIEN" && (
-              <Card className="shadow-md hover:shadow-lg transition-shadow">
+              <Card className="shadow-md hover:shadow-lg transition-shadow bg-white dark:bg-background">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">
                     Bài học đã hoàn thành
@@ -1443,23 +1402,23 @@ export default function CourseDetailPage() {
             onValueChange={handleTabChange}
             className="space-y-6"
           >
-            <TabsList className="flex w-full overflow-x-auto h-auto items-center rounded-lg bg-slate-50/80 p-1 text-slate-600 justify-start border">
+            <TabsList className="flex w-full overflow-x-auto h-auto items-center rounded-lg bg-slate-50/80 dark:bg-slate-800/50 p-1 text-slate-600 dark:text-slate-400 justify-start border dark:border-slate-700">
               <TabsTrigger
                 value="lessons"
-                className="rounded-md px-4 py-2 font-medium transition-all data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm"
+                className="rounded-md px-4 py-2 font-medium transition-all data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:text-slate-900 dark:data-[state=active]:text-slate-100 data-[state=active]:shadow-sm"
               >
                 Nội dung chính
               </TabsTrigger>
               <TabsTrigger
                 value="objectives"
-                className="rounded-md px-4 py-2 font-medium transition-all data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm"
+                className="rounded-md px-4 py-2 font-medium transition-all data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:text-slate-900 dark:data-[state=active]:text-slate-100 data-[state=active]:shadow-sm"
               >
                 Mục tiêu
               </TabsTrigger>
               <TabsTrigger
                 value="tests"
                 disabled={!canViewContent}
-                className="rounded-md px-4 py-2 font-medium transition-all data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm disabled:opacity-50"
+                className="rounded-md px-4 py-2 font-medium transition-all data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:text-slate-900 dark:data-[state=active]:text-slate-100 data-[state=active]:shadow-sm disabled:opacity-50"
               >
                 Bài kiểm tra
               </TabsTrigger>
@@ -1467,14 +1426,14 @@ export default function CourseDetailPage() {
                 String((course as any).requirements).trim().length > 0 && (
                   <TabsTrigger
                     value="requirements"
-                    className="rounded-md px-4 py-2 font-medium transition-all data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm"
+                    className="rounded-md px-4 py-2 font-medium transition-all data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:text-slate-900 dark:data-[state=active]:text-slate-100 data-[state=active]:shadow-sm"
                   >
                     Yêu cầu
                   </TabsTrigger>
                 )}
               <TabsTrigger
                 value="materials"
-                className="rounded-md px-4 py-2 font-medium transition-all data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm"
+                className="rounded-md px-4 py-2 font-medium transition-all data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:text-slate-900 dark:data-[state=active]:text-slate-100 data-[state=active]:shadow-sm"
               >
                 Tài liệu
               </TabsTrigger>
@@ -1482,14 +1441,14 @@ export default function CourseDetailPage() {
                 currentUser?.role === "HR") && (
                 <TabsTrigger
                   value="activity-logs"
-                  className="rounded-md px-4 py-2 font-medium transition-all data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm"
+                  className="rounded-md px-4 py-2 font-medium transition-all data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:text-slate-900 dark:data-[state=active]:text-slate-100 data-[state=active]:shadow-sm"
                 >
                   Nhật ký hoạt động
                 </TabsTrigger>
               )}
               <TabsTrigger
                 value="evaluations"
-                className="rounded-md px-4 py-2 font-medium transition-all data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm"
+                className="rounded-md px-4 py-2 font-medium transition-all data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:text-slate-900 dark:data-[state=active]:text-slate-100 data-[state=active]:shadow-sm"
               >
                 Phản hồi học viên
               </TabsTrigger>
@@ -1542,14 +1501,14 @@ export default function CourseDetailPage() {
             <TabsContent value="lessons">
               <div className="space-y-6">
                 {/* Course Overview */}
-                <Card className="border-0 shadow-sm bg-gradient-to-r from-slate-50 to-white">
+                <Card className="border-0 shadow-sm bg-gradient-to-r from-slate-50 to-white dark:from-slate-900 dark:to-gray-800">
                   <CardHeader className="pb-4">
                     <div className="flex items-center justify-between">
                       <div>
-                        <CardTitle className="text-xl font-semibold text-slate-800 mb-1">
+                        <CardTitle className="text-xl font-semibold text-slate-800 dark:text-slate-100 mb-1">
                           Nội dung khóa học
                         </CardTitle>
-                        <CardDescription className="text-slate-600">
+                        <CardDescription className="text-slate-600 dark:text-slate-400">
                           {lessonsWithProgress.length} bài học
                         </CardDescription>
                       </div>
@@ -1584,7 +1543,7 @@ export default function CourseDetailPage() {
                           key={lesson.id}
                           className={cn(
                             "group border transition-all duration-200 hover:shadow-md cursor-pointer",
-                            "bg-white border-slate-200/60 hover:border-slate-300",
+                            "bg-white dark:bg-gray-900/50 border-slate-200/60 dark:border-gray-700/60 hover:border-slate-300 dark:hover:border-gray-600",
                             !canViewContent && "opacity-50 cursor-not-allowed"
                           )}
                           onClick={() =>
@@ -1599,10 +1558,10 @@ export default function CourseDetailPage() {
                                   className={cn(
                                     "relative w-12 h-12 rounded-lg flex items-center justify-center font-semibold text-sm transition-all",
                                     isCompleted
-                                      ? "bg-emerald-100 text-emerald-700 border-2 border-emerald-200"
+                                      ? "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 border-2 border-emerald-200 dark:border-emerald-700"
                                       : isInProgress
-                                      ? "bg-orange-100 text-orange-700 border-2 border-orange-200"
-                                      : "bg-slate-100 text-slate-600 border-2 border-slate-200 group-hover:border-slate-300"
+                                      ? "bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 border-2 border-orange-200 dark:border-orange-700"
+                                      : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-2 border-slate-200 dark:border-slate-700 group-hover:border-slate-300 dark:group-hover:border-slate-600"
                                   )}
                                 >
                                   {isCompleted ? (
@@ -1634,7 +1593,7 @@ export default function CourseDetailPage() {
                                   >
                                     {renderLessonIcon(lesson.type)}
                                   </div>
-                                  <span className="text-xs font-medium text-slate-500 uppercase tracking-wide">
+                                  <span className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide">
                                     {lesson.type === "video_url" && "Video"}
                                     {lesson.type === "pdf_url" &&
                                       "Tài liệu PDF"}
@@ -1644,8 +1603,10 @@ export default function CourseDetailPage() {
                                   </span>
                                   {lesson.duration && (
                                     <>
-                                      <span className="text-slate-300">•</span>
-                                      <span className="text-xs text-slate-500">
+                                      <span className="text-slate-300 dark:text-slate-600">
+                                        •
+                                      </span>
+                                      <span className="text-xs text-slate-500 dark:text-slate-400">
                                         {lesson.duration}
                                       </span>
                                     </>
@@ -1655,8 +1616,8 @@ export default function CourseDetailPage() {
                                 {/* Lesson Title */}
                                 <h3
                                   className={cn(
-                                    "font-semibold text-slate-800 line-clamp-2 mb-3 transition-colors",
-                                    "group-hover:text-slate-900"
+                                    "font-semibold text-slate-800 dark:text-slate-200 line-clamp-2 mb-3 transition-colors",
+                                    "group-hover:text-slate-900 dark:group-hover:text-slate-100"
                                   )}
                                 >
                                   {lesson.title}
@@ -1667,14 +1628,14 @@ export default function CourseDetailPage() {
                                   lesson.progressPercentage >= 0 && (
                                     <div className="space-y-2">
                                       <div className="flex items-center justify-between">
-                                        <span className="text-xs font-medium text-slate-500">
+                                        <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
                                           Tiến độ
                                         </span>
-                                        <span className="text-xs font-semibold text-slate-700">
+                                        <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                                           {lesson.progressPercentage}%
                                         </span>
                                       </div>
-                                      <div className="w-full bg-slate-200 rounded-full h-1.5 overflow-hidden">
+                                      <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-1.5 overflow-hidden">
                                         <div
                                           className={cn(
                                             "h-full transition-all duration-300 rounded-full",
@@ -1695,7 +1656,7 @@ export default function CourseDetailPage() {
                               <div className="flex-shrink-0 flex items-center gap-3">
                                 {/* Status Badge */}
                                 {isCompleted && (
-                                  <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 hover:bg-emerald-100">
+                                  <Badge className="bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-700 hover:bg-emerald-100 dark:hover:bg-emerald-900/40">
                                     <CheckCircle className="w-3 h-3 mr-1" />
                                     Hoàn thành
                                   </Badge>
@@ -1712,7 +1673,7 @@ export default function CourseDetailPage() {
                                   variant="ghost"
                                   size="sm"
                                   disabled={!canViewContent}
-                                  className="opacity-0 group-hover:opacity-100 transition-all duration-200 text-slate-600 hover:text-slate-800 hover:bg-slate-100"
+                                  className="opacity-0 group-hover:opacity-100 transition-all duration-200 text-slate-600 hover:text-slate-800 hover:bg-slate-100 dark:hover:bg-white/5"
                                 >
                                   <ChevronRight className="w-4 h-4" />
                                 </Button>
@@ -2051,7 +2012,11 @@ export default function CourseDetailPage() {
               {/* Content Area - Left Side */}
               <div className="flex-1 relative">
                 {selectedLesson.type === "video_url" && selectedLesson.link && (
-                  <div className="h-full flex items-center justify-center bg-black">
+                  <div className="h-full flex items-center justify-center bg-black relative">
+                    {/* Shield for modal/fullscreen player */}
+                    {isMobile && showControls && isFullscreen && (
+                      <div className="absolute inset-0 z-40 bg-transparent" />
+                    )}
                     <ReactPlayer
                       key={`fullscreen-${selectedLesson.id}`}
                       url={selectedLesson.link}
@@ -2092,12 +2057,12 @@ export default function CourseDetailPage() {
                 )}
 
                 {selectedLesson.type === "text" && (
-                  <div className="h-full overflow-y-auto bg-white">
+                  <div className="h-full overflow-y-auto bg-white dark:bg-gray-900">
                     <div className="max-w-4xl mx-auto p-8">
-                      <h1 className="text-3xl font-bold text-gray-900 mb-6">
+                      <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-6">
                         {selectedLesson.title}
                       </h1>
-                      <div className="prose prose-lg max-w-none text-gray-700 leading-relaxed">
+                      <div className="prose prose-lg dark:prose-invert max-w-none text-gray-700 dark:text-gray-300 leading-relaxed">
                         <p>Nội dung bài học sẽ được hiển thị ở đây.</p>
                       </div>
                     </div>
@@ -2127,7 +2092,7 @@ export default function CourseDetailPage() {
               {/* Sidebar - Right Side */}
               <div
                 className={cn(
-                  "bg-white transition-all duration-300 overflow-hidden relative z-[95] shadow-xl",
+                  "bg-white dark:bg-gray-900 transition-all duration-300 overflow-hidden relative z-[95] shadow-xl",
                   isMobile
                     ? cn(
                         "fixed top-0 right-0 h-full",
@@ -2136,19 +2101,19 @@ export default function CourseDetailPage() {
                           : "w-0 translate-x-full"
                       )
                     : cn(
-                        "border-l border-gray-200",
+                        "border-l border-gray-200 dark:border-gray-700",
                         isSidebarOpen ? "w-80 min-w-[320px]" : "w-0"
                       )
                 )}
               >
                 {isSidebarOpen && (
                   <div className="h-full overflow-y-auto">
-                    <div className="p-4 border-b border-gray-200 flex items-center justify-between bg-gradient-to-r from-orange-50 to-orange-100">
+                    <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between bg-gradient-to-r from-orange-50 to-orange-100 dark:from-gray-800 dark:to-gray-750">
                       <div>
-                        <h3 className="font-semibold text-gray-900 text-sm">
+                        <h3 className="font-semibold text-gray-900 dark:text-gray-100 text-sm">
                           Nội dung khóa học
                         </h3>
-                        <p className="text-xs text-gray-600 mt-1">
+                        <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
                           {lessonsWithProgress.length} bài học
                         </p>
                       </div>
@@ -2156,7 +2121,7 @@ export default function CourseDetailPage() {
                       <Button
                         size="sm"
                         onClick={() => setIsSidebarOpen(false)}
-                        className="bg-white/80 text-gray-700 hover:bg-white hover:text-gray-900 rounded-full w-8 h-8 p-0 shadow-sm border border-gray-200"
+                        className="bg-white/80 dark:bg-gray-800/80 text-gray-700 dark:text-gray-300 hover:bg-white dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100 rounded-full w-8 h-8 p-0 shadow-sm border border-gray-200 dark:border-gray-600"
                       >
                         <X className="h-3 w-3" />
                       </Button>
@@ -2175,8 +2140,8 @@ export default function CourseDetailPage() {
                             className={cn(
                               "p-3 rounded-lg cursor-pointer transition-all duration-200 mb-2",
                               isActive
-                                ? "bg-orange-100 border-2 border-orange-300"
-                                : "hover:bg-gray-100 border-2 border-transparent"
+                                ? "bg-orange-100 dark:bg-orange-900/30 border-2 border-orange-300 dark:border-orange-600"
+                                : "hover:bg-gray-100 dark:hover:bg-gray-800 border-2 border-transparent"
                             )}
                             onClick={() => handleSelectLesson(lesson)}
                           >
@@ -2185,12 +2150,12 @@ export default function CourseDetailPage() {
                                 className={cn(
                                   "w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium",
                                   isCompleted
-                                    ? "bg-green-100 text-green-700"
+                                    ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400"
                                     : isInProgress
-                                    ? "bg-orange-100 text-orange-700"
+                                    ? "bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400"
                                     : isActive
-                                    ? "bg-orange-100 text-orange-700"
-                                    : "bg-gray-100 text-gray-600"
+                                    ? "bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400"
+                                    : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400"
                                 )}
                               >
                                 {isCompleted ? (
@@ -2204,17 +2169,17 @@ export default function CourseDetailPage() {
                                   className={cn(
                                     "font-medium text-sm truncate",
                                     isActive
-                                      ? "text-orange-900"
-                                      : "text-gray-900"
+                                      ? "text-orange-900 dark:text-orange-200"
+                                      : "text-gray-900 dark:text-gray-100"
                                   )}
                                 >
                                   {lesson.title}
                                 </p>
                                 <div className="flex items-center gap-2 mt-1">
-                                  <div className="w-4 h-4 text-gray-500">
+                                  <div className="w-4 h-4 text-gray-500 dark:text-gray-400">
                                     {renderLessonIcon(lesson.type)}
                                   </div>
-                                  <span className="text-xs text-gray-500">
+                                  <span className="text-xs text-gray-500 dark:text-gray-400">
                                     {lesson.type === "video_url" && "Video"}
                                     {lesson.type === "pdf_url" && "PDF"}
                                     {lesson.type === "text" && "Bài đọc"}
@@ -2223,8 +2188,10 @@ export default function CourseDetailPage() {
                                   </span>
                                   {lesson.duration && (
                                     <>
-                                      <span className="text-gray-300">•</span>
-                                      <span className="text-xs text-gray-500">
+                                      <span className="text-gray-300 dark:text-gray-600">
+                                        •
+                                      </span>
+                                      <span className="text-xs text-gray-500 dark:text-gray-400">
                                         {lesson.duration}
                                       </span>
                                     </>
@@ -2258,10 +2225,33 @@ export default function CourseDetailPage() {
             >
               <Button
                 size="sm"
-                className="bg-white text-gray-900 hover:bg-white/90 rounded-full h-8 px-3 shadow-md border border-gray-200 flex items-center gap-1"
+                className="bg-white dark:bg-background text-gray-900 dark:text-gray-100 hover:bg-white/90 dark:hover:bg-white/5 rounded-full w-11 h-11 p-0 disabled:opacity-40"
                 onClick={() => {
-                  setControlsEnabled((v) => !v);
-                  setShowControls(true);
+                  setControlsEnabled((prev) => {
+                    const newV = !prev;
+                    setShowControls(newV);
+                    if (newV) {
+                      try {
+                        const container = playerContainerRef?.current;
+                        const iframes =
+                          container?.querySelectorAll("iframe") ?? [];
+                        iframes.forEach((f) => {
+                          // only change if it was modified
+                          if (
+                            (f as HTMLIFrameElement).style.pointerEvents !==
+                            "auto"
+                          ) {
+                            (f as HTMLIFrameElement).style.pointerEvents =
+                              "auto";
+                          }
+                        });
+                      } catch (e) {}
+                    } else {
+                      // hiding controls -> hide UI
+                      setShowControls(false);
+                    }
+                    return newV;
+                  });
                 }}
                 title={
                   controlsEnabled
@@ -2274,16 +2264,13 @@ export default function CourseDetailPage() {
                 ) : (
                   <Eye className="h-3 w-3" />
                 )}
-                {/* <span className="text-[11px]">
-                  {controlsEnabled ? "Ẩn" : "Hiện"}
-                </span> */}
               </Button>
             </div>
 
             {/* Navigation Controls - hover only when enabled */}
             {controlsEnabled && (
               <div
-                className="absolute inset-0 z-[49] pointer-events-none"
+                className="absolute z-[49] pointer-events-none"
                 onMouseEnter={() => controlsEnabled && setShowControls(true)}
               >
                 {showControls && (
@@ -2298,7 +2285,7 @@ export default function CourseDetailPage() {
                             (l) => l.id === selectedLesson.id
                           ) === 0
                         }
-                        className="bg-white/90 text-gray-700 hover:bg-white hover:text-gray-900 rounded-full w-8 h-8 p-0 shadow-lg border border-gray-200 disabled:opacity-30 disabled:cursor-not-allowed"
+                        className="bg-white/90 dark:bg-gray-800/90 text-gray-700 dark:text-gray-300 hover:bg-white dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100 rounded-full w-8 h-8 p-0 shadow-lg border border-gray-200 dark:border-gray-600 disabled:opacity-30 disabled:cursor-not-allowed"
                       >
                         <ChevronLeft className="h-3 w-3" />
                       </Button>
@@ -2320,7 +2307,7 @@ export default function CourseDetailPage() {
                           ) ===
                           lessonsWithProgress.length - 1
                         }
-                        className="bg-white/90 text-gray-700 hover:bg-white hover:text-gray-900 rounded-full w-8 h-8 p-0 shadow-lg border border-gray-200 disabled:opacity-30 disabled:cursor-not-allowed"
+                        className="bg-white/90 dark:bg-gray-800/90 text-gray-700 dark:text-gray-300 hover:bg-white dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100 rounded-full w-8 h-8 p-0 shadow-lg border border-gray-200 dark:border-gray-600 disabled:opacity-30 disabled:cursor-not-allowed"
                       >
                         <ChevronRight className="h-3 w-3" />
                       </Button>
