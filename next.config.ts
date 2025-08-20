@@ -5,6 +5,7 @@ const withBundleAnalyzer = require("@next/bundle-analyzer")({
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  output: "standalone",
   typescript: {
     ignoreBuildErrors: true,
   },
@@ -13,7 +14,7 @@ const nextConfig: NextConfig = {
   },
   // Next.js 15 optimizations
   experimental: {
-    optimizePackageImports: ['lucide-react', '@radix-ui/react-icons'],
+    optimizePackageImports: ["lucide-react", "@radix-ui/react-icons"],
     turbo: {
       rules: {},
     },
@@ -58,10 +59,11 @@ const nextConfig: NextConfig = {
     ],
   },
   async rewrites() {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL;
     return [
       {
         source: "/api/:path*",
-        destination: "http://localhost:5228/api/:path*",
+        destination: `${apiUrl}/:path*`,
       },
     ];
   },
@@ -93,12 +95,12 @@ const nextConfig: NextConfig = {
           ...(isDevelopment
             ? []
             : [
-              {
-                key: "Content-Security-Policy",
-                value:
-                  "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https: wss: ws:; media-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none';",
-              },
-            ]),
+                {
+                  key: "Content-Security-Policy",
+                  value:
+                    "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https: wss: ws:; media-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none';",
+                },
+              ]),
         ],
       },
     ];
