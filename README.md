@@ -19,7 +19,7 @@
 - Firebase Cloud Messaging (Thông báo đẩy)
 - Quartz.NET (Lên lịch gửi thông báo tự động)
 
-### ⚠️ Điều Kiện Bắt Buộc
+### 🎯 Điều Kiện Bắt Buộc
 
 1. ✅ **.NET SDK ≥ 8.0**
 
@@ -45,7 +45,8 @@
 
 ```bash
 "ConnectionStrings": {
-    "DefaultConnection": "Server=localhost;Database=QLDT;Trusted_Connection=True;Trust Server Certificate=True"}
+    "DefaultConnection": "Server=localhost;Database=QLDT;Trusted_Connection=True;Trust Server Certificate=True"
+    }
 ```
 
 ### Bước 3: Cấu Hình Cloudinary & FCM
