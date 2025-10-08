@@ -283,3 +283,21 @@ npm install
 | 🧑‍💼 **HR**       | `yentn@becamex.com`     | `123456` | Quản lý học viên, khóa đào tạo, xem báo cáo                                             |
 | 🎓 **Học viên** | `daott@becamex.com`     | `123456` | Xem và đăng ký khóa học,xem bài học, làm bài kiểm tra, đánh giá, nhận thông báo(mobile) |
 | 🎓 **Học viên** | `trainn246@becamex.com` | `123456` | Xem và đăng ký khóa học,xem bài học, làm bài kiểm tra, đánh giá, nhận thông báo(mobile) |
+
+---
+
+# 🔔 KỊCH BẢN THÔNG BÁO (FCM + Quartz)
+
+Hệ thống sử dụng **Firebase Cloud Messaging (FCM)** kết hợp **Quartz.NET Scheduler**  
+để tự động gửi thông báo đến học viên và nhân sự theo các tình huống cụ thể.
+
+| #   | Kịch bản                             | Thời điểm gửi                                            | Đối tượng nhận                            | Mục tiêu                                  | Điều hướng khi bấm thông báo |
+| --- | ------------------------------------ | -------------------------------------------------------- | ----------------------------------------- | ----------------------------------------- | ---------------------------- |
+| 1️⃣  | **Nhắc nhở sắp diễn ra khóa học**    | 1–2 ngày trước khi khóa học bắt đầu                      | Học viên đã đăng ký                       | Nhắc học viên chuẩn bị tham gia           | 👉 Trang chi tiết khóa học   |
+| 2️⃣  | **Nhắc nhở sắp kết thúc khóa học**   | 1–2 ngày trước khi khóa học kết thúc                     | Học viên đang tham gia                    | Khuyến khích học viên hoàn thành khóa học | 👉 Trang chi tiết khóa học   |
+| 3️⃣  | **Khóa học mới được tạo bởi HR**     | Ngay khi HR tạo khóa học                                 | Học viên thuộc phòng ban & cấp độ phù hợp | Thông báo khóa học mới phù hợp            | 👉 Trang chi tiết khóa học   |
+| 4️⃣  | **HR thêm học viên vào khóa học**    | Ngay sau khi HR thêm vào danh sách học viên              | Học viên được thêm                        | Xác nhận học viên đã được ghi danh        | 👉 Trang chi tiết khóa học   |
+| 5️⃣  | **Nhắc đánh giá sau khi hoàn thành** | Sau khi học viên hoàn thành khóa học (nếu chưa đánh giá) | Học viên hoàn thành                       | Khuyến khích đánh giá khóa học            | 👉 Trang chi tiết khóa học   |
+| 6️⃣  | **Chúc mừng hoàn thành khóa học**    | Ngay khi học viên hoàn thành và có chứng nhận            | Học viên hoàn thành                       | Gửi lời chúc mừng & liên kết chứng chỉ    | 👉 Danh sách chứng chỉ       |
+
+---
