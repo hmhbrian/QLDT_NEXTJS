@@ -261,10 +261,6 @@ npm install
 
 ---
 
----
-
----
-
 ## 🔐 Environment Variables
 
 ### Biến Bắt Buộc:
@@ -284,5 +280,6 @@ npm install
 | --------------- | ----------------------- | -------- | --------------------------------------------------------------------------------------- |
 | 👑 **Admin**    | `admin@becamex.com`     | `123456` | Quản trị toàn hệ thống (quản lý phòng ban, quản lý khóa học, người dùng, v.v.)          |
 | 🧑‍💼 **HR**       | `hmh@becamex.com`       | `123456` | Quản lý học viên, khóa đào tạo, xem báo cáo                                             |
+| 🧑‍💼 **HR**       | `yentn@becamex.com`     | `123456` | Quản lý học viên, khóa đào tạo, xem báo cáo                                             |
 | 🎓 **Học viên** | `daott@becamex.com`     | `123456` | Xem và đăng ký khóa học,xem bài học, làm bài kiểm tra, đánh giá, nhận thông báo(mobile) |
 | 🎓 **Học viên** | `trainn246@becamex.com` | `123456` | Xem và đăng ký khóa học,xem bài học, làm bài kiểm tra, đánh giá, nhận thông báo(mobile) |
