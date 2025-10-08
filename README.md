@@ -86,26 +86,6 @@ dotnet run
 - URL mặc định: `http://localhost:5228`
 - Swagger UI: `http://localhost:5228/swagger`
 
-## ❌ Lỗi Thường Gặp & Cách Fix
-
-### 1. "Cannot connect to SQL Server"
-
-**Nguyên nhân:** Sai chuỗi kết nối
-
-**Cách fix:** Kiểm tra SQL Server đang bật, Trust Server Certificate=True
-
-### 2. "FCM credential invalid"
-
-**Nguyên nhân:** File JSON sai hoặc không tồn tại
-
-**Cách fix:** Kiểm tra đường dẫn và file đúng Service Account
-
-### 3. "Cloudinary invalid credentials"
-
-**Nguyên nhân:** API key hoặc secret saiối
-
-**Cách fix:** Cập nhật lại từ Cloudinary Dashboard
-
 ---
 
 ## 🧠 FRONTEND – NEXT.JS 15, React 18, TypeScript
