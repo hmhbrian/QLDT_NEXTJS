@@ -1,18 +1,115 @@
-    # 🎓 BECAMEX IDC - Hệ Thống Quản Lý Đào Tạo
+# 🎓 BECAMEX IDC - HỆ THỐNG QUẢN LÝ ĐÀO TẠO
 
-Enterprise Training Management System được xây dựng với Next.js 15, React 18, TypeScript, và Tailwind CSS.
+**Enterprise Training Management System** – Hệ thống quản lý đào tạo nội bộ được xây dựng theo mô hình **Full-stack**, gồm:
+
+- **Frontend:** Next.js 15, React 18, TypeScript, Tailwind CSS
+- **Backend:** ASP.NET Core 8, Entity Framework Core, SQL Server
+- **Tích hợp:** JWT Auth, Quartz Scheduler, Firebase Cloud Messaging (FCM), Cloudinary
 
 ---
 
-## ⚠️ LƯU Ý QUAN TRỌNG KHI CHẠY DỰ ÁN
+## 🧠 BACKEND – ASP.NET CORE 8 API
+
+### 🎯 Công Nghệ Chính
+
+- ASP.NET Core 8
+- Entity Framework Core (SQL Server)
+- JWT Authentication
+- Cloudinary (Lưu trữ ảnh)
+- Firebase Cloud Messaging (Thông báo đẩy)
+- Quartz.NET (Lên lịch gửi thông báo tự động)
+
+---
+
+### ⚠️ Điều Kiện Bắt Buộc
+
+1. ✅ **.NET SDK ≥ 8.0**
+
+   ```bash
+   dotnet --version
+   ```
+
+2. ✅ SQL Server đang hoạt động
+
+3. ✅ File appsettings.json hợp lệ
+
+4. ✅ Tạo file Firebase riêng
+
+## 🚀 Cách Chạy Dự Án
+
+### Bước 1: Cài đặt dependencies
+
+    ```bash
+
+dotnet restore
+
+````
+### Bước 2: Cấu Hình Database
+ ```bash
+ "ConnectionStrings": {
+     "DefaultConnection": "Server=localhost;Database=QLDT;Trusted_Connection=True;Trust Server Certificate=True"}
+ ```
+### Bước 3: Cấu Hình Cloudinary & FCM
+ Trong appsettings.json:
+ ```bash
+     "CloudinarySettings": {
+         "CloudName": "<<<YOUR_CLOUD_NAME>>>",
+         "ApiKey": "<<<YOUR_API_KEY>>>",
+         "ApiSecret": "<<<YOUR_API_SECRET>>>"
+     },
+     "Fcm": {
+         "CredentialsPath": "secrets/firebase-service-account.json"
+     }
+
+ ```
+ Đặt file `firebase-service-account.json` vào thư mục:
+ ```bash
+ QLDT_BECAMEX_BE/secrets/firebase-service-account.json
+ ```
+### Bước 4: Tạo Database
+ ```bash
+dotnet ef database update
+````
+
+### Bước 5: Chạy Backend
+
+    ```bash
+
+dotnet run
+
+````
+- URL mặc định: `http://localhost:5228`
+- Swagger UI: `http://localhost:5228/swagger`
+
+## ❌ Lỗi Thường Gặp & Cách Fix
+### 1. "Cannot connect to SQL Server"
+
+**Nguyên nhân:** Sai chuỗi kết nối
+
+**Cách fix:** Kiểm tra SQL Server đang bật, Trust Server Certificate=True
+
+### 2. "FCM credential invalid"
+
+**Nguyên nhân:** File JSON sai hoặc không tồn tại
+
+**Cách fix:** Kiểm tra đường dẫn và file đúng Service Account
+
+### 3. "Cloudinary invalid credentials"
+
+**Nguyên nhân:** API key hoặc secret saiối
+
+**Cách fix:** Cập nhật lại từ Cloudinary Dashboard
+
+
+## 🧠 FRONTEND – NEXT.JS 15, React 18, TypeScript
 
 ### 🎯 Điều Kiện Bắt Buộc
 
 1. ✅ **Node.js >= 18.17.0** đã cài đặt
 
-   ```bash
-   node --version  # Kiểm tra version
-   ```
+```bash
+node --version  # Kiểm tra version
+````
 
 2. ✅ **Backend API Server PHẢI CHẠY TRƯỚC!**
 
