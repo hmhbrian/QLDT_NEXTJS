@@ -275,3 +275,14 @@ npm install
 - `NEXT_PUBLIC_APP_VERSION` - Phiên bản ứng dụng
 
 > **Lưu ý:** Mọi biến đều được validate type-safe, nếu thiếu hoặc sai format sẽ báo lỗi rõ ràng khi khởi động app.
+
+--
+
+# 🧪 TÀI KHOẢN TEST ỨNG DỤNG
+
+| Role            | Email đăng nhập         | Mật khẩu | Ghi chú                                                                                 |
+| --------------- | ----------------------- | -------- | --------------------------------------------------------------------------------------- |
+| 👑 **Admin**    | `admin@becamex.com`     | `123456` | Quản trị toàn hệ thống (quản lý phòng ban, quản lý khóa học, người dùng, v.v.)          |
+| 🧑‍💼 **HR**       | `hmh@becamex.com`       | `123456` | Quản lý học viên, khóa đào tạo, xem báo cáo                                             |
+| 🎓 **Học viên** | `daott@becamex.com`     | `123456` | Xem và đăng ký khóa học,xem bài học, làm bài kiểm tra, đánh giá, nhận thông báo(mobile) |
+| 🎓 **Học viên** | `trainn246@becamex.com` | `123456` | Xem và đăng ký khóa học,xem bài học, làm bài kiểm tra, đánh giá, nhận thông báo(mobile) |
